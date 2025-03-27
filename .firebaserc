@@ -1,0 +1,16 @@
+   {
+     "projects": {
+       "default": "amacrm-76fd1"
+     },
+     "triggers": {
+       "credsettlee": {
+         "project": "credsettlee"
+       },
+       "settleloans": {
+         "project": "settle-loan"
+       },
+       "ama": {
+         "project": "amalegalsolutionss"
+       }
+     }
+   }
