@@ -7,7 +7,7 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import * as functions from "firebase-functions/v1"; // explicitly v1 functions
+
 // import * as functionsV2 from "firebase-functions/v2";
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
@@ -15,6 +15,7 @@ import * as admin from "firebase-admin";
 import * as path from "path";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+
 
 // Initialize primary Firebase app (for CRM)
 admin.initializeApp({
@@ -417,130 +418,142 @@ export const testCollections = onRequest(async (request, response) => {
   }
 });
 
-// Use v1 functions for cross-project triggers
-export const syncCredsettleeRealtimeLeads = functions
-  .runWith({ maxInstances: 10 })
-  .firestore.document('Form/{docId}')
-  .onCreate(async (snapshot, context) => {
-    const leadData = snapshot.data();
-    const leadId = context.params.docId;
+// Replace the v1 function with v2 syntax
+export const syncCredsettleeRealtimeLeads = onDocumentCreated({
+  document: 'Form/{docId}',
+  maxInstances: 10
+}, async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return null;
+  
+  const context = event.params;
+  const leadData = snapshot.data();
+  const leadId = context.docId;
+  
+  try {
+    // Check if this document was created today
+    const creationTime = leadData.created;
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
     
-    try {
-      // Check if this document was created today
-      const creationTime = leadData.created;
-      const startOfToday = new Date();
-      startOfToday.setUTCHours(0, 0, 0, 0);
-      
-      if (creationTime < startOfToday.getTime()) {
-        logger.info(`Skipping credsettlee document ${leadId} - not created today`);
-        return null;
-      }
-      
-      // Add source and sync metadata
-      const crmLeadData = {
-        ...leadData,
-        original_id: leadId,
-        original_collection: 'Form',
-        source_database: 'credsettlee',
-        synced_at: admin.firestore.FieldValue.serverTimestamp()
-      };
-      
-      // Write to centralized CRM collection
-      await crmDb.collection('crm_leads').doc(`credsettlee_${leadId}`).set(crmLeadData);
-      
-      logger.info(`Successfully synced lead ${leadId} from credsettlee to CRM in real-time`);
+    if (creationTime < startOfToday.getTime()) {
+      logger.info(`Skipping credsettlee document ${leadId} - not created today`);
       return null;
-    } catch (error) {
-      logger.error(`Error syncing lead ${leadId} from credsettlee in real-time:`, error);
-      throw error instanceof Error ? error : new Error(String(error));
     }
-  });
+    
+    // Add source and sync metadata
+    const crmLeadData = {
+      ...leadData,
+      original_id: leadId,
+      original_collection: 'Form',
+      source_database: 'credsettlee',
+      synced_at: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // Write to centralized CRM collection
+    await crmDb.collection('crm_leads').doc(`credsettlee_${leadId}`).set(crmLeadData);
+    
+    logger.info(`Successfully synced lead ${leadId} from credsettlee to CRM in real-time`);
+    return null;
+  } catch (error) {
+    logger.error(`Error syncing lead ${leadId} from credsettlee in real-time:`, error);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+});
 
 // Real-time sync function for Settleloans
-export const syncSettleloansRealtimeLeads = functions
-  .runWith({ maxInstances: 10 })
-  .firestore.document('ContactPageForm/{docId}')
-  .onCreate(async (snapshot, context) => {
-    const leadData = snapshot.data();
-    const leadId = context.params.docId;
+export const syncSettleloansRealtimeLeads = onDocumentCreated({
+  document: 'ContactPageForm/{docId}',
+  maxInstances: 10
+}, async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return null;
+  
+  const context = event.params;
+  const leadData = snapshot.data();
+  const leadId = context.docId;
+  
+  try {
+    // Check if this document was created today
+    const creationTime = leadData.created;
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
     
-    try {
-      // Check if this document was created today
-      const creationTime = leadData.created;
-      const startOfToday = new Date();
-      startOfToday.setUTCHours(0, 0, 0, 0);
-      
-      if (creationTime < startOfToday.getTime()) {
-        logger.info(`Skipping settleloans document ${leadId} - not created today`);
-        return null;
-      }
-      
-      const crmLeadData = {
-        ...leadData,
-        original_id: leadId,
-        original_collection: 'ContactPageForm',
-        source_database: 'settleloans',
-        synced_at: admin.firestore.FieldValue.serverTimestamp()
-      };
-      
-      await crmDb.collection('crm_leads').doc(`settleloans_${leadId}`).set(crmLeadData);
-      
-      logger.info(`Successfully synced lead ${leadId} from settleloans to CRM in real-time`);
+    if (creationTime < startOfToday.getTime()) {
+      logger.info(`Skipping settleloans document ${leadId} - not created today`);
       return null;
-    } catch (error) {
-      logger.error(`Error syncing lead ${leadId} from settleloans in real-time:`, error);
-      throw error instanceof Error ? error : new Error(String(error));
     }
-  });
+    
+    const crmLeadData = {
+      ...leadData,
+      original_id: leadId,
+      original_collection: 'ContactPageForm',
+      source_database: 'settleloans',
+      synced_at: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    await crmDb.collection('crm_leads').doc(`settleloans_${leadId}`).set(crmLeadData);
+    
+    logger.info(`Successfully synced lead ${leadId} from settleloans to CRM in real-time`);
+    return null;
+  } catch (error) {
+    logger.error(`Error syncing lead ${leadId} from settleloans in real-time:`, error);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+});
 
 // Real-time sync function for AMA
-export const syncAmaRealtimeLeads = functions
-  .runWith({ maxInstances: 10 })
-  .firestore.document('form/{docId}')
-  .onCreate(async (snapshot, context) => {
-    const leadData = snapshot.data();
-    const leadId = context.params.docId;
+export const syncAmaRealtimeLeads = onDocumentCreated({
+  document: 'form/{docId}',
+  maxInstances: 10
+}, async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return null;
+  
+  const context = event.params;
+  const leadData = snapshot.data();
+  const leadId = context.docId;
+  
+  try {
+    // Check if this document was created today
+    const creationTime = leadData.timestamp;
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
     
-    try {
-      // Check if this document was created today
-      const creationTime = leadData.timestamp;
-      const startOfToday = new Date();
-      startOfToday.setUTCHours(0, 0, 0, 0);
-      
-      // Handle different timestamp formats - might be a timestamp object or a numeric value
-      let creationDate;
-      if (creationTime && typeof creationTime.toDate === 'function') {
-        creationDate = creationTime.toDate(); // Firestore Timestamp
-      } else if (creationTime && typeof creationTime === 'number') {
-        creationDate = new Date(creationTime); // Milliseconds
-      } else {
-        // Default to current time if timestamp is missing or in unknown format
-        creationDate = new Date();
-        logger.warn(`Unknown timestamp format in ama document ${leadId}, defaulting to current time`);
-      }
-      
-      if (creationDate < startOfToday) {
-        logger.info(`Skipping ama document ${leadId} - not created today`);
-        return null;
-      }
-      
-      const crmLeadData = {
-        ...leadData,
-        original_id: leadId,
-        original_collection: 'form',
-        source_database: 'ama',
-        synced_at: admin.firestore.FieldValue.serverTimestamp()
-      };
-      
-      await crmDb.collection('crm_leads').doc(`ama_${leadId}`).set(crmLeadData);
-      
-      logger.info(`Successfully synced lead ${leadId} from ama to CRM in real-time`);
-      return null;
-    } catch (error) {
-      logger.error(`Error syncing lead ${leadId} from ama in real-time:`, error);
-      throw error instanceof Error ? error : new Error(String(error));
+    // Handle different timestamp formats - might be a timestamp object or a numeric value
+    let creationDate;
+    if (creationTime && typeof creationTime.toDate === 'function') {
+      creationDate = creationTime.toDate(); // Firestore Timestamp
+    } else if (creationTime && typeof creationTime === 'number') {
+      creationDate = new Date(creationTime); // Milliseconds
+    } else {
+      // Default to current time if timestamp is missing or in unknown format
+      creationDate = new Date();
+      logger.warn(`Unknown timestamp format in ama document ${leadId}, defaulting to current time`);
     }
-  });
+    
+    if (creationDate < startOfToday) {
+      logger.info(`Skipping ama document ${leadId} - not created today`);
+      return null;
+    }
+    
+    const crmLeadData = {
+      ...leadData,
+      original_id: leadId,
+      original_collection: 'form',
+      source_database: 'ama',
+      synced_at: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    await crmDb.collection('crm_leads').doc(`ama_${leadId}`).set(crmLeadData);
+    
+    logger.info(`Successfully synced lead ${leadId} from ama to CRM in real-time`);
+    return null;
+  } catch (error) {
+    logger.error(`Error syncing lead ${leadId} from ama in real-time:`, error);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+});
 
 // Scheduled function to sync today's leads every 15 minutes
 export const scheduledSyncLeads = onSchedule({
