@@ -32,19 +32,12 @@ export interface Lead {
 }
 
 export interface HistoryItem {
-  id: string;
-  timestamp: Date;
-  previousValue?: string;
-  newValue?: string;
-  assignmentChange?: boolean;
-  previousAssignee?: string;
-  newAssignee?: string;
-  editor?: {
-    id: string;
-    salesperson?: string;
-  };
-  salesNotes?: string;
-  [key: string]: any;
+  content: string;
+  createdAt: string | Date;
+  createdBy: string;
+  createdById: string;
+  displayDate?: string; // Optional to match usage pattern
+  leadId: string;
 }
 
 export type SortDirection = 'ascending' | 'descending';

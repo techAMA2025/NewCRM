@@ -435,7 +435,7 @@ const LeadsPage = () => {
   };
 
   // Fetch lead history for modal
-  const fetchNotesHistory = async (leadId: any) => {
+  const fetchNotesHistory = async (leadId: string) => {
     try {
       setShowHistoryModal(true);
       
@@ -472,14 +472,28 @@ const LeadsPage = () => {
       // Sort by timestamp (newest first)
       historyData.sort((a, b) => b.timestamp - a.timestamp);
       
-      setCurrentHistory(historyData);
+      // Transform the history data to match HistoryItem interface
+      const formattedHistoryData = historyData.map(item => {
+        // Extract properties or set defaults for all required fields
+        const entry: HistoryItem = {
+          content: (item as any).content ? (item as any).content : 
+                  ((item as any).assignmentChange ? `Assigned to ${(item as any).newAssignee || 'someone'}` : "Note updated"),
+          createdAt: item.timestamp,
+          createdBy: (item as any).createdBy || ((item as any).editor?.name) || "Unknown user",
+          createdById: (item as any).createdById || ((item as any).editor?.id) || item.id,
+          leadId: leadId,
+          displayDate: (item as any).displayDate || ''
+        };
+        return entry;
+      });
+      
+      // Sort if needed
+      formattedHistoryData.sort((a, b) => (b.createdAt as any) - (a.createdAt as any));
+      
+      setCurrentHistory(formattedHistoryData);
     } catch (error) {
       console.error("Error fetching history: ", error);
-      toast.error("Failed to load history", {
-        position: "top-right",
-        autoClose: 3000
-      });
-      setCurrentHistory([]);
+      toast.error("Failed to load history");
     }
   };
 

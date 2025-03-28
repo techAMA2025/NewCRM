@@ -1,11 +1,12 @@
 import { FaHistory } from 'react-icons/fa';
+import { HistoryItem } from '../types';
 
 type HistoryEntry = {
   content: string;
   createdAt: string | Date;
   createdBy: string;
   createdById: string;
-  displayDate: string;
+  displayDate?: string;
   leadId: string;
 };
 
