@@ -38,7 +38,7 @@ const SalesSidebar = () => {
               <span>My Clients</span>
             </Link>
           </li>
-          <li>
+          {/* <li>
             <Link href="/sales/pipeline" className={`flex items-center px-6 py-3 hover:bg-green-800 ${isActive('/sales/pipeline')}`}>
               <FaClipboardList className="mr-3" />
               <span>Pipeline</span>
@@ -61,7 +61,7 @@ const SalesSidebar = () => {
               <FaCalendarAlt className="mr-3" />
               <span>Sales Calendar</span>
             </Link>
-          </li>
+          </li> */}
         </ul>
       </nav>
     </div>

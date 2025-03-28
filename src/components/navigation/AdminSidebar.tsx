@@ -38,7 +38,7 @@ const AdminSidebar = () => {
               <span>Leads</span>
             </Link>
           </li>
-          <li>
+          {/* <li>
             <Link href="/admin/reports" className={`flex items-center px-6 py-3 hover:bg-blue-800 ${isActive('/admin/reports')}`}>
               <FaFileAlt className="mr-3" />
               <span>System Reports</span>
@@ -55,7 +55,7 @@ const AdminSidebar = () => {
               <FaCog className="mr-3" />
               <span>System Settings</span>
             </Link>
-          </li>
+          </li> */}
         </ul>
       </nav>
     </div>

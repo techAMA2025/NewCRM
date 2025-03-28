@@ -193,13 +193,15 @@ const LeadsPage = () => {
 
   // Status options for dropdown
   const statusOptions = [
-    'New', 
-    'Contacted', 
-    'Qualified', 
-    'Proposal', 
-    'Negotiation', 
-    'Closed Won', 
-    'Closed Lost'
+    'Select Status', 
+    'Interested', 
+    'Not Interested', 
+    'Not Answering', 
+    'Callback', 
+    'Converted', 
+    'Loan Required', 
+    'Cibil Issue', 
+    'Closed Lead'
   ]
 
   // Fetch leads from CRM database - only after user profile is loaded
@@ -659,14 +661,16 @@ const LeadsPage = () => {
   // Update color coding utilities for consistent colors regardless of amount
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'New': return 'bg-blue-900 text-blue-100 border-blue-700';
-      case 'Contacted': return 'bg-purple-900 text-purple-100 border-purple-700';
-      case 'Qualified': return 'bg-teal-900 text-teal-100 border-teal-700';
-      case 'Proposal': return 'bg-amber-900 text-amber-100 border-amber-700';
-      case 'Negotiation': return 'bg-yellow-900 text-yellow-100 border-yellow-700';
-      case 'Closed Won': return 'bg-green-900 text-green-100 border-green-700';
-      case 'Closed Lost': return 'bg-red-900 text-red-100 border-red-700';
-      default: return 'bg-gray-800 text-gray-200 border-gray-700';
+      case 'Interested': return 'bg-green-900 text-green-100 border-green-700';
+      case 'Not Interested': return 'bg-red-900 text-red-100 border-red-700';
+      case 'Not Answering': return 'bg-orange-900 text-orange-100 border-orange-700';
+      case 'Callback': return 'bg-yellow-900 text-yellow-100 border-yellow-700';
+      case 'Converted': return 'bg-emerald-900 text-emerald-100 border-emerald-700';
+      case 'Loan Required': return 'bg-purple-900 text-purple-100 border-purple-700';
+      case 'Cibil Issue': return 'bg-rose-900 text-rose-100 border-rose-700';
+      case 'Closed Lead': return 'bg-gray-800 text-gray-200 border-gray-700';
+      case 'Select Status': 
+      default: return 'bg-gray-700 text-gray-200 border-gray-600';
     }
   }
 
@@ -784,138 +788,142 @@ const LeadsPage = () => {
   };
 
   // Enhanced renderSalesNotesCell function with immediate Firebase update
-  const renderSalesNotesCell = (lead: Lead) => (
-    <td className="px-4 py-3 text-sm">
-      <div className="flex flex-col space-y-2">
-        <textarea
-          id={`notes-${lead.id}`} 
-          value={editedNotes[lead.id] || ''}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            console.log(`Typing in lead ${lead.id}: "${newValue}"`);
-            
-            // Update debug info to trace the flow
-            setDebugInfo(`Last change: lead ${lead.id.substring(0,6)}, value: "${newValue}"`);
-            
-            // Update the state with new value
-            setEditedNotes(prev => ({
-              ...prev,
-              [lead.id]: newValue
-            }));
-          }}
-          placeholder="Add notes..."
-          className="block w-full py-2 px-3 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          rows={4}
-        />
-        <div className="flex space-x-2">
-          <button
-            onClick={async () => {
-              // Get current textarea value directly to ensure freshness
-              const textarea = document.getElementById(`notes-${lead.id}`) as HTMLTextAreaElement;
-              if (!textarea) {
-                console.error(`Textarea for lead ${lead.id} not found`);
-                return;
-              }
+  const renderSalesNotesCell = (lead: Lead) => {
+    // Add a reference to the current lead ID for this cell
+    const leadId = lead.id;
+    
+    return (
+      <td className="px-4 py-3 text-sm">
+        <div className="flex flex-col space-y-2">
+          <textarea
+            id={`notes-${leadId}`} 
+            value={editedNotes[leadId] || ''}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              console.log(`Typing in lead ${leadId}: "${newValue}"`);
               
-              const currentValue = textarea.value;
-              console.log(`Save button clicked for ${lead.id}`);
-              console.log(`Current textarea value: "${currentValue}"`);
+              // Update debug info to trace the flow
+              setDebugInfo(`Last change: lead ${leadId.substring(0,6)}, value: "${newValue}"`);
               
-              // Visual feedback
-              setDebugInfo(`Saving for lead ${lead.id.substring(0,6)}: "${currentValue}"`);
-              
-              try {
-                // Reference to the lead document
-                const leadRef = doc(crmDb, 'crm_leads', lead.id);
+              // Update the state with new value
+              setEditedNotes(prev => ({
+                ...prev,
+                [leadId]: newValue
+              }));
+            }}
+            placeholder="Add notes..."
+            className="block w-full py-2 px-3 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            rows={4}
+          />
+          <div className="flex space-x-2">
+            <button
+              onClick={async () => {
+                // IMPORTANT: Get the value directly from the DOM instead of state
+                const textarea = document.getElementById(`notes-${leadId}`) as HTMLTextAreaElement;
+                const currentValue = textarea ? textarea.value : (editedNotes[leadId] || '');
                 
-                // Get current lead for history tracking
-                const leadSnap = await getDoc(leadRef);
-                const currentLead = leadSnap.data();
+                console.log(`Save button clicked for ${leadId}`);
+                console.log(`Current value from DOM: "${currentValue}"`);
                 
-                // Create history entry if notes are changing
-                if (currentLead && (currentLead.salesNotes || '') !== currentValue) {
-                  // Create a history entry
-                  const historyRef = collection(crmDb, 'crm_leads', lead.id, 'history');
+                try {
+                  // Reference to the lead document
+                  const leadRef = doc(crmDb, 'crm_leads', leadId);
                   
-                  await addDoc(historyRef, {
-                    salesNotes: currentLead.salesNotes || '',
-                    timestamp: serverTimestamp(),
-                    editor: {
-                      id: user?.uid || 'unknown',
-                      salesperson: currentLead.assignedTo || 'Unassigned'
+                  // Get current lead for history tracking
+                  const leadSnap = await getDoc(leadRef);
+                  const currentLead = leadSnap.data();
+                  
+                  // Create history entry if notes are changing
+                  if (currentLead && (currentLead.salesNotes || '') !== currentValue) {
+                    // Create a history entry
+                    const historyRef = collection(crmDb, 'crm_leads', leadId, 'history');
+                    
+                    await addDoc(historyRef, {
+                      salesNotes: currentLead.salesNotes || '',
+                      timestamp: serverTimestamp(),
+                      editor: {
+                        id: user?.uid || 'unknown',
+                        salesperson: currentLead.assignedTo || 'Unassigned'
+                      }
+                    });
+                  }
+                  
+                  // Update the document directly
+                  await updateDoc(leadRef, {
+                    salesNotes: currentValue,
+                    lastModified: serverTimestamp()
+                  });
+                  
+                  // Update local state to match what was saved
+                  setEditedNotes(prev => ({
+                    ...prev,
+                    [leadId]: currentValue
+                  }));
+                  
+                  // Update local leads state
+                  const updatedLeads = leads.map(l => {
+                    if (l.id === leadId) {
+                      return { 
+                        ...l, 
+                        salesNotes: currentValue, 
+                        lastModified: new Date() // Use current date for immediate UI update
+                      };
                     }
+                    return l;
+                  });
+                  
+                  setLeads(updatedLeads);
+                  
+                  // Apply filters
+                  const newFilteredLeads = updatedLeads.filter(l => 
+                    (sourceFilter === 'all' || l.source_database === sourceFilter) &&
+                    (statusFilter === 'all' || l.status === statusFilter) &&
+                    (salesPersonFilter === 'all' || 
+                      (salesPersonFilter === '' && !l.assignedTo) || 
+                      (l.assignedTo === salesPersonFilter))
+                  );
+                  
+                  setFilteredLeads(newFilteredLeads);
+                  
+                  // Show success toast
+                  toast.success(
+                    <div>
+                      <p className="font-medium">{lead.name || 'Lead'}</p>
+                      <p className="text-sm">Sales notes updated</p>
+                    </div>,
+                    {
+                      position: "top-right",
+                      autoClose: 3000,
+                      hideProgressBar: false,
+                      closeOnClick: true,
+                      pauseOnHover: true,
+                      draggable: true
+                    }
+                  );
+                } catch (error) {
+                  console.error("Error updating sales notes: ", error);
+                  toast.error('Failed to update sales notes', {
+                    position: "top-right",
+                    autoClose: 3000
                   });
                 }
-                
-                // Update the document directly with current timestamp
-                await updateDoc(doc(crmDb, 'crm_leads', lead.id), {
-                  salesNotes: currentValue,
-                  lastModified: serverTimestamp()
-                });
-                
-                // Update local state
-                const updatedLeads = leads.map(l => {
-                  if (l.id === lead.id) {
-                    return { 
-                      ...l, 
-                      salesNotes: currentValue, 
-                      lastModified: new Date() // Use current date for immediate UI update
-                    };
-                  }
-                  return l;
-                });
-                
-                setLeads(updatedLeads);
-                
-                // Apply filters
-                const newFilteredLeads = updatedLeads.filter(l => 
-                  (sourceFilter === 'all' || l.source_database === sourceFilter) &&
-                  (statusFilter === 'all' || l.status === statusFilter) &&
-                  (salesPersonFilter === 'all' || 
-                    (salesPersonFilter === '' && !l.assignedTo) || 
-                    (l.assignedTo === salesPersonFilter))
-                );
-                
-                setFilteredLeads(newFilteredLeads);
-                
-                // Show success toast
-                toast.success(
-                  <div>
-                    <p className="font-medium">{lead.name || 'Lead'}</p>
-                    <p className="text-sm">Sales notes updated</p>
-                  </div>,
-                  {
-                    position: "top-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true
-                  }
-                );
-              } catch (error) {
-                console.error("Error updating sales notes: ", error);
-                toast.error('Failed to update sales notes', {
-                  position: "top-right",
-                  autoClose: 3000
-                });
-              }
-            }}
-            className="inline-flex justify-center items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105"
-          >
-            Save
-          </button>
-          <button
-            onClick={() => fetchNotesHistory(lead.id)}
-            className="inline-flex justify-center items-center px-3 py-1 border border-gray-700 text-xs font-medium rounded-md shadow-sm text-gray-200 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 transition-all duration-200"
-          >
-            <FaHistory className="mr-1" />
-            History
-          </button>
+              }}
+              className="inline-flex justify-center items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => fetchNotesHistory(leadId)}
+              className="inline-flex justify-center items-center px-3 py-1 border border-gray-700 text-xs font-medium rounded-md shadow-sm text-gray-200 bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 transition-all duration-200"
+            >
+              <FaHistory className="mr-1" />
+              History
+            </button>
+          </div>
         </div>
-      </div>
-    </td>
-  );
+      </td>
+    );
+  };
 
   // Update getFormattedDate function to use lastModified as fallback
   const getFormattedDate = (lead: Lead) => {
