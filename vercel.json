@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "crm/functions/lib/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "crm/functions/lib/$1"
+    }
+  ]
+}
