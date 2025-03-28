@@ -52,10 +52,7 @@ const LeadsPage = () => {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [salesPersonFilter, setSalesPersonFilter] = useState<string>('all')
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Lead; direction: 'ascending' | 'descending' }>({ 
-    key: 'lastModified', 
-    direction: 'descending' 
-  })
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Lead; direction: 'ascending' | 'descending' } | null>(null)
   const [teamMembers, setTeamMembers] = useState<{id: string, name: string}[]>([])
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [lastSyncTime, setLastSyncTime] = useState<string>('Never')
@@ -66,6 +63,14 @@ const LeadsPage = () => {
   const [editedNotes, setEditedNotes] = useState<{[key: string]: string}>({})
   const [debugInfo, setDebugInfo] = useState<string>('')
   const [noteVersions, setNoteVersions] = useState<{[key: string]: string}>({})
+  const [currentUserName, setCurrentUserName] = useState<string>('')
+  const [userProfileLoading, setUserProfileLoading] = useState(true)
+  const [userProfileError, setUserProfileError] = useState<string | null>(null)
+  const [noLeadsAssigned, setNoLeadsAssigned] = useState<boolean>(false)
+  const [salesTeamMembers, setSalesTeamMembers] = useState<{id: string, name: string, email: string}[]>([])
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState<string>('')
   
   const { user, userRole } = useAuth()
   const router = useRouter()
@@ -75,6 +80,109 @@ const LeadsPage = () => {
 
   // Create a map of refs for each lead
   const textareaRefs = useRef<{[key: string]: HTMLTextAreaElement | null}>({});
+
+  // Get current user's full name from Firestore - make sure this runs first
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user) {
+        try {
+          setUserProfileLoading(true)
+          console.log("Fetching user profile for:", user.uid, user.email)
+          
+          // Try fetching by uid first
+          const userDoc = await getDoc(doc(crmDb, 'users', user.uid))
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data()
+            console.log("User data retrieved:", userData)
+            
+            // Combine first name and last name for full name
+            if (userData.firstName || userData.lastName) {
+              const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
+              console.log(`Setting current user name to: "${fullName}"`)
+              setCurrentUserName(fullName)
+              
+              // If we're a sales user, set filter to match by name
+              if (userRole === 'sales') {
+                setSalesPersonFilter(fullName)
+              }
+            } else {
+              console.warn("User document found but missing firstName/lastName fields")
+              fallbackToEmail()
+            }
+          } else {
+            console.warn("User document not found by UID, trying query by email")
+            
+            // Try querying by email as fallback
+            const usersCollection = collection(crmDb, 'users')
+            const q = query(usersCollection, where('email', '==', user.email))
+            const querySnapshot = await getDocs(q)
+            
+            if (!querySnapshot.empty) {
+              const userData = querySnapshot.docs[0].data()
+              console.log("User found by email:", userData)
+              
+              if (userData.firstName || userData.lastName) {
+                const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
+                console.log(`Setting current user name to: "${fullName}"`)
+                setCurrentUserName(fullName)
+                
+                if (userRole === 'sales') {
+                  setSalesPersonFilter(fullName)
+                }
+              } else {
+                console.warn("User document found by email but missing name fields")
+                fallbackToEmail()
+              }
+            } else {
+              console.warn("No user document found by email either")
+              fallbackToEmail()
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching user profile:', err)
+          const errorMessage = err instanceof Error ? err.message : String(err)
+          setUserProfileError(`Error: ${errorMessage}`)
+          fallbackToEmail()
+        } finally {
+          setUserProfileLoading(false)
+        }
+      }
+    }
+    
+    const fallbackToEmail = () => {
+      // Use Auth displayName if available
+      if (user?.displayName) {
+        console.log(`Using auth displayName: "${user.displayName}"`)
+        setCurrentUserName(user.displayName)
+        
+        if (userRole === 'sales') {
+          setSalesPersonFilter(user.displayName)
+        }
+      } 
+      // If no display name, try to create a name from email
+      else if (user?.email) {
+        const emailName = user.email.split('@')[0]
+        // Convert to proper case (e.g., john.doe -> John Doe)
+        const formattedName = emailName
+          .replace(/\./g, ' ')
+          .replace(/\b\w/g, char => char.toUpperCase())
+        
+        console.log(`Created name from email: "${formattedName}"`)
+        setCurrentUserName(formattedName)
+        
+        if (userRole === 'sales') {
+          setSalesPersonFilter(formattedName)
+        }
+      }
+    }
+    
+    if (user) {
+      fetchUserProfile()
+    } else {
+      setUserProfileLoading(false)
+    }
+  }, [user, userRole])
 
   // Redirect if user is not a sales role
   useEffect(() => {
@@ -94,14 +202,26 @@ const LeadsPage = () => {
     'Closed Lost'
   ]
 
-  // Fetch leads from CRM database
+  // Fetch leads from CRM database - only after user profile is loaded
   useEffect(() => {
+    // Don't fetch leads until user profile loading is complete
+    if (userProfileLoading) {
+      console.log("Waiting for user profile to load before fetching leads...")
+      return
+    }
+    
     const fetchLeads = async () => {
       try {
         setLoading(true)
         
+        // Add debug information
+        if (user) {
+          console.log(`Current user context: ${user.uid}, ${user.displayName || user.email}`)
+          console.log(`Current user name for filtering: "${currentUserName}"`)
+        }
+        
         // Setup date filtering for today's leads
-        const today = new Date()
+        const today = new Date(2025, 2, 26)
         today.setHours(0, 0, 0, 0) // Start of today
         
         // Fetch team members for assignment dropdown
@@ -152,18 +272,15 @@ const LeadsPage = () => {
         // Fetch leads from the unified crm_leads collection
         const leadsCollection = collection(crmDb, 'crm_leads')
         
-        // Query to filter leads synced today (using synced_at field)
-        const q = query(leadsCollection, 
-          where('synced_at', '>=', today)
-        )
+        // Create the base query - fetch all today's leads
+        const q = query(leadsCollection, where('synced_at', '>=', today))
         
         const leadsSnapshot = await getDocs(q)
+        console.log(`Fetched ${leadsSnapshot.docs.length} leads total`)
         
-        const leadsData = leadsSnapshot.docs.map(doc => {
+        // Map the data
+        let leadsData = leadsSnapshot.docs.map(doc => {
           const data = doc.data()
-          
-          // Console log for debugging
-          console.log(`Lead ${doc.id} data:`, data);
           
           // Map common fields
           const leadData: Lead = {
@@ -203,11 +320,18 @@ const LeadsPage = () => {
             Queries: data.Queries || ''
           }
           
-          // Log the mapped result for debugging
-          console.log(`Mapped lead ${doc.id}:`, leadData);
-          
-          return leadData
+          return leadData;
+        });
+        
+        // Before filtering, log info about all assignedTo values to help debug
+        const assignedToValues: Record<string, number> = {};
+        leadsData.forEach(lead => {
+          if (lead.assignedTo) {
+            assignedToValues[lead.assignedTo] = (assignedToValues[lead.assignedTo] || 0) + 1
+          }
         })
+        console.log('Assigned names found in leads:', assignedToValues)
+        console.log(`Current user name: ${currentUserName}`)
         
         // Sort by synced_at timestamp (newest first)
         const sortedLeads = leadsData.sort((a, b) => {
@@ -231,36 +355,99 @@ const LeadsPage = () => {
         setEditedNotes(initialEditedNotes)
         setNoteVersions(initialNoteVersions)
       } catch (err) {
-        console.error('Error fetching leads:', err)
-        setError('Failed to fetch leads. Please try again later.')
+        console.error('Error fetching leads:', err);
+        setError('Failed to fetch leads. Please try again later.');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    // Only fetch leads if the user has sales or admin role
-    if (userRole === 'sales' || userRole === 'admin') {
+    // Only fetch leads if the user has sales or admin role and user profile is loaded
+    if ((userRole === 'sales' || userRole === 'admin') && !userProfileLoading) {
       fetchLeads()
     }
-  }, [userRole])
+  }, [userRole, user, currentUserName, userProfileLoading])
 
-  // Apply filters and sorting when filter state or sort config changes
+  // Apply filters, search, and sorting when filter state, search query, or sort config changes
   useEffect(() => {
-    if (leads) {
-      // Apply all filters (source, status, and salesperson)
-      const filtered = leads.filter(lead => 
-        (sourceFilter === 'all' || lead.source_database === sourceFilter) &&
-        (statusFilter === 'all' || lead.status === statusFilter) &&
-        (salesPersonFilter === 'all' || 
-          (salesPersonFilter === '' && !lead.assignedTo) || 
-          (lead.assignedToId === salesPersonFilter))
-      );
+    if (leads && leads.length > 0) {
+      console.log(`Applying filters - source: ${sourceFilter}, status: ${statusFilter}, salesperson: ${salesPersonFilter}, search: "${searchQuery}"`)
+      
+      if (userRole === 'sales' && currentUserName) {
+        console.log(`Sales user ${currentUserName} - will only show their leads`)
+      }
+      
+      // For sales users, always filter to only their leads regardless of filter selection
+      const filtered = leads.filter(lead => {
+        // First check source and status filters
+        const sourceMatch = sourceFilter === 'all' || lead.source_database === sourceFilter
+        const statusMatch = statusFilter === 'all' || lead.status === statusFilter
+        
+        // Then apply salesperson filter based on role
+        let salesPersonMatch
+        
+        if (userRole === 'admin') {
+          // For admin users, apply the salesPersonFilter based on dropdown selection
+          salesPersonMatch = 
+            salesPersonFilter === 'all' || 
+            (salesPersonFilter === '' && !lead.assignedTo) || 
+            (lead.assignedTo === salesPersonFilter)
+        } else if (userRole === 'sales' && currentUserName) {
+          // For sales users, force filter to only show their leads by name
+          salesPersonMatch = lead.assignedTo === currentUserName
+        } else {
+          // Default case - no match
+          salesPersonMatch = false
+        }
+        
+        // Apply search filter if search query exists
+        let searchMatch = true
+        if (searchQuery.trim() !== '') {
+          const query = searchQuery.toLowerCase().trim()
+          searchMatch = 
+            // Search in name
+            (lead.name?.toLowerCase().includes(query) || false) ||
+            // Search in email
+            (lead.email?.toLowerCase().includes(query) || false) ||
+            // Search in phone
+            (lead.phone?.toLowerCase().includes(query) || false) ||
+            // Search in city
+            (lead.city?.toLowerCase().includes(query) || 
+             lead.City?.toLowerCase().includes(query) || false) ||
+            // Search in remarks/queries
+            (lead.remarks?.toLowerCase().includes(query) || 
+             lead.message?.toLowerCase().includes(query) || 
+             lead.queries?.toLowerCase().includes(query) || 
+             lead.Queries?.toLowerCase().includes(query) || false) ||
+            // Search in sales notes
+            (lead.salesNotes?.toLowerCase().includes(query) || false) ||
+            // Search in financial details
+            (lead.personalLoanDues?.toLowerCase().includes(query) || 
+             lead.creditCardDues?.toLowerCase().includes(query) || 
+             (typeof lead.monthlyIncome === 'string' && lead.monthlyIncome.toLowerCase().includes(query)) || false)
+        }
+        
+        return sourceMatch && statusMatch && salesPersonMatch && searchMatch
+      })
+      
+      // Log filtering results to help debug
+      console.log(`Filtered from ${leads.length} to ${filtered.length} leads`)
       
       // Apply sorting to filtered leads
-      const sortedLeads = sortData(filtered, sortConfig.key as string, sortConfig.direction);
-      setFilteredLeads(sortedLeads);
+      const sortedLeads = sortConfig ? sortData(filtered, sortConfig.key as string, sortConfig.direction) : filtered
+      setFilteredLeads(sortedLeads)
+      
+      // Set noLeadsAssigned if we're a sales user with no leads
+      if (userRole === 'sales' && filtered.length === 0) {
+        setNoLeadsAssigned(true)
+      } else {
+        setNoLeadsAssigned(false)
+      }
+    } else {
+      // If no leads, just set filtered leads to empty array
+      setFilteredLeads([])
     }
-  }, [leads, sourceFilter, statusFilter, salesPersonFilter, sortConfig]);
+  }, [leads, sourceFilter, statusFilter, salesPersonFilter, sortConfig, userRole, currentUserName, searchQuery])
 
   // Function to request sorting by a specific key
   const requestSort = (key: keyof Lead) => {
@@ -402,7 +589,7 @@ const LeadsPage = () => {
         (statusFilter === 'all' || l.status === statusFilter) &&
         (salesPersonFilter === 'all' || 
           (salesPersonFilter === '' && !l.assignedTo) || 
-          (l.assignedToId === salesPersonFilter))
+          (l.assignedTo === salesPersonFilter))
       );
       
       setFilteredLeads(newFilteredLeads);
@@ -686,7 +873,7 @@ const LeadsPage = () => {
                   (statusFilter === 'all' || l.status === statusFilter) &&
                   (salesPersonFilter === 'all' || 
                     (salesPersonFilter === '' && !l.assignedTo) || 
-                    (l.assignedToId === salesPersonFilter))
+                    (l.assignedTo === salesPersonFilter))
                 );
                 
                 setFilteredLeads(newFilteredLeads);
@@ -716,7 +903,7 @@ const LeadsPage = () => {
             }}
             className="inline-flex justify-center items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105"
           >
-            Save Notes
+            Save
           </button>
           <button
             onClick={() => fetchNotesHistory(lead.id)}
@@ -808,6 +995,64 @@ const LeadsPage = () => {
     }
   };
 
+  // Fetch sales team members for assignment dropdown
+  useEffect(() => {
+    const fetchSalesTeamMembers = async () => {
+      if (userRole === 'admin') {
+        try {
+          const usersCollection = collection(crmDb, 'users')
+          const q = query(usersCollection, where('role', '==', 'sales'))
+          const querySnapshot = await getDocs(q)
+          
+          const members = querySnapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
+              email: data.email || ''
+            }
+          })
+          
+          setSalesTeamMembers(members)
+          console.log('Fetched sales team members:', members)
+        } catch (err) {
+          console.error('Error fetching sales team members:', err)
+        }
+      }
+    }
+    
+    fetchSalesTeamMembers()
+  }, [userRole])
+
+  // Function to assign a lead to a salesperson
+  const assignLeadToSalesperson = async (leadId: string, salesPersonName: string, salesPersonId: string) => {
+    try {
+      const leadRef = doc(crmDb, 'crm_leads', leadId)
+      
+      await updateDoc(leadRef, {
+        assignedTo: salesPersonName,
+        assignedToId: salesPersonId,
+        lastModified: serverTimestamp()
+      })
+      
+      // Update the local state to reflect the change
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId 
+            ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId } 
+            : lead
+        )
+      )
+      
+      toast.success(`Lead successfully assigned to ${salesPersonName}`)
+      setAssignModalOpen(false)
+      setSelectedLeadId(null)
+    } catch (err) {
+      console.error('Error assigning lead:', err)
+      toast.error('Failed to assign lead. Please try again.')
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8">
@@ -876,9 +1121,11 @@ const LeadsPage = () => {
         <div className="p-4 sm:p-6 lg:p-8 flex-1">
           <div className="sm:flex sm:items-center">
             <div className="sm:flex-auto">
-              <h1 className="text-2xl font-semibold text-gray-900">Leads Management</h1>
-              <p className="mt-2 text-sm text-gray-700">
-                A list of all leads from multiple platforms with their contact information and status.
+              <h1 className="text-2xl font-semibold text-gray-100">Leads Management</h1>
+              <p className="mt-2 text-sm text-gray-400">
+                {userRole === 'admin' 
+                  ? 'A list of all leads from multiple platforms with their contact information and status.'
+                  : 'A list of leads assigned to you with their contact information and status.'}
               </p>
             </div>
             <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -908,577 +1155,679 @@ const LeadsPage = () => {
           
           <div className="mt-2 text-xs text-gray-500">
             Last synced: {lastSyncTime}
+            {userProfileLoading && ' (Loading user profile...)'}
+            {userProfileError && ` (Profile error: ${userProfileError})`}
           </div>
           
-          <div className="mt-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-              <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-4">
-                {/* Source Filter */}
-                <div className="relative w-full sm:w-40">
-                  <select
-                    value={sourceFilter}
-                    onChange={e => setSourceFilter(e.target.value)}
-                    className="block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                  >
-                    <option value="all">All Sources</option>
-                    <option value="credsettlee">CredSettle</option>
-                    <option value="settleloans">SettleLoans</option>
-                    <option value="ama">AMA</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <FaFilter className="h-4 w-4 text-gray-400" />
-                  </div>
-                </div>
-                
-                {/* Status Filter */}
-                <div className="relative w-full sm:w-40">
-                  <select
-                    value={statusFilter}
-                    onChange={e => setStatusFilter(e.target.value)}
-                    className="block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                  >
-                    <option value="all">All Statuses</option>
-                    {statusOptions.map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <FaFilter className="h-4 w-4 text-gray-400" />
-                  </div>
-                </div>
-                
-                {/* NEW: Salesperson Filter */}
-                <div className="relative w-full sm:w-40">
-                  <select
-                    value={salesPersonFilter}
-                    onChange={e => setSalesPersonFilter(e.target.value)}
-                    className="block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                  >
-                    <option value="all">All Salespersons</option>
-                    <option value="">Unassigned</option>
-                    {teamMembers.map(member => (
-                      <option key={member.id} value={member.id}>{member.name}</option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <FaUserTie className="h-4 w-4 text-gray-400" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="ml-auto">
-                <p className="text-sm text-gray-400">
-                  Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
-                </p>
+          {/* Loading state when user profile is loading */}
+          {userProfileLoading && (
+            <div className="mt-6 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+              <div className="flex items-center justify-center">
+                <svg className="animate-spin h-5 w-5 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Loading your profile...</span>
               </div>
             </div>
-          </div>
+          )}
           
-          {/* Leads Table with Dark Theme - Wider Layout */}
-          <div className="bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
-            <div className="overflow-x-auto">
-              <table className="min-w-[1400px] divide-y divide-gray-700" role="table" aria-label="Leads table">
-                <thead className="bg-gray-800">
-                  <tr>
-                    <th
-                      onClick={() => requestSort('lastModified')}
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 transition-colors duration-150 w-[10%]"
-                      scope="col"
-                      aria-sort={sortConfig?.key === 'lastModified' ? sortConfig.direction : 'none'}
-                    >
-                      <div className="flex items-center">
-                        <span className="text-blue-400">Date</span>
-                        <FaSort className="ml-1 h-3 w-3 text-gray-400" aria-hidden="true" />
-                      </div>
-                    </th>
-                    
-                    <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Contact Information</span>
-                    </th>
-                    
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Location</span>
-                    </th>
-                    
-                    <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[6%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Source</span>
-                    </th>
-                    
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Financial Details</span>
-                    </th>
-                    
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Status</span>
-                    </th>
-                    
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[7%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Assigned</span>
-                    </th>
-                    
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Last Modified</span>
-                    </th>
-                    
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Query</span>
-                    </th>
-                    
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[25%]"
-                      scope="col"
-                    >
-                      <span className="text-blue-400">Sales Notes</span>
-                    </th>
-                  </tr>
-                </thead>
-                
-                <tbody className="bg-gray-900 divide-y divide-gray-800">
-                  {filteredLeads.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-400">
-                        No leads found matching the current filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-gray-800 transition-colors duration-150" role="row">
-                        {/* Date */}
-                        <td className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap">
-                          {getFormattedDate(lead)}
-                        </td>
-                        
-                        {/* Contact Information - Grouped */}
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col space-y-1">
-                            <div className="text-sm font-medium text-gray-100">{lead.name || 'Unknown'}</div>
-                            <div className="flex items-center text-xs">
-                              <FaEnvelope className="h-3 w-3 text-gray-500 mr-1" />
-                              <a href={`mailto:${lead.email}`} className="text-blue-400 hover:underline">
-                                {lead.email || 'No email'}
-                              </a>
-                            </div>
-                            <div className="flex items-center text-xs">
-                              <FaPhone className="h-3 w-3 text-gray-500 mr-1" />
-                              <a href={`tel:${lead.phone}`} className="text-red-400 hover:underline font-medium">
-                                {formatPhoneNumber(lead.phone) || 'No phone'}
-                              </a>
-                            </div>
-                          </div>
-                        </td>
-                        
-                        {/* Location */}
-                        <td className="px-4 py-3 text-sm text-gray-300">
-                          <div className="flex items-center">
-                            <FaMapMarkerAlt className="h-3 w-3 text-gray-500 mr-1" />
-                            <span>{lead.city || lead.City || 'N/A'}</span>
-                          </div>
-                        </td>
-                        
-                        {/* Source */}
-                        <td className="py-3 text-xs">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium
-                            ${lead.source_database === 'credsettlee' ? 'bg-purple-900 text-purple-100 border border-purple-700' : 
-                              lead.source_database === 'settleloans' ? 'bg-teal-900 text-teal-100 border border-teal-700' : 
-                                lead.source_database === 'ama' ? 'bg-amber-900 text-amber-100 border border-amber-700' : 
-                                  'bg-gray-800 text-gray-200 border border-gray-700'}`}
-                          >
-                            {lead.source_database === 'credsettlee' ? 'Cred Settle' : 
-                              lead.source_database === 'settleloans' ? 'Settle Loans' : 
-                                lead.source_database === 'ama' ? 'AMA' : 'N/A'}
-                          </span>
-                        </td>
-                        
-                        {/* Financial Details - Grouped */}
-                        <td className="px-4 py-3 text-xs">
-                          <div className="space-y-1.5">
-                            <div>
-                              <span className="font-medium text-gray-400">PL:</span> 
-                              <span className={getFinancialColor('pl')}>
-                                {lead.personalLoanDues || lead['Total personal loan amount'] || 'N/A'}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-400">CC:</span> 
-                              <span className={getFinancialColor('cc')}>
-                                {lead.creditCardDues || lead['Total credit card dues'] || 'N/A'}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-400">Income:</span> 
-                              <span className={getFinancialColor('income')}>
-                                {typeof lead.monthlyIncome === 'number' ? 
-                                  `₹${lead.monthlyIncome.toLocaleString('en-IN')}` : 
-                                  lead.monthlyIncome || lead['Monthly income'] || 'N/A'}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        
-                        {/* Status - Editable Dropdown with Badge */}
-                        <td className="px-4 py-3 text-sm">
-                          <div className="flex flex-col space-y-2">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(lead.status || 'New')}`}>
-                              {lead.status || 'New'}
-                            </span>
-                            <select
-                              value={lead.status || 'New'}
-                              onChange={(e) => updateLead(lead.id, { status: e.target.value })}
-                              className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              {statusOptions.map(status => (
-                                <option key={status} value={status}>{status}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
-                        
-                        {/* Assigned To - Salesperson Badge */}
-                        <td className="px-4 py-3 text-sm">
-                          <div className="flex flex-col space-y-2">
-                            {lead.assignedTo ? (
-                              <div className="flex items-center">
-                                <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full border shadow-sm font-medium text-xs text-center ${getSalespersonBadge(lead.assignedTo).color}`}>
-                                  {getSalespersonBadge(lead.assignedTo).initials}
-                                </div>
-                                <span className="ml-2 text-xs text-gray-300 truncate">{lead.assignedTo}</span>
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-800 text-gray-400 border border-gray-700 shadow-sm font-medium text-xs">
-                                UN
-                              </div>
-                            )}
-                            <select
-                              value={lead.assignedToId || ''}
-                              onChange={(e) => updateLead(lead.id, { assignedTo: e.target.value })}
-                              className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              <option value="">Unassigned</option>
-                              {teamMembers.map(member => (
-                                <option key={member.id} value={member.id}>{member.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
-                        
-                        {/* Last Modified Date */}
-                        <td className="px-4 py-3 text-sm text-gray-400">
-                          <div className="flex flex-col">
-                            <span className="whitespace-nowrap">{getLastModifiedDate(lead)}</span>
-                            {lead.modificationTimestamp && 
-                              <span className="text-xs text-gray-500 mt-1">Last updated</span>
-                            }
-                          </div>
-                        </td>
-                        
-                        {/* Customer Query - No longer truncated, full width display */}
-                        <td className="px-4 py-3 text-sm text-gray-400">
-                          <div className="break-words whitespace-pre-wrap">
-                            {lead.remarks || lead.message || lead.queries || lead.Queries || 'N/A'}
-                          </div>
-                        </td>
-                        
-                        {/* Sales Notes - Editable with Save Button - Increased height */}
-                        {renderSalesNotesCell(lead)}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          {/* Edit Modal with improved accessibility */}
-          {editingLead && (
-            <div className="fixed inset-0 z-10 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="edit-lead-title">
-              <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                  <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+          {/* Message when no leads are assigned to the sales user - only show when profile is loaded */}
+          {!userProfileLoading && noLeadsAssigned && userRole === 'sales' && (
+            <div className="mt-6 p-4 bg-yellow-900/50 border border-yellow-700 rounded-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
                 </div>
-
-                <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                
-                <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full sm:p-6">
-                  <div className="absolute top-0 right-0 pt-4 pr-4">
-                    <button
-                      type="button"
-                      onClick={() => setEditingLead(null)}
-                      className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      aria-label="Close modal"
-                    >
-                      <span className="sr-only">Close</span>
-                      <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  <h3 className="text-xl font-medium text-gray-900 mb-6 flex items-center" id="edit-lead-title">
-                    <span className={`inline-flex items-center justify-center h-8 w-8 rounded-full mr-3 ${getStatusColor(editingLead.status || 'New')}`}>
-                      {(editingLead.status || 'New').charAt(0)}
-                    </span>
-                    Edit Lead: {editingLead.name}
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-                    <div>
-                      <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700">Name</label>
-                      <input
-                        id="edit-name"
-                        type="text"
-                        value={editingLead.name}
-                        onChange={(e) => setEditingLead({...editingLead, name: e.target.value})}
-                        className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700">Email</label>
-                      <input
-                        id="edit-email"
-                        type="email"
-                        value={editingLead.email}
-                        onChange={(e) => setEditingLead({...editingLead, email: e.target.value})}
-                        className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="edit-phone" className="block text-sm font-medium text-gray-700">Phone</label>
-                      <input
-                        id="edit-phone"
-                        type="text"
-                        value={editingLead.phone}
-                        onChange={(e) => setEditingLead({...editingLead, phone: e.target.value})}
-                        className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="edit-status" className="block text-sm font-medium text-gray-700">Status</label>
-                      <select
-                        id="edit-status"
-                        value={editingLead.status || 'New'}
-                        onChange={(e) => setEditingLead({...editingLead, status: e.target.value})}
-                        className={`mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-600 focus:border-blue-600 sm:text-sm md:text-base ${getStatusColor(editingLead.status || 'New')}`}
-                      >
-                        {statusOptions.map(status => (
-                          <option key={status} value={status}>{status}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="edit-assigned" className="block text-sm font-medium text-gray-700">Assign To</label>
-                      <div className="mt-1 relative">
-                        <select
-                          id="edit-assigned"
-                          value={editingLead.assignedToId || ''}
-                          onChange={(e) => {
-                            // Find team member name if ID is selected
-                            const memberName = e.target.value === '' ? '' : 
-                              teamMembers.find(m => m.id === e.target.value)?.name || '';
-                            
-                            setEditingLead({
-                              ...editingLead, 
-                              assignedToId: e.target.value,
-                              assignedTo: memberName
-                            });
-                          }}
-                          className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-600 focus:border-blue-600 sm:text-sm md:text-base"
-                        >
-                          <option value="">Unassigned</option>
-                          {teamMembers.map(member => (
-                            <option key={member.id} value={member.id}>{member.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">Financial Details</label>
-                      <div className="mt-2 grid grid-cols-3 gap-4">
-                        <div className="bg-white p-3 rounded-lg border border-gray-200">
-                          <label className="block text-sm font-medium text-gray-500">Personal Loan</label>
-                          <div className={`mt-1 text-base ${getFinancialColor('pl')}`}>
-                            {editingLead.personalLoanDues || editingLead['Total personal loan amount'] || 'N/A'}
-                          </div>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-gray-200">
-                          <label className="block text-sm font-medium text-gray-500">Credit Card</label>
-                          <div className={`mt-1 text-base ${getFinancialColor('cc')}`}>
-                            {editingLead.creditCardDues || editingLead['Total credit card dues'] || 'N/A'}
-                          </div>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-gray-200">
-                          <label className="block text-sm font-medium text-gray-500">Monthly Income</label>
-                          <div className={`mt-1 text-base ${getFinancialColor('income')}`}>
-                            {typeof editingLead.monthlyIncome === 'number' ? 
-                              `₹${editingLead.monthlyIncome.toLocaleString('en-IN')}` : 
-                              editingLead.monthlyIncome || editingLead['Monthly income'] || 'N/A'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">Original Customer Query</label>
-                      <div className="mt-2 bg-gray-50 border border-gray-200 rounded-md p-4 text-base text-gray-700 max-h-32 overflow-y-auto">
-                        {editingLead.remarks || editingLead.message || editingLead.queries || editingLead.Queries || 'No customer query'}
-                      </div>
-                    </div>
-                    
-                    <div className="sm:col-span-2">
-                      <label htmlFor="edit-sales-notes" className="block text-sm font-medium text-gray-700">Sales Notes</label>
-                      <textarea
-                        id="edit-sales-notes"
-                        value={editingLead.salesNotes || ''}
-                        onChange={(e) => setEditingLead({...editingLead, salesNotes: e.target.value})}
-                        rows={4}
-                        className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
-                        placeholder="Enter your notes about this lead..."
-                      ></textarea>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-8 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setEditingLead(null)}
-                      className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm md:text-base transition-colors duration-150"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateLead(editingLead.id, {
-                        name: editingLead.name,
-                        email: editingLead.email,
-                        phone: editingLead.phone,
-                        status: editingLead.status,
-                        assignedTo: editingLead.assignedTo,
-                        salesNotes: editingLead.salesNotes
-                      })}
-                      className="mt-3 sm:mt-0 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-3 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm md:text-base transition-colors duration-150"
-                    >
-                      Save All Changes
-                    </button>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-300">No leads assigned to you</h3>
+                  <div className="mt-2 text-sm text-yellow-200">
+                    <p>
+                      You currently don't have any leads assigned to you. Please contact your administrator to assign leads to your name: 
+                      "{currentUserName || 'your account'}".
+                    </p>
+                    <p className="mt-2 text-xs text-yellow-400/70">
+                      Your details: {currentUserName ? `Name: ${currentUserName}` : ''} 
+                      {user?.email ? `, Email: ${user.email}` : ''}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
-          {/* History Modal */}
-          {showHistoryModal && (
-            <div className="fixed inset-0 z-10 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
-              <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                  <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-                </div>
-
-                <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                
-                <div className="inline-block align-bottom bg-gray-900 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 border border-gray-700">
-                  <div className="absolute top-0 right-0 pt-4 pr-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowHistoryModal(false)}
-                      className="bg-gray-900 rounded-md text-gray-400 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      aria-label="Close modal"
-                    >
-                      <span className="sr-only">Close</span>
-                      <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+          
+          {/* Only show the filters and table when not loading user profile */}
+          {!userProfileLoading && (
+            <>
+              {/* Search bar - new addition */}
+              <div className="mt-6 mb-4">
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                  
-                  <div>
-                    <h3 className="text-lg leading-6 font-medium text-blue-400 mb-3" id="history-modal-title">
-                      Sales Notes History
-                    </h3>
-                    
-                    {currentHistory.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400">
-                        <FaHistory className="mx-auto h-10 w-10 text-gray-600 mb-3" />
-                        <p>No history available for this lead yet.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                        {currentHistory.map((entry, index) => (
-                          <div key={entry.id} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="text-sm text-gray-300">
-                                {/* <span className="font-medium text-blue-400">{entry.editor?.name || 'Unknown User'}</span> */}
-                                <span className="text-gray-500">
-                                  {entry.timestamp instanceof Date 
-                                    ? entry.timestamp.toLocaleString('en-US', { 
-                                        day: '2-digit', 
-                                        month: 'short', 
-                                        year: 'numeric',
-                                        hour: '2-digit', 
-                                        minute: '2-digit'
-                                      }) 
-                                    : 'Unknown time'}
-                                </span>
-                              </div>
-                              <span className="text-xs text-gray-500">#{currentHistory.length - index}</span>
-                            </div>
-                            
-                            {/* Display salesperson from editor.salesperson */}
-                            {entry.editor && entry.editor.salesperson && (
-                              <div className="mb-2 text-xs">
-                                <span className="text-gray-500">Assigned to: </span>
-                                <span className="text-yellow-400">{entry.editor.salesperson}</span>
-                              </div>
-                            )}
-                            
-                            <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300 bg-gray-900 p-2 rounded border border-gray-700">
-                              {entry.salesNotes || <span className="text-gray-500 italic">No content</span>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <div className="mt-5 sm:mt-6">
+                  <input
+                    type="text"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-700 bg-gray-800 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Search by name, email, phone, city, remarks, or any other details..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                       <button
-                        type="button"
-                        onClick={() => setShowHistoryModal(false)}
-                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+                        onClick={() => setSearchQuery('')}
+                        className="text-gray-400 hover:text-gray-300 focus:outline-none"
+                        aria-label="Clear search"
                       >
-                        Close
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                       </button>
                     </div>
+                  )}
+                </div>
+                {searchQuery && (
+                  <div className="mt-2 flex items-center">
+                    <span className="text-sm text-gray-400">
+                      Found <span className="text-blue-400 font-medium">{filteredLeads.length}</span> results for "{searchQuery}"
+                    </span>
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="ml-2 text-xs text-blue-400 hover:text-blue-300 focus:outline-none"
+                    >
+                      Clear search
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-2">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                  <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-4">
+                    {/* Source Filter */}
+                    <div className="relative w-full sm:w-40">
+                      <select
+                        value={sourceFilter}
+                        onChange={e => setSourceFilter(e.target.value)}
+                        className="block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                      >
+                        <option value="all">All Sources</option>
+                        <option value="credsettlee">CredSettle</option>
+                        <option value="settleloans">SettleLoans</option>
+                        <option value="ama">AMA</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <FaFilter className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+                    
+                    {/* Status Filter */}
+                    <div className="relative w-full sm:w-40">
+                      <select
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value)}
+                        className="block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                      >
+                        <option value="all">All Statuses</option>
+                        {statusOptions.map(status => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <FaFilter className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+                    
+                    {/* Salesperson Filter - Updated to use names */}
+                    <div className="relative w-full sm:w-40">
+                      <select
+                        value={salesPersonFilter}
+                        onChange={e => setSalesPersonFilter(e.target.value)}
+                        className={`block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md ${userRole !== 'admin' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        disabled={userRole !== 'admin'}
+                      >
+                        {userRole === 'admin' && <option value="all">All Salespersons</option>}
+                        {userRole === 'admin' && <option value="">Unassigned</option>}
+                        {teamMembers.map(member => (
+                          <option key={member.id} value={member.name}>{member.name}</option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <FaUserTie className="h-4 w-4 text-gray-400" />
+                      </div>
+                      {userRole !== 'admin' && (
+                        <div className="absolute right-0 top-0 mt-2 mr-8">
+                          {/* <span className="text-xs text-gray-400">(Restricted)</span> */}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="ml-auto">
+                    <p className="text-sm text-gray-400">
+                      Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
+                    </p>
                   </div>
                 </div>
               </div>
-            </div>
+              
+              {/* Leads Table with Dark Theme - Wider Layout */}
+              <div className="bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
+                <div className="overflow-x-auto">
+                  <table className="min-w-[1400px] divide-y divide-gray-700" role="table" aria-label="Leads table">
+                    <thead className="bg-gray-800">
+                      <tr>
+                        <th
+                          onClick={() => requestSort('lastModified')}
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 transition-colors duration-150 w-[10%]"
+                          scope="col"
+                          aria-sort={sortConfig?.key === 'lastModified' ? sortConfig.direction : 'none'}
+                        >
+                          <div className="flex items-center">
+                            <span className="text-blue-400">Date</span>
+                            <FaSort className="ml-1 h-3 w-3 text-gray-400" aria-hidden="true" />
+                          </div>
+                        </th>
+                        
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Contact Information</span>
+                        </th>
+                        
+                        <th 
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Location</span>
+                        </th>
+                        
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[6%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Source</span>
+                        </th>
+                        
+                        <th 
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Financial Details</span>
+                        </th>
+                        
+                        <th 
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Status</span>
+                        </th>
+                        
+                        <th 
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[7%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Assigned</span>
+                        </th>
+                        
+                        {/* <th 
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Last Modified</span>
+                        </th> */}
+                        
+                        <th 
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Query</span>
+                        </th>
+                        
+                        <th 
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[25%]"
+                          scope="col"
+                        >
+                          <span className="text-blue-400">Sales Notes</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    
+                    <tbody className="bg-gray-900 divide-y divide-gray-800">
+                      {filteredLeads.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-400">
+                            No leads found matching the current filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredLeads.map((lead) => (
+                          <tr key={lead.id} className="hover:bg-gray-800 transition-colors duration-150" role="row">
+                            {/* Date */}
+                            <td className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap">
+                              {getFormattedDate(lead)}
+                            </td>
+                            
+                            {/* Contact Information - Grouped */}
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-sm font-medium text-gray-100">{lead.name || 'Unknown'}</div>
+                                <div className="flex items-center text-xs">
+                                  <FaEnvelope className="h-3 w-3 text-gray-500 mr-1" />
+                                  <a href={`mailto:${lead.email}`} className="text-blue-400 hover:underline">
+                                    {lead.email || 'No email'}
+                                  </a>
+                                </div>
+                                <div className="flex items-center text-xs">
+                                  <FaPhone className="h-3 w-3 text-gray-500 mr-1" />
+                                  <a href={`tel:${lead.phone}`} className="text-red-400 hover:underline font-medium">
+                                    {formatPhoneNumber(lead.phone) || 'No phone'}
+                                  </a>
+                                </div>
+                              </div>
+                            </td>
+                            
+                            {/* Location */}
+                            <td className="px-4 py-3 text-sm text-gray-300">
+                              <div className="flex items-center">
+                                <FaMapMarkerAlt className="h-3 w-3 text-gray-500 mr-1" />
+                                <span>{lead.city || lead.City || 'N/A'}</span>
+                              </div>
+                            </td>
+                            
+                            {/* Source */}
+                            <td className="py-3 text-xs">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium
+                                ${lead.source_database === 'credsettlee' ? 'bg-purple-900 text-purple-100 border border-purple-700' : 
+                                  lead.source_database === 'settleloans' ? 'bg-teal-900 text-teal-100 border border-teal-700' : 
+                                    lead.source_database === 'ama' ? 'bg-amber-900 text-amber-100 border border-amber-700' : 
+                                      'bg-gray-800 text-gray-200 border border-gray-700'}`}
+                                >
+                                {lead.source_database === 'credsettlee' ? 'CredSettle' : 
+                                  lead.source_database === 'settleloans' ? 'SettleLoans' : 
+                                    lead.source_database === 'ama' ? 'AMA' : 'N/A'}
+                              </span>
+                            </td>
+                            
+                            {/* Financial Details - Grouped */}
+                            <td className="px-4 py-3 text-xs">
+                              <div className="space-y-1.5">
+                                <div>
+                                  <span className="font-medium text-gray-400">PL:</span> 
+                                  <span className={getFinancialColor('pl')}>
+                                    {lead.personalLoanDues || lead['Total personal loan amount'] || 'N/A'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-gray-400">CC:</span> 
+                                  <span className={getFinancialColor('cc')}>
+                                    {lead.creditCardDues || lead['Total credit card dues'] || 'N/A'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-gray-400">Income:</span> 
+                                  <span className={getFinancialColor('income')}>
+                                    {typeof lead.monthlyIncome === 'number' ? 
+                                      `₹${lead.monthlyIncome.toLocaleString('en-IN')}` : 
+                                      lead.monthlyIncome || lead['Monthly income'] || 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            
+                            {/* Status - Editable Dropdown with Badge */}
+                            <td className="px-4 py-3 text-sm">
+                              <div className="flex flex-col space-y-2">
+                                <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(lead.status || 'New')}`}>
+                                  {lead.status || 'New'}
+                                </span>
+                                <select
+                                  value={lead.status || 'New'}
+                                  onChange={(e) => updateLead(lead.id, { status: e.target.value })}
+                                  className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  {statusOptions.map(status => (
+                                    <option key={status} value={status}>{status}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                            
+                            {/* Assigned To - Salesperson Badge */}
+                            <td className="px-4 py-3 text-sm">
+                              <div className="flex flex-col space-y-2">
+                                {lead.assignedTo ? (
+                                  <div className="flex items-center">
+                                    <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full border shadow-sm font-medium text-xs text-center ${getSalespersonBadge(lead.assignedTo).color}`}>
+                                      {getSalespersonBadge(lead.assignedTo).initials}
+                                    </div>
+                                    <span className="ml-2 text-xs text-gray-300 truncate">{lead.assignedTo}</span>
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-800 text-gray-400 border border-gray-700 shadow-sm font-medium text-xs">
+                                    UN
+                                  </div>
+                                )}
+                                
+                                {/* Assignment dropdown - only for admin users */}
+                                {userRole === 'admin' && (
+                                  <div className="mt-1">
+                                    <select
+                                      className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                      value=""
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          const selected = e.target.value.split('|');
+                                          const salesPersonId = selected[0];
+                                          const salesPersonName = selected[1];
+                                          assignLeadToSalesperson(lead.id, salesPersonName, salesPersonId);
+                                          e.target.value = ''; // Reset after selection
+                                        }
+                                      }}
+                                    >
+                                      <option value="">Assign to...</option>
+                                      {salesTeamMembers.map(member => (
+                                        <option key={member.id} value={`${member.id}|${member.name}`}>
+                                          {member.name || member.email}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            
+                            {/* Last Modified Date */}
+                            {/* <td className="px-4 py-3 text-sm text-gray-400">
+                              <div className="flex flex-col">
+                                <span className="whitespace-nowrap">{getLastModifiedDate(lead)}</span>
+                                {lead.modificationTimestamp && 
+                                  <span className="text-xs text-gray-500 mt-1">Last updated</span>
+                                }
+                              </div>
+                            </td> */}
+                            
+                            {/* Customer Query - No longer truncated, full width display */}
+                            <td className="px-4 py-3 text-sm text-gray-400">
+                              <div className="break-words whitespace-pre-wrap">
+                                {lead.remarks || lead.message || lead.queries || lead.Queries || 'N/A'}
+                              </div>
+                            </td>
+                            
+                            {/* Sales Notes - Editable with Save Button - Increased height */}
+                            {renderSalesNotesCell(lead)}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              {/* Edit Modal with improved accessibility */}
+              {editingLead && (
+                <div className="fixed inset-0 z-10 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="edit-lead-title">
+                  <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                      <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+                    </div>
+
+                    <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    
+                    <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full sm:p-6">
+                      <div className="absolute top-0 right-0 pt-4 pr-4">
+                        <button
+                          type="button"
+                          onClick={() => setEditingLead(null)}
+                          className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          aria-label="Close modal"
+                        >
+                          <span className="sr-only">Close</span>
+                          <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      <h3 className="text-xl font-medium text-gray-900 mb-6 flex items-center" id="edit-lead-title">
+                        <span className={`inline-flex items-center justify-center h-8 w-8 rounded-full mr-3 ${getStatusColor(editingLead.status || 'New')}`}>
+                          {(editingLead.status || 'New').charAt(0)}
+                        </span>
+                        Edit Lead: {editingLead.name}
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                        <div>
+                          <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700">Name</label>
+                          <input
+                            id="edit-name"
+                            type="text"
+                            value={editingLead.name}
+                            onChange={(e) => setEditingLead({...editingLead, name: e.target.value})}
+                            className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700">Email</label>
+                          <input
+                            id="edit-email"
+                            type="email"
+                            value={editingLead.email}
+                            onChange={(e) => setEditingLead({...editingLead, email: e.target.value})}
+                            className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="edit-phone" className="block text-sm font-medium text-gray-700">Phone</label>
+                          <input
+                            id="edit-phone"
+                            type="text"
+                            value={editingLead.phone}
+                            onChange={(e) => setEditingLead({...editingLead, phone: e.target.value})}
+                            className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="edit-status" className="block text-sm font-medium text-gray-700">Status</label>
+                          <select
+                            id="edit-status"
+                            value={editingLead.status || 'New'}
+                            onChange={(e) => setEditingLead({...editingLead, status: e.target.value})}
+                            className={`mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-600 focus:border-blue-600 sm:text-sm md:text-base ${getStatusColor(editingLead.status || 'New')}`}
+                          >
+                            {statusOptions.map(status => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="edit-assigned" className="block text-sm font-medium text-gray-700">Assign To</label>
+                          <div className="mt-1 relative">
+                            <select
+                              id="edit-assigned"
+                              value={editingLead.assignedTo}
+                              onChange={(e) => setEditingLead({...editingLead, assignedTo: e.target.value})}
+                              className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-600 focus:border-blue-600 sm:text-sm md:text-base"
+                            >
+                              <option value="">Unassigned</option>
+                              {teamMembers.map(member => (
+                                <option key={member.id} value={member.name}>{member.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">Financial Details</label>
+                          <div className="mt-2 grid grid-cols-3 gap-4">
+                            <div className="bg-white p-3 rounded-lg border border-gray-200">
+                              <label className="block text-sm font-medium text-gray-500">Personal Loan</label>
+                              <div className={`mt-1 text-base ${getFinancialColor('pl')}`}>
+                                {editingLead.personalLoanDues || editingLead['Total personal loan amount'] || 'N/A'}
+                              </div>
+                            </div>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200">
+                              <label className="block text-sm font-medium text-gray-500">Credit Card</label>
+                              <div className={`mt-1 text-base ${getFinancialColor('cc')}`}>
+                                {editingLead.creditCardDues || editingLead['Total credit card dues'] || 'N/A'}
+                              </div>
+                            </div>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200">
+                              <label className="block text-sm font-medium text-gray-500">Monthly Income</label>
+                              <div className={`mt-1 text-base ${getFinancialColor('income')}`}>
+                                {typeof editingLead.monthlyIncome === 'number' ? 
+                                  `₹${editingLead.monthlyIncome.toLocaleString('en-IN')}` : 
+                                  editingLead.monthlyIncome || editingLead['Monthly income'] || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700">Original Customer Query</label>
+                          <div className="mt-2 bg-gray-50 border border-gray-200 rounded-md p-4 text-base text-gray-700 max-h-32 overflow-y-auto">
+                            {editingLead.remarks || editingLead.message || editingLead.queries || editingLead.Queries || 'No customer query'}
+                          </div>
+                        </div>
+                        
+                        <div className="sm:col-span-2">
+                          <label htmlFor="edit-sales-notes" className="block text-sm font-medium text-gray-700">Sales Notes</label>
+                          <textarea
+                            id="edit-sales-notes"
+                            value={editingLead.salesNotes || ''}
+                            onChange={(e) => setEditingLead({...editingLead, salesNotes: e.target.value})}
+                            rows={4}
+                            className="mt-1 focus:ring-blue-600 focus:border-blue-600 block w-full shadow-sm sm:text-sm md:text-base border-gray-300 rounded-md"
+                            placeholder="Enter your notes about this lead..."
+                          ></textarea>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-8 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setEditingLead(null)}
+                          className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm md:text-base transition-colors duration-150"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateLead(editingLead.id, {
+                            name: editingLead.name,
+                            email: editingLead.email,
+                            phone: editingLead.phone,
+                            status: editingLead.status,
+                            assignedTo: editingLead.assignedTo,
+                            salesNotes: editingLead.salesNotes
+                          })}
+                          className="mt-3 sm:mt-0 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-3 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm md:text-base transition-colors duration-150"
+                        >
+                          Save All Changes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* History Modal */}
+              {showHistoryModal && (
+                <div className="fixed inset-0 z-10 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+                  <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                      <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+                    </div>
+
+                    <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    
+                    <div className="inline-block align-bottom bg-gray-900 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 border border-gray-700">
+                      <div className="absolute top-0 right-0 pt-4 pr-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowHistoryModal(false)}
+                          className="bg-gray-900 rounded-md text-gray-400 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          aria-label="Close modal"
+                        >
+                          <span className="sr-only">Close</span>
+                          <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-lg leading-6 font-medium text-blue-400 mb-3" id="history-modal-title">
+                          Sales Notes History
+                        </h3>
+                        
+                        {currentHistory.length === 0 ? (
+                          <div className="text-center py-6 text-gray-400">
+                            <FaHistory className="mx-auto h-10 w-10 text-gray-600 mb-3" />
+                            <p>No history available for this lead yet.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                            {currentHistory.map((entry, index) => (
+                              <div key={entry.id} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="text-sm text-gray-300">
+                                    {/* <span className="font-medium text-blue-400">{entry.editor?.name || 'Unknown User'}</span> */}
+                                    <span className="text-gray-500">
+                                      {entry.timestamp instanceof Date 
+                                        ? entry.timestamp.toLocaleString('en-US', { 
+                                            day: '2-digit', 
+                                            month: 'short', 
+                                            year: 'numeric',
+                                            hour: '2-digit', 
+                                            minute: '2-digit'
+                                          }) 
+                                        : 'Unknown time'}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">#{currentHistory.length - index}</span>
+                                </div>
+                                
+                                {/* Display salesperson from editor.salesperson */}
+                                {entry.editor && entry.editor.salesperson && (
+                                  <div className="mb-2 text-xs">
+                                    <span className="text-gray-500">Assigned to: </span>
+                                    <span className="text-yellow-400">{entry.editor.salesperson}</span>
+                                  </div>
+                                )}
+                                
+                                <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300 bg-gray-900 p-2 rounded border border-gray-700">
+                                  {entry.salesNotes || <span className="text-gray-500 italic">No content</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <div className="mt-5 sm:mt-6">
+                          <button
+                            type="button"
+                            onClick={() => setShowHistoryModal(false)}
+                            className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

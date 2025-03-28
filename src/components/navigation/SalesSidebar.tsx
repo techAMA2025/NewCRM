@@ -33,9 +33,9 @@ const SalesSidebar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/sales/opportunities" className={`flex items-center px-6 py-3 hover:bg-green-800 ${isActive('/sales/opportunities')}`}>
+            <Link href="/myclients" className={`flex items-center px-6 py-3 hover:bg-green-800 ${isActive('/sales/opportunities')}`}>
               <FaHandshake className="mr-3" />
-              <span>Opportunities</span>
+              <span>My Clients</span>
             </Link>
           </li>
           <li>
