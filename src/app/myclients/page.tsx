@@ -146,26 +146,26 @@ const MyClientsPage = () => {
         const leadsCollection = collection(crmDb, 'crm_leads')
         
         // Create query for qualified leads
-        const q = query(leadsCollection, where('status', '==', 'Qualified'))
+        const q = query(leadsCollection, where('status', '==', 'Converted'))
         
         // If we're a sales user, also filter by assignedTo
         let finalQuery = q
         if (userRole === 'sales' && currentUserName) {
           console.log("Filtering by sales person:", currentUserName)
           finalQuery = query(leadsCollection, 
-            where('status', '==', 'Qualified'),
+            where('status', '==', 'Converted'),
             where('assignedTo', '==', currentUserName)
           )
         }
         
         // First, get all qualified leads to debug
         const allQualifiedSnapshot = await getDocs(q)
-        console.log(`Found ${allQualifiedSnapshot.docs.length} total qualified leads in database`)
+        console.log(`Found ${allQualifiedSnapshot.docs.length} total converted leads in database`)
         
         // Log some basic info about them
         allQualifiedSnapshot.docs.forEach(doc => {
           const data = doc.data()
-          console.log(`Qualified lead: ${data.name}, assigned to: ${data.assignedTo}, status: ${data.status}`)
+          console.log(`Converted lead: ${data.name}, assigned to: ${data.assignedTo}, status: ${data.status}`)
           
           // More detailed debugging for each qualified lead
           console.log("Lead details:", {
@@ -181,20 +181,20 @@ const MyClientsPage = () => {
           })
           
           // Check if this lead would match our current user
-          const wouldMatch = data.status === 'Qualified' && data.assignedTo === currentUserName
+          const wouldMatch = data.status === 'Converted' && data.assignedTo === currentUserName
           console.log(`Would this lead match current user? ${wouldMatch ? 'YES' : 'NO'}`)
           
-          if (!wouldMatch && data.status === 'Qualified') {
+          if (!wouldMatch && data.status === 'Converted') {
             console.log(`Assignment mismatch: "${data.assignedTo}" vs "${currentUserName}"`)
           }
         })
         
         // Now get the filtered leads based on user role
         const leadsSnapshot = await getDocs(finalQuery)
-        console.log(`After filtering by user role, fetched ${leadsSnapshot.docs.length} qualified leads`)
+        console.log(`After filtering by user role, fetched ${leadsSnapshot.docs.length} converted leads`)
         
         // Log details about the filtering criteria
-        console.log("Filter criteria: status='Qualified' AND assignedTo='"+currentUserName+"'")
+        console.log("Filter criteria: status='Converted' AND assignedTo='"+currentUserName+"'")
         
         // Map the data
         let leadsData = leadsSnapshot.docs.map(doc => {
@@ -532,9 +532,9 @@ const MyClientsPage = () => {
         <div className="p-4 sm:p-6 lg:p-8 flex-1">
           <div className="sm:flex sm:items-center">
             <div className="sm:flex-auto">
-              <h1 className="text-2xl font-semibold text-gray-100">My Qualified Clients</h1>
+              <h1 className="text-2xl font-semibold text-gray-100">My Converted Clients</h1>
               <p className="mt-2 text-sm text-gray-400">
-                Showing all qualified leads that have been assigned to you.
+                Showing all converted leads that have been assigned to you.
               </p>
             </div>
             
@@ -555,7 +555,7 @@ const MyClientsPage = () => {
           {/* Display count of leads */}
           <div className="mt-4">
             <p className="text-sm text-gray-400">
-              Showing <span className="text-blue-400 font-medium">{leads.length}</span> qualified clients
+              Showing <span className="text-blue-400 font-medium">{leads.length}</span> converted clients
             </p>
           </div>
           

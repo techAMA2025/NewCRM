@@ -1,0 +1,286 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query } from 'firebase/firestore';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { db as crmDb } from '@/firebase/firebase';
+import { useAuth } from '@/context/AuthContext';
+import AdminSidebar from '@/components/navigation/AdminSidebar';
+import SalesSidebar from '@/components/navigation/SalesSidebar';
+
+// Import Components
+import LeadsHeader from './components/LeadsHeader';
+import LeadsFilters from './components/LeadsFilters';
+import LeadsTable from './components/LeadsTable';
+import EditModal from './components/EditModal';
+import HistoryModal from './components/HistoryModal';
+
+// Assign lead to salesperson
+const assignLeadToSalesperson = async (leadId, salesPersonName, salesPersonId) => {
+  try {
+    const leadRef = doc(crmDb, 'crm_leads', leadId);
+    await updateDoc(leadRef, {
+      assignedTo: salesPersonName,
+      assignedToId: salesPersonId,
+      lastModified: new Date()
+    });
+    
+    // Update UI state
+    const updatedLeads = leads.map(lead => 
+      lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } : lead
+    );
+    
+    setLeads(updatedLeads);
+    
+    toast.success(
+      <div>
+        <p className="font-medium">Lead Assigned</p>
+        <p className="text-sm">Lead assigned to {salesPersonName}</p>
+      </div>,
+      {
+        position: "top-right",
+        autoClose: 3000
+      }
+    );
+  } catch (error) {
+    console.error("Error assigning lead: ", error);
+    toast.error("Failed to assign lead", {
+      position: "top-right",
+      autoClose: 3000
+    });
+  }
+};
+
+// Fetch lead history for modal
+const fetchNotesHistory = async (leadId) => {
+  try {
+    setShowHistoryModal(true);
+    
+    const historyCollectionRef = collection(crmDb, 'crm_leads', leadId, 'history');
+    const historySnapshot = await getDocs(historyCollectionRef);
+    
+    if (historySnapshot.empty) {
+      setCurrentHistory([]);
+      return;
+    }
+    
+    // Convert to array of objects
+    const historyData = historySnapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // Convert Firestore timestamps to Date objects
+      let timestamp = data.timestamp;
+      if (timestamp && typeof timestamp.toDate === 'function') {
+        timestamp = timestamp.toDate();
+      } else if (timestamp) {
+        // If it's not a Firestore timestamp but still a valid date format
+        timestamp = new Date(timestamp);
+      } else {
+        timestamp = new Date(); // Fallback
+      }
+      
+      return {
+        id: doc.id,
+        ...data,
+        timestamp
+      };
+    });
+    
+    // Sort by timestamp (newest first)
+    historyData.sort((a, b) => b.timestamp - a.timestamp);
+    
+    setCurrentHistory(historyData);
+  } catch (error) {
+    console.error("Error fetching history: ", error);
+    toast.error("Failed to load history", {
+      position: "top-right",
+      autoClose: 3000
+    });
+    setCurrentHistory([]);
+  }
+};
+
+// Update the leads state after saving notes
+const updateLeadsState = (leadId, newValue) => {
+  const updatedLeads = leads.map(lead => 
+    lead.id === leadId 
+      ? { ...lead, salesNotes: newValue, lastModified: new Date() } 
+      : lead
+  );
+  
+  setLeads(updatedLeads);
+  
+  // Apply all filters to ensure filtered leads are also updated
+  const newFilteredLeads = updatedLeads.filter(lead => 
+    (sourceFilter === 'all' || lead.source_database === sourceFilter) &&
+    (statusFilter === 'all' || lead.status === statusFilter) &&
+    (salesPersonFilter === 'all' || 
+      (salesPersonFilter === '' && !lead.assignedTo) || 
+      lead.assignedTo === salesPersonFilter)
+  );
+  
+  setFilteredLeads(newFilteredLeads);
+};
+
+// Export to CSV function
+const exportToCSV = () => {
+  try {
+    // Create CSV headers
+    const headers = [
+      'Name', 'Email', 'Phone', 'Source', 'Status', 'Assigned To', 
+      'Personal Loan', 'Credit Card', 'Monthly Income', 'City',
+      'Query/Remarks', 'Sales Notes', 'Last Modified'
+    ];
+    
+    // Map data to CSV format
+    const csvData = filteredLeads.map(lead => [
+      lead.name || '',
+      lead.email || '',
+      lead.phone || '',
+      lead.source_database || '',
+      lead.status || '',
+      lead.assignedTo || '',
+      lead.personalLoanDues || lead['Total personal loan amount'] || '',
+      lead.creditCardDues || lead['Total credit card dues'] || '',
+      lead.monthlyIncome || lead['Monthly income'] || '',
+      lead.city || lead.City || '',
+      lead.remarks || lead.message || lead.queries || lead.Queries || '',
+      lead.salesNotes || '',
+      lead.lastModified instanceof Date 
+        ? lead.lastModified.toLocaleString() 
+        : 'Unknown date'
+    ]);
+    
+    // Combine headers and data
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(cell => 
+        // Escape commas and quotes
+        `"${String(cell).replace(/"/g, '""')}"`
+      ).join(','))
+    ].join('\n');
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `leads_export_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Export successful!', { position: 'top-right', autoClose: 3000 });
+  } catch (error) {
+    console.error('Error exporting CSV:', error);
+    toast.error('Failed to export data', { position: 'top-right', autoClose: 3000 });
+  }
+};
+
+// Render sidebar based on user role
+const SidebarComponent = useMemo(() => {
+  return userRole === 'admin' ? AdminSidebar : SalesSidebar;
+}, [userRole]);
+
+return (
+  <div className="flex h-screen bg-gray-950 text-white">
+    {/* Sidebar based on user role */}
+    {SidebarComponent && <SidebarComponent />}
+    
+    <div className="flex-1 overflow-auto p-6">
+      <div className="container mx-auto">
+        {/* Header with title and actions */}
+        <LeadsHeader 
+          isLoading={isLoading} 
+          userRole={userRole} 
+          currentUser={currentUser} 
+          exportToCSV={exportToCSV}
+        />
+        
+        {/* Filters */}
+        <LeadsFilters 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          salesPersonFilter={salesPersonFilter}
+          setSalesPersonFilter={setSalesPersonFilter}
+          statusOptions={statusOptions}
+          teamMembers={teamMembers}
+          userRole={userRole}
+          filteredLeads={filteredLeads}
+          leads={leads}
+        />
+        
+        {/* Debug info - only show in development */}
+        {process.env.NODE_ENV === 'development' && debugInfo && (
+          <div className="bg-gray-800 text-gray-300 p-2 mb-4 text-xs rounded-md border border-gray-700">
+            <strong>Debug:</strong> {debugInfo}
+          </div>
+        )}
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <>
+            {/* Main Leads Table */}
+            <LeadsTable 
+              filteredLeads={filteredLeads}
+              editingLeads={editingLeads}
+              setEditingLeads={setEditingLeads}
+              updateLead={updateLead}
+              fetchNotesHistory={fetchNotesHistory}
+              requestSort={requestSort}
+              sortConfig={sortConfig}
+              statusOptions={statusOptions}
+              userRole={userRole}
+              salesTeamMembers={salesTeamMembers}
+              assignLeadToSalesperson={assignLeadToSalesperson}
+              updateLeadsState={updateLeadsState}
+              crmDb={crmDb}
+              user={currentUser}
+            />
+            
+            {/* Empty state message */}
+            {!isLoading && leads.length === 0 && (
+              <div className="text-center py-12">
+                <div className="mx-auto h-24 w-24 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-gray-300">No leads found</h3>
+                <p className="mt-2 text-sm text-gray-400">
+                  There are no leads in the system yet. Start by adding leads or syncing with external sources.
+                </p>
+              </div>
+            )}
+            
+            {/* History Modal */}
+            <HistoryModal 
+              showHistoryModal={showHistoryModal}
+              setShowHistoryModal={setShowHistoryModal}
+              currentHistory={currentHistory}
+            />
+            
+            {/* Edit Lead Modal */}
+            <EditModal 
+              editingLead={editingLead}
+              setEditingLead={setEditingLead}
+              updateLead={updateLead}
+              teamMembers={teamMembers}
+              statusOptions={statusOptions}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+export default LeadsPage;
