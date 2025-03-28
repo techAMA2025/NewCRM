@@ -42,4 +42,3 @@ next-env.d.ts
 
 
 functions/service-accounts/*.json
-functions

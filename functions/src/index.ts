@@ -7,15 +7,12 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-
-// import * as functionsV2 from "firebase-functions/v2";
-import { onRequest } from "firebase-functions/v2/https";
+import * as functions from "firebase-functions";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import * as path from "path";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-
 
 // Initialize primary Firebase app (for CRM)
 admin.initializeApp({
@@ -51,13 +48,13 @@ const amaDb = amaApp.firestore();
 // https://firebase.google.com/docs/functions/typescript
 
 // Hello world function to demonstrate onRequest and logger usage
-export const helloWorld = onRequest((request, response) => {
+export const helloWorld = functions.https.onRequest((request, response) => {
   logger.info("Hello logs!", {structuredData: true});
   response.send("Hello from Firebase!");
 });
 
 // Test function to check connection to all databases and specific collections
-export const testSpecificCollections = onRequest(async (request, response) => {
+export const testSpecificCollections = functions.https.onRequest(async (request, response) => {
   try {
     const results: {
       credsettlee: { Form: number | string },
@@ -110,7 +107,7 @@ export const testSpecificCollections = onRequest(async (request, response) => {
 });
 
 // Sync only today's data from specific collections across databases
-export const syncTodaysLeads = onRequest(async (request, response) => {
+export const syncTodaysLeads = functions.https.onRequest(async (request, response) => {
   try {
     // Calculate start of today in UTC
     const startOfToday = new Date();
@@ -223,7 +220,7 @@ export const syncTodaysLeads = onRequest(async (request, response) => {
 });
 
 // Manual sync function to copy all existing data
-export const manualSync = onRequest(async (request, response) => {
+export const manualSync = functions.https.onRequest(async (request, response) => {
   try {
     const results: {
       credsettlee: number;
@@ -305,9 +302,11 @@ export const manualSync = onRequest(async (request, response) => {
 });
 
 // Use v2 syntax
-export const syncCredSettleLeads = onDocumentCreated('credsettlee/{leadId}', async (event) => {
+export const syncCredSettleLeads = onDocumentCreated({
+  document: 'credsettlee/{leadId}'
+}, async (event) => {
   const snapshot = event.data;
-  if (!snapshot) return;
+  if (!snapshot) return null;
   
   const leadData = snapshot.data();
   const leadId = event.params.leadId;
@@ -332,9 +331,11 @@ export const syncCredSettleLeads = onDocumentCreated('credsettlee/{leadId}', asy
   }
 });
 
-export const syncSettleLoansLeads = onDocumentCreated('settleloans/{leadId}', async (event) => {
+export const syncSettleLoansLeads = onDocumentCreated({
+  document: 'settleloans/{leadId}'
+}, async (event) => {
   const snapshot = event.data;
-  if (!snapshot) return;
+  if (!snapshot) return null;
   
   const leadData = snapshot.data();
   const leadId = event.params.leadId;
@@ -357,9 +358,11 @@ export const syncSettleLoansLeads = onDocumentCreated('settleloans/{leadId}', as
   }
 });
 
-export const syncAmaLeads = onDocumentCreated('ama/{leadId}', async (event) => {
+export const syncAmaLeads = onDocumentCreated({
+  document: 'ama/{leadId}'
+}, async (event) => {
   const snapshot = event.data;
-  if (!snapshot) return;
+  if (!snapshot) return null;
   
   const leadData = snapshot.data();
   const leadId = event.params.leadId;
@@ -383,7 +386,7 @@ export const syncAmaLeads = onDocumentCreated('ama/{leadId}', async (event) => {
 });
 
 // Optional: Add a function to test if collections exist
-export const testCollections = onRequest(async (request, response) => {
+export const testCollections = functions.https.onRequest(async (request, response) => {
   try {
     const collections: Record<string, number | string> = {};
     
@@ -420,8 +423,7 @@ export const testCollections = onRequest(async (request, response) => {
 
 // Replace the v1 function with v2 syntax
 export const syncCredsettleeRealtimeLeads = onDocumentCreated({
-  document: 'Form/{docId}',
-  maxInstances: 10
+  document: 'Form/{docId}'
 }, async (event) => {
   const snapshot = event.data;
   if (!snapshot) return null;
@@ -463,8 +465,7 @@ export const syncCredsettleeRealtimeLeads = onDocumentCreated({
 
 // Real-time sync function for Settleloans
 export const syncSettleloansRealtimeLeads = onDocumentCreated({
-  document: 'ContactPageForm/{docId}',
-  maxInstances: 10
+  document: 'ContactPageForm/{docId}'
 }, async (event) => {
   const snapshot = event.data;
   if (!snapshot) return null;
@@ -504,8 +505,7 @@ export const syncSettleloansRealtimeLeads = onDocumentCreated({
 
 // Real-time sync function for AMA
 export const syncAmaRealtimeLeads = onDocumentCreated({
-  document: 'form/{docId}',
-  maxInstances: 10
+  document: 'form/{docId}'
 }, async (event) => {
   const snapshot = event.data;
   if (!snapshot) return null;
@@ -558,9 +558,7 @@ export const syncAmaRealtimeLeads = onDocumentCreated({
 // Scheduled function to sync today's leads every 15 minutes
 export const scheduledSyncLeads = onSchedule({
   schedule: "every 15 minutes",
-  timeZone: "Asia/Kolkata", // Using Indian timezone
-  retryCount: 3,
-  maxInstances: 1,
+  timeZone: "Asia/Kolkata"
 }, async (context) => {
   try {
     logger.info("Starting scheduled sync of today's leads");
