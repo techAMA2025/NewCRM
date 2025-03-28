@@ -1,7 +1,7 @@
 {
   "functions": {
     "crm/functions/lib/**/*.js": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs@20.x"
     }
   },
   "routes": [
