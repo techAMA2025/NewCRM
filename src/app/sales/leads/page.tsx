@@ -193,15 +193,13 @@ const LeadsPage = () => {
 
   // Status options for dropdown
   const statusOptions = [
-    'Select Status', 
-    'Interested', 
-    'Not Interested', 
-    'Not Answering', 
-    'Callback', 
-    'Converted', 
-    'Loan Required', 
-    'Cibil Issue', 
-    'Closed Lead'
+    'New', 
+    'Contacted', 
+    'Qualified', 
+    'Proposal', 
+    'Negotiation', 
+    'Closed Won', 
+    'Closed Lost'
   ]
 
   // Fetch leads from CRM database - only after user profile is loaded
@@ -661,16 +659,14 @@ const LeadsPage = () => {
   // Update color coding utilities for consistent colors regardless of amount
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'Interested': return 'bg-green-900 text-green-100 border-green-700';
-      case 'Not Interested': return 'bg-red-900 text-red-100 border-red-700';
-      case 'Not Answering': return 'bg-orange-900 text-orange-100 border-orange-700';
-      case 'Callback': return 'bg-yellow-900 text-yellow-100 border-yellow-700';
-      case 'Converted': return 'bg-emerald-900 text-emerald-100 border-emerald-700';
-      case 'Loan Required': return 'bg-purple-900 text-purple-100 border-purple-700';
-      case 'Cibil Issue': return 'bg-rose-900 text-rose-100 border-rose-700';
-      case 'Closed Lead': return 'bg-gray-800 text-gray-200 border-gray-700';
-      case 'Select Status': 
-      default: return 'bg-gray-700 text-gray-200 border-gray-600';
+      case 'New': return 'bg-blue-900 text-blue-100 border-blue-700';
+      case 'Contacted': return 'bg-purple-900 text-purple-100 border-purple-700';
+      case 'Qualified': return 'bg-teal-900 text-teal-100 border-teal-700';
+      case 'Proposal': return 'bg-amber-900 text-amber-100 border-amber-700';
+      case 'Negotiation': return 'bg-yellow-900 text-yellow-100 border-yellow-700';
+      case 'Closed Won': return 'bg-green-900 text-green-100 border-green-700';
+      case 'Closed Lost': return 'bg-red-900 text-red-100 border-red-700';
+      default: return 'bg-gray-800 text-gray-200 border-gray-700';
     }
   }
 
@@ -787,7 +783,7 @@ const LeadsPage = () => {
     });
   };
 
-  // Enhanced renderSalesNotesCell function with immediate Firebase update
+  // Enhanced renderSalesNotesCell function with reliable state-based approach
   const renderSalesNotesCell = (lead: Lead) => {
     // Add a reference to the current lead ID for this cell
     const leadId = lead.id;
@@ -818,12 +814,11 @@ const LeadsPage = () => {
           <div className="flex space-x-2">
             <button
               onClick={async () => {
-                // IMPORTANT: Get the value directly from the DOM instead of state
-                const textarea = document.getElementById(`notes-${leadId}`) as HTMLTextAreaElement;
-                const currentValue = textarea ? textarea.value : (editedNotes[leadId] || '');
+                // IMPORTANT: Always use the value from state instead of DOM
+                const currentValue = editedNotes[leadId] || '';
                 
                 console.log(`Save button clicked for ${leadId}`);
-                console.log(`Current value from DOM: "${currentValue}"`);
+                console.log(`Current value from state: "${currentValue}"`);
                 
                 try {
                   // Reference to the lead document
@@ -853,12 +848,6 @@ const LeadsPage = () => {
                     salesNotes: currentValue,
                     lastModified: serverTimestamp()
                   });
-                  
-                  // Update local state to match what was saved
-                  setEditedNotes(prev => ({
-                    ...prev,
-                    [leadId]: currentValue
-                  }));
                   
                   // Update local leads state
                   const updatedLeads = leads.map(l => {
