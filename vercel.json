@@ -1,9 +1,11 @@
 {
-  "functions": {
-    "crm/functions/lib/**/*.js": {
-      "runtime": "nodejs@20.x"
+  "version": 2,
+  "builds": [
+    {
+      "src": "crm/functions/lib/**/*.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
