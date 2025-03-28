@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "cd crm/functions && npm install && npm run build",
     "start": "next start",
-    "lint": "next lint",
-    "vercel-build": "cd functions && npm install && npm run build"
+    "lint": "next lint"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
