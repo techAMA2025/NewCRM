@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "crm/functions/lib/**/*.js",
+      "src": "crm/functions/package.json",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "crm/functions/lib/$1"
+      "dest": "/crm/functions/lib/$1.js"
     }
   ]
 }
