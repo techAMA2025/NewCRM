@@ -70,7 +70,7 @@ const SalespersonCell = ({
         )}
         
         {/* Assignment dropdown - only for admin users */}
-        {userRole === 'admin' || userRole === 'overlord' && (
+        {(userRole === 'admin' || userRole === 'overlord') && (
           <div className="mt-1">
             <select
               className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"

@@ -201,8 +201,8 @@ const LeadsFilters = ({
                 className={`block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md ${userRole !== 'admin' && userRole !== 'overlord' ? 'opacity-70 cursor-not-allowed' : ''}`}
                 disabled={userRole !== 'admin' && userRole !== 'overlord'}
               >
-                {userRole === 'admin' || userRole === 'overlord' && <option value="all">All Salespersons</option>},
-                {userRole === 'admin' || userRole === 'overlord' && <option value="">Unassigned</option>}
+                {(userRole === 'admin' || userRole === 'overlord') && <option value="all">All Salespersons</option>},
+                {(userRole === 'admin' || userRole === 'overlord') && <option value="">Unassigned</option>}
                 {isLoading ? (
                   <option value="" disabled>Loading...</option>
                 ) : (

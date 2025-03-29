@@ -43,5 +43,4 @@ next-env.d.ts
 
 
 # Ignore the entire functions directory
-functions/service-accounts/*.json
 /functions
