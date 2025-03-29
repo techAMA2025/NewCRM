@@ -53,8 +53,13 @@ const UserManagementPage = () => {
     if (typeof window !== 'undefined') {
       const role = localStorage.getItem('userRole')
       setUserRole(role || '')
+      
+      // Redirect admin users away from this page
+      if (role === 'admin') {
+        router.push('/dashboard')
+      }
     }
-  }, [])
+  }, [router])
 
   // Fetch users on component mount
   useEffect(() => {

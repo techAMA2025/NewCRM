@@ -46,7 +46,7 @@ const LeadsTable = ({
                 onClick={() => requestSort('synced_at')}
               >
                 <div className="flex items-center">
-                  <span>Synced Date</span>
+                  <span>Date & Time</span>
                   {sortConfig?.key === 'synced_at' && (
                     <span className="ml-1">
                       {sortConfig?.direction === 'ascending' ? '↑' : '↓'}

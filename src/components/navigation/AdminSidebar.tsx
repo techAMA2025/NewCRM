@@ -27,12 +27,6 @@ const AdminSidebar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/admin/users" className={`flex items-center px-6 py-3 hover:bg-blue-800 ${isActive('/admin/users')}`}>
-              <FaUsers className="mr-3" />
-              <span>User Management</span>
-            </Link>
-          </li>
-          <li>
             <Link href="/sales/leads" className={`flex items-center px-6 py-3 hover:bg-blue-800 ${isActive('/admin/users')}`}>
               <FaUsers className="mr-3" />
               <span>Leads</span>

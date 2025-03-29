@@ -18,6 +18,7 @@ import SalesSidebar from '@/components/navigation/SalesSidebar';
 
 // Import types
 import { Lead, User, HistoryItem, EditingLeadsState, SortDirection } from './types';
+import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 
 // Status options
 const statusOptions = [
@@ -69,7 +70,7 @@ const LeadsPage = () => {
           console.log('Role from localStorage:', localStorageRole);
           
           // If not admin, set the filter to their name
-          if (localStorageRole !== 'admin') {
+          if (localStorageRole !== 'admin' && localStorageRole !== 'overlord') {
             // Get user name from localStorage if available
             const userName = localStorage.getItem('userName');
             if (userName) {
@@ -523,7 +524,7 @@ const LeadsPage = () => {
   const exportToCSV = () => {
     try {
       // Only admin can export
-      if (userRole !== 'admin') {
+      if (userRole !== 'admin' && userRole !== 'overlord') {
         toast.error("You don't have permission to export data", {
           position: "top-right",
           autoClose: 3000
@@ -594,6 +595,8 @@ const LeadsPage = () => {
     console.log('Current user role:', userRole);
     if (userRole === 'admin') {
       return AdminSidebar;
+    } else if (userRole === 'overlord') {
+      return OverlordSidebar;
     }
     return SalesSidebar;
   }, [userRole]);
