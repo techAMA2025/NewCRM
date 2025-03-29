@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import SalesSidebar from '@/components/navigation/SalesSidebar'
+import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 
 const DashboardPage = () => {
   const { user, userRole, userName, loading, logout } = useAuth()
@@ -42,6 +43,8 @@ const DashboardPage = () => {
         return <AdvocateSidebar />
       case 'sales':
         return <SalesSidebar />
+      case 'overlord':
+        return <OverlordSidebar />
       default:
         return null
     }
@@ -56,6 +59,8 @@ const DashboardPage = () => {
         return <AdvocateDashboard />
       case 'sales':
         return <SalesDashboard />
+      case 'overlord':
+        return <AdminDashboard />
       default:
         return <div>Unknown role</div>
     }
