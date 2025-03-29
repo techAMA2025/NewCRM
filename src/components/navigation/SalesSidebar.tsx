@@ -1,41 +1,117 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt } from 'react-icons/fa'
+import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft } from 'react-icons/fa'
 
 const SalesSidebar = () => {
   const pathname = usePathname()
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  
+  // Check system preference or stored preference on component mount
+  useEffect(() => {
+    // Check for saved theme preference or use system preference
+    const savedTheme = localStorage.getItem('theme')
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    
+    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark)
+    setIsDarkMode(shouldUseDark)
+    
+    if (shouldUseDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+
+    // Load saved sidebar state
+    const savedSidebarState = localStorage.getItem('sidebarCollapsed')
+    if (savedSidebarState) {
+      setIsCollapsed(savedSidebarState === 'true')
+    }
+  }, [])
+  
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setIsDarkMode(prev => {
+      const newMode = !prev
+      localStorage.setItem('theme', newMode ? 'dark' : 'light')
+      
+      if (newMode) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+      
+      return newMode
+    })
+  }
+
+  // Toggle sidebar collapse
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      const newState = !prev
+      localStorage.setItem('sidebarCollapsed', String(newState))
+      return newState
+    })
+  }
   
   const isActive = (path: string) => {
-    return pathname === path ? 'bg-green-800' : ''
+    return pathname === path ? 'bg-green-700 dark:bg-gray-700' : ''
   }
 
   return (
-    <div className="bg-green-900 text-white w-64 min-h-screen flex-shrink-0 py-6">
-      <div className="px-6 mb-8">
-        <h2 className="text-xl font-bold">Sales Portal</h2>
+    <div className={`bg-green-800 dark:bg-gray-900 text-white flex-shrink-0 py-6 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      <div className={`px-6 mb-8 flex ${isCollapsed ? 'justify-center' : 'justify-between'} items-center`}>
+        {!isCollapsed && <h2 className="text-xl font-bold">Sales Portal</h2>}
+        <div className="flex items-center">
+          {!isCollapsed && (
+            <button 
+              onClick={toggleDarkMode}
+              className="p-2 rounded-full hover:bg-green-700 dark:hover:bg-gray-800 mr-2"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <FaSun /> : <FaMoon />}
+            </button>
+          )}
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded-full hover:bg-green-700 dark:hover:bg-gray-800"
+            aria-label="Toggle sidebar"
+          >
+            {isCollapsed ? <FaBars /> : <FaChevronLeft />}
+          </button>
+        </div>
       </div>
       
       <nav className="mt-4">
         <ul>
           <li>
-            <Link href="/dashboard" className={`flex items-center px-6 py-3 hover:bg-green-800 ${isActive('/dashboard')}`}>
-              <FaChartPie className="mr-3" />
-              <span>Dashboard</span>
+            <Link href="/dashboard" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/dashboard')}`}
+              title={isCollapsed ? "Dashboard" : ""}
+            >
+              <FaChartPie className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Dashboard</span>}
             </Link>
           </li>
           <li>
-            <Link href="/sales/leads" className={`flex items-center px-6 py-3 hover:bg-green-800 ${isActive('/sales/leads')}`}>
-              <FaUserPlus className="mr-3" />
-              <span>Leads</span>
+            <Link href="/sales/leads" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/sales/leads')}`}
+              title={isCollapsed ? "Leads" : ""}
+            >
+              <FaUserPlus className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Leads</span>}
             </Link>
           </li>
           <li>
-            <Link href="/myclients" className={`flex items-center px-6 py-3 hover:bg-green-800 ${isActive('/sales/opportunities')}`}>
-              <FaHandshake className="mr-3" />
-              <span>My Clients</span>
+            <Link href="/myclients" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/sales/opportunities')}`}
+              title={isCollapsed ? "My Clients" : ""}
+            >
+              <FaHandshake className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>My Clients</span>}
             </Link>
           </li>
           {/* <li>

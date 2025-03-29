@@ -5,6 +5,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth, db } from '@/firebase/firebase'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 const Login = () => {
   const [email, setEmail] = useState('')
@@ -53,6 +54,15 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <div className="flex justify-center mb-6">
+          <Image 
+            src="/ama3.svg" 
+            alt="AMA3 Logo" 
+            width={120} 
+            height={120} 
+            priority
+          />
+        </div>
         <h1 className="text-2xl font-bold mb-6 text-center text-black">CRM Login</h1>
         
         {error && (
