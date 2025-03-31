@@ -256,11 +256,16 @@ export default function TargetsPage() {
       
       // Create or update targets for each sales user
       for (const salesUser of salesUsers) {
-        const targetData: Target = {
+        // Make sure we have the targets object for this user
+        if (!targets[salesUser.id]) {
+          continue; // Skip this user if no target data
+        }
+        
+        const targetData = {
           userId: salesUser.id,
-          userName: salesUser.firstName,
-          convertedLeadsTarget: targets[salesUser.id].convertedLeads,
-          amountCollectedTarget: targets[salesUser.id].amountCollected,
+          userName: salesUser.firstName || '',
+          convertedLeadsTarget: Number(targets[salesUser.id].convertedLeads) || 0,
+          amountCollectedTarget: Number(targets[salesUser.id].amountCollected) || 0,
           createdAt: new Date(),
           updatedAt: new Date(),
           createdBy: user.uid

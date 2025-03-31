@@ -62,7 +62,7 @@ const LeadRow = ({
   // Prepare data with fallbacks - extended with settleloans specific fields
   const name = getLeadData(['name', 'Name', 'fullName', 'customerName'], 'Unknown');
   const email = getLeadData(['email', 'Email', 'emailAddress'], 'No email');
-  const phone = getLeadData(['phone', 'phoneNumber', 'mobileNumber', 'Mobile Number'], 'No phone');
+  const phone = getLeadData(['phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number'], 'No phone');
   const location = getLeadData(['city', 'City', 'location', 'address'], 'N/A');
   const source = getLeadData(['source_database', 'source'], 'N/A');
   const customerQuery = getLeadData(['remarks', 'message', 'queries', 'Queries', 'customerQuery'], 'N/A');
