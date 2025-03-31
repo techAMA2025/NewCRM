@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut } from 'react-icons/fi';
+import { FaMoneyBillWave } from 'react-icons/fa';
+import { getAuth, signOut } from 'firebase/auth';
+import { toast } from 'react-hot-toast';
+import { app } from '@/firebase/firebase';
 
 interface NavItemProps {
   href: string;
@@ -29,6 +33,7 @@ const NavItem: React.FC<NavItemProps> = ({ href, icon, label, isActive }) => {
 
 const OverlordSidebar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [expanded, setExpanded] = useState(true);
   const [username, setUsername] = useState<string>('');
 
@@ -45,7 +50,21 @@ const OverlordSidebar: React.FC = () => {
     { href: '/admin/users', icon: <FiUsers />, label: 'User Management' },
     { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads' },
     { href: '/targets', icon: <FiClipboard />, label: 'Targets' },
+    { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'Payment Requests' },
   ];
+
+  const handleLogout = async () => {
+    try {
+      const auth = getAuth(app);
+      await signOut(auth);
+      localStorage.removeItem('userName');
+      toast.success('Logged out successfully');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
+  };
 
   return (
     <div className="relative min-h-screen transition-all duration-300 bg-gray-900 shadow-xl"
@@ -108,13 +127,13 @@ const OverlordSidebar: React.FC = () => {
       
       <div className="absolute bottom-0 w-full px-3 py-4">
         <div className="h-px mb-4 bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
-        <Link
-          href="/logout"
-          className="flex items-center px-4 py-3 text-gray-300 transition-all duration-200 rounded-lg hover:bg-red-700 hover:text-white"
+        <button
+          onClick={handleLogout}
+          className="flex items-center w-full px-4 py-3 text-gray-300 transition-all duration-200 rounded-lg hover:bg-red-700 hover:text-white"
         >
           <FiLogOut className="mr-3 text-xl" />
           {expanded && <span className="font-medium">Logout</span>}
-        </Link>
+        </button>
       </div>
     </div>
   );

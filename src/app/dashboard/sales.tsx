@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { 
@@ -21,6 +21,9 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 interface TargetData {
@@ -73,6 +76,20 @@ export default function SalesDashboard() {
   const [totalLeads, setTotalLeads] = useState(0);
   const [convertedLeads, setConvertedLeads] = useState(0);
   const [leadsChartData, setLeadsChartData] = useState<any[]>([]);
+  const [statusData, setStatusData] = useState<{ name: string; value: number }[]>([]);
+
+  // Create a mapping of status to color based on your application's color scheme
+  const statusColors = useMemo(() => ({
+    'Interested': '#059669', // green-600
+    'Not Interested': '#dc2626', // red-600
+    'Not Answering': '#ea580c', // orange-600
+    'Callback': '#ca8a04', // yellow-600
+    'Converted': '#10b981', // emerald-500
+    'Loan Required': '#9333ea', // purple-600
+    'Cibil Issue': '#e11d48', // rose-600
+    'Closed Lead': '#4b5563', // gray-600
+    'Unknown': '#6366f1', // indigo-500 (fallback)
+  }), []);
 
   useEffect(() => {
     // Get user details from localStorage
@@ -153,6 +170,9 @@ export default function SalesDashboard() {
         // For monthly breakdown
         const monthlyData: { [key: string]: { total: number, converted: number } } = {};
         
+        // For status breakdown
+        const statusCounts: { [key: string]: number } = {};
+        
         querySnapshot.forEach(doc => {
           const leadData = doc.data();
           
@@ -182,6 +202,13 @@ export default function SalesDashboard() {
           if (leadData.convertedToClient === true || leadData.status === "Converted") {
             monthlyData[month].converted += 1;
           }
+          
+          // Track status counts
+          const status = leadData.status || "Unknown";
+          if (!statusCounts[status]) {
+            statusCounts[status] = 0;
+          }
+          statusCounts[status] += 1;
         });
         
         // Transform monthly data to chart format
@@ -191,6 +218,12 @@ export default function SalesDashboard() {
           converted: monthlyData[month].converted
         }));
         
+        // Transform status data to pie chart format
+        const formattedStatusData = Object.keys(statusCounts).map(status => ({
+          name: status,
+          value: statusCounts[status]
+        }));
+        
         // Sort by month (approximation, works for common use cases)
         const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         formattedChartData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
@@ -198,12 +231,14 @@ export default function SalesDashboard() {
         setTotalLeads(totalCount);
         setConvertedLeads(convertedCount);
         setLeadsChartData(formattedChartData);
+        setStatusData(formattedStatusData);
         
-        console.log("Lead data processed:", { totalCount, convertedCount, monthlyData });
+        console.log("Lead data processed:", { totalCount, convertedCount, monthlyData, statusCounts });
       } else {
         console.log("No leads found for this user");
         // Set empty chart data
         setLeadsChartData([]);
+        setStatusData([]);
       }
     } catch (error) {
       console.error("Error fetching lead data:", error);
@@ -287,17 +322,49 @@ export default function SalesDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Monthly Collection</CardTitle>
+              <CardTitle className="text-gray-100">Lead Status Distribution</CardTitle>
             </CardHeader>
-            <CardContent className="h-80 flex flex-col items-center justify-center">
-              <div className="text-center">
-                <div className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-2">
-                  Under Development
+            <CardContent className="h-80">
+              {statusData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      fill={chartColors.primary}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={statusColors[entry.name as keyof typeof statusColors] || statusColors['Unknown']} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
+                      formatter={(value, name, props) => [`${value} leads`, props.payload.name]}
+                    />
+                    <Legend formatter={(value) => (
+                      <span style={{ color: '#e5e5e5' }}>{value}</span>
+                    )} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center h-full flex flex-col items-center justify-center">
+                  <div className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-2">
+                    No Lead Data Available
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    No leads have been assigned to you yet
+                  </p>
                 </div>
-                <p className="text-sm text-gray-400">
-                  This feature is coming soon
-                </p>
-              </div>
+              )}
             </CardContent>
           </Card>
 

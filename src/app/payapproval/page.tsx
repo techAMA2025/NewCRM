@@ -20,6 +20,7 @@ interface Payment {
   salesPersonName: string;
   timestamp: string;
   status: 'pending' | 'approved';
+  approvedBy?: string;
 }
 
 export default function PaymentApprovalPage() {
@@ -373,6 +374,11 @@ export default function PaymentApprovalPage() {
                             }`}>
                               {payment.status === 'approved' ? 'Approved' : 'Pending'}
                             </span>
+                            {payment.status === 'approved' && payment.approvedBy && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                by {payment.approvedBy}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

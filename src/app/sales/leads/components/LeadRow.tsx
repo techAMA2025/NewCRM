@@ -145,7 +145,7 @@ const LeadRow = ({
       </td>
       
       {/* Contact Information - Grouped */}
-      <td className="px-4 py-3">
+      <td className="px-4 py-3">  
         <div className="flex flex-col space-y-1">
           <div className="font-medium text-white flex items-center">
             {name}

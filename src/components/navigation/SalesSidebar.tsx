@@ -2,8 +2,11 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft } from 'react-icons/fa'
+import { usePathname, useRouter } from 'next/navigation'
+import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft, FaSignOutAlt } from 'react-icons/fa'
+import { getAuth, signOut } from 'firebase/auth'
+import { toast } from 'react-hot-toast'
+import { app } from '@/firebase/firebase'
 
 // Add interface for component props
 interface SalesSidebarProps {
@@ -12,6 +15,7 @@ interface SalesSidebarProps {
 
 const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
   const pathname = usePathname()
+  const router = useRouter()
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   
@@ -65,6 +69,19 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
   const isActive = (path: string) => {
     return pathname === path ? 'bg-green-700 dark:bg-gray-700' : ''
   }
+
+  const handleLogout = async () => {
+    try {
+      const auth = getAuth(app);
+      await signOut(auth);
+      localStorage.removeItem('userName');
+      toast.success('Logged out successfully');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
+  };
 
   return (
     <div className={`bg-green-800 dark:bg-gray-900 text-white flex-shrink-0 py-6 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
@@ -144,6 +161,20 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
               <span>Sales Calendar</span>
             </Link>
           </li> */}
+          
+          {/* Add a separator before logout */}
+          <div className="my-4 mx-6 border-t border-green-700 dark:border-gray-700"></div>
+          
+          <li>
+            <button
+              onClick={handleLogout}
+              className={`flex items-center py-3 hover:bg-red-700 dark:hover:bg-red-800 w-full ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}
+              title={isCollapsed ? "Logout" : ""}
+            >
+              <FaSignOutAlt className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Logout</span>}
+            </button>
+          </li>
         </ul>
       </nav>
     </div>
