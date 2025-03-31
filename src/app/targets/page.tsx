@@ -102,6 +102,7 @@ export default function TargetsPage() {
         users.push({
           id: doc.id,
           firstName: userData.firstName || userData.displayName,
+          lastName: userData.lastName,
           email: userData.email,
           role: userData.role
         });
@@ -119,14 +120,14 @@ export default function TargetsPage() {
         };
       });
 
-      setSalesUsers(users);
+      setSalesUsers(users); // We'll sort these after fetching the progress data
       setTargets(targetData);
       setProgress(progressData);
       
       // Fetch existing targets
       await fetchExistingTargets(users);
       
-      // Fetch progress data
+      // Fetch progress data (this will also sort the users)
       await fetchProgressData(users);
     } catch (error) {
       console.error('Error fetching sales users:', error);
@@ -162,41 +163,71 @@ export default function TargetsPage() {
   const fetchProgressData = async (users: User[]) => {
     try {
       const tempProgress = { ...progress };
-      
-      // This is a placeholder - you would replace this with your actual data fetching logic
-      // For example, you might query your 'leads' collection to count converted leads
-      // and query your 'payments' collection to sum amounts collected
+      const userProgressData: { userId: string; progressPercentage: number }[] = [];
       
       for (const user of users) {
-        // Example: Fetch converted leads count (replace with your actual implementation)
-        // const leadsQuery = query(
-        //   collection(db, 'leads'), 
-        //   where('assignedTo', '==', user.id),
-        //   where('status', '==', 'converted')
-        // );
-        // const leadsSnapshot = await getDocs(leadsQuery);
-        // tempProgress[user.id].convertedLeads = leadsSnapshot.size;
+        // Fetch lead conversion data
+        const leadsQuery = query(
+          collection(db, 'crm_leads'),
+          where('assignedTo', '==', user.firstName + (user.lastName ? ' ' + user.lastName : ''))
+        );
+        const leadsSnapshot = await getDocs(leadsQuery);
         
-        // Example: Fetch amount collected (replace with your actual implementation)
-        // const paymentsQuery = query(
-        //   collection(db, 'payments'),
-        //   where('collectedBy', '==', user.id)
-        // );
-        // const paymentsSnapshot = await getDocs(paymentsQuery);
-        // let totalAmount = 0;
-        // paymentsSnapshot.forEach(doc => {
-        //   totalAmount += doc.data().amount || 0;
-        // });
-        // tempProgress[user.id].amountCollected = totalAmount;
+        let convertedLeadsCount = 0;
+        leadsSnapshot.forEach(doc => {
+          const leadData = doc.data();
+          if (leadData.status === 'Converted' || leadData.convertedToClient === true) {
+            convertedLeadsCount++;
+          }
+        });
         
-        // For demo purposes, set random progress values
+        // Fetch amount collected data from the targets collection
+        const targetsQuery = query(
+          collection(db, 'targets'),
+          where('userId', '==', user.id)
+        );
+        const targetsSnapshot = await getDocs(targetsQuery);
+        
+        let amountCollected = 0;
+        if (!targetsSnapshot.empty) {
+          const targetData = targetsSnapshot.docs[0].data();
+          amountCollected = targetData.amountCollected || 0;
+        }
+        
         tempProgress[user.id] = {
-          convertedLeads: Math.floor(Math.random() * 30),
-          amountCollected: Math.floor(Math.random() * 50000)
+          convertedLeads: convertedLeadsCount,
+          amountCollected: amountCollected
         };
+        
+        // Calculate progress percentage for sorting (based on the currently viewed metric)
+        const targetValue = viewMetric === 'convertedLeads' 
+          ? targets[user.id]?.convertedLeads || 0
+          : targets[user.id]?.amountCollected || 0;
+        
+        const progressValue = viewMetric === 'convertedLeads'
+          ? convertedLeadsCount
+          : amountCollected;
+        
+        const progressPercentage = targetValue > 0 
+          ? (progressValue / targetValue) * 100
+          : 0;
+        
+        userProgressData.push({
+          userId: user.id,
+          progressPercentage
+        });
       }
       
       setProgress(tempProgress);
+      
+      // Sort users by progress percentage
+      const sortedUsers = [...users].sort((a, b) => {
+        const aProgress = userProgressData.find(p => p.userId === a.id)?.progressPercentage || 0;
+        const bProgress = userProgressData.find(p => p.userId === b.id)?.progressPercentage || 0;
+        return bProgress - aProgress; // Descending order (highest first)
+      });
+      
+      setSalesUsers(sortedUsers);
     } catch (error) {
       console.error('Error fetching progress data:', error);
     }
@@ -262,6 +293,38 @@ export default function TargetsPage() {
       setSubmitting(false);
     }
   };
+
+  // Add effect to re-sort when viewMetric changes
+  useEffect(() => {
+    if (salesUsers.length > 0 && Object.keys(progress).length > 0) {
+      const userProgressData = salesUsers.map(user => {
+        const targetValue = viewMetric === 'convertedLeads' 
+          ? targets[user.id]?.convertedLeads || 0
+          : targets[user.id]?.amountCollected || 0;
+        
+        const progressValue = viewMetric === 'convertedLeads'
+          ? progress[user.id]?.convertedLeads || 0
+          : progress[user.id]?.amountCollected || 0;
+        
+        const progressPercentage = targetValue > 0 
+          ? (progressValue / targetValue) * 100
+          : 0;
+        
+        return {
+          userId: user.id,
+          progressPercentage
+        };
+      });
+      
+      const sortedUsers = [...salesUsers].sort((a, b) => {
+        const aProgress = userProgressData.find(p => p.userId === a.id)?.progressPercentage || 0;
+        const bProgress = userProgressData.find(p => p.userId === b.id)?.progressPercentage || 0;
+        return bProgress - aProgress; // Descending order (highest first)
+      });
+      
+      setSalesUsers(sortedUsers);
+    }
+  }, [viewMetric, progress, targets]);
 
   if (loading && authChecked) {
     return (

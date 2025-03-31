@@ -5,7 +5,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft } from 'react-icons/fa'
 
-const SalesSidebar = () => {
+// Add interface for component props
+interface SalesSidebarProps {
+  collapsed?: boolean;
+}
+
+const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
   const pathname = usePathname()
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -66,15 +71,7 @@ const SalesSidebar = () => {
       <div className={`px-6 mb-8 flex ${isCollapsed ? 'justify-center' : 'justify-between'} items-center`}>
         {!isCollapsed && <h2 className="text-xl font-bold">Sales Portal</h2>}
         <div className="flex items-center">
-          {!isCollapsed && (
-            <button 
-              onClick={toggleDarkMode}
-              className="p-2 rounded-full hover:bg-green-700 dark:hover:bg-gray-800 mr-2"
-              aria-label="Toggle dark mode"
-            >
-              {isDarkMode ? <FaSun /> : <FaMoon />}
-            </button>
-          )}
+          
           <button
             onClick={toggleSidebar}
             className="p-2 rounded-full hover:bg-green-700 dark:hover:bg-gray-800"
@@ -112,6 +109,15 @@ const SalesSidebar = () => {
             >
               <FaHandshake className={isCollapsed ? '' : 'mr-3'} />
               {!isCollapsed && <span>My Clients</span>}
+            </Link>
+          </li>
+          <li>
+            <Link href="/payapproval" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/sales/opportunities')}`}
+              title={isCollapsed ? "Payment Approvals" : ""}
+            >
+              <FaHandshake className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Payment Approvals</span>}
             </Link>
           </li>
           {/* <li>

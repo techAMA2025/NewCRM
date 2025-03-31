@@ -45,8 +45,6 @@ const OverlordSidebar: React.FC = () => {
     { href: '/admin/users', icon: <FiUsers />, label: 'User Management' },
     { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads' },
     { href: '/targets', icon: <FiClipboard />, label: 'Targets' },
-    { href: '/data', icon: <FiDatabase />, label: 'Data Center' },
-    { href: '/settings', icon: <FiSettings />, label: 'Settings' },
   ];
 
   return (

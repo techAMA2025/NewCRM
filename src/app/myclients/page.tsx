@@ -49,9 +49,13 @@ const MyClientsPage = () => {
   const [currentUserName, setCurrentUserName] = useState<string>('')
   const [userProfileReady, setUserProfileReady] = useState(false)
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
+  const [viewingLead, setViewingLead] = useState<Lead | null>(null)
   const [savingLead, setSavingLead] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [clientDetailsLoading, setClientDetailsLoading] = useState(false)
+  const [clientDetailsError, setClientDetailsError] = useState<string | null>(null)
+  const [clientRecordExists, setClientRecordExists] = useState<{[key: string]: boolean}>({})
   
   const { user, userRole } = useAuth()
   const router = useRouter()
@@ -242,6 +246,32 @@ const MyClientsPage = () => {
         
         console.log("Setting leads with", sortedLeads.length, "items")
         setLeads(sortedLeads)
+        
+        // Check which leads already have client records
+        const clientExistsMap: {[key: string]: boolean} = {};
+        
+        // Create promises for all lead checks
+        const checkPromises = sortedLeads.map(async (lead) => {
+          try {
+            const clientQuery = query(
+              collection(crmDb, 'clients'), 
+              where('leadId', '==', lead.id)
+            );
+            const clientSnapshot = await getDocs(clientQuery);
+            clientExistsMap[lead.id] = !clientSnapshot.empty;
+            console.log(`Lead ${lead.id} (${lead.name}) has client record: ${!clientSnapshot.empty}`);
+          } catch (err) {
+            console.error(`Error checking client record for lead ${lead.id}:`, err);
+            clientExistsMap[lead.id] = false;
+          }
+        });
+        
+        // Wait for all checks to complete
+        await Promise.all(checkPromises);
+        
+        // Update state with results
+        setClientRecordExists(clientExistsMap);
+        
       } catch (err) {
         console.error('Error fetching qualified leads:', err);
         setError('Failed to fetch qualified leads. Please try again later.');
@@ -341,13 +371,65 @@ const MyClientsPage = () => {
   }
 
   // Function to handle opening the edit form
-  const handleEditLead = (lead: Lead) => {
-    // Initialize banks array if it doesn't exist
-    const leadWithBanks = {
-      ...lead,
-      banks: lead.banks || []
-    };
-    setEditingLead(leadWithBanks);
+  const handleEditLead = async (lead: Lead) => {
+    try {
+      setClientDetailsLoading(true);
+      setClientDetailsError(null);
+      
+      console.log("Fetching client data for editing lead:", lead.id);
+      
+      // Get the client document from the clients collection
+      const clientDoc = await getDocs(query(
+        collection(crmDb, 'clients'), 
+        where('leadId', '==', lead.id)
+      ));
+      
+      let leadToEdit: Lead;
+      
+      if (clientDoc.empty) {
+        // If no client document exists, use the lead data
+        console.log("No client document found, using lead data for edit form");
+        leadToEdit = {
+          ...lead,
+          banks: lead.banks || []
+        };
+      } else {
+        // Use the client data
+        const clientData = clientDoc.docs[0].data();
+        console.log("Found client data for editing:", clientData);
+        
+        // Merge the client data with the lead ID for reference
+        leadToEdit = {
+          ...clientData,
+          id: lead.id,
+          name: clientData.name || lead.name || '',
+          email: clientData.email || lead.email || '',
+          phone: clientData.phone || lead.phone || '',
+          source: clientData.source || lead.source || '',
+          status: clientData.status || lead.status || '',
+          assignedTo: clientData.assignedTo || lead.assignedTo || '',
+          remarks: clientData.remarks || lead.remarks || '',
+          lastModified: clientData.lastModified || lead.lastModified || new Date(),
+          original_id: lead.original_id,
+          original_collection: lead.original_collection,
+          source_database: lead.source_database,
+          synced_at: lead.synced_at,
+          banks: clientData.banks || []
+        } as unknown as Lead;
+      }
+      
+      setEditingLead(leadToEdit);
+    } catch (err) {
+      console.error("Error fetching client data for editing:", err);
+      // Fall back to lead data on error
+      const leadWithBanks = {
+        ...lead,
+        banks: lead.banks || []
+      };
+      setEditingLead(leadWithBanks);
+    } finally {
+      setClientDetailsLoading(false);
+    }
   }
 
   // Function to add a new bank
@@ -446,6 +528,12 @@ const MyClientsPage = () => {
       setLeads(updatedLeads)
       setSaveSuccess(true)
       
+      // Update clientRecordExists state to show this lead now has a client record
+      setClientRecordExists(prev => ({
+        ...prev,
+        [updatedLead.id]: true
+      }));
+      
       // Close the form after a short delay to show success message
       setTimeout(() => {
         setEditingLead(null)
@@ -480,6 +568,121 @@ const MyClientsPage = () => {
     };
     
     setEditingLead(newLead);
+  };
+
+  // Function to handle viewing a lead's details
+  const handleViewLead = async (lead: Lead) => {
+    try {
+      setClientDetailsLoading(true);
+      setClientDetailsError(null);
+      
+      console.log("Fetching client data for lead:", lead.id);
+      
+      // Get the client document from the clients collection
+      const clientDoc = await getDocs(query(
+        collection(crmDb, 'clients'), 
+        where('leadId', '==', lead.id)
+      ));
+      
+      if (clientDoc.empty) {
+        // If no client document exists, fall back to the lead data
+        console.log("No client document found, using lead data");
+        setViewingLead(lead);
+      } else {
+        // Use the client data
+        const clientData = clientDoc.docs[0].data();
+        console.log("Found client data:", clientData);
+        
+        // Merge the client data with the lead ID for reference
+        const clientWithId: Lead = {
+          ...clientData,
+          id: clientDoc.docs[0].id
+        } as Lead;
+        
+        setViewingLead(clientWithId);
+      }
+    } catch (err) {
+      console.error("Error fetching client data:", err);
+      setClientDetailsError("Failed to load client details. Please try again.");
+      // Fall back to lead data on error
+      setViewingLead(lead);
+    } finally {
+      setClientDetailsLoading(false);
+    }
+  }
+
+  // Function to handle closing the view details modal
+  const handleCloseViewModal = () => {
+    setViewingLead(null);
+  }
+
+  // Type guard to check if the object is a Firestore Timestamp
+  function isFirestoreTimestamp(value: any): value is { toDate: () => Date } {
+    return value && typeof value.toDate === 'function';
+  }
+
+  // Add this new function to calculate lead completeness
+  const calculateLeadCompleteness = (lead: Lead): { 
+    percentage: number, 
+    missingFields: string[] 
+  } => {
+    // Define required fields for a complete client record
+    const requiredFields = [
+      { name: 'name', label: 'Name' },
+      { name: 'phone', label: 'Phone Number' },
+      { name: 'email', label: 'Email' },
+      { name: 'city', label: 'City' },
+      { name: 'occupation', label: 'Occupation' },
+      { name: 'personalLoanDues', label: 'Personal Loan Dues' },
+      { name: 'creditCardDues', label: 'Credit Card Dues' },
+      { name: 'monthlyIncome', label: 'Monthly Income' },
+      { name: 'tenure', label: 'Tenure' },
+      { name: 'monthlyFees', label: 'Monthly Fees' },
+      { name: 'startDate', label: 'Start Date' },
+    ];
+    
+    // Check if banks information exists and is not empty
+    const hasBanks = lead.banks && lead.banks.length > 0;
+    if (!hasBanks) {
+      requiredFields.push({ name: 'banks', label: 'Bank Details' });
+    }
+    
+    // Count how many required fields are filled
+    const missingFields: string[] = [];
+    
+    requiredFields.forEach(field => {
+      if (!lead[field.name] || lead[field.name] === '') {
+        missingFields.push(field.label);
+      }
+    });
+    
+    const filledFields = requiredFields.length - missingFields.length;
+    const percentage = Math.round((filledFields / requiredFields.length) * 100);
+    
+    return { percentage, missingFields };
+  };
+  
+  // Simplified function to get row class - only mark completed leads as green
+  const getCompletionRowClass = (lead: Lead) => {
+    if (clientRecordExists[lead.id]) {
+      return 'border-l-4 border-green-500'; // Green border for completed leads
+    }
+    return ''; // No special border for incomplete leads
+  };
+  
+  // Function to get the tooltip text with missing fields
+  const getMissingFieldsTooltip = (lead: Lead) => {
+    if (clientRecordExists[lead.id]) {
+      return 'Client record complete';
+    }
+    
+    const { percentage, missingFields } = calculateLeadCompleteness(lead);
+    
+    if (missingFields.length === 0) {
+      return 'All fields completed! Ready to save as client.';
+    }
+    
+    return `${percentage}% complete. Missing: ${missingFields.join(', ')}`;
   };
 
   if (loading) {
@@ -523,7 +726,7 @@ const MyClientsPage = () => {
   }
 
   return (
-    <div className="bg-gray-950 min-h-screen">
+    <div className="bg-gray-950">
       <div className="flex">
         {/* Conditional sidebar rendering based on user role */}
         {typedUserRole === 'admin' && <AdminSidebar />}
@@ -586,6 +789,14 @@ const MyClientsPage = () => {
                 <table className="min-w-[1400px] divide-y divide-gray-700" role="table" aria-label="Qualified leads table">
                   <thead className="bg-gray-800">
                     <tr>
+                      {/* Status column */}
+                      <th
+                        className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]"
+                        scope="col"
+                      >
+                        <span className="text-blue-400">Status</span>
+                      </th>
+                      
                       <th
                         className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%]"
                         scope="col"
@@ -632,7 +843,34 @@ const MyClientsPage = () => {
                   
                   <tbody className="bg-gray-900 divide-y divide-gray-800">
                     {leads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-gray-800 transition-colors duration-150" role="row">
+                      <tr 
+                        key={lead.id} 
+                        className={`hover:bg-gray-800 transition-colors duration-150 ${getCompletionRowClass(lead)}`} 
+                        role="row"
+                      >
+                        {/* Simplified Status Column - just show complete or not */}
+                        <td className="px-4 py-3 text-sm">
+                          {clientRecordExists[lead.id] ? (
+                            <div className="flex items-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <svg className="-ml-0.5 mr-1.5 h-2 w-2 text-green-400" fill="currentColor" viewBox="0 0 8 8">
+                                  <circle cx="4" cy="4" r="3" />
+                                </svg>
+                                Complete
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <svg className="-ml-0.5 mr-1.5 h-2 w-2 text-gray-400" fill="currentColor" viewBox="0 0 8 8">
+                                  <circle cx="4" cy="4" r="3" />
+                                </svg>
+                                Pending
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        
                         {/* Date */}
                         <td className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap">
                           {getFormattedDate(lead)}
@@ -707,12 +945,22 @@ const MyClientsPage = () => {
                         
                         {/* Action Button */}
                         <td className="px-4 py-3 text-sm">
-                          <button
-                            onClick={() => handleEditLead(lead)}
-                            className="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            Edit Details
-                          </button>
+                          <div className="flex space-x-2">
+                            {!clientRecordExists[lead.id] && (
+                              <button
+                                onClick={() => handleEditLead(lead)}
+                                className="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              >
+                                Edit Details
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleViewLead(lead)}
+                              className="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            >
+                              View Details
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -722,328 +970,558 @@ const MyClientsPage = () => {
             )}
           </div>
           
-          {/* Lead Edit Form (appears when editingLead is set) */}
-          {editingLead && (
+          {/* View Details Modal */}
+          {viewingLead && (
             <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
               <div className="bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold text-white">Add Client Details</h2>
+                    <h2 className="text-xl font-semibold text-white">Client Details</h2>
                     <button
-                      onClick={handleCloseForm}
+                      onClick={handleCloseViewModal}
                       className="text-gray-400 hover:text-white"
-                      disabled={savingLead}
                     >
                       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
-                  
+
+                  {clientDetailsLoading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                      <span className="ml-3 text-gray-400">Loading client details...</span>
+                    </div>
+                  ) : clientDetailsError ? (
+                    <div className="bg-red-900 border border-red-700 text-red-100 p-4 rounded-md mb-6">
+                      <p>{clientDetailsError}</p>
+                      <p className="text-sm mt-2">Showing lead information instead.</p>
+                    </div>
+                  ) : (
+                    // Client Information Sections
+                    <div className="space-y-6">
+                      {/* Personal Information */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Personal Information</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Name</span>
+                              <span className="block mt-1 text-white">{viewingLead.name || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Email</span>
+                              <span className="block mt-1 text-white">{viewingLead.email || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Phone</span>
+                              <span className="block mt-1 text-white">{formatPhoneNumber(viewingLead.phone) || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">City</span>
+                              <span className="block mt-1 text-white">{viewingLead.city || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Occupation</span>
+                              <span className="block mt-1 text-white">{viewingLead.occupation || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Aadhar Card Number</span>
+                              <span className="block mt-1 text-white">{viewingLead.aadharNumber || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Financial Information */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Financial Information</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Personal Loan Dues</span>
+                              <span className="block mt-1 text-yellow-400 font-medium">₹{viewingLead.personalLoanDues || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Credit Card Dues</span>
+                              <span className="block mt-1 text-blue-400 font-medium">₹{viewingLead.creditCardDues || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Monthly Income</span>
+                              <span className="block mt-1 text-green-400 font-medium">₹{viewingLead.monthlyIncome || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Fee Details */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Fee Details</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Tenure (months)</span>
+                              <span className="block mt-1 text-white">{viewingLead.tenure || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Monthly Fees</span>
+                              <span className="block mt-1 text-white">₹{viewingLead.monthlyFees || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Start Date of Service</span>
+                              <span className="block mt-1 text-white">{viewingLead.startDate || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bank Details */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Bank Details</h3>
+                        {viewingLead.banks && viewingLead.banks.length > 0 ? (
+                          <div className="space-y-4">
+                            {viewingLead.banks.map((bank: any) => (
+                              <div key={bank.id} className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <span className="block text-sm font-medium text-gray-400">Bank Name</span>
+                                    <span className="block mt-1 text-white">{bank.bankName || 'N/A'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-sm font-medium text-gray-400">Loan Type</span>
+                                    <span className="block mt-1 text-white">{bank.loanType || 'N/A'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-sm font-medium text-gray-400">
+                                      {bank.loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number'}
+                                    </span>
+                                    <span className="block mt-1 text-white">{bank.accountNumber || 'N/A'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-sm font-medium text-gray-400">
+                                      {bank.loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount'}
+                                    </span>
+                                    <span className="block mt-1 text-white">₹{bank.loanAmount || 'N/A'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 text-center">
+                            <p className="text-gray-400">No bank details available for this client.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Notes & Remarks */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Notes & Remarks</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="mb-4">
+                            <span className="block text-sm font-medium text-gray-400">Client Message/Query</span>
+                            <div className="mt-1 p-3 bg-gray-700 rounded-md text-white">
+                              {viewingLead.message || viewingLead.queries || viewingLead.Queries || viewingLead.remarks || 'No message provided.'}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="block text-sm font-medium text-gray-400">Sales Notes</span>
+                            <div className="mt-1 p-3 bg-gray-700 rounded-md text-white">
+                              {viewingLead.salesNotes || 'No sales notes added.'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Metadata */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Additional Information</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Data Source</span>
+                              <span className="block mt-1 text-white">{viewingLead.source || 'Unknown'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Assigned To</span>
+                              <span className="block mt-1 text-white">{viewingLead.assignedTo || 'Not assigned'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Last Modified</span>
+                              <span className="block mt-1 text-white">
+                                {isFirestoreTimestamp(viewingLead.lastModified) ? 
+                                  viewingLead.lastModified.toDate().toLocaleDateString('en-IN', { 
+                                    day: '2-digit', 
+                                    month: 'short', 
+                                    year: 'numeric' 
+                                  }) : viewingLead.lastModified instanceof Date ? 
+                                    viewingLead.lastModified.toLocaleDateString('en-IN', { 
+                                      day: '2-digit', 
+                                      month: 'short', 
+                                      year: 'numeric' 
+                                    }) : 'Unknown'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Conversion Date</span>
+                              <span className="block mt-1 text-white">
+                                {viewingLead.convertedAt?.toDate ? 
+                                  viewingLead.convertedAt.toDate().toLocaleDateString('en-IN', { 
+                                    day: '2-digit', 
+                                    month: 'short', 
+                                    year: 'numeric' 
+                                  }) : 'Unknown'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="block text-sm font-medium text-gray-400">Lead ID</span>
+                              <span className="block mt-1 text-gray-300">{viewingLead.leadId || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Close button */}
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCloseViewModal}
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Client Modal */}
+          {editingLead && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+              <div className="bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-semibold text-white">
+                      {editingLead.id.startsWith('new-') ? 'Add New Client' : 'Edit Client Details'}
+                    </h2>
+                    <button
+                      onClick={handleCloseForm}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
                   {saveSuccess && (
-                    <div className="mb-4 bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded">
-                      <p className="flex items-center">
-                        <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Changes saved successfully!
-                      </p>
+                    <div className="mb-4 bg-green-900 border border-green-700 text-green-100 p-3 rounded-md">
+                      Client saved successfully!
                     </div>
                   )}
-                  
+
                   {saveError && (
-                    <div className="mb-4 bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
-                      <p className="flex items-center">
-                        <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {saveError}
-                      </p>
+                    <div className="mb-4 bg-red-900 border border-red-700 text-red-100 p-3 rounded-md">
+                      {saveError}
                     </div>
                   )}
-                  
+
                   <form onSubmit={(e) => {
                     e.preventDefault();
                     handleSaveLead(editingLead);
                   }}>
-                    {/* Personal Information */}
-                    <div className="mb-6">
-                      <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Personal Information</h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="name" className="block text-sm font-medium text-gray-300">Name</label>
-                          <input
-                            type="text"
-                            id="name"
-                            value={editingLead.name}
-                            onChange={(e) => setEditingLead({...editingLead, name: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email</label>
-                          <input
-                            type="email"
-                            id="email"
-                            value={editingLead.email}
-                            onChange={(e) => setEditingLead({...editingLead, email: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="phone" className="block text-sm font-medium text-gray-300">Phone</label>
-                          <input
-                            type="text"
-                            id="phone"
-                            value={editingLead.phone}
-                            onChange={(e) => setEditingLead({...editingLead, phone: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="city" className="block text-sm font-medium text-gray-300">City</label>
-                          <input
-                            type="text"
-                            id="city"
-                            value={editingLead.city || editingLead.City || ''}
-                            onChange={(e) => setEditingLead({...editingLead, city: e.target.value, City: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        {/* New fields */}
-                        <div>
-                          <label htmlFor="occupation" className="block text-sm font-medium text-gray-300">Occupation</label>
-                          <input
-                            type="text"
-                            id="occupation"
-                            value={editingLead.occupation || ''}
-                            onChange={(e) => setEditingLead({...editingLead, occupation: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="aadharNumber" className="block text-sm font-medium text-gray-300">Aadhar Card Number</label>
-                          <input
-                            type="text"
-                            id="aadharNumber"
-                            value={editingLead.aadharNumber || ''}
-                            onChange={(e) => setEditingLead({...editingLead, aadharNumber: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Financial Information */}
-                    <div className="mb-6">
-                      <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Financial Information</h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="personalLoanDues" className="block text-sm font-medium text-gray-300">Personal Loan Dues</label>
-                          <input
-                            type="text"
-                            id="personalLoanDues"
-                            value={editingLead.personalLoanDues || ''}
-                            onChange={(e) => setEditingLead({...editingLead, personalLoanDues: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="creditCardDues" className="block text-sm font-medium text-gray-300">Credit Card Dues</label>
-                          <input
-                            type="text"
-                            id="creditCardDues"
-                            value={editingLead.creditCardDues || ''}
-                            onChange={(e) => setEditingLead({...editingLead, creditCardDues: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="monthlyIncome" className="block text-sm font-medium text-gray-300">Monthly Income</label>
-                          <input
-                            type="text"
-                            id="monthlyIncome"
-                            value={editingLead.monthlyIncome || ''}
-                            onChange={(e) => setEditingLead({...editingLead, monthlyIncome: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
+                    <div className="space-y-6">
+                      {/* Personal Information */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Personal Information</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="name" className="block text-sm font-medium text-gray-400">Name*</label>
+                              <input
+                                type="text"
+                                id="name"
+                                value={editingLead.name || ''}
+                                onChange={(e) => setEditingLead({...editingLead, name: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="email" className="block text-sm font-medium text-gray-400">Email</label>
+                              <input
+                                type="email"
+                                id="email"
+                                value={editingLead.email || ''}
+                                onChange={(e) => setEditingLead({...editingLead, email: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="phone" className="block text-sm font-medium text-gray-400">Phone*</label>
+                              <input
+                                type="text"
+                                id="phone"
+                                value={editingLead.phone || ''}
+                                onChange={(e) => setEditingLead({...editingLead, phone: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="city" className="block text-sm font-medium text-gray-400">City</label>
+                              <input
+                                type="text"
+                                id="city"
+                                value={editingLead.city || ''}
+                                onChange={(e) => setEditingLead({...editingLead, city: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="occupation" className="block text-sm font-medium text-gray-400">Occupation</label>
+                              <input
+                                type="text"
+                                id="occupation"
+                                value={editingLead.occupation || ''}
+                                onChange={(e) => setEditingLead({...editingLead, occupation: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="aadharNumber" className="block text-sm font-medium text-gray-400">Aadhar Card Number</label>
+                              <input
+                                type="text"
+                                id="aadharNumber"
+                                value={editingLead.aadharNumber || ''}
+                                onChange={(e) => setEditingLead({...editingLead, aadharNumber: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Fees Details - New Section */}
-                    <div className="mb-6">
-                      <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Fees Details</h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="tenure" className="block text-sm font-medium text-gray-300">Tenure (months)</label>
-                          <input
-                            type="text"
-                            id="tenure"
-                            value={editingLead.tenure || ''}
-                            onChange={(e) => setEditingLead({...editingLead, tenure: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="monthlyFees" className="block text-sm font-medium text-gray-300">Monthly Fees</label>
-                          <input
-                            type="text"
-                            id="monthlyFees"
-                            value={editingLead.monthlyFees || ''}
-                            onChange={(e) => setEditingLead({...editingLead, monthlyFees: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="startDate" className="block text-sm font-medium text-gray-300">Start Date of Service</label>
-                          <input
-                            type="date"
-                            id="startDate"
-                            value={editingLead.startDate || ''}
-                            onChange={(e) => setEditingLead({...editingLead, startDate: e.target.value})}
-                            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
+
+                      {/* Financial Information */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Financial Information</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label htmlFor="personalLoanDues" className="block text-sm font-medium text-gray-400">Personal Loan Dues</label>
+                              <input
+                                type="text"
+                                id="personalLoanDues"
+                                value={editingLead.personalLoanDues || ''}
+                                onChange={(e) => setEditingLead({...editingLead, personalLoanDues: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="₹"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="creditCardDues" className="block text-sm font-medium text-gray-400">Credit Card Dues</label>
+                              <input
+                                type="text"
+                                id="creditCardDues"
+                                value={editingLead.creditCardDues || ''}
+                                onChange={(e) => setEditingLead({...editingLead, creditCardDues: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="₹"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="monthlyIncome" className="block text-sm font-medium text-gray-400">Monthly Income</label>
+                              <input
+                                type="text"
+                                id="monthlyIncome"
+                                value={editingLead.monthlyIncome || ''}
+                                onChange={(e) => setEditingLead({...editingLead, monthlyIncome: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="₹"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Bank Details Section */}
-                    <div className="mb-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider">Bank Details</h3>
-                        <button
-                          type="button"
-                          onClick={addBank}
-                          className="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        >
-                          <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          Add Bank
-                        </button>
+
+                      {/* Fee Details */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Fee Details</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label htmlFor="tenure" className="block text-sm font-medium text-gray-400">Tenure (months)</label>
+                              <input
+                                type="number"
+                                id="tenure"
+                                value={editingLead.tenure || ''}
+                                onChange={(e) => setEditingLead({...editingLead, tenure: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="monthlyFees" className="block text-sm font-medium text-gray-400">Monthly Fees</label>
+                              <input
+                                type="text"
+                                id="monthlyFees"
+                                value={editingLead.monthlyFees || ''}
+                                onChange={(e) => setEditingLead({...editingLead, monthlyFees: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="₹"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="startDate" className="block text-sm font-medium text-gray-400">Start Date of Service</label>
+                              <input
+                                type="date"
+                                id="startDate"
+                                value={editingLead.startDate || ''}
+                                onChange={(e) => setEditingLead({...editingLead, startDate: e.target.value})}
+                                className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      
-                      {/* List of banks with delete option */}
-                      {editingLead.banks && editingLead.banks.length > 0 ? (
-                        <div className="space-y-4">
-                          {editingLead.banks.map((bank: any, index: number) => (
-                            <div key={bank.id} className="bg-gray-750 p-4 rounded-lg border border-gray-700 relative">
-                              <button
-                                type="button"
-                                onClick={() => removeBank(bank.id)}
-                                className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                              >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <label htmlFor={`bank-name-${bank.id}`} className="block text-sm font-medium text-gray-300">Bank Name</label>
-                                  <input
-                                    type="text"
-                                    id={`bank-name-${bank.id}`}
-                                    value={bank.bankName || ''}
-                                    onChange={(e) => updateBank(bank.id, 'bankName', e.target.value)}
-                                    className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <label htmlFor={`loan-type-${bank.id}`} className="block text-sm font-medium text-gray-300">Loan Type</label>
-                                  <select
-                                    id={`loan-type-${bank.id}`}
-                                    value={bank.loanType || ''}
-                                    onChange={(e) => updateBank(bank.id, 'loanType', e.target.value)}
-                                    className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+
+                      {/* Bank Details */}
+                      <div>
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider">Bank Details</h3>
+                          <button
+                            type="button"
+                            onClick={addBank}
+                            className="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          >
+                            <svg className="-ml-1 mr-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add Bank
+                          </button>
+                        </div>
+                        
+                        {editingLead.banks && editingLead.banks.length > 0 ? (
+                          <div className="space-y-4">
+                            {editingLead.banks.map((bank: any, index: number) => (
+                              <div key={bank.id} className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                                <div className="flex justify-between items-center mb-3">
+                                  <h4 className="text-sm font-medium text-white">Bank {index + 1}</h4>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeBank(bank.id)}
+                                    className="text-red-400 hover:text-red-300"
                                   >
-                                    <option value="">Select Type</option>
-                                    <option value="Personal Loan">Personal Loan</option>
-                                    <option value="Credit Card">Credit Card</option>
-                                    <option value="Home Loan">Home Loan</option>
-                                    <option value="Car Loan">Car Loan</option>
-                                    <option value="Business Loan">Business Loan</option>
-                                    <option value="Education Loan">Education Loan</option>
-                                    <option value="Other">Other</option>
-                                  </select>
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
                                 </div>
-                                
-                                <div>
-                                  <label htmlFor={`account-number-${bank.id}`} className="block text-sm font-medium text-gray-300">
-                                    {bank.loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number'}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    id={`account-number-${bank.id}`}
-                                    value={bank.accountNumber || ''}
-                                    onChange={(e) => updateBank(bank.id, 'accountNumber', e.target.value)}
-                                    className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <label htmlFor={`loan-amount-${bank.id}`} className="block text-sm font-medium text-gray-300">
-                                    {bank.loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount'}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    id={`loan-amount-${bank.id}`}
-                                    value={bank.loanAmount || ''}
-                                    onChange={(e) => updateBank(bank.id, 'loanAmount', e.target.value)}
-                                    className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                  />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-400">Bank Name</label>
+                                    <input
+                                      type="text"
+                                      value={bank.bankName || ''}
+                                      onChange={(e) => updateBank(bank.id, 'bankName', e.target.value)}
+                                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-400">Loan Type</label>
+                                    <select
+                                      value={bank.loanType || ''}
+                                      onChange={(e) => updateBank(bank.id, 'loanType', e.target.value)}
+                                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                      <option value="">Select Type</option>
+                                      <option value="Personal Loan">Personal Loan</option>
+                                      <option value="Credit Card">Credit Card</option>
+                                      <option value="Home Loan">Home Loan</option>
+                                      <option value="Car Loan">Car Loan</option>
+                                      <option value="Business Loan">Business Loan</option>
+                                      <option value="Other">Other</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-400">
+                                      {bank.loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number'}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={bank.accountNumber || ''}
+                                      onChange={(e) => updateBank(bank.id, 'accountNumber', e.target.value)}
+                                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-400">
+                                      {bank.loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount'}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={bank.loanAmount || ''}
+                                      onChange={(e) => updateBank(bank.id, 'loanAmount', e.target.value)}
+                                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                      placeholder="₹"
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 text-center">
+                            <p className="text-gray-400">No bank details added. Click "Add Bank" to add bank information.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Notes & Remarks */}
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Notes & Remarks</h3>
+                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+                          <div className="mb-4">
+                            <label htmlFor="remarks" className="block text-sm font-medium text-gray-400">Client Message/Query</label>
+                            <textarea
+                              id="remarks"
+                              value={editingLead.remarks || ''}
+                              onChange={(e) => setEditingLead({...editingLead, remarks: e.target.value})}
+                              rows={3}
+                              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="salesNotes" className="block text-sm font-medium text-gray-400">Sales Notes</label>
+                            <textarea
+                              id="salesNotes"
+                              value={editingLead.salesNotes || ''}
+                              onChange={(e) => setEditingLead({...editingLead, salesNotes: e.target.value})}
+                              rows={3}
+                              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
                         </div>
-                      ) : (
-                        <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 text-center">
-                          <p className="text-gray-400">No bank details added yet. Click "Add Bank" to add bank information.</p>
-                        </div>
-                      )}
+                      </div>
                     </div>
-                    
-                    {/* Action buttons */}
-                    <div className="flex justify-end space-x-3">
+
+                    {/* Form buttons */}
+                    <div className="mt-6 flex justify-end space-x-3">
                       <button
                         type="button"
                         onClick={handleCloseForm}
-                        disabled={savingLead}
-                        className="px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={savingLead}
-                        className="relative px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {savingLead ? (
-                          <>
-                            <span className="invisible">Save Changes</span>
-                            <span className="absolute inset-0 flex items-center justify-center">
-                              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                            </span>
-                          </>
-                        ) : "Save Changes"}
+                        {savingLead ? 'Saving...' : 'Save Client'}
                       </button>
                     </div>
                   </form>

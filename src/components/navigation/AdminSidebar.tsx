@@ -32,6 +32,12 @@ const AdminSidebar = () => {
               <span>Leads</span>
             </Link>
           </li>
+          <li>
+            <Link href="/paymentrequests" className={`flex items-center px-6 py-3 hover:bg-blue-800 ${isActive('/admin/users')}`}>
+              <FaUsers className="mr-3" />
+              <span>Payment Requests</span>
+            </Link>
+          </li>
           {/* <li>
             <Link href="/admin/reports" className={`flex items-center px-6 py-3 hover:bg-blue-800 ${isActive('/admin/reports')}`}>
               <FaFileAlt className="mr-3" />

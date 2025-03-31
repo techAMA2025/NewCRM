@@ -25,6 +25,7 @@ import {
 
 interface TargetData {
   amountCollectedTarget: number;
+  amountCollected: number;
   convertedLeadsTarget: number;
   userId: string;
   userName: string;
@@ -67,8 +68,11 @@ export default function SalesDashboard() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [targetData, setTargetData] = useState<TargetData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentAmount, setCurrentAmount] = useState(320000); // Dummy current amount
-  const [currentLeads, setCurrentLeads] = useState(38); // Dummy current leads
+  
+  // Replace dummy data with real lead data
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [convertedLeads, setConvertedLeads] = useState(0);
+  const [leadsChartData, setLeadsChartData] = useState<any[]>([]);
 
   useEffect(() => {
     // Get user details from localStorage
@@ -81,6 +85,9 @@ export default function SalesDashboard() {
       
       // Fetch target data for this specific user based on userName
       fetchTargetDataByUserName(storedUserName);
+      
+      // Fetch lead data for this specific user
+      fetchLeadData(storedUserName);
     } else {
       setIsLoading(false);
     }
@@ -125,6 +132,84 @@ export default function SalesDashboard() {
     }
   };
 
+  const fetchLeadData = async (userName: string) => {
+    try {
+      console.log(`Fetching leads for user: ${userName}`);
+      
+      // Query leads assigned to the current user
+      const leadsQuery = query(
+        collection(db, "crm_leads"),
+        where("assignedTo", "==", userName)
+      );
+      
+      const querySnapshot = await getDocs(leadsQuery);
+      console.log("Leads query snapshot size:", querySnapshot.size);
+      
+      if (!querySnapshot.empty) {
+        // Count total leads and converted leads
+        let totalCount = querySnapshot.size;
+        let convertedCount = 0;
+        
+        // For monthly breakdown
+        const monthlyData: { [key: string]: { total: number, converted: number } } = {};
+        
+        querySnapshot.forEach(doc => {
+          const leadData = doc.data();
+          
+          // Check if lead is converted
+          if (leadData.convertedToClient === true || leadData.status === "Converted") {
+            convertedCount++;
+          }
+          
+          // Get month from timestamp
+          let date;
+          if (leadData.timestamp) {
+            date = leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp);
+          } else {
+            date = new Date(); // Fallback
+          }
+          
+          const month = date.toLocaleString('default', { month: 'short' });
+          
+          // Initialize month data if not exists
+          if (!monthlyData[month]) {
+            monthlyData[month] = { total: 0, converted: 0 };
+          }
+          
+          // Increment counts
+          monthlyData[month].total += 1;
+          
+          if (leadData.convertedToClient === true || leadData.status === "Converted") {
+            monthlyData[month].converted += 1;
+          }
+        });
+        
+        // Transform monthly data to chart format
+        const formattedChartData = Object.keys(monthlyData).map(month => ({
+          name: month,
+          total: monthlyData[month].total,
+          converted: monthlyData[month].converted
+        }));
+        
+        // Sort by month (approximation, works for common use cases)
+        const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        formattedChartData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
+        
+        setTotalLeads(totalCount);
+        setConvertedLeads(convertedCount);
+        setLeadsChartData(formattedChartData);
+        
+        console.log("Lead data processed:", { totalCount, convertedCount, monthlyData });
+      } else {
+        console.log("No leads found for this user");
+        // Set empty chart data
+        setLeadsChartData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching lead data:", error);
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
       <div className="animate-pulse flex flex-col items-center">
@@ -148,8 +233,11 @@ export default function SalesDashboard() {
     );
   }
 
-  const amountPercentage = Math.round((currentAmount / targetData.amountCollectedTarget) * 100);
-  const leadsPercentage = Math.round((currentLeads / targetData.convertedLeadsTarget) * 100);
+  const amountCollected = targetData.amountCollected || 0;
+  const amountPercentage = Math.round((amountCollected / targetData.amountCollectedTarget) * 100);
+  
+  // Calculate leads percentage using real data
+  const leadsPercentage = Math.round((convertedLeads / targetData.convertedLeadsTarget) * 100);
 
   return (
     <div className="p-6 bg-gray-900 text-gray-100 min-h-screen">
@@ -164,7 +252,7 @@ export default function SalesDashboard() {
               <CardTitle className="text-gray-100">Collection Target</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold mb-3 text-indigo-400">₹{currentAmount.toLocaleString()} 
+              <div className="text-3xl font-bold mb-3 text-indigo-400">₹{amountCollected.toLocaleString()} 
                 <span className="text-gray-400 text-xl"> / ₹{targetData.amountCollectedTarget.toLocaleString()}</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5 mb-3">
@@ -182,7 +270,7 @@ export default function SalesDashboard() {
               <CardTitle className="text-gray-100">Converted Leads Target</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold mb-3 text-emerald-400">{currentLeads} 
+              <div className="text-3xl font-bold mb-3 text-emerald-400">{convertedLeads} 
                 <span className="text-gray-400 text-xl"> / {targetData.convertedLeadsTarget}</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5 mb-3">
@@ -201,21 +289,15 @@ export default function SalesDashboard() {
             <CardHeader className="pb-2">
               <CardTitle className="text-gray-100">Monthly Collection</CardTitle>
             </CardHeader>
-            <CardContent className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                  <XAxis dataKey="name" stroke={chartColors.text} />
-                  <YAxis stroke={chartColors.text} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
-                    itemStyle={{ color: '#e5e5e5' }}
-                    cursor={{ fill: 'rgba(99, 102, 241, 0.1)' }}
-                  />
-                  <Legend wrapperStyle={{ color: chartColors.text }} />
-                  <Bar dataKey="amount" fill={chartColors.primary} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <CardContent className="h-80 flex flex-col items-center justify-center">
+              <div className="text-center">
+                <div className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-2">
+                  Under Development
+                </div>
+                <p className="text-sm text-gray-400">
+                  This feature is coming soon
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -225,7 +307,7 @@ export default function SalesDashboard() {
             </CardHeader>
             <CardContent className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={leadsData}>
+                <LineChart data={leadsChartData.length > 0 ? leadsChartData : leadsData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                   <XAxis dataKey="name" stroke={chartColors.text} />
                   <YAxis stroke={chartColors.text} />

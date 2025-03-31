@@ -15,7 +15,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { collection, getDocs, query, where, Timestamp, QueryConstraint } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, QueryConstraint, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
 // Register ChartJS components
@@ -65,6 +65,26 @@ export default function SuperAdminDashboard() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [isFilterApplied, setIsFilterApplied] = useState(false);
+  
+  // Add new state for sales analytics
+  const [salesAnalytics, setSalesAnalytics] = useState({
+    totalTargetAmount: 0,
+    totalCollectedAmount: 0,
+    monthlyRevenue: [0, 0, 0, 0, 0, 0], // Placeholder for monthly data
+    conversionRate: 0,
+    avgDealSize: 0
+  });
+  
+  // Add state for salesperson selection
+  const [salespeople, setSalespeople] = useState<{id: string, name: string}[]>([]);
+  const [selectedSalesperson, setSelectedSalesperson] = useState<string | null>(null);
+  const [individualSalesData, setIndividualSalesData] = useState<{
+    name: string;
+    targetAmount: number;
+    collectedAmount: number;
+    conversionRate: number;
+    monthlyData: number[];
+  } | null>(null);
   
   // Function to apply date filter
   const applyDateFilter = () => {
@@ -220,6 +240,221 @@ export default function SuperAdminDashboard() {
     
     fetchLeadsData();
   }, [startDate, endDate, isFilterApplied]);
+
+  // Add a new useEffect for fetching sales analytics data
+  useEffect(() => {
+    const fetchSalesAnalytics = async () => {
+      try {
+        // Fetch all target documents
+        const targetsCollection = collection(db, 'targets');
+        const targetsSnapshot = await getDocs(targetsCollection);
+        
+        let totalTarget = 0;
+        let totalCollected = 0;
+        let totalDeals = 0;
+        
+        // Process each target document
+        targetsSnapshot.forEach((doc) => {
+          const targetData = doc.data();
+          
+          // Sum up targets and collected amounts
+          totalTarget += targetData.amountCollectedTarget || 0;
+          totalCollected += targetData.amountCollected || 0;
+          
+          // Count deals for average calculation (assuming one target document = one salesperson)
+          if (targetData.amountCollected > 0) {
+            totalDeals++;
+          }
+        });
+        
+        // Calculate average deal size and conversion rate
+        const avgDealSize = totalDeals > 0 ? Math.round(totalCollected / totalDeals) : 0;
+        const conversionRate = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : 0;
+        
+        // Set the sales analytics state
+        setSalesAnalytics({
+          totalTargetAmount: totalTarget,
+          totalCollectedAmount: totalCollected,
+          monthlyRevenue: salesData.datasets[0].data, // Keep using the existing monthly data pattern
+          conversionRate: conversionRate,
+          avgDealSize: avgDealSize
+        });
+        
+        // Create updated monthly revenue data while maintaining the pattern
+        const monthlyDataPattern = salesData.datasets[0].data;
+        const totalSum = monthlyDataPattern.reduce((sum, val) => sum + val, 0);
+        
+        if (totalSum > 0) {
+          // Scale the pattern to match the real total collected amount
+          const scaledMonthlyData = monthlyDataPattern.map(value => 
+            Math.round((value / totalSum) * totalCollected)
+          );
+          
+          // Update the salesData state with scaled data
+          salesData.datasets[0].data = scaledMonthlyData;
+        }
+        
+      } catch (error) {
+        console.error("Error fetching sales analytics:", error);
+      }
+    };
+    
+    fetchSalesAnalytics();
+  }, []);
+
+  // Add useEffect to fetch all salespeople
+  useEffect(() => {
+    const fetchSalespeople = async () => {
+      try {
+        // Query all targets to get salespeople data
+        const targetsCollection = collection(db, 'targets');
+        const targetsSnapshot = await getDocs(targetsCollection);
+        
+        const salespeople: {id: string, name: string}[] = [];
+        
+        targetsSnapshot.forEach((doc) => {
+          const targetData = doc.data();
+          if (targetData.userName) {
+            salespeople.push({
+              id: doc.id,
+              name: targetData.userName
+            });
+          }
+        });
+        
+        // Sort alphabetically by name
+        salespeople.sort((a, b) => a.name.localeCompare(b.name));
+        
+        setSalespeople(salespeople);
+      } catch (error) {
+        console.error("Error fetching salespeople:", error);
+      }
+    };
+    
+    fetchSalespeople();
+  }, []);
+  
+  // Add useEffect to fetch individual salesperson data when selected
+  useEffect(() => {
+    const fetchIndividualSalesData = async () => {
+      if (!selectedSalesperson) {
+        setIndividualSalesData(null);
+        return;
+      }
+      
+      try {
+        // Get the target document for the selected salesperson
+        const targetRef = doc(db, 'targets', selectedSalesperson);
+        const targetSnap = await getDoc(targetRef);
+        
+        if (targetSnap.exists()) {
+          const targetData = targetSnap.data();
+          const targetAmount = targetData.amountCollectedTarget || 0;
+          const collectedAmount = targetData.amountCollected || 0;
+          const conversionRate = targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
+          
+          // Get leads data to generate monthly data
+          const leadsQuery = query(
+            collection(db, 'crm_leads'),
+            where('assignedTo', '==', targetData.userName)
+          );
+          const leadsSnapshot = await getDocs(leadsQuery);
+          
+          // Group leads by month
+          const monthlyData: { [key: number]: number } = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+          
+          leadsSnapshot.forEach((doc) => {
+            const leadData = doc.data();
+            
+            if (leadData.convertedToClient === true || leadData.status === 'Converted') {
+              // Get the month from timestamp
+              let date;
+              if (leadData.convertedAt) {
+                date = leadData.convertedAt.toDate ? leadData.convertedAt.toDate() : new Date(leadData.convertedAt);
+              } else if (leadData.timestamp) {
+                date = leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp);
+              } else {
+                date = new Date();
+              }
+              
+              // Get month (0-based)
+              const month = date.getMonth();
+              // Only consider last 6 months
+              const currentMonth = new Date().getMonth();
+              
+              // Convert to our 0-5 scale (with 5 being current month)
+              const relativeMonth = (month - currentMonth + 12) % 12;
+              if (relativeMonth <= 5) {
+                // Calculate index (5 = current month, 0 = 5 months ago)
+                const index = 5 - relativeMonth;
+                monthlyData[index] = (monthlyData[index] || 0) + 1;
+              }
+            }
+          });
+          
+          // Create data for the chart
+          const monthlyValues = Object.values(monthlyData);
+          
+          setIndividualSalesData({
+            name: targetData.userName,
+            targetAmount: targetAmount,
+            collectedAmount: collectedAmount,
+            conversionRate: conversionRate,
+            monthlyData: monthlyValues
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching individual sales data:", error);
+      }
+    };
+    
+    fetchIndividualSalesData();
+  }, [selectedSalesperson]);
+  
+  // Handle salesperson selection change
+  const handleSalespersonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedSalesperson(value !== "all" ? value : null);
+  };
+  
+  // Get the data for chart based on selection
+  const getChartData = () => {
+    if (selectedSalesperson && individualSalesData) {
+      // Return individual data
+      return {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [
+          {
+            label: `${individualSalesData.name}'s Conversions`,
+            data: individualSalesData.monthlyData,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.4,
+            fill: true,
+          },
+        ],
+      };
+    } else {
+      // Return overall data
+      return salesData;
+    }
+  };
+  
+  // Get analytics stats based on selection
+  const getAnalyticsStats = () => {
+    if (selectedSalesperson && individualSalesData) {
+      return {
+        totalCollectedAmount: individualSalesData.collectedAmount,
+        totalTargetAmount: individualSalesData.targetAmount,
+        conversionRate: individualSalesData.conversionRate,
+        avgDealSize: individualSalesData.collectedAmount > 0 ? individualSalesData.collectedAmount : 0
+      };
+    } else {
+      return salesAnalytics;
+    }
+  };
+  
+  const analyticsStats = getAnalyticsStats();
 
   // Sample data for charts
   const adminData = {
@@ -474,29 +709,58 @@ export default function SuperAdminDashboard() {
         {/* Sales Analytics Section */}
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-white">Sales Analytics</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-white">
+                {selectedSalesperson && individualSalesData
+                  ? `${individualSalesData.name}'s Sales Performance`
+                  : 'Overall Sales Analytics'
+                }
+              </CardTitle>
+              
+              {/* Salesperson Dropdown */}
+              <div className="flex items-center">
+                <label htmlFor="salesperson" className="mr-2 text-gray-300">View:</label>
+                <select
+                  id="salesperson"
+                  className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedSalesperson || "all"}
+                  onChange={handleSalespersonChange}
+                >
+                  <option value="all">All Salespeople</option>
+                  {salespeople.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                <Line data={salesData} options={options} />
+                <Line data={getChartData()} options={options} />
               </div>
               <div className="grid grid-cols-4 gap-4 mt-4">
                 <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">Total Revenue</p>
-                  <p className="text-2xl font-bold">$431,000</p>
+                  <p className="text-gray-400">
+                    {selectedSalesperson ? 'Revenue Collected' : 'Total Revenue'}
+                  </p>
+                  <p className="text-2xl font-bold text-white">₹{analyticsStats.totalCollectedAmount.toLocaleString()}</p>
                 </div>
                 <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">Monthly Goal</p>
-                  <p className="text-2xl font-bold">90%</p>
+                  <p className="text-gray-400">
+                    {selectedSalesperson ? 'Personal Target' : 'Total Target'}
+                  </p>
+                  <p className="text-2xl font-bold text-white">₹{analyticsStats.totalTargetAmount.toLocaleString()}</p>
                 </div>
                 <div className="bg-gray-700 p-4 rounded-lg">
                   <p className="text-gray-400">Conversion Rate</p>
-                  <p className="text-2xl font-bold">24.5%</p>
+                  <p className="text-2xl font-bold text-white">{analyticsStats.conversionRate}%</p>
                 </div>
                 <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">Avg. Deal Size</p>
-                  <p className="text-2xl font-bold">$2,850</p>
+                  <p className="text-gray-400">
+                    {selectedSalesperson ? 'Total Collections' : 'Avg. Deal Size'}
+                  </p>
+                  <p className="text-2xl font-bold text-white">₹{analyticsStats.avgDealSize.toLocaleString()}</p>
                 </div>
               </div>
               
