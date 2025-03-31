@@ -86,6 +86,9 @@ export default function SuperAdminDashboard() {
     monthlyData: number[];
   } | null>(null);
   
+  // Add state for CRM leads salesperson filter
+  const [selectedLeadsSalesperson, setSelectedLeadsSalesperson] = useState<string | null>(null);
+  
   // Function to apply date filter
   const applyDateFilter = () => {
     setIsLoading(true);
@@ -129,6 +132,11 @@ export default function SuperAdminDashboard() {
           }
           
           leadsQuery = query(leadsQuery, ...constraints);
+        }
+        
+        // Add salesperson filter if selected
+        if (selectedLeadsSalesperson) {
+          leadsQuery = query(leadsQuery, where('assignedTo', '==', selectedLeadsSalesperson));
         }
         
         const leadsSnapshot = await getDocs(leadsQuery);
@@ -239,7 +247,7 @@ export default function SuperAdminDashboard() {
     };
     
     fetchLeadsData();
-  }, [startDate, endDate, isFilterApplied]);
+  }, [startDate, endDate, isFilterApplied, selectedLeadsSalesperson]);
 
   // Add a new useEffect for fetching sales analytics data
   useEffect(() => {
@@ -415,6 +423,12 @@ export default function SuperAdminDashboard() {
   const handleSalespersonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedSalesperson(value !== "all" ? value : null);
+  };
+
+  // Handle salesperson selection change for leads filter
+  const handleLeadsSalespersonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedLeadsSalesperson(value !== "all" ? value : null);
   };
   
   // Get the data for chart based on selection
@@ -768,7 +782,27 @@ export default function SuperAdminDashboard() {
               <div className="mt-8 flex flex-col md:flex-row gap-6">
                 {/* Left side: Table with filters */}
                 <div className="md:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 shadow-xl">
-                  <h3 className="text-xl font-semibold mb-4 text-blue-100">CRM Leads Analytics</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold text-blue-100">CRM Leads Analytics</h3>
+                    
+                    {/* Add salesperson filter dropdown */}
+                    <div className="flex items-center">
+                      <label htmlFor="lead-salesperson" className="mr-2 text-gray-300">Salesperson:</label>
+                      <select
+                        id="lead-salesperson"
+                        className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={selectedLeadsSalesperson || "all"}
+                        onChange={handleLeadsSalespersonChange}
+                      >
+                        <option value="all">All Salespeople</option>
+                        {salespeople.map((person) => (
+                          <option key={person.id} value={person.name}>
+                            {person.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   
                   {/* Date range filter */}
                   <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800/70 rounded-lg border border-gray-700">

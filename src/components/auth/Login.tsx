@@ -67,7 +67,7 @@ const Login = () => {
       {/* Overlay to darken the video slightly for better readability */}
       <div className="absolute inset-0 bg-black opacity-10 z-10"></div>
       
-      <div className="bg-transparent backdrop-blur-sm p-8 rounded-lg shadow-lg w-full max-w-md relative z-20 border border-white border-opacity-40">
+      <div className="-mt-30 bg-white backdrop-blur-sm p-8 rounded-lg shadow-lg w-full max-w-xl relative z-20 border border-white border-opacity-40">
         <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">CRM Login</h1>
         
         {error && (
