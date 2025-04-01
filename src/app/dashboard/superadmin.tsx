@@ -66,11 +66,11 @@ export default function SuperAdminDashboard() {
   const [endDate, setEndDate] = useState<string>('');
   const [isFilterApplied, setIsFilterApplied] = useState(false);
   
-  // Add new state for sales analytics
+  // Update state for sales analytics to include proper monthly data
   const [salesAnalytics, setSalesAnalytics] = useState({
     totalTargetAmount: 0,
     totalCollectedAmount: 0,
-    monthlyRevenue: [0, 0, 0, 0, 0, 0], // Placeholder for monthly data
+    monthlyRevenue: [0, 0, 0, 0, 0, 0], // Will hold actual monthly data
     conversionRate: 0,
     avgDealSize: 0
   });
@@ -249,7 +249,7 @@ export default function SuperAdminDashboard() {
     fetchLeadsData();
   }, [startDate, endDate, isFilterApplied, selectedLeadsSalesperson]);
 
-  // Add a new useEffect for fetching sales analytics data
+  // Modify the fetchSalesAnalytics useEffect
   useEffect(() => {
     const fetchSalesAnalytics = async () => {
       try {
@@ -258,49 +258,100 @@ export default function SuperAdminDashboard() {
         const targetsSnapshot = await getDocs(targetsCollection);
         
         let totalTarget = 0;
-        let totalCollected = 0;
-        let totalDeals = 0;
+        
+        // Initialize monthly data (last 6 months)
+        const monthlyData = [0, 0, 0, 0, 0, 0];
+        const currentMonth = new Date().getMonth();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const last6MonthsLabels = [];
+        
+        // Create labels for the last 6 months
+        for (let i = 5; i >= 0; i--) {
+          const monthIndex = (currentMonth - i + 12) % 12;
+          last6MonthsLabels.unshift(monthNames[monthIndex]);
+        }
         
         // Process each target document
         targetsSnapshot.forEach((doc) => {
           const targetData = doc.data();
           
-          // Sum up targets and collected amounts
+          // Sum up targets
           totalTarget += targetData.amountCollectedTarget || 0;
-          totalCollected += targetData.amountCollected || 0;
+        });
+        
+        // Fetch payments data for total revenue and average deal size
+        const paymentsCollection = collection(db, 'payments');
+        const paymentsSnapshot = await getDocs(paymentsCollection);
+        
+        let totalCollected = 0;
+        let totalPayments = 0;
+        
+        paymentsSnapshot.forEach((doc) => {
+          const paymentData = doc.data();
+          // Handle amount as string by parsing to number
+          if (paymentData.amount) {
+            const amount = parseFloat(paymentData.amount);
+            if (!isNaN(amount)) {
+              totalCollected += amount;
+              totalPayments++;
+              
+              // If the payment has a timestamp string, add to monthly data
+              if (paymentData.timestamp) {
+                const paymentDate = new Date(paymentData.timestamp);
+                if (paymentDate instanceof Date && !isNaN(paymentDate.getTime())) {
+                  const paymentMonth = paymentDate.getMonth();
+                  const monthDiff = (paymentMonth - currentMonth + 12) % 12;
+                  
+                  if (monthDiff <= 5) {
+                    const index = 5 - monthDiff;
+                    monthlyData[index] += amount;
+                  }
+                }
+              }
+            }
+          }
+        });
+        
+        // Fetch leads data for conversion rate
+        const leadsCollection = collection(db, 'crm_leads');
+        const leadsSnapshot = await getDocs(leadsCollection);
+        
+        let totalLeads = 0;
+        let convertedLeads = 0;
+        
+        leadsSnapshot.forEach((doc) => {
+          const leadData = doc.data();
+          totalLeads++;
           
-          // Count deals for average calculation (assuming one target document = one salesperson)
-          if (targetData.amountCollected > 0) {
-            totalDeals++;
+          if (leadData.status === 'Converted') {
+            convertedLeads++;
           }
         });
         
         // Calculate average deal size and conversion rate
-        const avgDealSize = totalDeals > 0 ? Math.round(totalCollected / totalDeals) : 0;
-        const conversionRate = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : 0;
+        const avgDealSize = totalPayments > 0 ? Math.round(totalCollected / totalPayments) : 0;
+        const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
         
-        // Set the sales analytics state
+        // Set the sales analytics state with actual monthly data
         setSalesAnalytics({
           totalTargetAmount: totalTarget,
           totalCollectedAmount: totalCollected,
-          monthlyRevenue: salesData.datasets[0].data, // Keep using the existing monthly data pattern
+          monthlyRevenue: monthlyData,
           conversionRate: conversionRate,
           avgDealSize: avgDealSize
         });
         
-        // Create updated monthly revenue data while maintaining the pattern
-        const monthlyDataPattern = salesData.datasets[0].data;
-        const totalSum = monthlyDataPattern.reduce((sum, val) => sum + val, 0);
+        // Update the labels to show actual month names
+        salesData.labels = last6MonthsLabels;
+        salesData.datasets[0].data = monthlyData;
         
-        if (totalSum > 0) {
-          // Scale the pattern to match the real total collected amount
-          const scaledMonthlyData = monthlyDataPattern.map(value => 
-            Math.round((value / totalSum) * totalCollected)
-          );
-          
-          // Update the salesData state with scaled data
-          salesData.datasets[0].data = scaledMonthlyData;
-        }
+        console.log("Monthly revenue data:", monthlyData);
+        console.log("Month labels:", last6MonthsLabels);
+        console.log("Total revenue (from payments):", totalCollected);
+        console.log("Total payments count:", totalPayments);
+        console.log("Total leads:", totalLeads);
+        console.log("Converted leads:", convertedLeads);
+        console.log("Conversion rate:", conversionRate + "%");
         
       } catch (error) {
         console.error("Error fetching sales analytics:", error);
@@ -431,12 +482,22 @@ export default function SuperAdminDashboard() {
     setSelectedLeadsSalesperson(value !== "all" ? value : null);
   };
   
-  // Get the data for chart based on selection
+  // Update the getChartData function to use actual labels and data
   const getChartData = () => {
+    const currentMonth = new Date().getMonth();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const last6MonthsLabels = [];
+    
+    // Create labels for the last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      last6MonthsLabels.unshift(monthNames[monthIndex]);
+    }
+
     if (selectedSalesperson && individualSalesData) {
-      // Return individual data
+      // Return individual data with actual month labels
       return {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        labels: last6MonthsLabels,
         datasets: [
           {
             label: `${individualSalesData.name}'s Conversions`,
@@ -449,8 +510,20 @@ export default function SuperAdminDashboard() {
         ],
       };
     } else {
-      // Return overall data
-      return salesData;
+      // Return overall data (only showing actual data, no simulated values)
+      return {
+        labels: last6MonthsLabels,
+        datasets: [
+          {
+            label: 'Monthly Revenue',
+            data: salesAnalytics.monthlyRevenue,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.4,
+            fill: true,
+          },
+        ],
+      };
     }
   };
   
@@ -461,10 +534,20 @@ export default function SuperAdminDashboard() {
         totalCollectedAmount: individualSalesData.collectedAmount,
         totalTargetAmount: individualSalesData.targetAmount,
         conversionRate: individualSalesData.conversionRate,
-        avgDealSize: individualSalesData.collectedAmount > 0 ? individualSalesData.collectedAmount : 0
+        avgDealSize: individualSalesData.collectedAmount > 0 ? individualSalesData.collectedAmount : 0,
+        // Add revenue achievement percentage
+        revenueAchievementPercentage: individualSalesData.targetAmount > 0 
+          ? Math.min(Math.round((individualSalesData.collectedAmount / individualSalesData.targetAmount) * 100), 100)
+          : 0
       };
     } else {
-      return salesAnalytics;
+      return {
+        ...salesAnalytics,
+        // Add revenue achievement percentage
+        revenueAchievementPercentage: salesAnalytics.totalTargetAmount > 0 
+          ? Math.min(Math.round((salesAnalytics.totalCollectedAmount / salesAnalytics.totalTargetAmount) * 100), 100)
+          : 0
+      };
     }
   };
   
@@ -492,9 +575,9 @@ export default function SuperAdminDashboard() {
     datasets: [
       {
         label: 'Monthly Revenue',
-        data: [65000, 59000, 80000, 81000, 56000, 90000],
-        borderColor: 'rgba(255, 99, 132, 1)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        data: salesAnalytics.monthlyRevenue, // Use actual data from state
+        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
         tension: 0.4,
         fill: true,
       },
@@ -750,34 +833,134 @@ export default function SuperAdminDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
-                <Line data={getChartData()} options={options} />
+              {/* Fixed metric cards with better alignments */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                {/* Revenue Card */}
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-5 flex-1 flex flex-col">
+                    <h3 className="text-blue-300 font-medium text-sm uppercase tracking-wider mb-2">
+                      {selectedSalesperson ? 'Revenue Collected' : 'Total Revenue'}
+                    </h3>
+                    <div className="flex items-baseline space-x-2 mb-3">
+                      <p className="text-3xl font-bold text-white">₹{(analyticsStats.totalCollectedAmount).toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-gray-400">
+                        {selectedSalesperson ? 'collected' : 'total'}
+                      </p>
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="mt-auto">
+                      <div className="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>Progress</span>
+                        <span>{analyticsStats.revenueAchievementPercentage}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-400 to-teal-400 rounded-full" 
+                          style={{ width: `${analyticsStats.revenueAchievementPercentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full h-1 bg-gradient-to-r from-blue-400 to-teal-400"></div>
+                </div>
+
+                {/* Target Card */}
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-5 flex-1 flex flex-col">
+                    <h3 className="text-purple-300 font-medium text-sm uppercase tracking-wider mb-2">
+                      {selectedSalesperson ? 'Personal Target' : 'Total Target'}
+                    </h3>
+                    <div className="flex items-baseline space-x-2 mb-3">
+                      <p className="text-3xl font-bold text-white">₹{(analyticsStats.totalTargetAmount).toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-gray-400">
+                        {selectedSalesperson ? 'assigned' : 'total'}
+                      </p>
+                    </div>
+                    
+                    {/* Metric visualization */}
+                    <div className="mt-auto flex items-center justify-center">
+                      <div className="inline-flex items-center justify-center p-2 bg-gray-700/50 rounded-full">
+                        <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full h-1 bg-gradient-to-r from-purple-400 to-indigo-400"></div>
+                </div>
+
+                {/* Conversion Rate Card */}
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-5 flex-1 flex flex-col">
+                    <h3 className="text-green-300 font-medium text-sm uppercase tracking-wider mb-2">Conversion Rate</h3>
+                    <div className="flex items-baseline space-x-2 mb-3">
+                      <p className="text-3xl font-bold text-white">{analyticsStats.conversionRate}%</p>
+                      <p className="text-sm text-gray-400">of target</p>
+                    </div>
+                    
+                    {/* Circular progress indicator */}
+                    <div className="mt-auto flex justify-center">
+                      <div className="relative inline-flex items-center justify-center">
+                        <svg className="w-16 h-16 transform -rotate-90">
+                          <circle 
+                            cx="32" 
+                            cy="32" 
+                            r="28"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            fill="transparent"
+                            className="text-gray-700"
+                          />
+                          <circle 
+                            cx="32" 
+                            cy="32" 
+                            r="28"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            fill="transparent"
+                            strokeDasharray={`${28 * 2 * Math.PI}`}
+                            strokeDashoffset={`${28 * 2 * Math.PI * (1 - analyticsStats.conversionRate / 100)}`}
+                            className="text-green-500"
+                          />
+                        </svg>
+                        <span className="absolute text-sm font-bold text-white">{analyticsStats.conversionRate}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full h-1 bg-gradient-to-r from-green-400 to-emerald-400"></div>
+                </div>
+
+                {/* Avg Deal Size Card */}
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-5 flex-1 flex flex-col">
+                    <h3 className="text-amber-300 font-medium text-sm uppercase tracking-wider mb-2">
+                      {selectedSalesperson ? 'Total Collections' : 'Avg. Deal Size'}
+                    </h3>
+                    <div className="flex items-baseline space-x-2 mb-3">
+                      <p className="text-3xl font-bold text-white">₹{(analyticsStats.avgDealSize).toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-gray-400">
+                        {selectedSalesperson ? 'per client' : 'average'}
+                      </p>
+                    </div>
+                    
+                    {/* Removed the deal size visualization */}
+                    <div className="mt-auto flex justify-center">
+                      <div className="inline-flex items-center justify-center p-2 bg-gray-700/50 rounded-full">
+                        <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full h-1 bg-gradient-to-r from-amber-400 to-yellow-400"></div>
+                </div>
               </div>
-              <div className="grid grid-cols-4 gap-4 mt-4">
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">
-                    {selectedSalesperson ? 'Revenue Collected' : 'Total Revenue'}
-                  </p>
-                  <p className="text-2xl font-bold text-white">₹{analyticsStats.totalCollectedAmount.toLocaleString()}</p>
-                </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">
-                    {selectedSalesperson ? 'Personal Target' : 'Total Target'}
-                  </p>
-                  <p className="text-2xl font-bold text-white">₹{analyticsStats.totalTargetAmount.toLocaleString()}</p>
-                </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">Conversion Rate</p>
-                  <p className="text-2xl font-bold text-white">{analyticsStats.conversionRate}%</p>
-                </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">
-                    {selectedSalesperson ? 'Total Collections' : 'Avg. Deal Size'}
-                  </p>
-                  <p className="text-2xl font-bold text-white">₹{analyticsStats.avgDealSize.toLocaleString()}</p>
-                </div>
-              </div>
-              
+
               {/* CRM Leads Analytics Section with Table and Pie Chart */}
               <div className="mt-8 flex flex-col md:flex-row gap-6">
                 {/* Left side: Table with filters */}
