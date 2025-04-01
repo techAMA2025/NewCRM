@@ -41,7 +41,7 @@ const statusColors = {
   'Loan Required': '#9333ea', // purple-600
   'Cibil Issue': '#e11d48', // rose-600
   'Closed Lead': '#4b5563', // gray-600
-  'Unassigned': '#6366f1', // indigo-500 (fallback)
+  'No Status': '#6366f1', // indigo-500 (fallback)
 }
 
 // Define interfaces for the various types
@@ -228,7 +228,7 @@ const AdminDashboard = () => {
         })
         
         // Count by status
-        const status = leadData.status || 'Unassigned'
+        const status = leadData.status || 'No Status'
         if (!statusCounts[status]) {
           statusCounts[status] = 0
         }
@@ -331,7 +331,7 @@ const AdminDashboard = () => {
       
       userLeads.forEach(lead => {
         // Count by status
-        const status = lead.status || 'Unassigned'
+        const status = lead.status || 'No Status'
         if (!statusCounts[status]) {
           statusCounts[status] = 0
         }
@@ -489,7 +489,7 @@ const AdminDashboard = () => {
                       {filteredData.statusData.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={statusColors[entry.name as keyof typeof statusColors] || statusColors['Unassigned']} 
+                          fill={statusColors[entry.name as keyof typeof statusColors] || statusColors['No Status']} 
                         />
                       ))}
                     </Pie>
