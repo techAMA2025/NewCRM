@@ -33,7 +33,7 @@ ChartJS.register(
 
 // Define type for status and source keys
 type StatusKey = 'Interested' | 'Not Interested' | 'Not Answering' | 'Callback' 
-| 'Converted' | 'Loan Required' | 'Cibil Issue' | 'Closed Lead' | 'Other';
+| 'Converted' | 'Loan Required' | 'Cibil Issue' | 'Closed Lead' | 'No Status';
 type SourceKey = 'settleloans' | 'credsettlee' | 'ama';
 
 // Define the dataset type for the chart
@@ -158,7 +158,7 @@ export default function SuperAdminDashboard() {
           'Loan Required': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Cibil Issue': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Closed Lead': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Other': { settleloans: 0, credsettlee: 0, ama: 0 },
+          'No Status': { settleloans: 0, credsettlee: 0, ama: 0 },
         };
         
         // Process each lead document
@@ -195,7 +195,7 @@ export default function SuperAdminDashboard() {
                 statusCounts[status as StatusKey][mappedSource as SourceKey]++;
               } else {
                 // Count leads with valid source but invalid/missing status as "Other"
-                statusCounts['Other'][mappedSource as SourceKey]++;
+                statusCounts['No Status'][mappedSource as SourceKey]++;
               }
             }
           }

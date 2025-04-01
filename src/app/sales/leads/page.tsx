@@ -43,6 +43,8 @@ const LeadsPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [salesPersonFilter, setSalesPersonFilter] = useState('all');
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [sortConfig, setSortConfig] = useState({ 
     key: 'synced_at', 
     direction: 'descending' as 'ascending' | 'descending' 
@@ -270,6 +272,47 @@ const LeadsPage = () => {
         result = result.filter(lead => lead.convertedToClient === convertedFilter);
       }
       
+      // Date range filter
+      if (fromDate || toDate) {
+        result = result.filter(lead => {
+          // Get the date from various possible fields
+          let leadDate = lead.synced_at || lead.timestamp || lead.created || lead.lastModified || lead.createdAt;
+          
+          // Skip if no date is available
+          if (!leadDate) return true;
+          
+          // Convert to Date object if it's a Firestore timestamp or string
+          if (leadDate.toDate) leadDate = leadDate.toDate(); // Firestore timestamp
+          else if (!(leadDate instanceof Date)) leadDate = new Date(leadDate); // String date
+          
+          // Skip invalid dates
+          if (isNaN(leadDate.getTime())) return true;
+          
+          // Create proper date boundaries for comparison
+          if (fromDate && toDate) {
+            // Convert filter dates to Date objects at the start and end of day
+            const fromDateTime = new Date(fromDate);
+            fromDateTime.setHours(0, 0, 0, 0);
+            
+            const toDateTime = new Date(toDate);
+            toDateTime.setHours(23, 59, 59, 999); // End of the day
+            
+            // Check if the lead date is within range (inclusive)
+            return leadDate >= fromDateTime && leadDate <= toDateTime;
+          } else if (fromDate) {
+            const fromDateTime = new Date(fromDate);
+            fromDateTime.setHours(0, 0, 0, 0);
+            return leadDate >= fromDateTime;
+          } else if (toDate) {
+            const toDateTime = new Date(toDate);
+            toDateTime.setHours(23, 59, 59, 999); // End of the day
+            return leadDate <= toDateTime;
+          }
+          
+          return true;
+        });
+      }
+      
       // Ensure proper date sorting by handling different date formats
       if (sortConfig) {
         result.sort((a, b) => {
@@ -323,7 +366,7 @@ const LeadsPage = () => {
     };
     
     setFilteredLeads(filterLeads());
-  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig]);
+  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig, fromDate, toDate]);
 
   // Request sort handler
   const requestSort = (key: string) => {
@@ -648,6 +691,10 @@ const LeadsPage = () => {
             leads={leads}
             convertedFilter={convertedFilter}
             setConvertedFilter={setConvertedFilter}
+            fromDate={fromDate}
+            setFromDate={setFromDate}
+            toDate={toDate}
+            setToDate={setToDate}
           />
           
           {/* Debug info - only show in development */}

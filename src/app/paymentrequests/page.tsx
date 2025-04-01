@@ -141,14 +141,14 @@ export default function PaymentRequestsPage() {
       const paymentRef = doc(db, 'payments', requestId);
       await updateDoc(paymentRef, {
         amount: editAmount,
-        lastEditedBy: userName,
-        lastEditedAt: new Date().toISOString()
+        edited_by: userName,
+        edited_at: new Date().toISOString()
       });
 
       // Update the local state
       setPaymentRequests(paymentRequests.map(req => 
         req.id === requestId 
-          ? { ...req, amount: editAmount, lastEditedBy: userName, lastEditedAt: new Date().toISOString() } 
+          ? { ...req, amount: editAmount, edited_by: userName, edited_at: new Date().toISOString() } 
           : req
       ));
       
@@ -172,9 +172,35 @@ export default function PaymentRequestsPage() {
 
   const handleDelete = async (requestId: string) => {
     try {
+      // Get the payment request data before deleting
+      const request = paymentRequests.find(req => req.id === requestId);
+      
       // Delete the payment request from Firestore
       const paymentRef = doc(db, 'payments', requestId);
       await deleteDoc(paymentRef);
+
+      // If this was an approved request, update the salesperson's target
+      if (request && request.status === 'approved' && request.salesPersonName) {
+        // Find the target document for this salesperson using their name
+        const targetsRef = collection(db, 'targets');
+        const q = query(targetsRef, where("userName", "==", request.salesPersonName));
+        const targetSnapshot = await getDocs(q);
+        
+        if (!targetSnapshot.empty) {
+          const targetDoc = targetSnapshot.docs[0];
+          const targetData = targetDoc.data();
+          
+          // Calculate the new amount collected by subtracting the deleted request amount
+          const currentAmount = targetData.amountCollected || 0;
+          const newAmount = Math.max(0, currentAmount - Number(request.amount)); // Ensure it doesn't go below 0
+          
+          // Update the target document
+          await updateDoc(doc(db, 'targets', targetDoc.id), {
+            amountCollected: newAmount,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
 
       // Update the local state by removing the deleted request
       setPaymentRequests(paymentRequests.filter(req => req.id !== requestId));
@@ -304,6 +330,20 @@ export default function PaymentRequestsPage() {
                           </div>
                           
                           <div className="mt-4 pt-4 border-t border-gray-700">
+                            {request.edited_by && request.edited_at && (
+                              <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <p className="text-gray-300 text-sm">
+                                    <span className="text-gray-400">Last edited by:</span>{' '}
+                                    {request.edited_by}
+                                  </p>
+                                  <p className="text-gray-300 text-sm">
+                                    <span className="text-gray-400">Last edited at:</span>{' '}
+                                    {new Date(request.edited_at).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                             <div className="flex space-x-3">
                               <button
                                 onClick={() => initiateEdit(request.id, request.amount)}
@@ -552,6 +592,18 @@ export default function PaymentRequestsPage() {
                                   <span className="text-gray-400">Approved at:</span>{' '}
                                   {new Date(request.approvedAt).toLocaleString()}
                                 </p>
+                                {request.edited_by && request.edited_at && (
+                                  <>
+                                    <p className="text-gray-300 text-sm">
+                                      <span className="text-gray-400">Last edited by:</span>{' '}
+                                      {request.edited_by}
+                                    </p>
+                                    <p className="text-gray-300 text-sm">
+                                      <span className="text-gray-400">Last edited at:</span>{' '}
+                                      {new Date(request.edited_at).toLocaleString()}
+                                    </p>
+                                  </>
+                                )}
                               </div>
                             </div>
                             <div className="mt-4 flex space-x-3">

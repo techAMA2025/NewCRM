@@ -20,6 +20,10 @@ type LeadsFiltersProps = {
   leads: any[];
   convertedFilter: boolean | null;
   setConvertedFilter: (converted: boolean | null) => void;
+  fromDate: string;
+  setFromDate: (date: string) => void;
+  toDate: string;
+  setToDate: (date: string) => void;
 };
 
 const LeadsFilters = ({
@@ -37,7 +41,11 @@ const LeadsFilters = ({
   filteredLeads,
   leads,
   convertedFilter,
-  setConvertedFilter
+  setConvertedFilter,
+  fromDate,
+  setFromDate,
+  toDate,
+  setToDate
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,10 +115,22 @@ const LeadsFilters = ({
     fetchSalesUsers();
   }, []);
 
+  // Format date for input max attribute
+  const today = useMemo(() => {
+    const date = new Date();
+    return date.toISOString().split('T')[0];
+  }, []);
+
+  // Clear date filters
+  const clearDateFilters = () => {
+    setFromDate('');
+    setToDate('');
+  };
+
   return (
-    <>
-      {/* New search bar implementation */}
-      <div className="mt-6 mb-4">
+    <div className="space-y-4">
+      {/* Search bar implementation */}
+      <div className="mb-2">
         <div className="relative rounded-md shadow-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -157,51 +177,62 @@ const LeadsFilters = ({
         )}
       </div>
       
-      <div className="mt-2">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
-            <div className="flex items-center">
-              <FaFilter className="text-gray-400 mr-2" />
-              <span className="text-sm text-gray-300 mr-2">Filters:</span>
-            </div>
-            
-            {/* Source Filter */}
-            <div className="relative w-full sm:w-40">
-              <select
-                value={sourceFilter}
-                onChange={e => setSourceFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-              >
-                <option value="all">All Sources</option>
-                <option value="ama">AMA</option>
-                <option value="credsettlee">CredSettle</option>
-                <option value="settleloans">SettleLoans</option>
-              </select>
-            </div>
-            
-            {/* Status Filter */}
-            <div className="relative w-full sm:w-40">
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-              >
-                <option value="all">All Statuses</option>
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Salesperson Filter - Updated to fetch sales users */}
-            <div className="relative w-full sm:w-40">
+      {/* Filters section with improved layout */}
+      <div className="bg-gray-850 rounded-lg p-4">
+        <div className="flex items-center mb-3">
+          <FaFilter className="text-gray-400 mr-2" />
+          <span className="text-sm font-medium text-gray-300">Filters</span>
+          
+          {/* Results counter moved to the right */}
+          <div className="ml-auto">
+            <p className="text-sm text-gray-400">
+              Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
+            </p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Source Filter */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-400">Source</label>
+            <select
+              value={sourceFilter}
+              onChange={e => setSourceFilter(e.target.value)}
+              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            >
+              <option value="all">All Sources</option>
+              <option value="ama">AMA</option>
+              <option value="credsettlee">CredSettle</option>
+              <option value="settleloans">SettleLoans</option>
+            </select>
+          </div>
+          
+          {/* Status Filter */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-400">Status</label>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            >
+              <option value="all">All Status</option>
+              {statusOptions.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Salesperson Filter */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-400">Salesperson</label>
+            <div className="relative">
               <select
                 value={salesPersonFilter}
                 onChange={e => setSalesPersonFilter(e.target.value)}
-                className={`block w-full pl-3 pr-10 py-2 text-sm border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md ${userRole !== 'admin' && userRole !== 'overlord' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md ${userRole !== 'admin' && userRole !== 'overlord' ? 'opacity-70 cursor-not-allowed' : ''}`}
                 disabled={userRole !== 'admin' && userRole !== 'overlord'}
               >
-                {(userRole === 'admin' || userRole === 'overlord') && <option value="all">All Salespersons</option>},
+                {(userRole === 'admin' || userRole === 'overlord') && <option value="all">All Salespersons</option>}
                 {(userRole === 'admin' || userRole === 'overlord') && <option value="">Unassigned</option>}
                 {isLoading ? (
                   <option value="" disabled>Loading...</option>
@@ -217,14 +248,69 @@ const LeadsFilters = ({
             </div>
           </div>
           
-          <div className="ml-auto">
-            <p className="text-sm text-gray-400">
-              Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
-            </p>
+          {/* Conversion Status Filter - Adding a new filter for converted leads */}
+          {/* <div className="space-y-1">
+            <label className="block text-xs text-gray-400">Conversion Status</label>
+            <select
+              value={convertedFilter === null ? 'all' : convertedFilter ? 'converted' : 'not-converted'}
+              onChange={e => {
+                if (e.target.value === 'all') setConvertedFilter(null);
+                else if (e.target.value === 'converted') setConvertedFilter(true);
+                else setConvertedFilter(false);
+              }}
+              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            >
+              <option value="all">All Leads</option>
+              <option value="converted">Converted</option>
+              <option value="not-converted">Not Converted</option>
+            </select>
+          </div> */}
+        </div>
+        
+        {/* Date Range Filters in a separate row */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex space-x-4">
+            <div className="flex-1 space-y-1">
+              <label className="block text-xs text-gray-400">From Date</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                max={toDate || today}
+                className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+              />
+            </div>
+            
+            <div className="flex-1 space-y-1">
+              <label className="block text-xs text-gray-400">To Date</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                min={fromDate}
+                max={today}
+                className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+              />
+            </div>
+          </div>
+          
+          <div className="flex items-end">
+            {(fromDate || toDate) && (
+              <button 
+                onClick={clearDateFilters}
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                type="button"
+              >
+                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear date filters
+              </button>
+            )}
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
