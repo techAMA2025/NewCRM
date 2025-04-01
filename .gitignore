@@ -40,7 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-
-
 # Ignore the entire functions directory
 /functions
+functions/
