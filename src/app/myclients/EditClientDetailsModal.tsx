@@ -348,12 +348,21 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-400">Loan Type</label>
-                            <input
-                              type="text"
+                            <select
                               value={bank.loanType || ''}
                               onChange={(e) => handleUpdateBank(bank.id, 'loanType', e.target.value)}
                               className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
+                            >
+                              <option value="">Select type</option>
+                              <option value="Personal Loan">Personal Loan</option>
+                              <option value="Home Loan">Home Loan</option>
+                              <option value="Car Loan">Car Loan</option>
+                              <option value="Credit Card">Credit Card</option>
+                              <option value="Business Loan">Business Loan</option>
+                              <option value="Education Loan">Education Loan</option>
+                              <option value="Gold Loan">Gold Loan</option>
+                              <option value="Other">Other</option>
+                            </select>
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-400">Account Number</label>

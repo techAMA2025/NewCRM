@@ -39,12 +39,27 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
           value={bank.accountNumber}
           onChange={(value) => onUpdate(bank.id, 'accountNumber', value)}
         />
-        <InputField
-          id={`bank-${bank.id}-type`}
-          label="Loan Type"
-          value={bank.loanType}
-          onChange={(value) => onUpdate(bank.id, 'loanType', value)}
-        />
+        <div>
+          <label htmlFor={`bank-${bank.id}-type`} className="block text-sm font-medium text-gray-400 mb-1">
+            Loan Type
+          </label>
+          <select
+            id={`bank-${bank.id}-type`}
+            value={bank.loanType || ''}
+            onChange={(e) => onUpdate(bank.id, 'loanType', e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select type</option>
+            <option value="Personal Loan">Personal Loan</option>
+            <option value="Home Loan">Home Loan</option>
+            <option value="Car Loan">Car Loan</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Business Loan">Business Loan</option>
+            <option value="Education Loan">Education Loan</option>
+            <option value="Gold Loan">Gold Loan</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
         <InputField
           id={`bank-${bank.id}-amount`}
           label="Loan Amount"
