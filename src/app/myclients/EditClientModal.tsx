@@ -230,16 +230,7 @@ const EditClientModal = ({
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider">Bank Details</h3>
-                  <button
-                    type="button"
-                    onClick={handleAddBank}
-                    className="inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <svg className="-ml-1 mr-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Add Bank
-                  </button>
+                  
                 </div>
                 
                 <div className="space-y-4">
@@ -256,6 +247,16 @@ const EditClientModal = ({
                     <p className="text-gray-400 text-sm italic">No bank details added yet.</p>
                   )}
                 </div>
+                <button
+                    type="button"
+                    onClick={handleAddBank}
+                    className="mt-5 inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <svg className="-ml-1 mr-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Bank
+                  </button>
               </div>
               
               <FormSection title="Notes & Remarks">
