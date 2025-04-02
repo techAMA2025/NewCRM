@@ -203,6 +203,24 @@ const UserManagementPage = () => {
     }
   }
 
+  // Count users by role
+  const getUserCountByRole = () => {
+    const counts = {
+      admin: 0,
+      advocate: 0,
+      sales: 0,
+      overlord: 0
+    };
+    
+    users.forEach(user => {
+      if (counts.hasOwnProperty(user.role)) {
+        counts[user.role as keyof typeof counts]++;
+      }
+    });
+    
+    return counts;
+  };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
       {userRole === 'overlord' ? <OverlordSidebar /> : <AdminSidebar />}
@@ -338,9 +356,24 @@ const UserManagementPage = () => {
               </svg>
               User List
             </h2>
-            <span className="bg-blue-600/30 text-blue-300 text-xs px-3 py-1 rounded-full">
-              {users.length} users
-            </span>
+            <div className="flex space-x-2">
+              {Object.entries(getUserCountByRole()).map(([role, count]) => (
+                count > 0 && (
+                  <span key={role} className={`
+                    text-xs px-3 py-1 rounded-full
+                    ${role === 'overlord' ? 'bg-purple-900/30 text-purple-300' :
+                      role === 'admin' ? 'bg-red-900/30 text-red-300' :
+                      role === 'advocate' ? 'bg-green-900/30 text-green-300' :
+                      'bg-blue-900/30 text-blue-300'}
+                  `}>
+                    {count} {role}
+                  </span>
+                )
+              ))}
+              <span className="bg-blue-600/30 text-blue-300 text-xs px-3 py-1 rounded-full">
+                {users.length} total
+              </span>
+            </div>
           </div>
           {loading && !editingUser ? (
             <div className="flex items-center justify-center p-8">
