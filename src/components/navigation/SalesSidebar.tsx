@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft, FaSignOutAlt } from 'react-icons/fa'
+import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft, FaSignOutAlt, FaFileAlt } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -133,10 +133,19 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
               className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/sales/opportunities')}`}
               title={isCollapsed ? "Payment Approvals" : ""}
             >
-              <FaHandshake className={isCollapsed ? '' : 'mr-3'} />
+              <FaMoneyBillWave className={isCollapsed ? '' : 'mr-3'} />
               {!isCollapsed && <span>Payment Approvals</span>}
             </Link>
           </li>
+          {/* <li>
+            <Link href="/pendingdetails" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/pendingdetails')}`}
+              title={isCollapsed ? "Pending Details" : ""}
+            >
+              <FaClipboardList className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Pending Details</span>}
+            </Link>
+          </li> */}
           {/* <li>
             <Link href="/sales/pipeline" className={`flex items-center px-6 py-3 hover:bg-green-800 ${isActive('/sales/pipeline')}`}>
               <FaClipboardList className="mr-3" />
