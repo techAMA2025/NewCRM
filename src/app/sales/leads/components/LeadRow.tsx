@@ -8,6 +8,7 @@ import { Lead } from '../types';
 import { BsCheckCircleFill } from 'react-icons/bs';
 import { toast } from 'react-toastify';
 import LeadNotesCell from './LeadNotesCell';
+import { useEffect } from 'react';
 
 type LeadRowProps = {
   lead: Lead;
@@ -62,7 +63,21 @@ const LeadRow = ({
   // Prepare data with fallbacks - extended with settleloans specific fields
   const name = getLeadData(['name', 'Name', 'fullName', 'customerName'], 'Unknown');
   const email = getLeadData(['email', 'Email', 'emailAddress'], 'No email');
-  const phone = getLeadData(['phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number'], 'No phone');
+  const phone = getLeadData([
+    'phone', 
+    'phoneNumber', 
+    'mobileNumber', 
+    'Mobile Number', 
+    'number',
+    'Phone',
+    'Phone Number',
+    'mobile',
+    'Mobile',
+    'contact',
+    'Contact',
+    'contactNumber',
+    'ContactNumber'
+  ], 'No phone');
   const location = getLeadData(['city', 'City', 'location', 'address'], 'N/A');
   const source = getLeadData(['source_database', 'source'], 'N/A');
   const customerQuery = getLeadData(['remarks', 'message', 'queries', 'Queries', 'customerQuery'], 'N/A');
@@ -108,8 +123,33 @@ const LeadRow = ({
     'ama': 'bg-amber-900 text-amber-100 border border-amber-700'
   }[source.toLowerCase() as 'credsettlee' | 'settleloans' | 'ama'] || 'bg-gray-800 text-gray-200 border border-gray-700';
 
-  // Debug log to check field availability - remove in production
-  // console.log(`Lead ${lead.id} fields:`, Object.keys(lead));
+  // Debug log to check field availability
+  useEffect(() => {
+    if (source.toLowerCase() === 'credsettlee') {
+      console.log(`CredSettle Lead ${lead.id} fields:`, Object.keys(lead));
+      console.log('Raw lead data:', lead);
+      
+      // Log potential phone number fields for debugging
+      const possiblePhoneFields = ['phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 
+        'number', 'Phone', 'Phone Number', 'mobile', 'Mobile', 'contact', 'Contact', 
+        'contactNumber', 'ContactNumber'];
+      
+      console.log('Potential phone values:');
+      possiblePhoneFields.forEach(field => {
+        if (lead[field] !== undefined) {
+          console.log(`- ${field}: ${lead[field]}`);
+        }
+      });
+      
+      // Check for any field that might contain a phone number (containing digits)
+      console.log('Fields containing digits:');
+      Object.entries(lead).forEach(([key, value]) => {
+        if (typeof value === 'string' && /\d/.test(value) && value.length > 5) {
+          console.log(`- ${key}: ${value}`);
+        }
+      });
+    }
+  }, [lead, source]);
 
   // Get formatted date and time
   const { date, time } = getFormattedDate(lead);

@@ -3,18 +3,6 @@
 export const formatPhoneNumber = (phone: string) => {
   if (!phone) return '';
   
-  // Remove non-digit characters
-  const cleaned = phone.replace(/\D/g, '');
-  
-  // Check if it's an international number
-  if (cleaned.length > 10) {
-    // Format as international with the country code
-    return `+${cleaned.slice(0, cleaned.length-10)} ${cleaned.slice(-10, -5)} ${cleaned.slice(-5)}`;
-  } else if (cleaned.length === 10) {
-    // Format as regular 10-digit number
-    return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
-  }
-  
   // Return original if format doesn't match
   return phone;
 }

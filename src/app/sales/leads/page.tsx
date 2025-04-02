@@ -257,7 +257,7 @@ const LeadsPage = () => {
           );
           
           // Check all possible phone field variations
-          const phoneFields = ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number'];
+          const phoneFields = ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number'];
           const phoneMatch = phoneFields.some(field => 
             lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
           );
@@ -588,7 +588,7 @@ const LeadsPage = () => {
         return {
           "Name": lead.name || "",
           "Email": lead.email || "",
-          "Phone": lead.phone || "",
+          "Phone": lead.phone || lead.number || "",
           "City": lead.city || lead.City || "",
           "Status": lead.status || "",
           "Source": lead.source_database || "",
