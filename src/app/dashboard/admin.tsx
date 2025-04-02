@@ -286,12 +286,17 @@ const AdminDashboard = () => {
   // Filter data based on selected user
   const filteredData = useMemo(() => {
     if (selectedUser === 'all') {
+      // Count actual converted leads from the lead data
+      const actualConvertedLeads = leadsData.filter(lead => 
+        lead.convertedToClient === true || lead.status === "Converted"
+      ).length
+      
       return {
         statusData,
         monthlyLeadsData,
         amountCollected: totalAmountCollected,
         amountTarget: totalAmountTarget,
-        convertedLeads: totalConvertedLeads,
+        convertedLeads: actualConvertedLeads, // Use actual count instead of target value
         leadsTarget: totalLeadsTarget
       }
     } else {
@@ -377,12 +382,17 @@ const AdminDashboard = () => {
       const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
       filteredMonthlyData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name))
       
+      // Count actual converted leads for this user
+      const actualUserConvertedLeads = userLeads.filter(lead => 
+        lead.convertedToClient === true || lead.status === "Converted"
+      ).length
+      
       return {
         statusData: filteredStatusData,
         monthlyLeadsData: filteredMonthlyData,
         amountCollected: userTarget?.amountCollected || 0,
         amountTarget: userTarget?.amountCollectedTarget || 0,
-        convertedLeads: userTarget?.convertedLeads || 0,
+        convertedLeads: actualUserConvertedLeads, // Use actual count instead of target value
         leadsTarget: userTarget?.convertedLeadsTarget || 0
       }
     }
