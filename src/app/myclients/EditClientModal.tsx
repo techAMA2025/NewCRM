@@ -83,8 +83,8 @@ const EditClientModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center overflow-y-auto">
+      <div className="relative bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-white">
@@ -99,22 +99,21 @@ const EditClientModal = ({
               </svg>
             </button>
           </div>
-
+          
           {saveSuccess && (
-            <div className="mb-4 bg-green-900 border border-green-700 text-green-100 p-3 rounded-md">
-              Client saved successfully!
+            <div className="mb-4 p-3 bg-green-800 text-green-100 rounded-md">
+              Client details saved successfully!
             </div>
           )}
-
+          
           {saveError && (
-            <div className="mb-4 bg-red-900 border border-red-700 text-red-100 p-3 rounded-md">
+            <div className="mb-4 p-3 bg-red-800 text-red-100 rounded-md">
               {saveError}
             </div>
           )}
-
+          
           <form onSubmit={handleSubmit}>
-            <div className="space-y-6">
-              {/* Personal Information */}
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
               <FormSection title="Personal Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <InputField
@@ -156,10 +155,27 @@ const EditClientModal = ({
                     value={lead.aadharNumber || ''}
                     onChange={(value) => handleFieldChange('aadharNumber', value)}
                   />
+                  <div>
+                    <label htmlFor="source_database" className="block text-sm font-medium text-gray-400 mb-1">
+                      Data Source
+                    </label>
+                    <select
+                      id="source_database"
+                      value={lead.source_database || ''}
+                      onChange={(e) => handleFieldChange('source_database', e.target.value)}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select source</option>
+                      <option value="credsettlee">Cred Settle</option>
+                      <option value="ama">AMA</option>
+                      <option value="settleloans">Settle Loans</option>
+                      <option value="billcut">Bill Cut</option>
+                      <option value="manual">Manual Entry</option>
+                    </select>
+                  </div>
                 </div>
               </FormSection>
-
-              {/* Financial Information */}
+              
               <FormSection title="Financial Information">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <InputField
@@ -179,27 +195,25 @@ const EditClientModal = ({
                   <InputField
                     id="monthlyIncome"
                     label="Monthly Income"
-                    value={lead.monthlyIncome || ''}
+                    value={lead.monthlyIncome?.toString() || ''}
                     onChange={(value) => handleFieldChange('monthlyIncome', value)}
                     placeholder="₹"
                   />
                 </div>
               </FormSection>
-
-              {/* Fee Details */}
+              
               <FormSection title="Fee Details">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <InputField
                     id="tenure"
                     label="Tenure (months)"
-                    type="number"
-                    value={lead.tenure || ''}
+                    value={lead.tenure?.toString() || ''}
                     onChange={(value) => handleFieldChange('tenure', value)}
                   />
                   <InputField
                     id="monthlyFees"
                     label="Monthly Fees"
-                    value={lead.monthlyFees || ''}
+                    value={lead.monthlyFees?.toString() || ''}
                     onChange={(value) => handleFieldChange('monthlyFees', value)}
                     placeholder="₹"
                   />
@@ -212,8 +226,7 @@ const EditClientModal = ({
                   />
                 </div>
               </FormSection>
-
-              {/* Bank Details */}
+              
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider">Bank Details</h3>
@@ -228,76 +241,73 @@ const EditClientModal = ({
                     Add Bank
                   </button>
                 </div>
-
-                {lead.banks && lead.banks.length > 0 ? (
-                  <div className="space-y-4">
-                    {lead.banks.map((bank: any) => (
-                      <BankForm 
+                
+                <div className="space-y-4">
+                  {lead.banks?.length ? (
+                    lead.banks.map((bank: any) => (
+                      <BankForm
                         key={bank.id}
                         bank={bank}
-                        onUpdate={handleUpdateBank}
-                        onRemove={handleRemoveBank}
+                        onUpdate={onUpdateBank}
+                        onRemove={onRemoveBank}
                       />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 text-center">
-                    <p className="text-gray-400">No bank details added yet. Click "Add Bank" to add details.</p>
-                  </div>
-                )}
+                    ))
+                  ) : (
+                    <p className="text-gray-400 text-sm italic">No bank details added yet.</p>
+                  )}
+                </div>
               </div>
-
-              {/* Notes & Remarks */}
+              
               <FormSection title="Notes & Remarks">
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="remarks" className="block text-sm font-medium text-gray-400">Client Message/Query</label>
+                    <label htmlFor="remarks" className="block text-sm font-medium text-gray-400 mb-1">Client Message/Query</label>
                     <textarea
                       id="remarks"
                       value={lead.remarks || ''}
                       onChange={(e) => handleFieldChange('remarks', e.target.value)}
                       rows={3}
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    ></textarea>
                   </div>
+                  
                   <div>
-                    <label htmlFor="salesNotes" className="block text-sm font-medium text-gray-400">Sales Notes</label>
+                    <label htmlFor="salesNotes" className="block text-sm font-medium text-gray-400 mb-1">Sales Notes</label>
                     <textarea
                       id="salesNotes"
                       value={lead.salesNotes || ''}
                       onChange={(e) => handleFieldChange('salesNotes', e.target.value)}
                       rows={3}
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    ></textarea>
                   </div>
                 </div>
               </FormSection>
-
-              {/* Submit Button */}
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${saving ? 'opacity-70 cursor-not-allowed' : ''}`}
-                >
-                  {saving ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Saving...
-                    </span>
-                  ) : 'Save Client'}
-                </button>
-              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </span>
+                ) : 'Save Client'}
+              </button>
             </div>
           </form>
         </div>
@@ -352,76 +362,76 @@ interface BankFormProps {
 }
 
 const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => (
-  <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
-    <div className="flex justify-between items-center mb-3">
-      <h4 className="text-sm font-medium text-gray-300">Bank Information</h4>
-      <button
-        type="button"
-        onClick={() => onRemove(bank.id)}
-        className="text-red-400 hover:text-red-300"
-      >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      </button>
-    </div>
+  <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 relative">
+    <button
+      type="button"
+      onClick={() => onRemove(bank.id)}
+      className="absolute top-2 right-2 text-gray-400 hover:text-red-400"
+    >
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+    
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
-        <label htmlFor={`bankName-${bank.id}`} className="block text-sm font-medium text-gray-400">Bank Name</label>
+        <label htmlFor={`bank-${bank.id}-name`} className="block text-sm font-medium text-gray-400 mb-1">Bank Name</label>
         <input
+          id={`bank-${bank.id}-name`}
           type="text"
-          id={`bankName-${bank.id}`}
-          value={bank.bankName || ''}
+          value={bank.bankName}
           onChange={(e) => onUpdate(bank.id, 'bankName', e.target.value)}
           className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
       <div>
-        <label htmlFor={`loanType-${bank.id}`} className="block text-sm font-medium text-gray-400">Loan Type</label>
+        <label htmlFor={`bank-${bank.id}-loanType`} className="block text-sm font-medium text-gray-400 mb-1">Loan Type</label>
         <select
-          id={`loanType-${bank.id}`}
-          value={bank.loanType || ''}
+          id={`bank-${bank.id}-loanType`}
+          value={bank.loanType}
           onChange={(e) => onUpdate(bank.id, 'loanType', e.target.value)}
           className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         >
-          <option value="">Select Type</option>
+          <option value="">Select type</option>
           <option value="Personal Loan">Personal Loan</option>
-          <option value="Credit Card">Credit Card</option>
           <option value="Home Loan">Home Loan</option>
-          <option value="Auto Loan">Auto Loan</option>
+          <option value="Car Loan">Car Loan</option>
+          <option value="Credit Card">Credit Card</option>
           <option value="Business Loan">Business Loan</option>
+          <option value="Education Loan">Education Loan</option>
+          <option value="Gold Loan">Gold Loan</option>
           <option value="Other">Other</option>
         </select>
       </div>
       <div>
         <label 
-          htmlFor={`accountNumber-${bank.id}`} 
-          className="block text-sm font-medium text-gray-400"
+          htmlFor={`bank-${bank.id}-accountNumber`}
+          className="block text-sm font-medium text-gray-400 mb-1"
         >
           {bank.loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number'}
         </label>
         <input
+          id={`bank-${bank.id}-accountNumber`}
           type="text"
-          id={`accountNumber-${bank.id}`}
-          value={bank.accountNumber || ''}
+          value={bank.accountNumber}
           onChange={(e) => onUpdate(bank.id, 'accountNumber', e.target.value)}
           className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
       <div>
         <label 
-          htmlFor={`loanAmount-${bank.id}`} 
-          className="block text-sm font-medium text-gray-400"
+          htmlFor={`bank-${bank.id}-amount`}
+          className="block text-sm font-medium text-gray-400 mb-1"
         >
           {bank.loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount'}
         </label>
         <input
+          id={`bank-${bank.id}-amount`}
           type="text"
-          id={`loanAmount-${bank.id}`}
-          value={bank.loanAmount || ''}
+          value={bank.loanAmount}
           onChange={(e) => onUpdate(bank.id, 'loanAmount', e.target.value)}
-          className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           placeholder="₹"
+          className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
     </div>

@@ -27,27 +27,23 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
       </button>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField
-          id={`bank-${bank.id}-name`}
-          label="Bank Name"
-          value={bank.bankName}
-          onChange={(value) => onUpdate(bank.id, 'bankName', value)}
-        />
-        <InputField
-          id={`bank-${bank.id}-account`}
-          label="Account Number"
-          value={bank.accountNumber}
-          onChange={(value) => onUpdate(bank.id, 'accountNumber', value)}
-        />
         <div>
-          <label htmlFor={`bank-${bank.id}-type`} className="block text-sm font-medium text-gray-400 mb-1">
-            Loan Type
-          </label>
+          <label htmlFor={`bank-${bank.id}-name`} className="block text-sm font-medium text-gray-400 mb-1">Bank Name</label>
+          <input
+            id={`bank-${bank.id}-name`}
+            type="text"
+            value={bank.bankName}
+            onChange={(e) => onUpdate(bank.id, 'bankName', e.target.value)}
+            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label htmlFor={`bank-${bank.id}-loanType`} className="block text-sm font-medium text-gray-400 mb-1">Loan Type</label>
           <select
-            id={`bank-${bank.id}-type`}
-            value={bank.loanType || ''}
+            id={`bank-${bank.id}-loanType`}
+            value={bank.loanType}
             onChange={(e) => onUpdate(bank.id, 'loanType', e.target.value)}
-            className="w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select type</option>
             <option value="Personal Loan">Personal Loan</option>
@@ -60,13 +56,37 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
             <option value="Other">Other</option>
           </select>
         </div>
-        <InputField
-          id={`bank-${bank.id}-amount`}
-          label="Loan Amount"
-          value={bank.loanAmount}
-          onChange={(value) => onUpdate(bank.id, 'loanAmount', value)}
-          placeholder="₹"
-        />
+        <div>
+          <label 
+            htmlFor={`bank-${bank.id}-accountNumber`}
+            className="block text-sm font-medium text-gray-400 mb-1"
+          >
+            {bank.loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number'}
+          </label>
+          <input
+            id={`bank-${bank.id}-accountNumber`}
+            type="text"
+            value={bank.accountNumber}
+            onChange={(e) => onUpdate(bank.id, 'accountNumber', e.target.value)}
+            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label 
+            htmlFor={`bank-${bank.id}-amount`}
+            className="block text-sm font-medium text-gray-400 mb-1"
+          >
+            {bank.loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount'}
+          </label>
+          <input
+            id={`bank-${bank.id}-amount`}
+            type="text"
+            value={bank.loanAmount}
+            onChange={(e) => onUpdate(bank.id, 'loanAmount', e.target.value)}
+            placeholder="₹"
+            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
       </div>
     </div>
   );
