@@ -63,10 +63,10 @@ const HistoryModal = ({
                   .slice()
                   .sort((a, b) => {
                     // Sort by createdAt in descending order (newest first)
-                    return (b.createdAt as any) - (a.createdAt as any);
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
                   })
                   .map((entry, index) => (
-                  <div key={entry.createdById + entry.createdAt} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                  <div key={`history-${entry.leadId}-${index}-${entry.createdById}`} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
                     <div className="flex justify-between items-start mb-2">
                       <div className="text-sm text-gray-300">
                         <span className="text-gray-500">
