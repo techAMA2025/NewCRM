@@ -59,44 +59,130 @@ const HistoryModal = ({
               </div>
             ) : (
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {currentHistory
-                  .slice()
-                  .sort((a, b) => {
-                    // Sort by createdAt in descending order (newest first)
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                  })
-                  .map((entry, index) => (
-                  <div key={`history-${entry.leadId}-${index}-${entry.createdById}`} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="text-sm text-gray-300">
-                        <span className="text-gray-500">
-                          {entry.displayDate || (entry.createdAt instanceof Date 
-                            ? entry.createdAt.toLocaleString('en-US', { 
-                                day: '2-digit', 
-                                month: 'short', 
-                                year: 'numeric',
-                                hour: '2-digit', 
-                                minute: '2-digit'
-                              }) 
-                            : 'Unknown time')}
+                {(() => {
+                  // Filter out entries without createdAt field
+                  const validHistory = currentHistory.filter(entry => entry.createdAt != null);
+                  
+                  // Create a new sorted array to avoid mutating the original
+                  const sortedHistory = [...validHistory].sort((a, b) => {
+                    // Helper function to safely parse any date format
+                    const parseDate = (dateInput: string | Date): number => {
+                      try {
+                        // Handle Date objects
+                        if (dateInput instanceof Date) {
+                          return dateInput.getTime();
+                        }
+                        
+                        // Handle Firestore timestamp objects
+                        if (dateInput && typeof dateInput === 'object' && 'seconds' in dateInput) {
+                          // @ts-ignore - Handle Firestore Timestamp objects
+                          return dateInput.seconds * 1000;
+                        }
+                        
+                        // Handle displayDate format directly if available
+                        if (typeof a.displayDate === 'string' && typeof b.displayDate === 'string') {
+                          // Parse date in format: "4/4/2025, 12:07:20 pm"
+                          const parseDisplayDate = (displayDate: string) => {
+                            const [datePart, timePart] = displayDate.split(', ');
+                            if (!datePart || !timePart) return 0;
+                            
+                            const [month, day, year] = datePart.split('/');
+                            const [timePortion, ampm] = timePart.split(' ');
+                            const [hours, minutes, seconds] = timePortion.split(':');
+                            
+                            let hour = parseInt(hours);
+                            if (ampm.toLowerCase() === 'pm' && hour < 12) hour += 12;
+                            if (ampm.toLowerCase() === 'am' && hour === 12) hour = 0;
+                            
+                            return new Date(
+                              parseInt(year),
+                              parseInt(month) - 1,
+                              parseInt(day),
+                              hour,
+                              parseInt(minutes),
+                              seconds ? parseInt(seconds) : 0
+                            ).getTime();
+                          };
+                          
+                          return parseDisplayDate(b.displayDate) - parseDisplayDate(a.displayDate);
+                        }
+                        
+                        // Handle string formats
+                        if (typeof dateInput === 'string') {
+                          // Handle "April 4, 2025 at 11:08:27 AM UTC+5:30" format
+                          if (dateInput.includes(' at ')) {
+                            return new Date(dateInput.replace(/\s+at\s+/, ' ')).getTime();
+                          }
+                          
+                          // Handle "Apr 02, 2025, 04:04 PM" format
+                          if (dateInput.includes(', ')) {
+                            return new Date(dateInput).getTime();
+                          }
+                          
+                          return new Date(dateInput).getTime();
+                        }
+                        
+                        // Fallback
+                        return 0;
+                      } catch (e) {
+                        console.error('Error parsing date:', e, dateInput);
+                        return 0;
+                      }
+                    };
+                    
+                    // First try to use displayDate which is likely already formatted consistently
+                    if (a.displayDate && b.displayDate) {
+                      return new Date(b.displayDate).getTime() - new Date(a.displayDate).getTime();
+                    }
+                    
+                    // Fallback to parsing createdAt
+                    const timeA = parseDate(a.createdAt);
+                    const timeB = parseDate(b.createdAt);
+                    
+                    // Sort descending (newest first)
+                    return timeB - timeA;
+                  });
+                  
+                  // Return the mapped components
+                  return sortedHistory.map((entry, index) => (
+                    <div key={`history-${entry.leadId}-${index}-${entry.createdById}`} className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="text-sm text-gray-300">
+                          <span className="text-gray-500">
+                            {entry.displayDate || (entry.createdAt instanceof Date 
+                              ? entry.createdAt.toLocaleString('en-US', { 
+                                  day: '2-digit', 
+                                  month: 'short', 
+                                  year: 'numeric',
+                                  hour: '2-digit', 
+                                  minute: '2-digit'
+                                }) 
+                              : new Date(entry.createdAt).toLocaleString('en-US', {
+                                  day: '2-digit', 
+                                  month: 'short', 
+                                  year: 'numeric',
+                                  hour: '2-digit', 
+                                  minute: '2-digit'
+                                }))}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">#{index + 1}</span>
+                      </div>
+                      
+                      {/* Display creator name */}
+                      <div className="mb-2 text-xs">
+                        <span className="text-gray-500">Created by: </span>
+                        <span className="text-yellow-400">
+                          {entry.createdBy.split('@')[0].replace(/\./g, ' ').replace(/^\w|\s\w/g, c => c.toUpperCase())}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500">#{currentHistory.length - index}</span>
+                      
+                      <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300 bg-gray-900 p-2 rounded border border-gray-700">
+                        {entry.content || <span className="text-gray-500 italic">No content</span>}
+                      </div>
                     </div>
-                    
-                    {/* Display creator name */}
-                    <div className="mb-2 text-xs">
-                      <span className="text-gray-500">Created by: </span>
-                      <span className="text-yellow-400">
-                        {entry.createdBy.split('@')[0].replace(/\./g, ' ').replace(/^\w|\s\w/g, c => c.toUpperCase())}
-                      </span>
-                    </div>
-                    
-                    <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300 bg-gray-900 p-2 rounded border border-gray-700">
-                      {entry.content || <span className="text-gray-500 italic">No content</span>}
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             )}
             
