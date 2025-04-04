@@ -120,8 +120,17 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
             </Link>
           </li>
           <li>
+            <Link href="/pendingdetails" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/pendingdetails')}`}
+              title={isCollapsed ? "Pending Details" : ""}
+            >
+              <FaClipboardList className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Pending Details</span>}
+            </Link>
+          </li>
+          <li>
             <Link href="/myclients" 
-              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/sales/opportunities')}`}
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/myclients')}`}
               title={isCollapsed ? "My Clients" : ""}
             >
               <FaHandshake className={isCollapsed ? '' : 'mr-3'} />
