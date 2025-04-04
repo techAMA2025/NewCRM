@@ -239,8 +239,8 @@ const EditClientModal = ({
                       <BankForm
                         key={bank.id}
                         bank={bank}
-                        onUpdate={onUpdateBank}
-                        onRemove={onRemoveBank}
+                        onUpdate={handleUpdateBank}
+                        onRemove={handleRemoveBank}
                       />
                     ))
                   ) : (
