@@ -39,9 +39,9 @@ const AdvocateSidebar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/advocate/schedule" className={`flex items-center px-6 py-3 hover:bg-purple-800 ${isActive('/advocate/schedule')}`}>
+            <Link href="/advocate/paymentreminders" className={`flex items-center px-6 py-3 hover:bg-purple-800 ${isActive('/advocate/paymentreminders')}`}>
               <FaCalendarAlt className="mr-3" />
-              <span>Schedule</span>
+              <span>Payment Reminders</span>
             </Link>
           </li>
           <li>

@@ -13,10 +13,10 @@ interface Client {
 }
 
 const AdvocateDashboard = () => {
-  const [caseStats, setCaseStats] = useState({
-    activeCases: 0,
-    resolvedCases: 0,
-    pendingReviews: 0
+  const [clientStats, setClientStats] = useState({
+    activeClients: 0,
+    droppedClients: 0,
+    notRespondingClients: 0
   })
   // Properly type the clients array
   const [recentClients, setRecentClients] = useState<Client[]>([])
@@ -25,32 +25,74 @@ const AdvocateDashboard = () => {
   useEffect(() => {
     const fetchAdvocateData = async () => {
       try {
-        // Here you would normally fetch from your cases or clients collection
-        // This is a placeholder - modify according to your actual data structure
+        // Get the current advocate name - in a real app, this would come from auth context
+        // For now using a placeholder - replace with actual logged-in advocate name
+        const currentAdvocate = "Rahul Gour"; // Replace with actual advocate name
         
-        // Simulate fetching case statistics
-        setCaseStats({
-          activeCases: 12,
-          resolvedCases: 24,
-          pendingReviews: 5
-        })
+        // Fetch clients assigned to this advocate
+        const clientsRef = collection(db, 'clients');
+        const advocateClientsQuery = query(
+          clientsRef,
+          where("alloc_adv", "==", currentAdvocate)
+        );
         
-        // Simulate fetching recent clients
-        setRecentClients([
-          { id: '1', name: 'Sarah Johnson', status: 'Active', lastContact: '2023-08-15' },
-          { id: '2', name: 'Michael Rodriguez', status: 'Review', lastContact: '2023-08-12' },
-          { id: '3', name: 'Taylor Williams', status: 'Active', lastContact: '2023-08-10' },
-          { id: '4', name: 'Alex Chen', status: 'Resolved', lastContact: '2023-08-05' },
-        ])
+        const clientsSnapshot = await getDocs(advocateClientsQuery);
+        
+        // Count clients by status
+        let activeCount = 0;
+        let droppedCount = 0;
+        let notRespondingCount = 0;
+        
+        const recentClientsList: Client[] = [];
+        
+        clientsSnapshot.forEach((doc) => {
+          const clientData = doc.data();
+          const status = clientData.adv_status;
+          
+          // Count by status
+          if (status === "Active") activeCount++;
+          else if (status === "Dropped") droppedCount++;
+          else if (status === "Not Responding") notRespondingCount++;
+          
+          // Add to recent clients (limiting to most recent ones)
+          if (recentClientsList.length < 4) {
+            recentClientsList.push({
+              id: doc.id,
+              name: clientData.name,
+              status: clientData.adv_status,
+              lastContact: clientData.lastModified?.toDate().toISOString().split('T')[0] || 'N/A'
+            });
+          }
+        });
+        
+        // Update stats
+        setClientStats({
+          activeClients: activeCount,
+          droppedClients: droppedCount,
+          notRespondingClients: notRespondingCount
+        });
+        
+        // If we have recent clients from the query, use them
+        if (recentClientsList.length > 0) {
+          setRecentClients(recentClientsList);
+        } else {
+          // Fallback to sample data if no clients found
+          setRecentClients([
+            { id: '1', name: 'Sarah Johnson', status: 'Active', lastContact: '2023-08-15' },
+            { id: '2', name: 'Michael Rodriguez', status: 'Not Responding', lastContact: '2023-08-12' },
+            { id: '3', name: 'Taylor Williams', status: 'Active', lastContact: '2023-08-10' },
+            { id: '4', name: 'Alex Chen', status: 'Dropped', lastContact: '2023-08-05' },
+          ]);
+        }
       } catch (error) {
-        console.error('Error fetching advocate data:', error)
+        console.error('Error fetching advocate data:', error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchAdvocateData()
-  }, [])
+    fetchAdvocateData();
+  }, []);
 
   if (loading) {
     return <div className="p-6">Loading dashboard data...</div>
@@ -62,18 +104,18 @@ const AdvocateDashboard = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-2">Active Cases</h2>
-          <p className="text-3xl font-bold text-blue-600">{caseStats.activeCases}</p>
+          <h2 className="text-lg font-semibold mb-2">Active Clients</h2>
+          <p className="text-3xl font-bold text-blue-600">{clientStats.activeClients}</p>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-2">Resolved Cases</h2>
-          <p className="text-3xl font-bold text-green-600">{caseStats.resolvedCases}</p>
+          <h2 className="text-lg font-semibold mb-2">Dropped Clients</h2>
+          <p className="text-3xl font-bold text-red-600">{clientStats.droppedClients}</p>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-2">Pending Reviews</h2>
-          <p className="text-3xl font-bold text-yellow-600">{caseStats.pendingReviews}</p>
+          <h2 className="text-lg font-semibold mb-2">Not Responding Clients</h2>
+          <p className="text-3xl font-bold text-yellow-600">{clientStats.notRespondingClients}</p>
         </div>
       </div>
       

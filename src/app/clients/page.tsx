@@ -22,6 +22,7 @@ import AdminSidebar from '@/components/navigation/AdminSidebar'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import toast from 'react-hot-toast'
 
 interface Client {
   id: string
@@ -55,6 +56,7 @@ interface Client {
     loanAmount: string;
     loanType: string;
   }>
+  adv_status?: string
 }
 
 interface ToastMessage {
@@ -278,6 +280,41 @@ export default function ClientsPage() {
     }
   };
 
+  // Add a function to handle status changes
+  const handleAdvocateStatusChange = async (clientId: string, newStatus: string) => {
+    setIsSaving(true);
+    try {
+      const clientRef = doc(db, 'clients', clientId);
+      
+      await updateDoc(clientRef, {
+        adv_status: newStatus,
+        lastModified: new Date()
+      });
+      
+      // Update the local state
+      setClients(clients.map(client => 
+        client.id === clientId ? {...client, adv_status: newStatus} : client
+      ));
+      
+      // Show success toast
+      showToast(
+        "Status updated", 
+        `Client status has been updated to ${newStatus}.`,
+        "success"
+      );
+    } catch (err) {
+      console.error('Error updating client status:', err);
+      // Show error toast
+      showToast(
+        "Update failed", 
+        "Failed to update client status. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex min-h-screen bg-gray-950">
       {renderSidebar()}
@@ -336,7 +373,7 @@ export default function ClientsPage() {
                       <TableHead className="text-gray-400">Name</TableHead>
                       <TableHead className="text-gray-400">Phone</TableHead>
                       <TableHead className="text-gray-400">Email</TableHead>
-                      <TableHead className="text-gray-400">Status</TableHead>
+                      <TableHead className="text-gray-400">Advocate Status</TableHead>
                       <TableHead className="text-gray-400">City</TableHead>
                       <TableHead className="text-gray-400">Assigned To</TableHead>
                       <TableHead className="text-gray-400">Allocated Advocate</TableHead>
@@ -350,9 +387,20 @@ export default function ClientsPage() {
                         <TableCell className="text-gray-300">{client.phone}</TableCell>
                         <TableCell className="text-gray-300 truncate max-w-[200px]">{client.email}</TableCell>
                         <TableCell>
-                          <Badge className={`px-2 py-1 rounded-md border ${getStatusColor(client.status)}`}>
-                            {client.status}
-                          </Badge>
+                          <select
+                            value={client.adv_status || "Active"}
+                            onChange={(e) => handleAdvocateStatusChange(client.id, e.target.value)}
+                            className={`px-2 py-1.5 rounded text-xs font-medium border-0 focus:ring-2 focus:ring-opacity-50 ${
+                              client.adv_status === "Active" || !client.adv_status ? "bg-blue-500/20 text-blue-500 border-blue-500/50 focus:ring-blue-500" :
+                              client.adv_status === "Dropped" ? "bg-red-500/20 text-red-500 border-red-500/50 focus:ring-red-500" :
+                              client.adv_status === "Not Responding" ? "bg-amber-500/20 text-amber-500 border-amber-500/50 focus:ring-amber-500" :
+                              "bg-gray-500/20 text-gray-500 border-gray-500/50 focus:ring-gray-500"
+                            }`}
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Dropped">Dropped</option>
+                            <option value="Not Responding">Not Responding</option>
+                          </select>
                         </TableCell>
                         <TableCell className="text-gray-300">{client.city}</TableCell>
                         <TableCell className="text-gray-300">{client.assignedTo}</TableCell>
