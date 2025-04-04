@@ -373,9 +373,9 @@ export default function ClientsPage() {
                       <TableHead className="text-gray-400">Name</TableHead>
                       <TableHead className="text-gray-400">Phone</TableHead>
                       <TableHead className="text-gray-400">Email</TableHead>
-                      <TableHead className="text-gray-400">Advocate Status</TableHead>
+                      <TableHead className="text-gray-400">Current Status</TableHead>
                       <TableHead className="text-gray-400">City</TableHead>
-                      <TableHead className="text-gray-400">Assigned To</TableHead>
+                      <TableHead className="text-gray-400">Sales By</TableHead>
                       <TableHead className="text-gray-400">Allocated Advocate</TableHead>
                       <TableHead className="text-gray-400 text-right">Actions</TableHead>
                     </TableRow>
