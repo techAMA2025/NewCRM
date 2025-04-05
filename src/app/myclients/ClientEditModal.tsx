@@ -119,10 +119,26 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
     setSuccess(null);
     
     try {
+      // Filter out any undefined values and create a clean object
+      const cleanedFormData = Object.entries(formData).reduce((acc, [key, value]) => {
+        // Only include properties that have defined values
+        if (value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+      
       // Create updated client data with current timestamp
       const updatedClientData = {
-        ...formData,
-        banks: banks,
+        ...cleanedFormData,
+        // Make sure banks array doesn't contain undefined values
+        banks: banks.map(bank => ({
+          id: bank.id || Date.now().toString(),
+          bankName: bank.bankName || '',
+          accountNumber: bank.accountNumber || '',
+          loanType: bank.loanType || '',
+          loanAmount: bank.loanAmount || ''
+        })),
         lastModified: new Date()
       };
       

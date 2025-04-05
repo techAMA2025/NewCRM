@@ -40,6 +40,70 @@ interface Client {
   adv_status?: string;
 }
 
+function formatIndianCurrency(amount: string | undefined): string {
+  if (!amount) return "—";
+  
+  // Remove any existing currency symbols or non-numeric characters except decimal point
+  const numericValue = amount.replace(/[^\d.]/g, '');
+  
+  // Format with ₹ symbol and thousands separators (e.g., ₹1,50,000)
+  const formatter = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+  
+  return formatter.format(Number(numericValue));
+}
+
+function formatIndianPhoneNumber(phone: string): string {
+  // Remove any non-digit characters
+  const digits = phone.replace(/\D/g, '');
+  
+  // Check if it's a 10-digit number without country code
+  if (digits.length === 10) {
+    return `+91 ${digits.substring(0, 5)} ${digits.substring(5)}`;
+  }
+  
+  // If it already has country code (usually 12 digits with 91)
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+${digits.substring(0, 2)} ${digits.substring(2, 7)} ${digits.substring(7)}`;
+  }
+  
+  // Return the original if it doesn't match expected patterns
+  return phone;
+}
+
+function formatIndianDate(date: any): string {
+  if (!date) return "Not specified";
+  
+  if (date.toDate && typeof date.toDate === 'function') {
+    const dateObj = date.toDate();
+    return dateObj.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }); // DD-MM-YYYY format
+  }
+  
+  // If it's a string already, try to format it
+  if (typeof date === 'string') {
+    // Try to parse and format if it's a date string
+    const dateObj = new Date(date);
+    if (!isNaN(dateObj.getTime())) {
+      return dateObj.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    }
+    return date;
+  }
+  
+  return "Not specified";
+}
+
 function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, isOpen: boolean, onClose: () => void }) {
   if (!isOpen || !client) return null;
 
@@ -80,7 +144,7 @@ function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, i
                   <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
-                  {client.phone}
+                  {formatIndianPhoneNumber(client.phone)}
                 </div>
                 <div className="flex items-center">
                   <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -101,18 +165,18 @@ function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, i
             <div className="flex flex-col md:items-end space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-gray-300 text-sm font-medium">Assigned:</span>
-                <span className="text-white">{client.alloc_adv_at?.toDate?.()?.toLocaleDateString() || "Not specified"}</span>
+                <span className="text-white">{formatIndianDate(client.alloc_adv_at)}</span>
               </div>
               {client.convertedAt && (
                 <div className="flex items-center gap-2">
                   <span className="text-gray-300 text-sm font-medium">Converted:</span>
-                  <span className="text-white">{client.convertedAt?.toDate?.()?.toLocaleDateString() || "Not specified"}</span>
+                  <span className="text-white">{formatIndianDate(client.convertedAt)}</span>
                 </div>
               )}
               {client.startDate && (
                 <div className="flex items-center gap-2">
                   <span className="text-gray-300 text-sm font-medium">Start Date:</span>
-                  <span className="text-white">{client.startDate}</span>
+                  <span className="text-white">{formatIndianDate(client.startDate)}</span>
                 </div>
               )}
             </div>
@@ -129,19 +193,19 @@ function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, i
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 p-1">
               <div className="p-3 flex flex-col">
                 <span className="text-xs text-gray-400 mb-1">Personal Loan Dues</span>
-                <span className="text-xl font-bold text-purple-300">{client.personalLoanDues}</span>
+                <span className="text-xl font-bold text-purple-300">{formatIndianCurrency(client.personalLoanDues)}</span>
               </div>
               <div className="p-3 flex flex-col">
                 <span className="text-xs text-gray-400 mb-1">Credit Card Dues</span>
-                <span className="text-xl font-bold text-purple-300">{client.creditCardDues}</span>
+                <span className="text-xl font-bold text-purple-300">{formatIndianCurrency(client.creditCardDues)}</span>
               </div>
               <div className="p-3 flex flex-col">
                 <span className="text-xs text-gray-400 mb-1">Monthly Income</span>
-                <span className="text-xl font-bold text-purple-300">{client.monthlyIncome || "—"}</span>
+                <span className="text-xl font-bold text-purple-300">{formatIndianCurrency(client.monthlyIncome)}</span>
               </div>
               <div className="p-3 flex flex-col">
                 <span className="text-xs text-gray-400 mb-1">Monthly Fees</span>
-                <span className="text-xl font-bold text-purple-300">{client.monthlyFees || "—"}</span>
+                <span className="text-xl font-bold text-purple-300">{formatIndianCurrency(client.monthlyFees)}</span>
               </div>
             </div>
           </div>
@@ -163,7 +227,7 @@ function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, i
                 </div>
                 <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Phone</span>
-                  <span className="text-white w-2/3">{client.phone}</span>
+                  <span className="text-white w-2/3">{formatIndianPhoneNumber(client.phone)}</span>
                 </div>
                 <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Email</span>
@@ -208,7 +272,7 @@ function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, i
                         </div>
                         <div>
                           <p className="text-gray-400 mb-1">Loan Amount</p>
-                          <p className="text-gray-200 font-medium">{bank.loanAmount}</p>
+                          <p className="text-gray-200 font-medium">{formatIndianCurrency(bank.loanAmount)}</p>
                         </div>
                       </div>
                     </div>
@@ -459,7 +523,7 @@ export default function AdvocateClientsPage() {
                   <tr key={client.id} className="hover:bg-gray-700">
                     <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.name}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-gray-200">{client.phone}</div>
+                      <div className="text-gray-200">{formatIndianPhoneNumber(client.phone)}</div>
                       <div className="text-sm text-gray-400">{client.email}</div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.city}</td>
@@ -479,8 +543,8 @@ export default function AdvocateClientsPage() {
                         <option value="Not Responding">Not Responding</option>
                       </select>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.personalLoanDues}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.creditCardDues}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianCurrency(client.personalLoanDues)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianCurrency(client.creditCardDues)}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex space-x-2">
                         <button
