@@ -5,6 +5,7 @@ import { Filter } from "lucide-react";
 interface StatusFilterProps {
   statusFilter: string | null;
   setStatusFilter: (status: string | null) => void;
+  setCurrentPage: (page: number) => void;
 }
 
 export default function StatusFilter({ statusFilter, setStatusFilter }: StatusFilterProps) {
