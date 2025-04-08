@@ -36,6 +36,7 @@ interface Client {
   assignedTo: string
   alloc_adv?: string
   alloc_adv_at?: any
+  alloc_adv_secondary?: string
   convertedAt?: any
   convertedFromLead?: boolean
   creditCardDues?: string
@@ -503,6 +504,12 @@ export default function ClientsPage() {
                       <div className="text-white">{formatTimestamp(selectedClient.alloc_adv_at)}</div>
                     </div>
                   )}
+                  {selectedClient.alloc_adv_secondary && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-gray-400">Secondary Advocate</div>
+                      <div className="text-white">{selectedClient.alloc_adv_secondary}</div>
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -743,7 +750,16 @@ export default function ClientsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 block mb-1">Allocated Advocate</label>
+                    <label className="text-sm text-gray-400 block mb-1">Primary Allocated Advocate</label>
+                    <Input 
+                      name="alloc_adv"
+                      value={editingClient.alloc_adv || ''}
+                      onChange={handleEditInputChange}
+                      className="bg-gray-950 border-gray-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">Secondary Allocated Advocate</label>
                     <Input 
                       name="alloc_adv"
                       value={editingClient.alloc_adv || ''}
