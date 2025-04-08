@@ -5,9 +5,10 @@ import { IndianRupee } from "lucide-react";
 interface PaymentFilterProps {
   filterPaid: string | null;
   setFilterPaid: (paid: string | null) => void;
+  setCurrentPage: (page: number) => void;
 }
 
-export default function PaymentFilter({ filterPaid, setFilterPaid }: PaymentFilterProps) {
+export default function PaymentFilter({ filterPaid, setFilterPaid, setCurrentPage }: PaymentFilterProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -17,16 +18,28 @@ export default function PaymentFilter({ filterPaid, setFilterPaid }: PaymentFilt
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
-        <DropdownMenuItem onClick={() => setFilterPaid(null)} className="hover:bg-gray-700">
+        <DropdownMenuItem onClick={() => {
+          setFilterPaid(null);
+          setCurrentPage(1);
+        }} className="hover:bg-gray-700">
           All Payments
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setFilterPaid('fullypaid')} className="hover:bg-gray-700">
+        <DropdownMenuItem onClick={() => {
+          setFilterPaid('fullypaid');
+          setCurrentPage(1);
+        }} className="hover:bg-gray-700">
           Fully Paid
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setFilterPaid('partiallypaid')} className="hover:bg-gray-700">
+        <DropdownMenuItem onClick={() => {
+          setFilterPaid('partiallypaid');
+          setCurrentPage(1);
+        }} className="hover:bg-gray-700">
           Partially Paid
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setFilterPaid('notpaid')} className="hover:bg-gray-700">
+        <DropdownMenuItem onClick={() => {
+          setFilterPaid('notpaid');
+          setCurrentPage(1);
+        }} className="hover:bg-gray-700">
           Not Paid
         </DropdownMenuItem>
       </DropdownMenuContent>
