@@ -31,6 +31,8 @@ interface Client {
   remarks?: string;
   salesNotes?: string;
   queries?: string;
+  isPrimary: boolean;
+  isSecondary: boolean;
 }
 
 interface ClientEditModalProps {

@@ -38,6 +38,8 @@ interface Client {
   alloc_adv_at?: any;
   convertedAt?: any;
   adv_status?: string;
+  isPrimary: boolean;
+  isSecondary: boolean;
 }
 
 function formatIndianCurrency(amount: string | undefined): string {
@@ -408,12 +410,45 @@ export default function AdvocateClientsPage() {
       setLoading(true);
       try {
         const clientsRef = collection(db, "clients");
-        const q = query(clientsRef, where("alloc_adv", "==", advocateName));
-        const querySnapshot = await getDocs(q);
+        
+        // Modified query to get clients where the advocate is either primary or secondary
+        const primaryQuery = query(clientsRef, where("alloc_adv", "==", advocateName));
+        const secondaryQuery = query(clientsRef, where("alloc_adv_secondary", "==", advocateName));
+        
+        const [primarySnapshot, secondarySnapshot] = await Promise.all([
+          getDocs(primaryQuery),
+          getDocs(secondaryQuery)
+        ]);
         
         const clientsList: Client[] = [];
-        querySnapshot.forEach((doc) => {
-          clientsList.push({ id: doc.id, ...doc.data() } as Client);
+        
+        // Add primary clients with a flag
+        primarySnapshot.forEach((doc) => {
+          const clientData = doc.data();
+          clientsList.push({ 
+            id: doc.id, 
+            ...clientData,
+            isPrimary: true, 
+            isSecondary: false 
+          } as Client);
+        });
+        
+        // Add secondary clients with a flag, avoiding duplicates
+        secondarySnapshot.forEach((doc) => {
+          const clientData = doc.data();
+          const existingIndex = clientsList.findIndex(c => c.id === doc.id);
+          
+          if (existingIndex >= 0) {
+            // If the client is already in the list as primary, mark it as both
+            clientsList[existingIndex].isSecondary = true;
+          } else {
+            clientsList.push({ 
+              id: doc.id, 
+              ...clientData,
+              isPrimary: false, 
+              isSecondary: true 
+            } as Client);
+          }
         });
         
         setClients(clientsList);
@@ -512,6 +547,7 @@ export default function AdvocateClientsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">City</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Assignment</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Personal Loan Dues</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Credit Card Dues</th>
@@ -527,6 +563,21 @@ export default function AdvocateClientsPage() {
                       <div className="text-sm text-gray-400">{client.email}</div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.city}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {client.isPrimary && client.isSecondary ? (
+                        <span className="px-2 py-1 bg-purple-800 text-purple-200 rounded-full text-xs font-medium">
+                          Primary & Secondary
+                        </span>
+                      ) : client.isPrimary ? (
+                        <span className="px-2 py-1 bg-blue-800 text-blue-200 rounded-full text-xs font-medium">
+                          Primary
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-700 text-gray-300 rounded-full text-xs font-medium">
+                          Secondary
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <select
                         value={client.adv_status || "Active"}
