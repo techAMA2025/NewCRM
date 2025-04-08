@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Lead } from './types/lead'
+// import firebase from '../../firebase/firebase'
+import  {db}  from '../../firebase/firebase'
+import { collection, doc, setDoc, writeBatch } from 'firebase/firestore'
 
 interface EditClientModalProps {
   lead: Lead
@@ -34,6 +37,7 @@ const EditClientModal = ({
   
   // Handle field changes
   const handleFieldChange = (field: keyof Lead, value: any) => {
+    console.log(`Updating field: ${field} with value:`, value); // Debug logging
     setLead(prevLead => ({
       ...prevLead,
       [field]: value
@@ -74,12 +78,26 @@ const EditClientModal = ({
     }));
   };
 
+
+
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Log the lead object to see what's being sent
-    console.log('Submitting lead:', lead);
-    onSave(lead);
+    console.log('Submitting lead with source:', lead.source_database);
+    
+    // Create a cleaned version of the lead to send
+    const leadToSave = {...lead};
+    
+    // If this is a new lead (ID starts with 'new-'), remove the temporary ID
+    // so that Firebase can generate a proper document ID
+    if (leadToSave.id && leadToSave.id.startsWith('new-')) {
+      // We don't delete the ID here, but we'll handle this in the parent component
+      console.log('Processing new lead creation');
+    }
+    
+    // Pass the lead to onSave
+    onSave(leadToSave);
   };
 
   return (

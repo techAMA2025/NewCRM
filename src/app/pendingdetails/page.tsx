@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { collection, getDocs, query, where, Timestamp, doc, updateDoc, setDoc } from 'firebase/firestore'
+import { collection, getDocs, query, where, Timestamp, doc, updateDoc, setDoc, writeBatch } from 'firebase/firestore'
 import { db as crmDb } from '@/firebase/firebase'
 import { useAuth } from '@/context/AuthContext'
 import { FaEnvelope, FaPhone, FaMapMarkerAlt } from 'react-icons/fa'
@@ -462,64 +462,187 @@ const MyClientsPage = () => {
       setSaveError(null)
       setSaveSuccess(false)
       
-      console.log("Saving lead to clients collection:", updatedLead.id)
-      
-      // Get a reference to the document in the clients collection
-      const clientRef = doc(crmDb, 'clients', updatedLead.id)
+      console.log("Saving lead:", updatedLead.id)
       
       // Prepare the data to update
-      // Remove fields that shouldn't be updated directly
+      // Extract necessary fields
       const { id, synced_at, original_id, original_collection, source_database, ...dataToUpdate } = updatedLead
+      
+      // Generate a timestamp-based unique identifier
+      const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
       
       // Add metadata
       const clientData = {
         ...dataToUpdate,
+        source_database: source_database || 'manual', // Ensure source is preserved
         lastModified: Timestamp.now(),
-        leadId: updatedLead.id, // Reference to original lead ID
-        convertedFromLead: true,
+        leadId: id.startsWith('new-') ? null : updatedLead.id, // Reference to original lead ID if not new
+        convertedFromLead: !id.startsWith('new-'),
         convertedAt: Timestamp.now()
       }
       
-      // Save to the clients collection (using setDoc to create if it doesn't exist)
-      await setDoc(clientRef, clientData)
+      let docRef;
+      let docId;
       
-      console.log("Client saved successfully")
+      // Check if this is a new client or existing client update
+      if (id.startsWith('new-')) {
+        // For new clients, create a document ID that includes the source
+        const sourcePrefix = source_database ? `${source_database}_` : 'manual_';
+        docId = `${sourcePrefix}${uniqueId}`;
+        docRef = doc(crmDb, 'clients', docId);
+        console.log("Creating new client with source-based ID:", docId);
+      } else {
+        // For existing clients, update the existing document
+        docRef = doc(crmDb, 'clients', id)
+        docId = id;
+        console.log("Updating existing client:", id)
+      }
       
-      // Also update the original lead in crm_leads collection to mark it as converted
-      const leadRef = doc(crmDb, 'crm_leads', updatedLead.id)
-      await updateDoc(leadRef, {
-        status: 'Converted',
-        lastModified: Timestamp.now(),
-        convertedToClient: true,
-        convertedAt: Timestamp.now()
-      })
+      // Use setDoc with merge option to handle both new and existing documents
+      await setDoc(docRef, clientData, { merge: true })
       
-      // Update the local state
-      const updatedLeads = leads.map(lead => 
-        lead.id === updatedLead.id ? {...lead, status: 'Converted'} : lead
-      )
+      // Create payment schedule in clients_payments collection
+      if (updatedLead.startDate && updatedLead.tenure && updatedLead.monthlyFees) {
+        try {
+          await createPaymentSchedule(
+            docId,
+            updatedLead.name || '',
+            updatedLead.email || '',
+            updatedLead.phone || '',
+            updatedLead.startDate,
+            parseInt(updatedLead.tenure.toString()),
+            parseFloat(updatedLead.monthlyFees.toString()),
+          );
+          console.log("Payment schedule created successfully");
+        } catch (error) {
+          console.error("Error creating payment schedule:", error);
+          // Continue with the rest of the process even if payment schedule creation fails
+        }
+      }
       
-      setLeads(updatedLeads)
-      setSaveSuccess(true)
+      // For new leads, add them to the leads array
+      if (id.startsWith('new-')) {
+        const newLeadWithId = {
+          ...updatedLead,
+          id: docId
+        };
+        setLeads([newLeadWithId, ...leads]);
+      } else {
+        // Update existing leads
+        const updatedLeads = leads.map(lead => 
+          lead.id === updatedLead.id ? { ...lead, ...dataToUpdate } : lead
+        );
+        setLeads(updatedLeads);
+      }
+      
+      setSaveSuccess(true);
       
       // Update clientRecordExists state to show this lead now has a client record
       setClientRecordExists(prev => ({
         ...prev,
-        [updatedLead.id]: true
+        [docId]: true
       }));
       
       // Close the form after a short delay to show success message
       setTimeout(() => {
-        setEditingLead(null)
-        setSaveSuccess(false)
-      }, 1500)
-    } catch (err) {
-      console.error('Error saving client:', err)
-      setSaveError('Failed to save changes. Please try again.')
+        setEditingLead(null);
+        setSaveSuccess(false);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Error saving client:', err);
+      setSaveError(`Failed to save changes: ${err.message}`);
     } finally {
-      setSavingLead(false)
+      setSavingLead(false);
     }
   }
+
+  // Function to create payment schedule for a client
+  const createPaymentSchedule = async (
+    clientId: string,
+    clientName: string,
+    clientEmail: string,
+    clientPhone: string,
+    startDate: string,
+    tenure: number,
+    monthlyFees: number,
+  ) => {
+    try {
+      // Create a reference to the client's payment document
+      const paymentDocRef = doc(crmDb, 'clients_payments', clientId);
+      
+      // Parse the start date
+      const start = new Date(startDate);
+      
+      // Calculate the week number of the month
+      const getWeekOfMonth = (date: Date) => {
+        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+        const weekNumber = Math.ceil((date.getDate() + firstDay.getDay()) / 7);
+        return weekNumber;
+      };
+      
+      // Get week number for categorization
+      const weekNumber = getWeekOfMonth(start);
+      
+      // Set the main document with client info and payment metadata
+      await setDoc(paymentDocRef, {
+        clientId: clientId,
+        clientName: clientName,
+        clientEmail: clientEmail, 
+        clientPhone: clientPhone,
+        startDate: start,
+        tenure: tenure,
+        monthlyFees: monthlyFees,
+        weekOfMonth: weekNumber,
+        totalPaymentAmount: monthlyFees * tenure,
+        paidAmount: 0,
+        pendingAmount: monthlyFees * tenure,
+        paymentsCompleted: 0,
+        paymentsPending: tenure,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      }, { merge: true });
+      
+      // Create a batch to handle multiple write operations
+      const batch = writeBatch(crmDb);
+      
+      // Create a subcollection for each month's payment
+      for (let i = 0; i < tenure; i++) {
+        // Calculate the payment date (same day of month as start date)
+        const paymentDate = new Date(start);
+        paymentDate.setMonth(paymentDate.getMonth() + i);
+        
+        // Create a unique ID for this month's payment
+        const monthId = `month_${i + 1}`;
+        
+        // Create a reference to the subcollection document
+        const monthPaymentRef = doc(
+          collection(crmDb, 'clients_payments', clientId, 'monthly_payments'),
+          monthId
+        );
+        
+        // Set the month payment data
+        batch.set(monthPaymentRef, {
+          monthNumber: i + 1,
+          dueDate: paymentDate,
+          dueAmount: monthlyFees,
+          status: 'pending',
+          paymentMethod: '',
+          transactionId: '',
+          notes: '',
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        });
+      }
+      
+      // Commit the batch
+      await batch.commit();
+      
+      console.log(`Created payment schedule for client ${clientId} with ${tenure} months`);
+    } catch (error) {
+      console.error("Error creating payment schedule:", error);
+      throw error;
+    }
+  };
 
   // Function to handle opening a new client form
   const handleAddNewClient = () => {
@@ -530,7 +653,7 @@ const MyClientsPage = () => {
       email: '',
       phone: '',
       source: 'manual',
-      status: 'Qualified',
+      status: 'Converted',
       assignedTo: currentUserName,
       remarks: '',
       lastModified: new Date(),

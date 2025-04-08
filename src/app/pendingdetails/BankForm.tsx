@@ -14,6 +14,15 @@ interface BankFormProps {
 }
 
 const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
+  const getLabelText = (fieldType: string, loanType: string) => {
+    if (fieldType === 'accountNumber') {
+      return loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number';
+    } else if (fieldType === 'loanAmount') {
+      return loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount';
+    }
+    return '';
+  };
+
   return (
     <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 relative">
       <button
@@ -45,9 +54,8 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
             onChange={(e) => onUpdate(bank.id, 'loanType', e.target.value)}
             className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Select type</option>
+            <option value="">Select Loan Type</option>
             <option value="Personal Loan">Personal Loan</option>
-            <option value="Home Loan">Home Loan</option>
             <option value="Car Loan">Car Loan</option>
             <option value="Credit Card">Credit Card</option>
             <option value="Business Loan">Business Loan</option>
@@ -61,7 +69,7 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
             htmlFor={`bank-${bank.id}-accountNumber`}
             className="block text-sm font-medium text-gray-400 mb-1"
           >
-            {bank.loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number'}
+            {getLabelText('accountNumber', bank.loanType)}
           </label>
           <input
             id={`bank-${bank.id}-accountNumber`}
@@ -76,7 +84,7 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
             htmlFor={`bank-${bank.id}-amount`}
             className="block text-sm font-medium text-gray-400 mb-1"
           >
-            {bank.loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount'}
+            {getLabelText('loanAmount', bank.loanType)}
           </label>
           <input
             id={`bank-${bank.id}-amount`}

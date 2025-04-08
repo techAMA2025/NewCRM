@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import BankForm from './BankForm';
 
 interface EditClientDetailsModalProps {
   clientData: any;
@@ -323,73 +324,17 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
                 {clientData.banks && clientData.banks.length > 0 ? (
                   <div className="space-y-4">
                     {clientData.banks.map((bank: any) => (
-                      <div key={bank.id} className="bg-gray-750 p-4 rounded-lg border border-gray-700">
-                        <div className="flex justify-between mb-3">
-                          <h4 className="text-sm font-medium text-white">Bank Details</h4>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveBank(bank.id)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-400">Bank Name</label>
-                            <input
-                              type="text"
-                              value={bank.bankName || ''}
-                              onChange={(e) => handleUpdateBank(bank.id, 'bankName', e.target.value)}
-                              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-400">Loan Type</label>
-                            <select
-                              value={bank.loanType || ''}
-                              onChange={(e) => handleUpdateBank(bank.id, 'loanType', e.target.value)}
-                              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              <option value="">Select type</option>
-                              <option value="Personal Loan">Personal Loan</option>
-                              <option value="Home Loan">Home Loan</option>
-                              <option value="Car Loan">Car Loan</option>
-                              <option value="Credit Card">Credit Card</option>
-                              <option value="Business Loan">Business Loan</option>
-                              <option value="Education Loan">Education Loan</option>
-                              <option value="Gold Loan">Gold Loan</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-400">Account Number</label>
-                            <input
-                              type="text"
-                              value={bank.accountNumber || ''}
-                              onChange={(e) => handleUpdateBank(bank.id, 'accountNumber', e.target.value)}
-                              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-400">Loan Amount</label>
-                            <input
-                              type="text"
-                              value={bank.loanAmount || ''}
-                              onChange={(e) => handleUpdateBank(bank.id, 'loanAmount', e.target.value)}
-                              placeholder="₹"
-                              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <BankForm
+                        key={bank.id}
+                        bank={bank}
+                        onUpdate={handleUpdateBank}
+                        onRemove={handleRemoveBank}
+                      />
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 text-center">
-                    <p className="text-gray-400">No bank details added yet. Click "Add Bank" to add details.</p>
+                  <div className="bg-gray-750 p-4 rounded-lg border border-gray-700 text-center text-gray-400">
+                    No bank details added yet. Click "Add Bank" to add bank information.
                   </div>
                 )}
               </div>
