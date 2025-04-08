@@ -251,7 +251,7 @@ export default function PaymentReminderPage() {
           selectedClient.paymentsCompleted + 1 : 
           selectedClient.paymentsCompleted,
         updatedAt: Timestamp.now()
-      });
+      }); 
 
       // Reset form and refresh data
       setPaymentDialogOpen(false);
