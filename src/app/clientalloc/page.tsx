@@ -187,7 +187,7 @@ export default function ClientAllocationPage() {
     try {
       const clientDocRef = doc(db, 'clients', client.id);
       
-      // Update Firestore
+      // Update Firestore with primary advocate
       await updateDoc(clientDocRef, {
         alloc_adv: advocateName,
         alloc_adv_at: serverTimestamp(),
@@ -219,7 +219,7 @@ export default function ClientAllocationPage() {
     try {
       const clientDocRef = doc(db, 'clients', client.id);
       
-      // Update Firestore
+      // Update Firestore with secondary advocate
       await updateDoc(clientDocRef, {
         alloc_adv_secondary: advocateName,
         alloc_adv_secondary_at: serverTimestamp(),
@@ -352,9 +352,9 @@ export default function ClientAllocationPage() {
           ) : (
             <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-xl">
               <div className="p-4 border-b border-gray-800 flex justify-between items-center">
-                <h2 className="font-semibold text-lg">Unallocated Clients</h2>
+                <h2 className="font-semibold text-lg">Client Allocation</h2>
                 <div className="text-sm text-gray-400">
-                  {clients.filter(client => !client.alloc_adv).length} clients need allocation
+                  {clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).length} clients need allocation
                 </div>
               </div>
               
@@ -374,14 +374,14 @@ export default function ClientAllocationPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clients.length === 0 ? (
+                    {clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).length === 0 ? (
                       <TableRow className="border-gray-800 hover:bg-gray-800/50">
                         <TableCell colSpan={9} className="text-center py-8 text-gray-400">
-                          No clients found.
+                          All clients have been fully allocated.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      clients.map((client) => {
+                      clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).map((client) => {
                         const clientAdvocate = client.alloc_adv || "";
                         const clientSecondaryAdvocate = client.alloc_adv_secondary || "";
                         return (
