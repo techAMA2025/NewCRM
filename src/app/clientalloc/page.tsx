@@ -53,6 +53,8 @@ interface Client {
   leadId: string;
   alloc_adv?: string;
   alloc_adv_at?: any;
+  alloc_adv_secondary?: string;
+  alloc_adv_secondary_at?: any;
 }
 
 interface User {
@@ -70,6 +72,7 @@ export default function ClientAllocationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [advocates, setAdvocates] = useState<User[]>([]);
   const [selectedAdvocate, setSelectedAdvocate] = useState<string>("");
+  const [selectedSecondaryAdvocate, setSelectedSecondaryAdvocate] = useState<string>("");
   const [allocating, setAllocating] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const [toast, setToast] = useState({
@@ -122,6 +125,7 @@ export default function ClientAllocationPage() {
   const handleViewMore = (client: Client) => {
     setSelectedClient(client);
     setSelectedAdvocate(client.alloc_adv || "");
+    setSelectedSecondaryAdvocate(client.alloc_adv_secondary || "");
     setIsModalOpen(true);
   };
   
@@ -144,17 +148,21 @@ export default function ClientAllocationPage() {
     try {
       const clientDocRef = doc(db, 'clients', selectedClient.id);
       
-      // Update Firestore
+      // Update Firestore with both primary and secondary advocates
       await updateDoc(clientDocRef, {
         alloc_adv: selectedAdvocate,
         alloc_adv_at: serverTimestamp(),
+        alloc_adv_secondary: selectedSecondaryAdvocate,
+        alloc_adv_secondary_at: selectedSecondaryAdvocate ? serverTimestamp() : null,
       });
       
       // Update the local state
       const updatedClient = {
         ...selectedClient,
         alloc_adv: selectedAdvocate,
-        alloc_adv_at: new Date()
+        alloc_adv_at: new Date(),
+        alloc_adv_secondary: selectedSecondaryAdvocate,
+        alloc_adv_secondary_at: selectedSecondaryAdvocate ? new Date() : null
       };
       
       setSelectedClient(updatedClient);
@@ -202,6 +210,38 @@ export default function ClientAllocationPage() {
     } catch (error) {
       console.error("Error allocating client:", error);
       showToast(`Error allocating client: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
+    }
+  };
+
+  const handleSecondaryAdvocateChange = async (client: Client, advocateName: string) => {
+    if (!advocateName) return;
+    
+    try {
+      const clientDocRef = doc(db, 'clients', client.id);
+      
+      // Update Firestore
+      await updateDoc(clientDocRef, {
+        alloc_adv_secondary: advocateName,
+        alloc_adv_secondary_at: serverTimestamp(),
+      });
+      
+      // Update the local state
+      const updatedClient = {
+        ...client,
+        alloc_adv_secondary: advocateName,
+        alloc_adv_secondary_at: new Date()
+      };
+      
+      setClients(prevClients => 
+        prevClients.map(c => 
+          c.id === client.id ? updatedClient : c
+        )
+      );
+      
+      showToast(`Secondary advocate for ${client.name} has been set to ${advocateName}`, "success");
+    } catch (error) {
+      console.error("Error allocating secondary advocate:", error);
+      showToast(`Error allocating secondary advocate: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
     }
   };
 
@@ -328,20 +368,22 @@ export default function ClientAllocationPage() {
                       <TableHead className="text-gray-400">Monthly Income</TableHead>
                       <TableHead className="text-gray-400">Status</TableHead>
                       <TableHead className="text-gray-400">Sales Person</TableHead>
-                      <TableHead className="text-gray-400">Allocated To</TableHead>
+                      <TableHead className="text-gray-400">Primary Allocation</TableHead>
+                      <TableHead className="text-gray-400">Secondary Allocation</TableHead>
                       <TableHead className="text-gray-400 text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clients.filter(client => !client.alloc_adv).length === 0 ? (
+                    {clients.length === 0 ? (
                       <TableRow className="border-gray-800 hover:bg-gray-800/50">
-                        <TableCell colSpan={8} className="text-center py-8 text-gray-400">
-                          All clients have been allocated to advocates.
+                        <TableCell colSpan={9} className="text-center py-8 text-gray-400">
+                          No clients found.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      clients.filter(client => !client.alloc_adv).map((client) => {
+                      clients.map((client) => {
                         const clientAdvocate = client.alloc_adv || "";
+                        const clientSecondaryAdvocate = client.alloc_adv_secondary || "";
                         return (
                           <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
                             <TableCell className="font-medium text-white">{client.name}</TableCell>
@@ -378,6 +420,29 @@ export default function ClientAllocationPage() {
                                 >
                                   <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
                                     <SelectValue placeholder="Select advocate" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                                    {advocates.map((advocate) => (
+                                      <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
+                                        {advocate.firstName} {advocate.lastName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Select 
+                                  value={clientSecondaryAdvocate} 
+                                  onValueChange={(value) => {
+                                    if (value !== client.alloc_adv_secondary) {
+                                      handleSecondaryAdvocateChange(client, value);
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
+                                    <SelectValue placeholder="Select secondary" />
                                   </SelectTrigger>
                                   <SelectContent className="bg-gray-900 border-gray-700 text-white">
                                     {advocates.map((advocate) => (
