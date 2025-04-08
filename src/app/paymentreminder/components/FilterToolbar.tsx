@@ -56,11 +56,11 @@ const FilterToolbar = ({
           setCurrentPage={setCurrentPage}
         />
         
-        <PaymentFilter 
+        {/* <PaymentFilter 
           filterPaid={filterPaid} 
           setFilterPaid={setFilterPaid} 
           setCurrentPage={setCurrentPage}
-        />
+        /> */}
       </div>
       
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
