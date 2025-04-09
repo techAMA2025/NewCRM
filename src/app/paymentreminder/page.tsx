@@ -385,9 +385,9 @@ export default function PaymentReminderPage() {
                                   <td className="p-2 border-b">{client.clientName}</td>
                                   <td className="p-2 border-b">{client.clientPhone}</td>
                                   <td className="p-2 border-b">Week {client.weekOfMonth}</td>
-                                  <td className="p-2 border-b text-right">₹{client.monthlyFees.toLocaleString()}</td>
+                                  <td className="p-2 border-b text-right">₹{(client.monthlyFees || 0).toLocaleString()}</td>
                                   <td className="p-2 border-b text-right">
-                                    ₹{client.paidAmount.toLocaleString()} / ₹{client.totalPaymentAmount.toLocaleString()}
+                                    ₹{(client.paidAmount || 0).toLocaleString()} / ₹{(client.totalPaymentAmount || 0).toLocaleString()}
                                   </td>
                                   <td className="p-2 border-b text-right">
                                     <span className={`px-2 py-1 rounded text-xs 
@@ -444,7 +444,7 @@ export default function PaymentReminderPage() {
                                       <p className="text-sm text-muted-foreground">{client.clientPhone}</p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="font-medium">₹{client.monthlyFees.toLocaleString()}/month</p>
+                                      <p className="font-medium">₹{(client.monthlyFees || 0).toLocaleString()}/month</p>
                                       <p className="text-sm">
                                         {client.paymentsCompleted}/{client.tenure} payments
                                       </p>
@@ -501,23 +501,23 @@ export default function PaymentReminderPage() {
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Monthly Fee</dt>
-                        <dd className="text-base">₹{selectedClient?.monthlyFees.toLocaleString()}</dd>
+                        <dd className="text-base">₹{(selectedClient?.monthlyFees || 0).toLocaleString()}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Total Amount</dt>
-                        <dd className="text-base">₹{selectedClient?.totalPaymentAmount.toLocaleString()}</dd>
+                        <dd className="text-base">₹{(selectedClient?.totalPaymentAmount || 0).toLocaleString()}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Paid Amount</dt>
-                        <dd className="text-base">₹{selectedClient?.paidAmount.toLocaleString()}</dd>
+                        <dd className="text-base">₹{(selectedClient?.paidAmount || 0).toLocaleString()}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Pending Amount</dt>
-                        <dd className="text-base">₹{selectedClient?.pendingAmount.toLocaleString()}</dd>
+                        <dd className="text-base">₹{(selectedClient?.pendingAmount || 0).toLocaleString()}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Advance Balance</dt>
-                        <dd className="text-base">₹{selectedClient?.advanceBalance.toLocaleString()}</dd>
+                        <dd className="text-base">₹{(selectedClient?.advanceBalance || 0).toLocaleString()}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Payment Progress</dt>
