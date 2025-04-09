@@ -22,7 +22,7 @@ import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 
 // Status options
 const statusOptions = [
-  'Select Status', 
+  // 'Select Status', 
   'Interested', 
   'Not Interested', 
   'Not Answering', 
@@ -226,7 +226,13 @@ const LeadsPage = () => {
       
       // Status filter
       if (statusFilter !== 'all') {
-        result = result.filter(lead => lead.status === statusFilter);
+        if (statusFilter === '') {
+          // Filter for leads where status field doesn't exist or is null/undefined
+          result = result.filter(lead => lead.status === undefined || lead.status === null);
+        } else {
+          // Normal status filtering
+          result = result.filter(lead => lead.status === statusFilter);
+        }
       }
       
       // Salesperson filter

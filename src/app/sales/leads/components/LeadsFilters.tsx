@@ -216,6 +216,7 @@ const LeadsFilters = ({
               className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
             >
               <option value="all">All Status</option>
+              <option value="">No Status</option>
               {statusOptions.map(status => (
                 <option key={status} value={status}>{status}</option>
               ))}
