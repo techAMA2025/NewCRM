@@ -20,7 +20,7 @@ const firebaseConfig = {
   storageBucket: "amacrm-76fd1.firebasestorage.app",
 
   messagingSenderId: "1008668372239",
-
+ 
   appId: "1:1008668372239:web:03cca86d1675df6450227a",
 
   measurementId: "G-X1B7CKLRST",

@@ -89,6 +89,33 @@ export default function SuperAdminDashboard() {
   // Add state for CRM leads salesperson filter
   const [selectedLeadsSalesperson, setSelectedLeadsSalesperson] = useState<string | null>(null);
   
+  // Add state for client analytics
+  const [clientAnalytics, setClientAnalytics] = useState({
+    totalClients: 0,
+    statusDistribution: { Active: 0, Pending: 0, Inactive: 0, Converted: 0 },
+    topAdvocates: [] as {name: string, clientCount: number}[],
+    loanTypeDistribution: {} as Record<string, number>,
+    sourceDistribution: {} as Record<string, number>,
+    cityDistribution: {} as Record<string, number>,
+    totalLoanAmount: 0,
+    avgLoanAmount: 0
+  });
+
+  // Add state for payment analytics
+  const [paymentAnalytics, setPaymentAnalytics] = useState({
+    totalPaymentsAmount: 0,
+    totalPaidAmount: 0,
+    totalPendingAmount: 0,
+    completionRate: 0,
+    clientCount: 0,
+    paymentMethodDistribution: {} as Record<string, number>,
+    monthlyPaymentsData: [0, 0, 0, 0, 0, 0],
+    paymentTypeDistribution: {
+      full: 0,
+      partial: 0
+    }
+  });
+
   // Function to apply date filter
   const applyDateFilter = () => {
     setIsLoading(true);
@@ -798,6 +825,325 @@ export default function SuperAdminDashboard() {
     },
   };
 
+  // Add useEffect to fetch client analytics
+  useEffect(() => {
+    const fetchClientAnalytics = async () => {
+      try {
+        const clientsCollection = collection(db, 'clients');
+        const clientsSnapshot = await getDocs(clientsCollection);
+        
+        const analytics = {
+          totalClients: 0,
+          statusDistribution: { Active: 0, Pending: 0, Inactive: 0, Converted: 0 },
+          advocateCount: {} as Record<string, number>,
+          loanTypeDistribution: {} as Record<string, number>,
+          sourceDistribution: {} as Record<string, number>,
+          cityDistribution: {} as Record<string, number>,
+          totalLoanAmount: 0,
+          loanCount: 0
+        };
+        
+        clientsSnapshot.forEach((doc) => {
+          const client = doc.data();
+          analytics.totalClients++;
+          
+          // Count by status
+          const status = client.adv_status || client.status || 'Pending';
+          if (analytics.statusDistribution[status as keyof typeof analytics.statusDistribution] !== undefined) {
+            analytics.statusDistribution[status as keyof typeof analytics.statusDistribution]++;
+          } else {
+            analytics.statusDistribution[status as keyof typeof analytics.statusDistribution] = 1;
+          }
+          
+          // Count by advocate
+          const advocate = client.alloc_adv || 'Unassigned';
+          analytics.advocateCount[advocate] = (analytics.advocateCount[advocate] || 0) + 1;
+          
+          // Count by source
+          const source = client.source || 'Unknown';
+          analytics.sourceDistribution[source] = (analytics.sourceDistribution[source] || 0) + 1;
+          
+          // Count by city
+          const city = client.city || 'Unknown';
+          analytics.cityDistribution[city] = (analytics.cityDistribution[city] || 0) + 1;
+          
+          // Count loan types and sum loan amounts
+          if (client.banks && Array.isArray(client.banks)) {
+            client.banks.forEach((bank: any) => {
+              const loanType = bank.loanType || 'Unknown';
+              analytics.loanTypeDistribution[loanType] = (analytics.loanTypeDistribution[loanType] || 0) + 1;
+              
+              // Parse loan amount and add to total
+              if (bank.loanAmount) {
+                const cleanAmount = bank.loanAmount.replace(/,/g, '').match(/\d+/);
+                if (cleanAmount) {
+                  const amount = parseInt(cleanAmount[0], 10);
+                  if (!isNaN(amount)) {
+                    analytics.totalLoanAmount += amount;
+                    analytics.loanCount++;
+                  }
+                }
+              }
+            });
+          }
+        });
+        
+        // Sort advocates by client count to get top advocates
+        const topAdvocates = Object.entries(analytics.advocateCount)
+          .map(([name, clientCount]) => ({ name, clientCount }))
+          .sort((a, b) => b.clientCount - a.clientCount)
+          .slice(0, 5);
+        
+        // Calculate average loan amount
+        const avgLoanAmount = analytics.loanCount > 0 
+          ? Math.round(analytics.totalLoanAmount / analytics.loanCount) 
+          : 0;
+        
+        setClientAnalytics({
+          totalClients: analytics.totalClients,
+          statusDistribution: analytics.statusDistribution,
+          topAdvocates,
+          loanTypeDistribution: analytics.loanTypeDistribution,
+          sourceDistribution: analytics.sourceDistribution,
+          cityDistribution: analytics.cityDistribution,
+          totalLoanAmount: analytics.totalLoanAmount,
+          avgLoanAmount
+        });
+        
+        // Prepare data for charts
+        const statusLabels = Object.keys(analytics.statusDistribution);
+        const statusData = statusLabels.map(key => analytics.statusDistribution[key as keyof typeof analytics.statusDistribution]);
+        
+        const sourceLabels = Object.keys(analytics.sourceDistribution).slice(0, 5);
+        const sourceData = sourceLabels.map(key => analytics.sourceDistribution[key]);
+        
+        const loanTypeLabels = Object.keys(analytics.loanTypeDistribution);
+        const loanTypeData = loanTypeLabels.map(key => analytics.loanTypeDistribution[key]);
+        
+        // Update chart data for admin analytics
+        setAdminChartData({
+          labels: statusLabels,
+          datasets: [
+            {
+              label: 'Clients by Status',
+              data: statusData,
+              backgroundColor: [
+                'rgba(75, 192, 192, 0.6)',
+                'rgba(153, 102, 255, 0.6)',
+                'rgba(255, 159, 64, 0.6)',
+                'rgba(54, 162, 235, 0.6)',
+              ],
+            }
+          ],
+        });
+        
+        setLoanTypeData({
+          labels: loanTypeLabels,
+          datasets: [
+            {
+              data: loanTypeData,
+              backgroundColor: [
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 206, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(153, 102, 255, 0.7)',
+              ],
+              borderWidth: 1,
+            },
+          ],
+        });
+        
+      } catch (error) {
+        console.error("Error fetching client analytics:", error);
+      }
+    };
+    
+    fetchClientAnalytics();
+  }, []);
+  
+  // Add state for admin chart data
+  const [adminChartData, setAdminChartData] = useState({
+    labels: ['Active', 'Pending', 'Inactive', 'Converted'],
+    datasets: [
+      {
+        label: 'Clients by Status',
+        data: [0, 0, 0, 0],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.6)',
+          'rgba(153, 102, 255, 0.6)',
+          'rgba(255, 159, 64, 0.6)',
+          'rgba(54, 162, 235, 0.6)',
+        ],
+      }
+    ],
+  });
+  
+  // Add state for loan type distribution
+  const [loanTypeData, setLoanTypeData] = useState({
+    labels: ['Personal Loan', 'Business Loan', 'Home Loan', 'Other'],
+    datasets: [
+      {
+        data: [0, 0, 0, 0],
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  });
+
+  // Add useEffect to fetch payment analytics
+  useEffect(() => {
+    const fetchPaymentAnalytics = async () => {
+      try {
+        const paymentsCollection = collection(db, 'clients_payments');
+        const paymentsSnapshot = await getDocs(paymentsCollection);
+        
+        const analytics = {
+          totalPaymentsAmount: 0,
+          totalPaidAmount: 0,
+          totalPendingAmount: 0,
+          clientCount: 0,
+          paymentMethodDistribution: {} as Record<string, number>,
+          monthlyPaymentsData: [0, 0, 0, 0, 0, 0],
+          paymentTypeDistribution: {
+            full: 0,
+            partial: 0
+          }
+        };
+        
+        // Process each client payment document
+        const paymentHistoryPromises: Promise<any>[] = [];
+        
+        paymentsSnapshot.forEach(doc => {
+          const clientPayment = doc.data();
+          analytics.clientCount++;
+          analytics.totalPaymentsAmount += clientPayment.totalPaymentAmount || 0;
+          analytics.totalPaidAmount += clientPayment.paidAmount || 0;
+          analytics.totalPendingAmount += clientPayment.pendingAmount || 0;
+          
+          // Fetch payment history for each client
+          const paymentHistoryRef = collection(doc.ref, 'payment_history');
+          const promise = getDocs(paymentHistoryRef).then(historySnap => {
+            historySnap.forEach(paymentDoc => {
+              const payment = paymentDoc.data();
+              
+              // Count payment methods
+              const method = payment.paymentMethod || 'unknown';
+              analytics.paymentMethodDistribution[method] = 
+                (analytics.paymentMethodDistribution[method] || 0) + 1;
+              
+              // Count payment types
+              if (payment.type === 'partial') {
+                analytics.paymentTypeDistribution.partial++;
+              } else {
+                analytics.paymentTypeDistribution.full++;
+              }
+              
+              // Add to monthly data if timestamp exists
+              if (payment.date) {
+                const paymentDate = payment.date.toDate ? payment.date.toDate() : new Date(payment.date);
+                if (paymentDate instanceof Date && !isNaN(paymentDate.getTime())) {
+                  const paymentMonth = paymentDate.getMonth();
+                  const currentMonth = new Date().getMonth();
+                  const monthDiff = (paymentMonth - currentMonth + 12) % 12;
+                  
+                  if (monthDiff <= 5) {
+                    const index = 5 - monthDiff;
+                    analytics.monthlyPaymentsData[index] += payment.amount || 0;
+                  }
+                }
+              }
+            });
+          });
+          paymentHistoryPromises.push(promise);
+        });
+        
+        // Wait for all payment history queries to complete
+        await Promise.all(paymentHistoryPromises);
+        
+        // Calculate completion rate
+        const completionRate = analytics.totalPaymentsAmount > 0 
+          ? Math.round((analytics.totalPaidAmount / analytics.totalPaymentsAmount) * 100) 
+          : 0;
+        
+        setPaymentAnalytics({
+          ...analytics,
+          completionRate
+        });
+        
+      } catch (error) {
+        console.error("Error fetching payment analytics:", error);
+      }
+    };
+    
+    fetchPaymentAnalytics();
+  }, []);
+
+  // Prepare payment method chart data
+  const paymentMethodData = {
+    labels: Object.keys(paymentAnalytics.paymentMethodDistribution),
+    datasets: [
+      {
+        data: Object.values(paymentAnalytics.paymentMethodDistribution),
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  // Prepare monthly payment trend data
+  const monthlyPaymentData = {
+    labels: (() => {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const currentMonth = new Date().getMonth();
+      const last6MonthsLabels = [];
+      for (let i = 5; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        last6MonthsLabels.unshift(monthNames[monthIndex]);
+      }
+      return last6MonthsLabels;
+    })(),
+    datasets: [
+      {
+        label: 'Monthly Payment Collection',
+        data: paymentAnalytics.monthlyPaymentsData,
+        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.4,
+        fill: true,
+      },
+    ],
+  };
+
+  // Payment types data for doughnut chart
+  const paymentTypesData = {
+    labels: ['Full Payments', 'Partial Payments'],
+    datasets: [
+      {
+        data: [
+          paymentAnalytics.paymentTypeDistribution.full,
+          paymentAnalytics.paymentTypeDistribution.partial
+        ],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
+
   return (
     <div className="p-6 min-h-screen bg-gray-900 text-white">
       <h1 className="text-3xl font-bold mb-6">Super Admin Dashboard</h1>
@@ -1246,59 +1592,214 @@ export default function SuperAdminDashboard() {
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-white">Admin Analytics</CardTitle>
+              <CardTitle className="text-white">Client & Advocate Analytics</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
-                <Bar data={adminData} options={options} />
-              </div>
-              <div className="grid grid-cols-3 gap-4 mt-4">
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">Total Admins</p>
-                  <p className="text-2xl font-bold">24</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left column: Client status distribution */}
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-200 mb-4">Client Status Distribution</h3>
+                  <div className="h-64">
+                    <Bar data={adminChartData} options={{
+                      ...options,
+                      indexAxis: 'y' as const,
+                      plugins: {
+                        ...options.plugins,
+                        title: {
+                          display: true,
+                          text: 'Clients by Status',
+                          color: 'rgba(255, 255, 255, 0.8)',
+                        },
+                      },
+                    }} />
+                  </div>
+                  
+                  {/* Client stats cards */}
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-4 rounded-lg border border-blue-700/30 shadow-md">
+                      <p className="text-blue-300 text-sm font-medium">Total Clients</p>
+                      <p className="text-2xl font-bold text-white">{clientAnalytics.totalClients}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-4 rounded-lg border border-green-700/30 shadow-md">
+                      <p className="text-green-300 text-sm font-medium">Active Clients</p>
+                      <p className="text-2xl font-bold text-white">{clientAnalytics.statusDistribution.Active || 0}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-4 rounded-lg border border-purple-700/30 shadow-md">
+                      <p className="text-purple-300 text-sm font-medium">Avg. Loan Amount</p>
+                      <p className="text-2xl font-bold text-white">₹{clientAnalytics.avgLoanAmount.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-4 rounded-lg border border-amber-700/30 shadow-md">
+                      <p className="text-amber-300 text-sm font-medium">Total Loan Amount</p>
+                      <p className="text-2xl font-bold text-white">₹{clientAnalytics.totalLoanAmount.toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">Active Today</p>
-                  <p className="text-2xl font-bold">18</p>
-                </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-400">Admin Actions</p>
-                  <p className="text-2xl font-bold">156</p>
+                
+                {/* Right column: Loan type distribution and top advocates */}
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-200 mb-4">Loan Type Distribution</h3>
+                  <div className="h-64">
+                    <Pie data={loanTypeData} options={{
+                      ...pieOptions,
+                      plugins: {
+                        ...pieOptions.plugins,
+                        title: {
+                          display: true,
+                          text: 'Loans by Type',
+                          color: 'rgba(255, 255, 255, 0.8)',
+                        },
+                      },
+                    }} />
+                  </div>
+                  
+                  {/* Top advocates section */}
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-blue-200 mb-3">Top Advocates</h3>
+                    <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-blue-900/80 to-purple-900/80">
+                            <th className="py-3 px-4 text-left text-sm font-semibold text-blue-100">Advocate Name</th>
+                            <th className="py-3 px-4 text-right text-sm font-semibold text-blue-100">Clients</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {clientAnalytics.topAdvocates.map((advocate, index) => (
+                            <tr key={index} className={index % 2 === 0 ? "bg-gray-800/40" : "bg-gray-800/60"}>
+                              <td className="py-2.5 px-4 text-sm text-gray-200">{advocate.name}</td>
+                              <td className="py-2.5 px-4 text-sm text-right text-gray-200">
+                                <span className="px-2 py-1 bg-blue-900/40 rounded-md text-blue-200">
+                                  {advocate.clientCount}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        
-
-        {/* Advocate Analytics Section */}
+        {/* Update the Advocate Analytics Section */}
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-white">Advocate Analytics</CardTitle>
+              <CardTitle className="text-white">Payment Analytics</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex">
-                <div className="w-1/2 h-80">
-                  <Pie data={advocateData} options={pieOptions} />
+              {/* Payment metrics row */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-4 rounded-lg border border-blue-700/30 shadow-md">
+                  <p className="text-blue-300 text-sm font-medium">Total Clients</p>
+                  <p className="text-2xl font-bold text-white">{paymentAnalytics.clientCount}</p>
                 </div>
-                <div className="w-1/2 grid grid-cols-2 gap-4">
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <p className="text-gray-400">Total Advocates</p>
-                    <p className="text-2xl font-bold">128</p>
+                <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-4 rounded-lg border border-green-700/30 shadow-md">
+                  <p className="text-green-300 text-sm font-medium">Collected Amount</p>
+                  <p className="text-2xl font-bold text-white">₹{paymentAnalytics.totalPaidAmount.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-4 rounded-lg border border-amber-700/30 shadow-md">
+                  <p className="text-amber-300 text-sm font-medium">Pending Amount</p>
+                  <p className="text-2xl font-bold text-white">₹{paymentAnalytics.totalPendingAmount.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-4 rounded-lg border border-purple-700/30 shadow-md">
+                  <p className="text-purple-300 text-sm font-medium">Collection Rate</p>
+                  <div className="flex items-center">
+                    <p className="text-2xl font-bold text-white">{paymentAnalytics.completionRate}%</p>
+                    <div className="ml-2 h-1.5 w-16 bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full" 
+                        style={{ width: `${paymentAnalytics.completionRate}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <p className="text-gray-400">New This Month</p>
-                    <p className="text-2xl font-bold">15</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Monthly payment trends */}
+                <div className="md:w-1/2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl">
+                  <h3 className="text-lg font-semibold text-blue-200 mb-3">Monthly Collection Trends</h3>
+                  <div className="h-64">
+                    <Line 
+                      data={monthlyPaymentData} 
+                      options={{
+                        ...options,
+                        plugins: {
+                          ...options.plugins,
+                          title: {
+                            display: true,
+                            text: 'Payment Collections (Last 6 Months)',
+                            color: 'rgba(255, 255, 255, 0.8)',
+                          },
+                        },
+                      }} 
+                    />
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <p className="text-gray-400">Top Performer</p>
-                    <p className="text-2xl font-bold">Sarah J.</p>
+                </div>
+
+                {/* Payment methods and types */}
+                <div className="md:w-1/2 flex flex-col gap-6">
+                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex-1">
+                    <h3 className="text-lg font-semibold text-blue-200 mb-3">Payment Methods</h3>
+                    <div className="h-48">
+                      <Pie 
+                        data={paymentMethodData} 
+                        options={{
+                          ...pieOptions,
+                          plugins: {
+                            ...pieOptions.plugins,
+                            title: {
+                              display: true,
+                              text: 'Payment Methods Distribution',
+                              color: 'rgba(255, 255, 255, 0.8)',
+                            },
+                          },
+                        }} 
+                      />
+                    </div>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <p className="text-gray-400">Retention Rate</p>
-                    <p className="text-2xl font-bold">92%</p>
+                  
+                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex-1">
+                    <h3 className="text-lg font-semibold text-blue-200 mb-3">Payment Types</h3>
+                    <div className="flex">
+                      <div className="h-40 w-40">
+                        <Pie 
+                          data={paymentTypesData} 
+                          options={{
+                            ...pieOptions,
+                            cutout: '50%', // Make it a doughnut chart
+                            plugins: {
+                              ...pieOptions.plugins,
+                              title: {
+                                display: false,
+                              },
+                            },
+                          }} 
+                        />
+                      </div>
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="grid grid-cols-1 gap-2 w-full">
+                          <div className="flex items-center justify-between bg-blue-900/30 p-2 rounded-lg">
+                            <span className="text-blue-300">Full Payments:</span>
+                            <span className="font-semibold text-white">{paymentAnalytics.paymentTypeDistribution.full}</span>
+                          </div>
+                          <div className="flex items-center justify-between bg-yellow-900/30 p-2 rounded-lg">
+                            <span className="text-yellow-300">Partial Payments:</span>
+                            <span className="font-semibold text-white">{paymentAnalytics.paymentTypeDistribution.partial}</span>
+                          </div>
+                          <div className="flex items-center justify-between bg-gray-700/50 p-2 rounded-lg">
+                            <span className="text-gray-300">Total Transactions:</span>
+                            <span className="font-semibold text-white">
+                              {paymentAnalytics.paymentTypeDistribution.full + paymentAnalytics.paymentTypeDistribution.partial}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

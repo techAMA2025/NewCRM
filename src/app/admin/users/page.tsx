@@ -461,7 +461,7 @@ const UserManagementPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.phoneNumber || '—'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          user.status === 'active' ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'
+                          user.status === 'active' ? 'bg-emerald-900 text-emerald-200' : 'bg-pink-900 text-pink-200'
                         }`}>
                           {user.status || 'active'}
                         </span>
