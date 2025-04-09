@@ -18,6 +18,7 @@ interface User {
   phoneNumber?: string
   uid: string
   createdAt: Date
+  status: string
 }
 
 // Define new user form data interface
@@ -28,6 +29,7 @@ interface NewUserForm {
   lastName: string
   role: string
   phoneNumber: string
+  status: string
 }
 
 const UserManagementPage = () => {
@@ -46,6 +48,7 @@ const UserManagementPage = () => {
     lastName: '',
     role: 'sales', // Default role
     phoneNumber: '',
+    status: 'active', // Default status
   })
 
   // Get user role on component mount
@@ -115,6 +118,7 @@ const UserManagementPage = () => {
         lastName: newUser.lastName,
         role: newUser.role,
         phoneNumber: newUser.phoneNumber,
+        status: newUser.status,
         createdAt: new Date(),
       })
       
@@ -126,6 +130,7 @@ const UserManagementPage = () => {
         lastName: '',
         role: 'sales',
         phoneNumber: '',
+        status: 'active',
       })
       
       // Refresh user list
@@ -178,6 +183,12 @@ const UserManagementPage = () => {
     e.preventDefault();
     if (!editingUser) return;
     
+    // Prevent changing status of overlord users
+    if (editingUser.role === 'overlord' && editingUser.status !== 'active') {
+      setError('Cannot change status of Overlord users - they must remain active');
+      return;
+    }
+    
     setLoading(true);
     try {
       await updateDoc(doc(db, 'users', editingUser.id), {
@@ -186,6 +197,7 @@ const UserManagementPage = () => {
         email: editingUser.email,
         role: editingUser.role,
         phoneNumber: editingUser.phoneNumber || '',
+        status: editingUser.status,
       });
       
       // Update user in local state
@@ -238,7 +250,7 @@ const UserManagementPage = () => {
               </svg>
               Create New User
             </h2>
-          </div>
+          </div> 
           <form onSubmit={handleCreateUser} className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -309,6 +321,19 @@ const UserManagementPage = () => {
                   <option value="advocate">Advocate</option>
                   <option value="sales">Sales</option>
                   <option value="overlord">Overlord</option>
+                </select>
+              </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-300">Status</label>
+                <select
+                  name="status"
+                  value={newUser.status}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                  required
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
                 </select>
               </div>
             </div>
@@ -399,6 +424,9 @@ const UserManagementPage = () => {
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Phone
                     </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
                     <th className="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Actions
                     </th>
@@ -431,6 +459,13 @@ const UserManagementPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.phoneNumber || '—'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          user.status === 'active' ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'
+                        }`}>
+                          {user.status || 'active'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button 
                           onClick={() => setEditingUser(user)}
@@ -550,6 +585,23 @@ const UserManagementPage = () => {
                       <option value="sales">Sales</option>
                       <option value="overlord">Overlord</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-300">Status</label>
+                    <select
+                      name="status"
+                      value={editingUser.status || 'active'}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                      required
+                      disabled={editingUser.role === 'overlord'}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    {editingUser.role === 'overlord' && (
+                      <p className="mt-1 text-xs text-purple-400">Overlord status cannot be changed</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-6">

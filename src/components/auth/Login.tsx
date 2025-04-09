@@ -23,7 +23,7 @@ const Login = () => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Get user data from Firestore to retrieve role
+      // Get user data from Firestore to retrieve role and status
       const q = query(collection(db, 'users'), where('uid', '==', user.uid))
       const querySnapshot = await getDocs(q)
       
@@ -31,9 +31,17 @@ const Login = () => {
         throw new Error('User profile not found')
       }
       
-      // Get the user's role from their Firestore document
+      // Get the user's role and status from their Firestore document
       const userData = querySnapshot.docs[0].data()
       const userRole = userData.role
+      const userStatus = userData.status || 'active' // Default to active for backwards compatibility
+      
+      // Check if user is inactive
+      if (userStatus === 'inactive') {
+        // Sign out the user since they aren't allowed to log in
+        await auth.signOut()
+        throw new Error('Your account is inactive. Please contact an administrator for assistance.')
+      }
 
       // Store user info in localStorage for persistence
       localStorage.setItem('userRole', userRole)
@@ -116,4 +124,4 @@ const Login = () => {
   )
 }
 
-export default Login 
+export default Login  
