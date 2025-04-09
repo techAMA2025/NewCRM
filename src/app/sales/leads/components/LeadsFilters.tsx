@@ -217,9 +217,11 @@ const LeadsFilters = ({
             >
               <option value="all">All Status</option>
               <option value="">No Status</option>
-              {statusOptions.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
+              {statusOptions
+                .filter(status => status !== 'No Status')
+                .map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
             </select>
           </div>
           

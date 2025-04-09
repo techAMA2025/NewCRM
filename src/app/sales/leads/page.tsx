@@ -22,7 +22,7 @@ import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 
 // Status options
 const statusOptions = [
-  'No Status', 
+  // 'No Status', 
   'Interested', 
   'Not Interested', 
   'Not Answering', 
