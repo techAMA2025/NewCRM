@@ -62,6 +62,7 @@ type PaymentHistory = {
   requestDate: Timestamp;
   payment_status: string;
   requestedBy: string;
+  approved_by: string;
   dueDate: Timestamp;
 }
 
@@ -293,7 +294,7 @@ export function ClientDetailsModal({
                             <th className="text-left p-2 border-b">Month</th>
                             <th className="text-right p-2 border-b">Amount</th>
                             <th className="text-center p-2 border-b">Status</th>
-                            <th className="text-left p-2 border-b">Requested By</th>
+                            <th className="text-left p-2 border-b">Approved By</th>
                             <th className="text-left p-2 border-b">Notes</th>
                           </tr>
                         </thead>
@@ -310,7 +311,7 @@ export function ClientDetailsModal({
                                     Approved
                                   </span>
                                 </td>
-                                <td className="p-2 border-b">{payment.requestedBy || '-'}</td>
+                                <td className="p-2 border-b">{payment.approved_by || '-'}</td>
                                 <td className="p-2 border-b">{payment.notes || '-'}</td>
                               </tr>
                             ))}

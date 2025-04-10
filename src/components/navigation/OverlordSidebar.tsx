@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut, FiUserPlus, FiShare2, FiBriefcase } from 'react-icons/fi';
+import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut, FiUserPlus, FiShare2, FiBriefcase, FiCalendar } from 'react-icons/fi';
 import { FaMoneyBillWave } from 'react-icons/fa';
 import { getAuth, signOut } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
@@ -51,6 +51,7 @@ const OverlordSidebar: React.FC = () => {
     { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads' },
     { href: '/targets', icon: <FiClipboard />, label: 'Targets' },
     { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'Payment Requests' },
+    { href: '/monthlypayreq', icon: <FiCalendar />, label: 'Monthly Payment Requests' },
     { href: '/clients', icon: <FiBriefcase />, label: 'Clients' },
     { href: '/clientalloc', icon: <FiUserPlus />, label: 'Client Allocation' },
   ];

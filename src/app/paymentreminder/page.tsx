@@ -509,7 +509,7 @@ export default function PaymentReminderPage() {
         onOpenChange={setClientDetailsOpen}
         client={selectedClient}
         monthlyPayments={monthlyPayments}
-        paymentHistory={paymentHistory}
+        paymentHistory={paymentHistory as any}
         paymentRequests={clientPaymentRequests}
         onRecordPayment={(monthNumber, amount) => {
           setPaymentFormData({
