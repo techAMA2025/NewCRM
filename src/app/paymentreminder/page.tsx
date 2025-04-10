@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
   getDocs, 
@@ -80,14 +80,34 @@ type MonthlyPayment = {
 }
 
 type PaymentHistory = {
-  amount: number;
-  createdAt: Timestamp;
-  date: Timestamp;
+  id: string;
+  clientId: string;
+  clientName: string;
   monthNumber: number;
+  requestedAmount: number;
+  dueAmount: number;
+  paidAmount: number;
   notes: string;
-  paymentMethod: string;
-  transactionId: string;
-  type: 'full' | 'partial';
+  requestDate: Timestamp;
+  payment_status: string;
+  requestedBy: string;
+  dueDate: Timestamp;
+}
+
+// Update the PaymentRequest type definition
+type PaymentRequest = {
+  id: string;
+  clientId: string;
+  clientName: string;
+  monthNumber: number;
+  requestedAmount: number;
+  dueAmount: number;
+  paidAmount: number;
+  notes: string;
+  requestDate: Timestamp;
+  payment_status: string;
+  requestedBy: string;
+  dueDate: Timestamp; // Make dueDate required instead of optional
 }
 
 export default function PaymentReminderPage() {
@@ -107,30 +127,63 @@ export default function PaymentReminderPage() {
   });
   const [clientDetailsOpen, setClientDetailsOpen] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [clientPaymentRequests, setClientPaymentRequests] = useState<PaymentRequest[]>([]);
 
-  // Fetch all clients
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const clientsRef = collection(db, 'clients_payments');
-        const clientsSnapshot = await getDocs(clientsRef);
-        const clientsList: Client[] = [];
-        
-        clientsSnapshot.forEach((doc) => {
-          clientsList.push({ clientId: doc.id, ...doc.data() } as Client);
-        });
-        
-        setClients(clientsList);
-      } catch (error) {
-        console.error('Error fetching clients:', error);
-        toast.error('Failed to load clients');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchClients();
+  // Move fetchClients outside useEffect and make it memoized with useCallback
+  const fetchClients = useCallback(async () => {
+    try {
+      setLoading(true);
+      const clientsRef = collection(db, 'clients_payments');
+      const clientsSnapshot = await getDocs(clientsRef);
+      const clientsList: Client[] = [];
+      
+      clientsSnapshot.forEach((doc) => {
+        clientsList.push({ clientId: doc.id, ...doc.data() } as Client);
+      });
+      
+      setClients(clientsList);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      toast.error('Failed to load clients');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Remove the duplicate implementation inside useEffect
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  // Function to fetch payment requests
+  const fetchPaymentRequests = useCallback(async () => {
+    try {
+      const currentUser = localStorage.getItem('userName');
+      if (!currentUser) return;
+
+      const q = query(
+        collection(db, 'monthly_pay_req'),
+        where('requestedBy', '==', currentUser)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const requests = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as PaymentRequest));
+      
+      setPaymentRequests(requests);
+    } catch (error) {
+      console.error('Error fetching payment requests:', error);
+    }
+  }, []);
+
+  // Add the payment requests fetch to your useEffect
+  useEffect(() => {
+    fetchClients();
+    fetchPaymentRequests();
+  }, [fetchClients, fetchPaymentRequests]);
 
   // Fetch monthly payments for selected client
   const fetchMonthlyPayments = async (clientId: string) => {
@@ -180,29 +233,42 @@ export default function PaymentReminderPage() {
     }
   };
 
-  const fetchPaymentHistory = async (clientId: string) => {
+  // Update the function to fetch payment history with correct case sensitivity
+  const fetchPaymentHistory = useCallback(async (clientId: any) => {
     try {
-      const historyRef = collection(db, `clients_payments/${clientId}/payment_history`);
-      const historyQuery = query(historyRef, orderBy('date', 'desc'));
-      const historySnapshot = await getDocs(historyQuery);
+      if (!clientId) return;
       
-      const historyList: PaymentHistory[] = [];
-      historySnapshot.forEach((doc) => {
-        historyList.push(doc.data() as PaymentHistory);
-      });
+      // Query the monthly_pay_req collection for approved payments
+      // Note the lowercase "approved" to match the database value
+      const q = query(
+        collection(db, 'monthly_pay_req'),
+        where('clientId', '==', clientId),
+        where('payment_status', '==', 'approved')
+      );
       
-      setPaymentHistory(historyList);
+      const querySnapshot = await getDocs(q);
+      const approvedPayments = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      console.log('Approved payments found:', approvedPayments.length); // Debugging
+      setPaymentHistory(approvedPayments as PaymentHistory[]);
     } catch (error) {
       console.error('Error fetching payment history:', error);
-      toast.error('Failed to load payment history');
     }
-  };
+  }, [db]);
 
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client);
     setClientDetailsOpen(true);
     fetchMonthlyPayments(client.clientId);
     fetchPaymentHistory(client.clientId);
+    // Filter payment requests for this client
+    const filteredRequests = paymentRequests.filter(
+      request => request.clientId === client.clientId
+    );
+    setClientPaymentRequests(filteredRequests);
   };
 
   const handleRecordPayment = async () => {
@@ -212,48 +278,25 @@ export default function PaymentReminderPage() {
         return;
       }
 
-      const monthRef = doc(
-        db, 
-        `clients_payments/${selectedClient.clientId}/monthly_payments`, 
-        `month_${paymentFormData.monthNumber}`
-      );
+      // Get the current user's name from localStorage
+      const requestedBy = localStorage.getItem('userName') || 'Unknown User';
 
-      const monthDoc = await getDoc(monthRef);
-      const currentPaidAmount = monthDoc.exists() ? (monthDoc.data().paidAmount || 0) : 0;
-      const newPaidAmount = currentPaidAmount + paymentFormData.amount;
-
-      await updateDoc(monthRef, {
-        paidAmount: newPaidAmount,
-        status: newPaidAmount >= monthDoc.data()?.dueAmount ? 'paid' : 'partial',
-        paymentMethod: paymentFormData.paymentMethod,
-        transactionId: paymentFormData.transactionId || '',
-        updatedAt: Timestamp.now()
-      });
-
-      // Add to payment history
-      await addDoc(collection(db, `clients_payments/${selectedClient.clientId}/payment_history`), {
-        amount: paymentFormData.amount,
+      // Add to monthly_pay_req collection
+      await addDoc(collection(db, 'monthly_pay_req'), {
+        clientId: selectedClient.clientId,
+        clientName: selectedClient.clientName,
         monthNumber: paymentFormData.monthNumber,
-        paymentMethod: paymentFormData.paymentMethod,
-        transactionId: paymentFormData.transactionId || '',
+        dueDate: monthlyPayments.find(m => m.monthNumber === paymentFormData.monthNumber)?.dueDate || Timestamp.now(),
+        dueAmount: monthlyPayments.find(m => m.monthNumber === paymentFormData.monthNumber)?.dueAmount || 0,
+        paidAmount: monthlyPayments.find(m => m.monthNumber === paymentFormData.monthNumber)?.paidAmount || 0,
+        requestedAmount: paymentFormData.amount,
         notes: paymentFormData.notes || '',
-        date: Timestamp.now(),
-        createdAt: Timestamp.now(),
-        type: newPaidAmount >= monthDoc.data()?.dueAmount ? 'full' : 'partial'
+        requestDate: Timestamp.now(),
+        payment_status: "Not approved",
+        requestedBy: requestedBy
       });
 
-      // Update client document
-      const clientRef = doc(db, 'clients_payments', selectedClient.clientId);
-      await updateDoc(clientRef, {
-        paidAmount: selectedClient.paidAmount + paymentFormData.amount,
-        pendingAmount: selectedClient.pendingAmount - paymentFormData.amount,
-        paymentsCompleted: newPaidAmount >= monthDoc.data()?.dueAmount ? 
-          selectedClient.paymentsCompleted + 1 : 
-          selectedClient.paymentsCompleted,
-        updatedAt: Timestamp.now()
-      }); 
-
-      // Reset form and refresh data
+      // Reset form and close dialog
       setPaymentDialogOpen(false);
       setPaymentFormData({
         amount: 0,
@@ -263,14 +306,10 @@ export default function PaymentReminderPage() {
         notes: ''
       });
       
-      // Refresh data
-      fetchMonthlyPayments(selectedClient.clientId);
-      fetchPaymentHistory(selectedClient.clientId);
-      
-      toast.success('Payment recorded successfully');
+      toast.success('Payment request sent successfully');
     } catch (error) {
-      console.error('Error recording payment:', error);
-      toast.error('Failed to record payment');
+      console.error('Error sending payment request:', error);
+      toast.error('Failed to send payment request');
     }
   };
 
@@ -465,181 +504,28 @@ export default function PaymentReminderPage() {
         </div>
       </div>
 
-      <Dialog open={clientDetailsOpen} onOpenChange={setClientDetailsOpen}>
-        <DialogContent className="max-w-[90%] w-[1200px] max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">{selectedClient?.clientName}</DialogTitle>
-            <DialogDescription>Client Details and Payment History</DialogDescription>
-          </DialogHeader>
-          
-          <div className="mt-6">
-            <Tabs defaultValue="details">
-              <TabsList className="mb-4">
-                <TabsTrigger value="details">Client Details</TabsTrigger>
-                <TabsTrigger value="schedule">Payment Schedule</TabsTrigger>
-                <TabsTrigger value="history">Payment History</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="details">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Client Information</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <dl className="grid grid-cols-2 gap-4">
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Email</dt>
-                        <dd className="text-base">{selectedClient?.clientEmail}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
-                        <dd className="text-base">{selectedClient?.clientPhone}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Start Date</dt>
-                        <dd className="text-base">{formatDate(selectedClient?.startDate)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Monthly Fee</dt>
-                        <dd className="text-base">₹{(selectedClient?.monthlyFees || 0).toLocaleString()}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Total Amount</dt>
-                        <dd className="text-base">₹{(selectedClient?.totalPaymentAmount || 0).toLocaleString()}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Paid Amount</dt>
-                        <dd className="text-base">₹{(selectedClient?.paidAmount || 0).toLocaleString()}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Pending Amount</dt>
-                        <dd className="text-base">₹{(selectedClient?.pendingAmount || 0).toLocaleString()}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Advance Balance</dt>
-                        <dd className="text-base">₹{(selectedClient?.advanceBalance || 0).toLocaleString()}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Payment Progress</dt>
-                        <dd className="text-base">{selectedClient?.paymentsCompleted}/{selectedClient?.tenure} months</dd>
-                      </div>
-                    </dl>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="schedule">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Payment Schedule</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr>
-                            <th className="text-left p-2 border-b">Month</th>
-                            <th className="text-left p-2 border-b">Due Date</th>
-                            <th className="text-right p-2 border-b">Due Amount</th>
-                            <th className="text-right p-2 border-b">Paid Amount</th>
-                            <th className="text-center p-2 border-b">Status</th>
-                            <th className="text-center p-2 border-b">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {monthlyPayments.map((payment) => (
-                            <tr key={payment.monthNumber} className="hover:bg-muted/50">
-                              <td className="p-2 border-b">Month {payment.monthNumber}</td>
-                              <td className="p-2 border-b">{formatDate(payment.dueDate)}</td>
-                              <td className="p-2 border-b text-right">₹{payment.dueAmount.toLocaleString()}</td>
-                              <td className="p-2 border-b text-right">₹{payment.paidAmount.toLocaleString()}</td>
-                              <td className="p-2 border-b text-center">
-                                <span className={`px-2 py-1 rounded text-xs 
-                                  ${payment.status === 'paid' ? 'bg-green-100 text-green-800' : 
-                                    payment.status === 'partial' ? 'bg-yellow-100 text-yellow-800' : 
-                                    'bg-red-100 text-red-800'}`}>
-                                  {payment.status === 'paid' ? 'Paid' : 
-                                   payment.status === 'partial' ? 'Partial' : 'Pending'}
-                                </span>
-                              </td>
-                              <td className="p-2 border-b text-center">
-                                {payment.status !== 'paid' && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => {
-                                      setPaymentFormData({
-                                        ...paymentFormData,
-                                        monthNumber: payment.monthNumber,
-                                        amount: payment.dueAmount - payment.paidAmount
-                                      });
-                                      setPaymentDialogOpen(true);
-                                    }}
-                                  >
-                                    Pay
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="history">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Payment History</CardTitle>
-                    <CardDescription>Record of all payments made</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr>
-                            <th className="text-left p-2 border-b">Date</th>
-                            <th className="text-left p-2 border-b">Month</th>
-                            <th className="text-right p-2 border-b">Amount</th>
-                            <th className="text-left p-2 border-b">Method</th>
-                            <th className="text-left p-2 border-b">Transaction ID</th>
-                            <th className="text-left p-2 border-b">Type</th>
-                            <th className="text-left p-2 border-b">Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paymentHistory.map((payment, index) => (
-                            <tr key={index} className="hover:bg-muted/50">
-                              <td className="p-2 border-b">{formatDate(payment.date)}</td>
-                              <td className="p-2 border-b">Month {payment.monthNumber}</td>
-                              <td className="p-2 border-b text-right">₹{payment.amount.toLocaleString()}</td>
-                              <td className="p-2 border-b capitalize">{payment.paymentMethod}</td>
-                              <td className="p-2 border-b">{payment.transactionId || '-'}</td>
-                              <td className="p-2 border-b capitalize">{payment.type}</td>
-                              <td className="p-2 border-b">{payment.notes || '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-
-            <div className="mt-6">
-              <Button 
-                className="w-full"
-                onClick={() => setPaymentDialogOpen(true)}
-              >
-                Record New Payment
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ClientDetailsModal
+        open={clientDetailsOpen}
+        onOpenChange={setClientDetailsOpen}
+        client={selectedClient}
+        monthlyPayments={monthlyPayments}
+        paymentHistory={paymentHistory}
+        paymentRequests={clientPaymentRequests}
+        onRecordPayment={(monthNumber, amount) => {
+          setPaymentFormData({
+            ...paymentFormData,
+            monthNumber,
+            amount
+          });
+          setPaymentDialogOpen(true);
+        }}
+        formatDate={formatDate}
+        paymentDialogOpen={paymentDialogOpen}
+        setPaymentDialogOpen={setPaymentDialogOpen}
+        paymentFormData={paymentFormData}
+        setPaymentFormData={setPaymentFormData}
+        handleRecordPayment={handleRecordPayment}
+      />
 
       <PaymentRecordModal 
         open={paymentDialogOpen}

@@ -51,14 +51,32 @@ type MonthlyPayment = {
 }
 
 type PaymentHistory = {
-  amount: number;
-  createdAt: Timestamp;
-  date: Timestamp;
+  id: string;
+  clientId: string;
+  clientName: string;
+  monthNumber: number;
+  requestedAmount: number;
+  dueAmount: number;
+  paidAmount: number;
+  notes: string;
+  requestDate: Timestamp;
+  payment_status: string;
+  requestedBy: string;
+  dueDate: Timestamp;
+}
+
+type PaymentRequest = {
+  clientId: string;
+  clientName: string;
+  dueAmount: number;
+  dueDate: Timestamp;
   monthNumber: number;
   notes: string;
-  paymentMethod: string;
-  transactionId: string;
-  type: 'full' | 'partial';
+  paidAmount: number;
+  payment_status: string;
+  requestDate: Timestamp;
+  requestedAmount: number;
+  requestedBy: string;
 }
 
 interface ClientDetailsModalProps {
@@ -67,6 +85,7 @@ interface ClientDetailsModalProps {
   client: Client | null;
   monthlyPayments: MonthlyPayment[];
   paymentHistory: PaymentHistory[];
+  paymentRequests: PaymentRequest[];
   onRecordPayment: (monthNumber: number, amount: number) => void;
   formatDate: (timestamp?: Timestamp) => string;
   paymentDialogOpen: boolean;
@@ -88,6 +107,7 @@ export function ClientDetailsModal({
   client,
   monthlyPayments,
   paymentHistory,
+  paymentRequests,
   onRecordPayment,
   formatDate,
   paymentDialogOpen,
@@ -150,7 +170,7 @@ export function ClientDetailsModal({
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Advance Balance</dt>
-                        <dd className="text-base">₹{client?.advanceBalance.toLocaleString()}</dd>
+                        <dd className="text-base">₹{(client?.advanceBalance ?? 0).toLocaleString()}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Payment Progress</dt>
@@ -214,6 +234,46 @@ export function ClientDetailsModal({
                         </tbody>
                       </table>
                     </div>
+                    
+                    {/* Payment Requests Section */}
+                    {paymentRequests.length > 0 && (
+                      <>
+                        <h3 className="text-lg font-medium mt-8 mb-4">Your Payment Requests</h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr>
+                                <th className="text-left p-2 border-b">Month</th>
+                                <th className="text-left p-2 border-b">Request Date</th>
+                                <th className="text-right p-2 border-b">Requested Amount</th>
+                                <th className="text-center p-2 border-b">Status</th>
+                                <th className="text-left p-2 border-b">Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paymentRequests
+                                .sort((a, b) => b.requestDate.toMillis() - a.requestDate.toMillis())
+                                .map((request, index) => (
+                                  <tr key={index} className="hover:bg-muted/50">
+                                    <td className="p-2 border-b">Month {request.monthNumber}</td>
+                                    <td className="p-2 border-b">{formatDate(request.requestDate)}</td>
+                                    <td className="p-2 border-b text-right">₹{request.requestedAmount.toLocaleString()}</td>
+                                    <td className="p-2 border-b text-center">
+                                      <span className={`px-2 py-1 rounded text-xs 
+                                        ${request.payment_status === 'approved' ? 'bg-green-100 text-green-800' : 
+                                          request.payment_status === 'rejected' ? 'bg-red-100 text-red-800' : 
+                                          'bg-red-100 text-red-800'}`}>
+                                        {request.payment_status.charAt(0).toUpperCase() + request.payment_status.slice(1)}
+                                      </span>
+                                    </td>
+                                    <td className="p-2 border-b">{request.notes || '-'}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -222,33 +282,35 @@ export function ClientDetailsModal({
                 <Card>
                   <CardHeader>
                     <CardTitle>Payment History</CardTitle>
-                    <CardDescription>Record of all payments made</CardDescription>
+                    <CardDescription>Record of approved payment requests</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr>
-                            <th className="text-left p-2 border-b">Date</th>
+                            <th className="text-left p-2 border-b">Request Date</th>
                             <th className="text-left p-2 border-b">Month</th>
                             <th className="text-right p-2 border-b">Amount</th>
-                            <th className="text-left p-2 border-b">Method</th>
-                            <th className="text-left p-2 border-b">Transaction ID</th>
-                            <th className="text-left p-2 border-b">Type</th>
+                            <th className="text-center p-2 border-b">Status</th>
+                            <th className="text-left p-2 border-b">Requested By</th>
                             <th className="text-left p-2 border-b">Notes</th>
                           </tr>
                         </thead>
                         <tbody>
                           {[...paymentHistory]
-                            .sort((a, b) => b.date.toMillis() - a.date.toMillis())
+                            .sort((a, b) => b.requestDate.toMillis() - a.requestDate.toMillis())
                             .map((payment, index) => (
                               <tr key={index} className="hover:bg-muted/50">
-                                <td className="p-2 border-b">{formatDate(payment.date)}</td>
+                                <td className="p-2 border-b">{formatDate(payment.requestDate)}</td>
                                 <td className="p-2 border-b">Month {payment.monthNumber}</td>
-                                <td className="p-2 border-b text-right">₹{payment.amount.toLocaleString()}</td>
-                                <td className="p-2 border-b capitalize">{payment.paymentMethod}</td>
-                                <td className="p-2 border-b">{payment.transactionId || '-'}</td>
-                                <td className="p-2 border-b capitalize">{payment.type}</td>
+                                <td className="p-2 border-b text-right">₹{payment.requestedAmount.toLocaleString()}</td>
+                                <td className="p-2 border-b text-center">
+                                  <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
+                                    Approved
+                                  </span>
+                                </td>
+                                <td className="p-2 border-b">{payment.requestedBy || '-'}</td>
                                 <td className="p-2 border-b">{payment.notes || '-'}</td>
                               </tr>
                             ))}
@@ -260,14 +322,14 @@ export function ClientDetailsModal({
               </TabsContent>
             </Tabs>
 
-            <div className="mt-6">
+            {/* <div className="mt-6">
               <Button 
                 className="w-full"
                 onClick={() => onRecordPayment(1, client?.monthlyFees || 0)}
               >
                 Record New Payment
               </Button>
-            </div>
+            </div> */}
           </div>
         </DialogContent>
       </Dialog>

@@ -27,9 +27,9 @@ const AdvocateSidebar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/advocate/cases" className={`flex items-center px-6 py-3 hover:bg-purple-800 ${isActive('/advocate/cases')}`}>
+            <Link href="/paymentreminder" className={`flex items-center px-6 py-3 hover:bg-purple-800 ${isActive('/advocate/cases')}`}>
               <FaFolder className="mr-3" />
-              <span>Case Management</span>
+              <span>Payments</span>
             </Link>
           </li>
           <li>

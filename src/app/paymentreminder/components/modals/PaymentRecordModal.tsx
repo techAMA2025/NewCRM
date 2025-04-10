@@ -2,16 +2,12 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Timestamp } from "firebase/firestore";
 
 interface PaymentFormData {
   amount: number;
   monthNumber: number;
-  paymentMethod: string;
-  transactionId?: string;
   notes?: string;
 }
 
@@ -55,9 +51,9 @@ export function PaymentRecordModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>Request Payment</DialogTitle>
           <DialogDescription>
-            {clientName ? `Enter payment details for ${clientName}` : 'Enter payment details'}
+            {clientName ? `Send payment request for ${clientName}` : 'Send payment request'}
           </DialogDescription>
         </DialogHeader>
 
@@ -72,36 +68,6 @@ export function PaymentRecordModal({
               min={0}
               step={0.01}
               placeholder="Enter amount"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Payment Method*</label>
-            <Select
-              value={formData.paymentMethod}
-              onValueChange={(value) => updateFormData('paymentMethod', value)}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select payment method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="upi">UPI</SelectItem>
-                <SelectItem value="bank">Bank Transfer</SelectItem>
-                <SelectItem value="cheque">Cheque</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Transaction ID (Optional)
-            </label>
-            <Input
-              value={formData.transactionId || ''}
-              onChange={(e) => updateFormData('transactionId', e.target.value)}
-              placeholder="Enter transaction ID if applicable"
             />
           </div>
 
@@ -136,9 +102,9 @@ export function PaymentRecordModal({
           </Button>
           <Button 
             onClick={onSubmit}
-            disabled={!formData.amount || !formData.paymentMethod}
+            disabled={!formData.amount}
           >
-            Record Payment
+            Send Request
           </Button>
         </DialogFooter>
       </DialogContent>
