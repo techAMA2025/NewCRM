@@ -51,6 +51,7 @@ import toast from 'react-hot-toast';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
 import { ClientDetailsModal } from '@/app/paymentreminder/components/modals/ClientDetailsModal';
 import { PaymentRecordModal } from './components/modals/PaymentRecordModal';
+import FilterBar from './components/FilterBar';
 
 type Client = {
   clientId: string;
@@ -129,6 +130,15 @@ export default function PaymentReminderPage() {
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [clientPaymentRequests, setClientPaymentRequests] = useState<PaymentRequest[]>([]);
+
+  // New state variables for enhanced filtering
+  const [filterPaid, setFilterPaid] = useState<string | null>(null);
+  const [amountFilter, setAmountFilter] = useState<string | null>(null);
+  const [dueFilter, setDueFilter] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Move fetchClients outside useEffect and make it memoized with useCallback
   const fetchClients = useCallback(async () => {
@@ -311,20 +321,108 @@ export default function PaymentReminderPage() {
     }
   };
 
-  // Filter clients based on search and week
+  // Date range handler
+  const handleDateRangeChange = (start: Date | null, end: Date | null) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // Enhanced filtering logic
   const filteredClients = clients.filter(client => {
+    // Existing search filter
     const matchesSearch = 
       client.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.clientPhone.includes(searchQuery) ||
       client.clientEmail.toLowerCase().includes(searchQuery.toLowerCase());
     
+    // Existing week filter
     const matchesWeek = weekFilter === null || client.weekOfMonth === weekFilter;
     
-    return matchesSearch && matchesWeek;
+    // New payment status filter
+    const matchesPaymentStatus = !filterPaid || 
+      (filterPaid === 'fullypaid' && client.paymentsCompleted === client.tenure) ||
+      (filterPaid === 'partiallypaid' && client.paymentsCompleted > 0 && client.paymentsCompleted < client.tenure) ||
+      (filterPaid === 'notpaid' && client.paymentsCompleted === 0);
+    
+    // New amount filter
+    const matchesAmount = !amountFilter ||
+      (amountFilter === 'high' && client.monthlyFees > 10000) ||
+      (amountFilter === 'medium' && client.monthlyFees >= 5000 && client.monthlyFees <= 10000) ||
+      (amountFilter === 'low' && client.monthlyFees < 5000);
+      
+    // New date range filter
+    const matchesDateRange = (!startDate && !endDate) || 
+      (client.startDate && 
+        (!startDate || new Date(client.startDate.seconds * 1000) >= startDate) &&
+        (!endDate || new Date(client.startDate.seconds * 1000) <= endDate));
+    
+    // Due filter implementation
+    let matchesDueFilter = true;
+    if (dueFilter) {
+      const now = new Date();
+      const clientStartDate = client.startDate ? new Date(client.startDate.seconds * 1000) : null;
+      
+      if (clientStartDate) {
+        const oneDay = 24 * 60 * 60 * 1000;
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfWeek = new Date(today);
+        endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+        const startOfNextWeek = new Date(endOfWeek);
+        startOfNextWeek.setDate(endOfWeek.getDate() + 1);
+        const endOfNextWeek = new Date(startOfNextWeek);
+        endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        switch (dueFilter) {
+          case 'overdue':
+            matchesDueFilter = clientStartDate < today;
+            break;
+          case 'thisweek':
+            matchesDueFilter = clientStartDate >= today && clientStartDate <= endOfWeek;
+            break;
+          case 'nextweek':
+            matchesDueFilter = clientStartDate >= startOfNextWeek && clientStartDate <= endOfNextWeek;
+            break;
+          case 'thismonth':
+            matchesDueFilter = clientStartDate >= today && clientStartDate <= endOfMonth;
+            break;
+          default:
+            matchesDueFilter = true;
+        }
+      } else {
+        matchesDueFilter = false;
+      }
+    }
+    
+    return matchesSearch && matchesWeek && matchesPaymentStatus && 
+           matchesAmount && matchesDateRange && matchesDueFilter;
   });
 
-  // Group clients by week of month
-  const clientsByWeek = filteredClients.reduce((acc, client) => {
+  // Apply sorting
+  const sortedClients = [...filteredClients];
+  if (sortBy) {
+    sortedClients.sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.clientName.localeCompare(b.clientName);
+        case 'name-desc':
+          return b.clientName.localeCompare(a.clientName);
+        case 'amount-asc':
+          return (a.monthlyFees || 0) - (b.monthlyFees || 0);
+        case 'amount-desc':
+          return (b.monthlyFees || 0) - (a.monthlyFees || 0);
+        case 'due-asc':
+          return (a.startDate?.seconds || 0) - (b.startDate?.seconds || 0);
+        case 'due-desc':
+          return (b.startDate?.seconds || 0) - (a.startDate?.seconds || 0);
+        default:
+          return 0;
+      }
+    });
+  }
+
+  // Group clients by week of month - updated to use sorted clients
+  const clientsByWeek = sortedClients.reduce((acc, client) => {
     const week = client.weekOfMonth;
     if (!acc[week]) {
       acc[week] = [];
@@ -340,65 +438,59 @@ export default function PaymentReminderPage() {
   };
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
       <AdvocateSidebar />
       
-      <div className="flex-1">
-        <div className="container mx-auto py-6">
-          <h1 className="text-3xl font-bold mb-6">Payment Reminder System</h1>
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto py-8 px-4 md:px-6">
+          <h1 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Payment Reminder System</h1>
           
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Search clients by name, email or phone..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            
-            <Select value={weekFilter?.toString() || ''} onValueChange={(value) => setWeekFilter(value ? parseInt(value) : null)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by week" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All weeks</SelectItem>
-                <SelectItem value="1">Week 1</SelectItem>
-                <SelectItem value="2">Week 2</SelectItem>
-                <SelectItem value="3">Week 3</SelectItem>
-                <SelectItem value="4">Week 4</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+          <FilterBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            weekFilter={weekFilter}
+            setWeekFilter={setWeekFilter}
+            filterPaid={filterPaid}
+            setFilterPaid={setFilterPaid}
+            amountFilter={amountFilter}
+            setAmountFilter={setAmountFilter}
+            dueFilter={dueFilter}
+            setDueFilter={setDueFilter}
+            startDate={startDate}
+            endDate={endDate}
+            setDateRange={handleDateRangeChange}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            setCurrentPage={setCurrentPage}
+          />
+          
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Loading clients...</span>
+            <div className="flex justify-center items-center h-64 rounded-xl bg-gray-800/50 backdrop-blur-sm border border-gray-700">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+              <span className="ml-2 font-medium text-gray-300">Loading clients...</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
-              <Tabs defaultValue="overview">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="weekly">Weekly View</TabsTrigger>
+            <div className="grid grid-cols-1 gap-6 mt-6">
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="mb-6 rounded-lg bg-gray-800/80 p-1 backdrop-blur-sm">
+                  <TabsTrigger value="overview" className="text-sm font-medium">Overview</TabsTrigger>
+                  <TabsTrigger value="weekly" className="text-sm font-medium">Weekly View</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="overview">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>All Clients ({filteredClients.length})</CardTitle>
-                      <CardDescription>
+                  <Card className="border-0 bg-gray-800/80 backdrop-blur-sm shadow-lg rounded-xl overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border-b border-gray-700">
+                      <CardTitle className="text-blue-300">All Clients ({sortedClients.length})</CardTitle>
+                      <CardDescription className="text-gray-400">
                         Overview of all client payment statuses
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      {filteredClients.length === 0 ? (
-                        <div className="text-center py-8">
-                          <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-                          <h3 className="mt-2 text-lg font-medium">No clients found</h3>
-                          <p className="text-sm text-muted-foreground">
+                    <CardContent className="p-0">
+                      {sortedClients.length === 0 ? (
+                        <div className="text-center py-12">
+                          <AlertCircle className="mx-auto h-12 w-12 text-gray-500" />
+                          <h3 className="mt-4 text-lg font-medium text-gray-300">No clients found</h3>
+                          <p className="mt-2 text-sm text-gray-400">
                             Try adjusting your search or filter criteria
                           </p>
                         </div>
@@ -406,40 +498,41 @@ export default function PaymentReminderPage() {
                         <div className="overflow-auto">
                           <table className="w-full border-collapse">
                             <thead>
-                              <tr>
-                                <th className="text-left p-2 border-b">Client Name</th>
-                                <th className="text-left p-2 border-b">Phone</th>
-                                <th className="text-left p-2 border-b">Week</th>
-                                <th className="text-right p-2 border-b">Monthly Fee</th>
-                                <th className="text-right p-2 border-b">Paid / Total</th>
-                                <th className="text-right p-2 border-b">Status</th>
-                                <th className="text-center p-2 border-b">Actions</th>
+                              <tr className="bg-gray-800/50">
+                                <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Client Name</th>
+                                <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Phone</th>
+                                <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Week</th>
+                                <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Monthly Fee</th>
+                                <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Paid / Total</th>
+                                <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Status</th>
+                                <th className="text-center p-4 font-medium text-gray-300 border-b border-gray-700">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {filteredClients.map((client) => (
-                                <tr key={client.clientId} className="hover:bg-muted/50">
-                                  <td className="p-2 border-b">{client.clientName}</td>
-                                  <td className="p-2 border-b">{client.clientPhone}</td>
-                                  <td className="p-2 border-b">Week {client.weekOfMonth}</td>
-                                  <td className="p-2 border-b text-right">₹{(client.monthlyFees || 0).toLocaleString()}</td>
-                                  <td className="p-2 border-b text-right">
+                              {sortedClients.map((client) => (
+                                <tr key={client.clientId} className="transition-colors hover:bg-blue-900/10">
+                                  <td className="p-4 border-b border-gray-800 text-gray-200">{client.clientName}</td>
+                                  <td className="p-4 border-b border-gray-800 text-gray-400">{client.clientPhone}</td>
+                                  <td className="p-4 border-b border-gray-800 text-gray-400">Week {client.weekOfMonth}</td>
+                                  <td className="p-4 border-b border-gray-800 text-right font-medium text-gray-200">₹{(client.monthlyFees || 0).toLocaleString()}</td>
+                                  <td className="p-4 border-b border-gray-800 text-right text-gray-400">
                                     ₹{(client.paidAmount || 0).toLocaleString()} / ₹{(client.totalPaymentAmount || 0).toLocaleString()}
                                   </td>
-                                  <td className="p-2 border-b text-right">
-                                    <span className={`px-2 py-1 rounded text-xs 
-                                      ${client.paymentsCompleted === client.tenure ? 'bg-green-100 text-green-800' : 
-                                        client.paymentsCompleted > 0 ? 'bg-yellow-100 text-yellow-800' : 
-                                        'bg-red-100 text-red-800'}`}>
+                                  <td className="p-4 border-b border-gray-800 text-right">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium 
+                                      ${client.paymentsCompleted === client.tenure ? 'bg-green-900/40 text-green-300' : 
+                                        client.paymentsCompleted > 0 ? 'bg-yellow-900/40 text-yellow-300' : 
+                                        'bg-red-900/40 text-red-300'}`}>
                                       {client.paymentsCompleted === client.tenure ? 'Completed' : 
                                        client.paymentsCompleted > 0 ? 'Partial' : 'Pending'}
                                     </span>
                                   </td>
-                                  <td className="p-2 border-b text-center">
+                                  <td className="p-4 border-b border-gray-800 text-center">
                                     <Button 
                                       variant="outline" 
                                       size="sm"
                                       onClick={() => handleClientSelect(client)}
+                                      className="bg-gray-800 hover:bg-blue-900/20 text-blue-400 border-blue-900"
                                     >
                                       View Details
                                     </Button>
@@ -457,32 +550,70 @@ export default function PaymentReminderPage() {
                 <TabsContent value="weekly">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[1, 2, 3, 4].map(week => (
-                      <Card key={week}>
-                        <CardHeader>
-                          <CardTitle>Week {week} Clients ({clientsByWeek[week]?.length || 0})</CardTitle>
-                          <CardDescription>
+                      <Card key={week} className="border-0 shadow-lg rounded-xl overflow-hidden bg-gray-800/80 backdrop-blur-sm">
+                        <CardHeader className={`bg-gradient-to-r border-b border-gray-700
+                          ${week === 1 ? 'from-blue-900/20 to-indigo-900/20' : 
+                           week === 2 ? 'from-purple-900/20 to-pink-900/20' : 
+                           week === 3 ? 'from-green-900/20 to-teal-900/20' : 
+                           'from-orange-900/20 to-amber-900/20'}`}
+                        >
+                          <CardTitle className={`
+                            ${week === 1 ? 'text-blue-300' : 
+                             week === 2 ? 'text-purple-300' : 
+                             week === 3 ? 'text-green-300' : 
+                             'text-orange-300'}`}
+                          >
+                            Week {week} Clients ({clientsByWeek[week]?.length || 0})
+                          </CardTitle>
+                          <CardDescription className="text-gray-400">
                             Clients with payments due in week {week}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-4">
                           {!clientsByWeek[week] || clientsByWeek[week].length === 0 ? (
-                            <p className="text-center py-4 text-muted-foreground">No clients found for week {week}</p>
+                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3
+                                ${week === 1 ? 'bg-blue-900/30' : 
+                                 week === 2 ? 'bg-purple-900/30' : 
+                                 week === 3 ? 'bg-green-900/30' : 
+                                 'bg-orange-900/30'}`}
+                              >
+                                <AlertCircle className={`h-6 w-6 
+                                  ${week === 1 ? 'text-blue-300' : 
+                                   week === 2 ? 'text-purple-300' : 
+                                   week === 3 ? 'text-green-300' : 
+                                   'text-orange-300'}`} 
+                                />
+                              </div>
+                              <p className="text-gray-400">No clients found for week {week}</p>
+                            </div>
                           ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               {clientsByWeek[week].map(client => (
                                 <div 
                                   key={client.clientId} 
-                                  className="p-3 rounded border hover:bg-muted/50 cursor-pointer"
+                                  className={`p-4 rounded-lg border transition-all cursor-pointer
+                                    ${week === 1 ? 'hover:bg-blue-900/10 border-blue-900/30' : 
+                                     week === 2 ? 'hover:bg-purple-900/10 border-purple-900/30' : 
+                                     week === 3 ? 'hover:bg-green-900/10 border-green-900/30' : 
+                                     'hover:bg-orange-900/10 border-orange-900/30'}`}
                                   onClick={() => handleClientSelect(client)}
                                 >
                                   <div className="flex justify-between items-start">
                                     <div>
-                                      <h4 className="font-medium">{client.clientName}</h4>
-                                      <p className="text-sm text-muted-foreground">{client.clientPhone}</p>
+                                      <h4 className="font-medium text-gray-200">{client.clientName}</h4>
+                                      <p className="text-sm text-gray-400 mt-1">{client.clientPhone}</p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="font-medium">₹{(client.monthlyFees || 0).toLocaleString()}/month</p>
-                                      <p className="text-sm">
+                                      <p className={`font-medium 
+                                        ${week === 1 ? 'text-blue-400' : 
+                                         week === 2 ? 'text-purple-400' : 
+                                         week === 3 ? 'text-green-400' : 
+                                         'text-orange-400'}`}
+                                      >
+                                        ₹{(client.monthlyFees || 0).toLocaleString()}/month
+                                      </p>
+                                      <p className="text-sm text-gray-400 mt-1">
                                         {client.paymentsCompleted}/{client.tenure} payments
                                       </p>
                                     </div>
