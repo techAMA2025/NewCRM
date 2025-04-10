@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { db } from '@/firebase/firebase'
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore'
+import { format, isPast } from 'date-fns'
 
 // Define interface for client data
 interface Client {
@@ -10,6 +11,17 @@ interface Client {
   name: string
   status: string
   lastContact: string
+}
+
+// Define interface for reminder data
+interface Reminder {
+  id: string
+  title: string
+  note: string
+  date: string
+  time: string | null
+  priority: string
+  createdAt: any
 }
 
 const AdvocateDashboard = () => {
@@ -20,14 +32,14 @@ const AdvocateDashboard = () => {
   })
   // Properly type the clients array
   const [recentClients, setRecentClients] = useState<Client[]>([])
+  const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchAdvocateData = async () => {
       try {
-        // Get the current advocate name - in a real app, this would come from auth context
-        // For now using a placeholder - replace with actual logged-in advocate name
-        const currentAdvocate = "Rahul Gour"; // Replace with actual advocate name
+        // Get the current advocate name from localStorage
+        const currentAdvocate = localStorage.getItem('userName') || "Advocate";
         
         // Fetch clients assigned to this advocate
         const clientsRef = collection(db, 'clients');
@@ -84,6 +96,57 @@ const AdvocateDashboard = () => {
             { id: '4', name: 'Alex Chen', status: 'Dropped', lastContact: '2023-08-05' },
           ]);
         }
+        
+        // Fetch upcoming reminders
+        const remindersRef = collection(db, 'reminders');
+        const remindersQuery = query(
+          remindersRef,
+          where("userId", "==", currentAdvocate)
+        );
+        
+        const remindersSnapshot = await getDocs(remindersQuery);
+        
+        let remindersList: Reminder[] = [];
+        
+        remindersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          remindersList.push({
+            id: doc.id,
+            title: data.title,
+            note: data.note,
+            date: data.date,
+            time: data.time,
+            priority: data.priority,
+            createdAt: data.createdAt
+          });
+        });
+        
+        // Sort reminders by date and priority
+        remindersList.sort((a, b) => {
+          // Create date objects for comparison
+          const dateA = new Date(`${a.date}${a.time ? ' ' + a.time : ''}`);
+          const dateB = new Date(`${b.date}${b.time ? ' ' + b.time : ''}`);
+          
+          // Skip past dates in priority
+          const aIsPast = isPast(dateA);
+          const bIsPast = isPast(dateB);
+          
+          if (aIsPast && !bIsPast) return 1;
+          if (!aIsPast && bIsPast) return -1;
+          
+          // Then sort by priority (high > medium > low)
+          const priorityOrder = { high: 0, medium: 1, low: 2 };
+          if (priorityOrder[a.priority as keyof typeof priorityOrder] !== priorityOrder[b.priority as keyof typeof priorityOrder]) {
+            return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+          }
+          
+          // If priority is the same, sort by date
+          return dateA.getTime() - dateB.getTime();
+        });
+        
+        // Take only the first few upcoming reminders
+        setUpcomingReminders(remindersList.slice(0, 4));
+        
       } catch (error) {
         console.error('Error fetching advocate data:', error);
       } finally {
@@ -94,64 +157,85 @@ const AdvocateDashboard = () => {
     fetchAdvocateData();
   }, []);
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high": return "text-red-400";
+      case "medium": return "text-yellow-400";
+      case "low": return "text-green-400";
+      default: return "text-blue-400";
+    }
+  };
+
+  const getPriorityDot = (priority: string) => {
+    switch (priority) {
+      case "high": return "bg-red-500";
+      case "medium": return "bg-yellow-500";
+      case "low": return "bg-green-500";
+      default: return "bg-blue-500";
+    }
+  };
+
   if (loading) {
-    return <div className="p-6">Loading dashboard data...</div>
+    return <div className="p-6 min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center">
+      <div className="animate-pulse text-xl">Loading dashboard data...</div>
+    </div>
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Advocate Dashboard</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 text-gray-200">
+      <h1 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Advocate Dashboard</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-2">Active Clients</h2>
-          <p className="text-3xl font-bold text-blue-600">{clientStats.activeClients}</p>
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-blue-500 transition-all duration-300">
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Active Clients</h2>
+          <p className="text-4xl font-bold text-blue-400">{clientStats.activeClients}</p>
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-2">Dropped Clients</h2>
-          <p className="text-3xl font-bold text-red-600">{clientStats.droppedClients}</p>
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-red-500 transition-all duration-300">
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Dropped Clients</h2>
+          <p className="text-4xl font-bold text-red-400">{clientStats.droppedClients}</p>
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-2">Not Responding Clients</h2>
-          <p className="text-3xl font-bold text-yellow-600">{clientStats.notRespondingClients}</p>
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-yellow-500 transition-all duration-300">
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Not Responding Clients</h2>
+          <p className="text-4xl font-bold text-yellow-400">{clientStats.notRespondingClients}</p>
         </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Recent Clients</h2>
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Recent Clients</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-900">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Client Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Last Contact
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-700">
                 {recentClients.map((client) => (
-                  <tr key={client.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={client.id} className="hover:bg-gray-700 transition-colors duration-150">
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">
                       {client.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${client.status === 'Active' ? 'bg-green-100 text-green-800' : 
-                          client.status === 'Review' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-gray-100 text-gray-800'}`}>
+                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${client.status === 'Active' ? 'bg-green-900 text-green-300' : 
+                          client.status === 'Not Responding' ? 'bg-yellow-900 text-yellow-300' : 
+                          client.status === 'Dropped' ? 'bg-red-900 text-red-300' :
+                          'bg-gray-700 text-gray-300'}`}>
                         {client.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-400">
                       {client.lastContact}
                     </td>
                   </tr>
@@ -161,26 +245,37 @@ const AdvocateDashboard = () => {
           </div>
         </div>
         
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Upcoming Tasks</h2>
-          <div className="space-y-3">
-            <div className="border-b pb-2">
-              <p className="text-sm text-gray-600">Today, 11:00 AM</p>
-              <p>Client call with Sarah Johnson</p>
-            </div>
-            <div className="border-b pb-2">
-              <p className="text-sm text-gray-600">Today, 2:30 PM</p>
-              <p>Case review meeting</p>
-            </div>
-            <div className="border-b pb-2">
-              <p className="text-sm text-gray-600">Tomorrow, 10:00 AM</p>
-              <p>Documentation preparation for Rodriguez case</p>
-            </div>
-            <div className="border-b pb-2">
-              <p className="text-sm text-gray-600">Aug 17, 1:00 PM</p>
-              <p>Team sync with legal department</p>
-            </div>
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Upcoming Reminders</h2>
+          <div className="space-y-4">
+            {upcomingReminders.length > 0 ? (
+              upcomingReminders.map(reminder => (
+                <div key={reminder.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
+                  <div className="flex items-center">
+                    <div className={`w-2 h-2 rounded-full mr-2 ${getPriorityDot(reminder.priority)}`}></div>
+                    <p className={`text-sm ${getPriorityColor(reminder.priority)}`}>
+                      {format(new Date(reminder.date), "MMM dd, yyyy")}
+                      {reminder.time && `, ${reminder.time}`}
+                    </p>
+                  </div>
+                  <p className="font-medium">{reminder.title}</p>
+                  {reminder.note && <p className="text-sm text-gray-400 mt-1 line-clamp-2">{reminder.note}</p>}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No upcoming reminders</p>
+                <p className="text-sm mt-2">Add reminders in the Reminders section</p>
+              </div>
+            )}
           </div>
+          {upcomingReminders.length > 0 && (
+            <div className="mt-4 text-right">
+              <a href="/reminders" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                View all reminders →
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>
