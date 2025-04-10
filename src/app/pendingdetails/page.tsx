@@ -782,6 +782,56 @@ const MyClientsPage = () => {
     return `${percentage}% complete. Missing: ${missingFields.join(', ')}`;
   };
 
+  // Function to handle client details updates
+  const handleSaveClientDetails = async (updatedClient: any) => {
+    try {
+      // Set loading states if you have them for this flow
+      // setLoading(true);
+      
+      console.log("Saving client details:", updatedClient.id);
+      
+      // Get a reference to the client document
+      const clientRef = doc(crmDb, 'clients', updatedClient.id);
+      
+      // Remove the ID field to avoid overwriting the document ID
+      const { id, ...updateData } = updatedClient;
+      
+      // Add timestamp for lastModified
+      updateData.lastModified = Timestamp.now();
+      
+      // Update the client document
+      await updateDoc(clientRef, updateData);
+      
+      // Create payment schedule in clients_payments collection
+      if (updatedClient.startDate && updatedClient.tenure && updatedClient.monthlyFees) {
+        try {
+          await createPaymentSchedule(
+            updatedClient.id,
+            updatedClient.name || '',
+            updatedClient.email || '',
+            updatedClient.phone || '',
+            updatedClient.startDate,
+            parseInt(updatedClient.tenure.toString()),
+            parseFloat(updatedClient.monthlyFees.toString()),
+          );
+          console.log("Payment schedule created successfully for client:", updatedClient.id);
+        } catch (error) {
+          console.error("Error creating payment schedule:", error);
+          // Continue even if payment schedule creation fails
+        }
+      }
+      
+      // Additional state updates or UI feedback
+      // setSuccess(true);
+      
+    } catch (err) {
+      console.error("Error saving client details:", err);
+      // setError("Failed to save client details");
+    } finally {
+      // setLoading(false);
+    }
+  };
+
   if (loading) {
     return <LoadingState username={currentUserName} />
   }

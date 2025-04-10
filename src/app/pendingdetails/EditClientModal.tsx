@@ -188,7 +188,6 @@ const EditClientModal = ({
                       <option value="ama">AMA</option>
                       <option value="settleloans">Settle Loans</option>
                       <option value="billcut">Bill Cut</option>
-                      <option value="manual">Manual Entry</option>
                     </select>
                   </div>
                 </div>

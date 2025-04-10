@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, collection, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import BankForm from './BankForm';
 
@@ -7,9 +7,10 @@ interface EditClientDetailsModalProps {
   clientData: any;
   onClose: () => void;
   onSave: () => void;
+  onSaveComplete?: (updatedClient: any) => void;
 }
 
-const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave }: EditClientDetailsModalProps) => {
+const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave, onSaveComplete }: EditClientDetailsModalProps) => {
   const [clientData, setClientData] = useState<any>({...initialClientData});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -74,6 +75,30 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
       // Update the client document
       await updateDoc(clientRef, updateData);
       
+      // Create payment schedule in clients_payments collection
+      if (clientData.startDate && clientData.tenure && clientData.monthlyFees) {
+        try {
+          await createPaymentSchedule(
+            clientData.id,
+            clientData.name || '',
+            clientData.email || '',
+            clientData.phone || '',
+            clientData.startDate,
+            parseInt(clientData.tenure.toString()),
+            parseFloat(clientData.monthlyFees.toString()),
+          );
+          console.log("Payment schedule created successfully");
+        } catch (error) {
+          console.error("Error creating payment schedule:", error);
+          // Continue with the rest of the process even if payment schedule creation fails
+        }
+      }
+      
+      // If onSaveComplete is provided, call it with the updated client data
+      if (onSaveComplete) {
+        onSaveComplete(clientData);
+      }
+      
       setSaveSuccess(true);
       setTimeout(() => {
         onSave();
@@ -83,6 +108,94 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
       setSaveError('Error saving client details. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Function to create payment schedule for a client
+  const createPaymentSchedule = async (
+    clientId: string,
+    clientName: string,
+    clientEmail: string,
+    clientPhone: string,
+    startDate: string,
+    tenure: number,
+    monthlyFees: number,
+  ) => {
+    try {
+      // Create a reference to the client's payment document
+      const paymentDocRef = doc(db, 'clients_payments', clientId);
+      
+      // Parse the start date
+      const start = new Date(startDate);
+      
+      // Calculate the week number of the month
+      const getWeekOfMonth = (date: Date) => {
+        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+        const weekNumber = Math.ceil((date.getDate() + firstDay.getDay()) / 7);
+        return weekNumber;
+      };
+      
+      // Get week number for categorization
+      const weekNumber = getWeekOfMonth(start);
+      
+      // Set the main document with client info and payment metadata
+      await setDoc(paymentDocRef, {
+        clientId: clientId,
+        clientName: clientName,
+        clientEmail: clientEmail, 
+        clientPhone: clientPhone,
+        startDate: start,
+        tenure: tenure,
+        monthlyFees: monthlyFees,
+        weekOfMonth: weekNumber,
+        totalPaymentAmount: monthlyFees * tenure,
+        paidAmount: 0,
+        pendingAmount: monthlyFees * tenure,
+        paymentsCompleted: 0,
+        paymentsPending: tenure,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      }, { merge: true });
+      
+      // Create a batch to handle multiple write operations
+      const batch = writeBatch(db);
+      
+      // Create a subcollection for each month's payment
+      for (let i = 0; i < tenure; i++) {
+        // Calculate the payment date (same day of month as start date)
+        const paymentDate = new Date(start);
+        paymentDate.setMonth(paymentDate.getMonth() + i);
+        
+        // Create a unique ID for this month's payment
+        const monthId = `month_${i + 1}`;
+        
+        // Create a reference to the subcollection document
+        const monthPaymentRef = doc(
+          collection(db, 'clients_payments', clientId, 'monthly_payments'),
+          monthId
+        );
+        
+        // Set the month payment data
+        batch.set(monthPaymentRef, {
+          monthNumber: i + 1,
+          dueDate: paymentDate,
+          dueAmount: monthlyFees,
+          status: 'pending',
+          paymentMethod: '',
+          transactionId: '',
+          notes: '',
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        });
+      }
+      
+      // Commit the batch
+      await batch.commit();
+      
+      console.log(`Created payment schedule for client ${clientId} with ${tenure} months`);
+    } catch (error) {
+      console.error("Error creating payment schedule:", error);
+      throw error;
     }
   };
 

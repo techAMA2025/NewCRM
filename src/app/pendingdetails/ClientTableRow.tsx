@@ -8,9 +8,10 @@ interface ClientTableRowProps {
   hasClientRecord: boolean
   onView: () => void
   onEdit: () => void
+  onSaveComplete?: (updatedClient: any) => void
 }
 
-const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit }: ClientTableRowProps) => {
+const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete }: ClientTableRowProps) => {
   // Helper functions
   const formatPhoneNumber = (phone: string) => {
     if (!phone) return '';
@@ -224,6 +225,7 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit }: ClientTableRo
             <EditClientDetailsButton 
               lead={lead}
               onClientUpdated={handleClientUpdated}
+              onSaveComplete={onSaveComplete}
             />
           )}
           <button

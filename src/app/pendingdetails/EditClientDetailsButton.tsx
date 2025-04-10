@@ -7,9 +7,14 @@ import { Lead } from './types/lead';
 interface EditClientDetailsButtonProps {
   lead: Lead;
   onClientUpdated?: () => void;
+  onSaveComplete?: (updatedClient: any) => void;
 }
 
-const EditClientDetailsButton = ({ lead, onClientUpdated }: EditClientDetailsButtonProps) => {
+const EditClientDetailsButton = ({ 
+  lead, 
+  onClientUpdated,
+  onSaveComplete
+}: EditClientDetailsButtonProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +99,7 @@ const EditClientDetailsButton = ({ lead, onClientUpdated }: EditClientDetailsBut
           clientData={clientData}
           onClose={handleCloseModal}
           onSave={handleClientUpdated}
+          onSaveComplete={onSaveComplete}
         />
       )}
     </>
