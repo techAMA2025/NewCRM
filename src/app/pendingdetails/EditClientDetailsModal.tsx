@@ -264,7 +264,6 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
                       type="text"
                       value={clientData.source || ''}
                       onChange={(e) => handleFieldChange('source', e.target.value)}
-                      readOnly
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>

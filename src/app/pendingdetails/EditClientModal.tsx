@@ -154,6 +154,7 @@ const EditClientModal = ({
                     value={lead.phone || ''}
                     onChange={(value) => handleFieldChange('phone', value)}
                     required
+                    disabled={true}
                   />
                   <InputField
                     id="city"
@@ -181,7 +182,8 @@ const EditClientModal = ({
                       id="source_database"
                       value={lead.source_database || ''}
                       onChange={(e) => handleFieldChange('source_database', e.target.value)}
-                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
+                      disabled={true}
                     >
                       <option value="">Select source</option>
                       <option value="credsettlee">Cred Settle</option>
@@ -356,9 +358,10 @@ interface InputFieldProps {
   type?: string
   required?: boolean
   placeholder?: string
+  disabled?: boolean
 }
 
-const InputField = ({ id, label, value, onChange, type = 'text', required = false, placeholder }: InputFieldProps) => (
+const InputField = ({ id, label, value, onChange, type = 'text', required = false, placeholder, disabled = false }: InputFieldProps) => (
   <div>
     <label htmlFor={id} className="block text-sm font-medium text-gray-400">{label}</label>
     <input
@@ -366,9 +369,10 @@ const InputField = ({ id, label, value, onChange, type = 'text', required = fals
       id={id}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
       required={required}
       placeholder={placeholder}
+      disabled={disabled}
     />
   </div>
 )
