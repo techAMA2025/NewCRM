@@ -158,7 +158,7 @@ const EditClientModal = ({
                   />
                   <InputField
                     id="city"
-                    label="City"
+                    label="City" 
                     value={lead.city || ''}
                     onChange={(value) => handleFieldChange('city', value)}
                   />
