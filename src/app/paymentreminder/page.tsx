@@ -233,31 +233,23 @@ export default function PaymentReminderPage() {
     }
   };
 
-  // Update the function to fetch payment history with correct case sensitivity
-  const fetchPaymentHistory = useCallback(async (clientId: any) => {
+  // Update the fetchPaymentHistory function to fetch from the correct subcollection
+  const fetchPaymentHistory = async (clientId: string) => {
     try {
-      if (!clientId) return;
+      const paymentHistoryRef = collection(db, `clients_payments/${clientId}/payment_history`);
+      const historySnapshot = await getDocs(paymentHistoryRef);
       
-      // Query the monthly_pay_req collection for approved payments
-      // Note the lowercase "approved" to match the database value
-      const q = query(
-        collection(db, 'monthly_pay_req'),
-        where('clientId', '==', clientId),
-        where('payment_status', '==', 'approved')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const approvedPayments = querySnapshot.docs.map(doc => ({
+      const historyData = historySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as PaymentHistory[];
       
-      console.log('Approved payments found:', approvedPayments.length); // Debugging
-      setPaymentHistory(approvedPayments as PaymentHistory[]);
+      setPaymentHistory(historyData);
     } catch (error) {
       console.error('Error fetching payment history:', error);
+      toast.error('Failed to load payment history');
     }
-  }, [db]);
+  };
 
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client);
@@ -281,8 +273,8 @@ export default function PaymentReminderPage() {
       // Get the current user's name from localStorage
       const requestedBy = localStorage.getItem('userName') || 'Unknown User';
 
-      // Add to monthly_pay_req collection
-      await addDoc(collection(db, 'monthly_pay_req'), {
+      // Add to payment_history subcollection with "Not approved" status
+      await addDoc(collection(db, `clients_payments/${selectedClient.clientId}/payment_history`), {
         clientId: selectedClient.clientId,
         clientName: selectedClient.clientName,
         monthNumber: paymentFormData.monthNumber,
@@ -292,8 +284,9 @@ export default function PaymentReminderPage() {
         requestedAmount: paymentFormData.amount,
         notes: paymentFormData.notes || '',
         requestDate: Timestamp.now(),
-        payment_status: "Not approved",
-        requestedBy: requestedBy
+        payment_status: "Not approved", // Payment needs approval from overlord
+        requestedBy: requestedBy,
+        approved_by: "" // Will be filled when approved
       });
 
       // Reset form and close dialog
@@ -305,6 +298,11 @@ export default function PaymentReminderPage() {
         transactionId: '',
         notes: ''
       });
+      
+      // Refresh payment history to show the new request
+      if (selectedClient) {
+        fetchPaymentHistory(selectedClient.clientId);
+      }
       
       toast.success('Payment request sent successfully');
     } catch (error) {

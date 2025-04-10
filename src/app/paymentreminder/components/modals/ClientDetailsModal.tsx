@@ -283,7 +283,7 @@ export function ClientDetailsModal({
                 <Card>
                   <CardHeader>
                     <CardTitle>Payment History</CardTitle>
-                    <CardDescription>Record of approved payment requests</CardDescription>
+                    <CardDescription>Record of all payment requests and their status</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
@@ -294,6 +294,7 @@ export function ClientDetailsModal({
                             <th className="text-left p-2 border-b">Month</th>
                             <th className="text-right p-2 border-b">Amount</th>
                             <th className="text-center p-2 border-b">Status</th>
+                            <th className="text-left p-2 border-b">Requested By</th>
                             <th className="text-left p-2 border-b">Approved By</th>
                             <th className="text-left p-2 border-b">Notes</th>
                           </tr>
@@ -307,10 +308,15 @@ export function ClientDetailsModal({
                                 <td className="p-2 border-b">Month {payment.monthNumber}</td>
                                 <td className="p-2 border-b text-right">₹{payment.requestedAmount.toLocaleString()}</td>
                                 <td className="p-2 border-b text-center">
-                                  <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
-                                    Approved
+                                  <span className={`px-2 py-1 rounded text-xs 
+                                    ${payment.payment_status === 'approved' ? 'bg-green-100 text-green-800' : 
+                                      payment.payment_status === 'rejected' ? 'bg-red-100 text-red-800' : 
+                                      'bg-yellow-100 text-yellow-800'}`}>
+                                    {payment.payment_status === 'Not approved' ? 'Pending Approval' : 
+                                     payment.payment_status.charAt(0).toUpperCase() + payment.payment_status.slice(1)}
                                   </span>
                                 </td>
+                                <td className="p-2 border-b">{payment.requestedBy || '-'}</td>
                                 <td className="p-2 border-b">{payment.approved_by || '-'}</td>
                                 <td className="p-2 border-b">{payment.notes || '-'}</td>
                               </tr>

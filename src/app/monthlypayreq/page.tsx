@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/firebase/firebase';
-import { collection, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { 
   Box, 
@@ -220,13 +220,27 @@ export default function MonthlyPaymentRequests() {
   const fetchPaymentRequests = async () => {
     try {
       setIsLoading(true);
-      const querySnapshot = await getDocs(collection(db, 'monthly_pay_req'));
-      const requests = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as PaymentRequest[];
       
-      setPaymentRequests(requests);
+      // Get all clients first
+      const clientsSnapshot = await getDocs(collection(db, 'clients_payments'));
+      
+      let allRequests: PaymentRequest[] = [];
+      
+      // Fetch payment history for each client
+      for (const clientDoc of clientsSnapshot.docs) {
+        const clientId = clientDoc.id;
+        const historySnapshot = await getDocs(collection(db, `clients_payments/${clientId}/payment_history`));
+        
+        const clientRequests = historySnapshot.docs.map(doc => ({
+          id: doc.id,
+          clientId,
+          ...doc.data()
+        })) as PaymentRequest[];
+        
+        allRequests = [...allRequests, ...clientRequests];
+      }
+      
+      setPaymentRequests(allRequests);
       setIsLoading(false);
     } catch (err) {
       console.error('Error fetching payment requests:', err);
@@ -235,18 +249,75 @@ export default function MonthlyPaymentRequests() {
     }
   };
 
-  const approvePaymentRequest = async (id: string) => {
+  const approvePaymentRequest = async (id: string, clientId: string) => {
     try {
       if (!userName) {
         setError('User name not found in local storage');
         return;
       }
 
-      const paymentRef = doc(db, 'monthly_pay_req', id);
+      // Get the payment request
+      const paymentRef = doc(db, `clients_payments/${clientId}/payment_history`, id);
+      const paymentDoc = await getDoc(paymentRef);
+      
+      if (!paymentDoc.exists()) {
+        setError('Payment request not found');
+        return;
+      }
+      
+      const paymentData = paymentDoc.data() as PaymentRequest;
+      
+      // Update payment status
       await updateDoc(paymentRef, {
         payment_status: 'approved',
         approved_by: userName
       });
+      
+      // Update client payment data
+      const clientRef = doc(db, 'clients_payments', clientId);
+      const clientDoc = await getDoc(clientRef);
+      
+      if (clientDoc.exists()) {
+        const clientData = clientDoc.data();
+        const newPaidAmount = (clientData.paidAmount || 0) + paymentData.requestedAmount;
+        const newPendingAmount = (clientData.totalPaymentAmount || 0) - newPaidAmount;
+        
+        // Update monthly payment status
+        const monthRef = doc(db, `clients_payments/${clientId}/monthly_payments`, `month_${paymentData.monthNumber}`);
+        const monthDoc = await getDoc(monthRef);
+        
+        let updatedPaidAmount = paymentData.requestedAmount;
+        let updatedStatus = 'pending';
+        let paymentsCompleted = clientData.paymentsCompleted || 0;
+        
+        if (monthDoc.exists()) {
+          const monthData = monthDoc.data();
+          updatedPaidAmount += (monthData.paidAmount || 0);
+          
+          if (updatedPaidAmount >= monthData.dueAmount) {
+            updatedStatus = 'paid';
+            // Increment completed payments if transitioning to paid
+            if (monthData.status !== 'paid') {
+              paymentsCompleted += 1;
+            }
+          } else if (updatedPaidAmount > 0) {
+            updatedStatus = 'partial';
+          }
+          
+          // Update the monthly payment document
+          await updateDoc(monthRef, {
+            paidAmount: updatedPaidAmount,
+            status: updatedStatus
+          });
+        }
+        
+        // Update the client document
+        await updateDoc(clientRef, {
+          paidAmount: newPaidAmount,
+          pendingAmount: newPendingAmount,
+          paymentsCompleted: paymentsCompleted
+        });
+      }
 
       // Update local state to reflect changes
       setPaymentRequests(prevRequests =>
@@ -431,7 +502,7 @@ export default function MonthlyPaymentRequests() {
                     <RequestCard 
                       key={request.id} 
                       request={request} 
-                      onApprove={approvePaymentRequest}
+                      onApprove={() => approvePaymentRequest(request.id, request.clientId)}
                       formatDate={formatDate}
                     />
                   ))}
@@ -464,7 +535,7 @@ export default function MonthlyPaymentRequests() {
                   <RequestCard 
                     key={request.id} 
                     request={request} 
-                    onApprove={approvePaymentRequest}
+                    onApprove={() => {}}  // No action needed for approved requests
                     formatDate={formatDate}
                   />
                 ))}
@@ -476,10 +547,10 @@ export default function MonthlyPaymentRequests() {
   );
 }
 
-// New component for request cards
+// Update the RequestCard component
 interface RequestCardProps {
   request: PaymentRequest;
-  onApprove: (id: string) => Promise<void>;
+  onApprove: () => void;
   formatDate: (timestamp: Timestamp) => string;
 }
 
@@ -590,6 +661,15 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onApprove, formatDat
           </Box>
         </Box>
 
+        {request.notes && (
+          <Box sx={{ mb: 2 }}>
+            <Typography color="grey.400" variant="caption" sx={{ mb: 0.5, display: 'block' }}>Notes</Typography>
+            <Typography color="white" variant="body2" sx={{ fontSize: '0.85rem' }}>
+              {request.notes}
+            </Typography>
+          </Box>
+        )}
+
         {request.payment_status === 'approved' ? (
           <Box sx={{ 
             p: 1.5,
@@ -612,7 +692,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onApprove, formatDat
               color="primary"
               sx={{ flex: 1, py: 0.75 }}
               size="small"
-              onClick={() => onApprove(request.id)}
+              onClick={onApprove}
             >
               Approve
             </Button>
@@ -627,7 +707,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onApprove, formatDat
                 color: '#FF5A65'
               }}
             >
-              Delete
+              Reject
             </Button>
           </Box>
         )}
