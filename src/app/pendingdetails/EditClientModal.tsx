@@ -154,7 +154,6 @@ const EditClientModal = ({
                     value={lead.phone || ''}
                     onChange={(value) => handleFieldChange('phone', value)}
                     required
-                    disabled={true}
                   />
                   <InputField
                     id="city"
@@ -183,7 +182,6 @@ const EditClientModal = ({
                       value={lead.source_database || ''}
                       onChange={(e) => handleFieldChange('source_database', e.target.value)}
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
-                      disabled={true}
                     >
                       <option value="">Select source</option>
                       <option value="credsettlee">Cred Settle</option>
