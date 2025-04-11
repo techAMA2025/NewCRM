@@ -23,6 +23,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import toast from 'react-hot-toast'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { storage } from '@/firebase/firebase'
 
 interface Client {
   id: string
@@ -58,6 +60,9 @@ interface Client {
     loanType: string;
   }>
   adv_status?: string
+  documentUrl?: string
+  documentName?: string
+  documentUploadedAt?: Date
 }
 
 interface ToastMessage {
@@ -78,6 +83,11 @@ export default function ClientsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [userRole, setUserRole] = useState<string>('')
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [fileUpload, setFileUpload] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [isDocViewerOpen, setIsDocViewerOpen] = useState(false)
+  const [viewingDocumentUrl, setViewingDocumentUrl] = useState("")
+  const [viewingDocumentName, setViewingDocumentName] = useState("")
 
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -125,6 +135,11 @@ export default function ClientsPage() {
 
     fetchClients()
   }, [])
+
+  useEffect(() => {
+    console.log("Firebase storage initialized:", storage);
+    console.log("Firebase db initialized:", db);
+  }, []);
 
   // Function to format timestamp
   const formatTimestamp = (timestamp: any) => {
@@ -316,6 +331,122 @@ export default function ClientsPage() {
     }
   };
 
+  const handleFileUpload = async () => {
+    if (!fileUpload || !editingClient) return;
+    
+    console.log("Starting upload for file:", fileUpload.name);
+    console.log("File type:", fileUpload.type);
+    console.log("File size:", fileUpload.size);
+    
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `clients/${editingClient.id}/documents/${fileUpload.name}`);
+      console.log("Storage reference created:", storageRef);
+      
+      // Upload the file
+      console.log("Starting uploadBytes...");
+      const snapshot = await uploadBytes(storageRef, fileUpload);
+      console.log("Upload completed:", snapshot);
+      
+      // Get the download URL
+      console.log("Getting download URL...");
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log("Download URL received:", downloadURL);
+      
+      // Update Firestore
+      console.log("Updating Firestore document...");
+      const clientRef = doc(db, 'clients', editingClient.id);
+      await updateDoc(clientRef, {
+        documentUrl: downloadURL,
+        documentName: fileUpload.name,
+        documentUploadedAt: new Date(),
+        lastModified: new Date()
+      });
+      console.log("Firestore document updated successfully");
+      
+      // Update local state
+      setEditingClient({
+        ...editingClient,
+        documentUrl: downloadURL,
+        documentName: fileUpload.name,
+        documentUploadedAt: new Date()
+      });
+      
+      // Show success toast
+      showToast(
+        "Document uploaded", 
+        "The document has been successfully uploaded and linked to the client.",
+        "success"
+      );
+      
+      // Reset file upload state
+      setFileUpload(null);
+    } catch (err) {
+      console.error('Error uploading document (detailed):', err);
+      // Show more detailed error message
+      let errorMessage = "Failed to upload document. ";
+      if (err instanceof Error) {
+        errorMessage += err.message;
+      }
+      showToast(
+        "Upload failed", 
+        errorMessage,
+        "error"
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const testUpload = async () => {
+    console.log("Testing upload functionality...");
+    
+    // Create a simple test file
+    const testBlob = new Blob(["Test content"], { type: "text/plain" });
+    const testFile = new File([testBlob], "test-file.txt", { type: "text/plain" });
+    
+    try {
+      console.log("Creating storage reference...");
+      const storageRef = ref(storage, `test/test-file-${Date.now()}.txt`);
+      
+      console.log("Starting upload...");
+      const snapshot = await uploadBytes(storageRef, testFile);
+      console.log("Upload successful:", snapshot);
+      
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log("Download URL:", downloadURL);
+      
+      showToast("Test successful", "Upload test completed successfully", "success");
+    } catch (err) {
+      console.error("Test upload failed:", err);
+      showToast("Test failed", `Error: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Check if file is a Word document
+      if (file.type === 'application/msword' || 
+          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setFileUpload(file);
+      } else {
+        showToast(
+          "Invalid file type", 
+          "Please upload a Word document (.doc or .docx).",
+          "error"
+        );
+        e.target.value = '';
+      }
+    }
+  };
+
+  const openDocumentViewer = (url: string, name: string) => {
+    setViewingDocumentUrl(url);
+    setViewingDocumentName(name || "Document");
+    setIsDocViewerOpen(true);
+  };
+
   if (loading) return (
     <div className="flex min-h-screen bg-gray-950">
       {renderSidebar()}
@@ -450,12 +581,25 @@ export default function ClientsPage() {
                   {selectedClient.startDate ? `Client since ${selectedClient.startDate}` : 'Client details'}
                 </p>
               </div>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-3">
+                {/* Add Document View Button */}
+                {selectedClient.documentUrl && (
+                  <Button
+                    onClick={() => openDocumentViewer(selectedClient.documentUrl || "", selectedClient.documentName || "Document")}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    size="sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    View Document
+                  </Button>
+                )}
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -653,6 +797,38 @@ export default function ClientsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Document Section - Add this after the grid with Personal and Financial Information */}
+            {selectedClient.documentUrl && (
+              <div className="mt-6 bg-gray-800/50 rounded-lg p-4 border border-gray-800">
+                <h3 className="font-semibold text-lg mb-4 text-green-400 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  Client Document
+                </h3>
+                <div className="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-white font-medium flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        {selectedClient.documentName || "Client Document"}
+                      </p>
+                      {selectedClient.documentUploadedAt && (
+                        <p className="text-sm text-gray-400 mt-1">
+                          Uploaded on: {formatTimestamp(selectedClient.documentUploadedAt)}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      onClick={() => openDocumentViewer(selectedClient.documentUrl || "", selectedClient.documentName || "Document")}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      View Document
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -971,6 +1147,77 @@ export default function ClientsPage() {
               </div>
             </div>
 
+            {/* Document Upload Section */}
+            <div className="mt-6 bg-gray-800/50 rounded-lg p-4 border border-gray-800">
+              <h3 className="font-semibold text-lg mb-4 text-purple-400 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Document Management
+              </h3>
+              
+              {editingClient.documentUrl ? (
+                <div className="mb-4 p-3 bg-gray-900 rounded-lg border border-gray-800">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white font-medium">{editingClient.documentName || 'Document'}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Uploaded: {editingClient.documentUploadedAt ? 
+                          formatTimestamp(editingClient.documentUploadedAt) : 'Unknown date'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => openDocumentViewer(editingClient.documentUrl || "", editingClient.documentName || "Document")}
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        View Document
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400 mb-4">No document has been uploaded for this client yet.</p>
+              )}
+              
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="text-sm text-gray-400 block mb-1">Upload Word Document</label>
+                  <Input 
+                    id="file-upload"
+                    type="file"
+                    accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleFileChange}
+                    className="bg-gray-950 border-gray-700 text-white"
+                  />
+                </div>
+                <Button
+                  onClick={handleFileUpload}
+                  disabled={!fileUpload || uploading}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  {uploading ? (
+                    <div className="flex items-center">
+                      <div className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                      Uploading...
+                    </div>
+                  ) : 'Upload Document'}
+                </Button>
+              </div>
+              
+              {/* Test Upload Button for Debugging */}
+              <div className="mt-3">
+                <Button
+                  onClick={testUpload}
+                  className="bg-gray-600 hover:bg-gray-700"
+                  size="sm"
+                >
+                  Test Upload (Debug)
+                </Button>
+              </div>
+            </div>
+
+            {/* Save/Cancel Buttons */}
             <div className="mt-8 flex justify-end gap-4">
               <Button
                 onClick={() => setIsEditModalOpen(false)}
@@ -1024,6 +1271,52 @@ export default function ClientsPage() {
           </div>
         ))}
       </div>
+
+      {/* Document Viewer Modal */}
+      {isDocViewerOpen && viewingDocumentUrl && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 w-[95vw] max-w-6xl h-[90vh] animate-fade-in shadow-2xl flex flex-col">
+            <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-800">
+              <h3 className="text-xl font-semibold text-white flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                {viewingDocumentName}
+              </h3>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => window.open(viewingDocumentUrl, '_blank')}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                  Download
+                </Button>
+                <button 
+                  onClick={() => setIsDocViewerOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-1 bg-white rounded overflow-hidden">
+              {/* Use Google Docs Viewer or Microsoft Office Online */}
+              <iframe 
+                src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                className="w-full h-full border-0"
+                title="Document Viewer"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         @keyframes fade-in {
