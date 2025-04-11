@@ -40,6 +40,9 @@ interface Client {
   adv_status?: string;
   isPrimary: boolean;
   isSecondary: boolean;
+  documentUrl?: string;
+  documentName?: string;
+  documentUploadedAt?: any;
 }
 
 function formatIndianCurrency(amount: string | undefined): string {
@@ -106,7 +109,21 @@ function formatIndianDate(date: any): string {
   return "Not specified";
 }
 
-function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, isOpen: boolean, onClose: () => void }) {
+function ClientViewModal({ 
+  client, 
+  isOpen, 
+  onClose,
+  openDocumentViewer,
+  openRequestLetterModal,
+  openLegalNoticeModal
+}: { 
+  client: Client | null, 
+  isOpen: boolean, 
+  onClose: () => void,
+  openDocumentViewer: (url?: string, name?: string) => void,
+  openRequestLetterModal: (client: Client) => void,
+  openLegalNoticeModal: (client: Client) => void
+}) {
   if (!isOpen || !client) return null;
 
   // Animation when modal opens
@@ -346,24 +363,101 @@ function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, i
                 )}
               </div>
             </div>
+
+            {/* Document Section - Add this after Notes & Remarks */}
+            {client.documentUrl && (
+              <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm md:col-span-2 mt-5">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  Client Document
+                </h3>
+                
+                <div className="bg-gray-900/50 rounded-lg p-4">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                      <p className="text-white font-medium">{client.documentName || "Client Document"}</p>
+                      {client.documentUploadedAt && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Uploaded: {typeof client.documentUploadedAt === 'object' && client.documentUploadedAt.toDate ? 
+                            client.documentUploadedAt.toDate().toLocaleDateString('en-US', {
+                              year: 'numeric', month: 'short', day: 'numeric'
+                            }) : 'Unknown date'}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 w-full md:w-auto justify-start md:justify-end">
+                      <button
+                        onClick={() => openDocumentViewer(client.documentUrl, client.documentName || "Document")}
+                        className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        View Document
+                      </button>
+                      <button
+                        onClick={() => openRequestLetterModal(client)}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Request Letter
+                      </button>
+                      <button
+                        onClick={() => openLegalNoticeModal(client)}
+                        className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Legal Notice
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
         {/* Footer with Actions */}
-        <div className="border-t border-gray-700 bg-gray-800/80 p-5 flex justify-between items-center">
-          <div className="text-sm text-gray-400">
-            Client ID: <span className="font-mono">{client.id.substring(0, 8)}...</span>
+        {/* <div className="border-t border-gray-700 bg-gray-800/80 p-5">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="text-sm text-gray-400 mb-4 md:mb-0">
+              Client ID: <span className="font-mono">{client.id.substring(0, 8)}...</span>
+            </div>
+            <div className="flex flex-wrap gap-3 w-full md:w-auto justify-center md:justify-end">
+              <button
+                onClick={() => openRequestLetterModal(client)}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors duration-200 flex items-center font-medium min-w-[170px] justify-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Make Request Letter
+              </button>
+              <button
+                onClick={() => openLegalNoticeModal(client)}
+                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-md transition-colors duration-200 flex items-center font-medium min-w-[170px] justify-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Make Legal Notice
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 font-medium min-w-[90px] justify-center"
+              >
+                Close
+              </button>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200"
-            >
-              Close
-            </button>
-            {/* Additional action buttons can be added here */}
-          </div>
-        </div>
+        </div> */}
       </div>
       
       {/* Add CSS for animations */}
@@ -386,6 +480,219 @@ function ClientViewModal({ client, isOpen, onClose }: { client: Client | null, i
   );
 }
 
+// Request Letter Form Component
+function RequestLetterForm({ client, onClose }: { client: Client, onClose: () => void }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name1: client.name || "",
+    bankAddress: "",
+    bankEmail: "",
+    accountType: "Loan Account", // Default value
+    number: client.banks && client.banks.length > 0 ? client.banks[0].accountNumber || "" : "",
+    reason: "Job Loss", // Default value
+    email: client.email || "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      // Format the data for API submission
+      const formBody = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        formBody.append(key, value);
+      });
+      
+      // Call the document generation API
+      // This is where you would integrate with your document generation service
+      // For now, we'll simulate a successful response
+      toast.success("Document generation initiated. The document will download shortly.");
+      
+      // In a real implementation, you would call an API endpoint:
+      // const response = await fetch('/api/generate-request-letter', {
+      //   method: 'POST',
+      //   body: formBody,
+      // });
+      
+      // if (response.ok) {
+      //   // Handle successful document generation
+      //   // This might involve triggering a download or showing a link
+      // } else {
+      //   throw new Error('Failed to generate document');
+      // }
+      
+      // Close the modal after successful submission
+      onClose();
+    } catch (error) {
+      console.error("Error generating document:", error);
+      toast.error("Failed to generate document. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Name field - auto-filled and readonly */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Client Name</label>
+          <input
+            type="text"
+            name="name1"
+            value={formData.name1}
+            readOnly
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white cursor-not-allowed text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-0.5">Auto-filled</p>
+        </div>
+
+        {/* Email - auto-filled and readonly */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Client Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            readOnly
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white cursor-not-allowed text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-0.5">Auto-filled</p>
+        </div>
+
+        {/* Bank Address - spans full width */}
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Bank Address</label>
+          <textarea
+            name="bankAddress"
+            value={formData.bankAddress}
+            onChange={handleChange}
+            required
+            rows={2}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            placeholder="Enter bank address (use commas to separate multiple addresses)"
+          />
+        </div>
+
+        {/* Bank Email - spans full width */}
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Bank Email</label>
+          <input
+            type="text"
+            name="bankEmail"
+            value={formData.bankEmail}
+            onChange={handleChange}
+            required
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            placeholder="Enter bank email (use commas to separate multiple emails)"
+          />
+        </div>
+
+        {/* Account Type (dropdown) */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Account Type</label>
+          <select
+            name="accountType"
+            value={formData.accountType}
+            onChange={handleChange}
+            required
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+          >
+            <option value="Loan Account">Loan Account</option>
+            <option value="Credit Card Account">Credit Card Account</option>
+          </select>
+        </div>
+
+        {/* Reason (dropdown) */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Reason</label>
+          <select
+            name="reason"
+            value={formData.reason}
+            onChange={handleChange}
+            required
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+          >
+            <option value="Job Loss">Job Loss</option>
+            <option value="Business Loss">Business Loss</option>
+          </select>
+        </div>
+
+        {/* Account/Card Number */}
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Account/Card Number</label>
+          <input
+            type="text"
+            name="number"
+            value={formData.number}
+            onChange={handleChange}
+            required
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            placeholder="Enter account or card number"
+          />
+          {client.banks && client.banks.length > 0 && (
+            <p className="text-xs text-gray-500 mt-0.5">Pre-filled from client data</p>
+          )}
+        </div>
+      </div>
+
+      {/* Form buttons */}
+      <div className="flex justify-end gap-3 pt-3 border-t border-gray-800 mt-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 text-sm"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md transition-colors duration-200 flex items-center text-sm"
+        >
+          {isSubmitting ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Generating...
+            </>
+          ) : (
+            <>Generate Request Letter</>
+          )}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Legal Notice Form Component - placeholder implementation
+function LegalNoticeForm({ client, onClose }: { client: Client, onClose: () => void }) {
+  // Similar implementation to RequestLetterForm
+  // This is a placeholder - you would customize this for the legal notice fields
+  
+  return (
+    <div className="text-center py-8">
+      <p className="text-white mb-4">Legal Notice form will be implemented here</p>
+      <button
+        onClick={onClose}
+        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200"
+      >
+        Close
+      </button>
+    </div>
+  );
+}
+
 export default function AdvocateClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -394,6 +701,12 @@ export default function AdvocateClientsPage() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDocViewerOpen, setIsDocViewerOpen] = useState(false);
+  const [viewingDocumentUrl, setViewingDocumentUrl] = useState("");
+  const [viewingDocumentName, setViewingDocumentName] = useState("");
+  const [isRequestLetterModalOpen, setIsRequestLetterModalOpen] = useState(false);
+  const [isLegalNoticeModalOpen, setIsLegalNoticeModalOpen] = useState(false);
+  const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null);
 
   useEffect(() => {
     // Get the advocate name from localStorage
@@ -523,6 +836,23 @@ export default function AdvocateClientsPage() {
     }
   };
 
+  const openDocumentViewer = (url?: string, name?: string) => {
+    if (!url) return;
+    setViewingDocumentUrl(url);
+    setViewingDocumentName(name || "Document");
+    setIsDocViewerOpen(true);
+  };
+
+  const openRequestLetterModal = (client: Client) => {
+    setSelectedClientForDoc(client);
+    setIsRequestLetterModalOpen(true);
+  };
+
+  const openLegalNoticeModal = (client: Client) => {
+    setSelectedClientForDoc(client);
+    setIsLegalNoticeModalOpen(true);
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -630,7 +960,10 @@ export default function AdvocateClientsPage() {
         <ClientViewModal 
           client={viewClient} 
           isOpen={isViewModalOpen} 
-          onClose={closeViewModal} 
+          onClose={closeViewModal}
+          openDocumentViewer={openDocumentViewer}
+          openRequestLetterModal={openRequestLetterModal}
+          openLegalNoticeModal={openLegalNoticeModal}
         />
         <ClientEditModal
           client={editClient}
@@ -659,6 +992,80 @@ export default function AdvocateClientsPage() {
             },
           }}
         />
+        
+        {/* Add document viewer modal */}
+        {isDocViewerOpen && viewingDocumentUrl && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 w-[95vw] max-w-6xl h-[90vh] shadow-2xl flex flex-col">
+              <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-800">
+                <h3 className="text-xl font-semibold text-white flex items-center">
+                  {viewingDocumentName}
+                </h3>
+                <button 
+                  onClick={() => setIsDocViewerOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 bg-white rounded overflow-hidden">
+                <iframe 
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                  className="w-full h-full border-0"
+                  title="Document Viewer"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Request Letter Modal */}
+        {isRequestLetterModalOpen && selectedClientForDoc && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+                <h2 className="text-2xl font-bold text-white">
+                  Generate Request Letter
+                </h2>
+                <button 
+                  onClick={() => setIsRequestLetterModalOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <RequestLetterForm 
+                client={selectedClientForDoc} 
+                onClose={() => setIsRequestLetterModalOpen(false)} 
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Legal Notice Modal */}
+        {isLegalNoticeModalOpen && selectedClientForDoc && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+                <h2 className="text-2xl font-bold text-white">
+                  Generate Legal Notice
+                </h2>
+                <button 
+                  onClick={() => setIsLegalNoticeModalOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <LegalNoticeForm 
+                client={selectedClientForDoc} 
+                onClose={() => setIsLegalNoticeModalOpen(false)} 
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

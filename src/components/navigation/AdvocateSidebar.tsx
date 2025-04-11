@@ -85,7 +85,7 @@ const AdvocateSidebar = () => {
           <li>
             <Link href="/advocate/documents" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/documents')}`}>
               <FaFileAlt className="mr-3 text-indigo-400" />
-              <span>Docs (Coming Soon)</span>
+              <span>Documents</span>
             </Link>
           </li>
         </ul>

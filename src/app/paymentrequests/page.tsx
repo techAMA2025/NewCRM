@@ -138,17 +138,45 @@ export default function PaymentRequestsPage() {
         return;
       }
 
+      // Get the original request before updating
+      const request = paymentRequests.find(req => req.id === requestId);
+      const oldAmount = request ? Number(request.amount) : 0;
+      const newAmount = Number(editAmount);
+
       const paymentRef = doc(db, 'payments', requestId);
       await updateDoc(paymentRef, {
-        amount: editAmount,
+        amount: newAmount, // Store as number instead of string
         edited_by: userName,
         edited_at: new Date().toISOString()
       });
 
+      // If this is an approved payment, update the target collection
+      if (request && request.status === 'approved' && request.salesPersonName) {
+        // Find the target document for this salesperson
+        const targetsRef = collection(db, 'targets');
+        const q = query(targetsRef, where("userName", "==", request.salesPersonName));
+        const targetSnapshot = await getDocs(q);
+        
+        if (!targetSnapshot.empty) {
+          const targetDoc = targetSnapshot.docs[0];
+          const targetData = targetDoc.data();
+          
+          // Calculate the amount difference
+          const currentTotal = targetData.amountCollected || 0;
+          const newTotal = currentTotal - oldAmount + newAmount;
+          
+          // Update the target document
+          await updateDoc(doc(db, 'targets', targetDoc.id), {
+            amountCollected: newTotal,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
+
       // Update the local state
       setPaymentRequests(paymentRequests.map(req => 
         req.id === requestId 
-          ? { ...req, amount: editAmount, edited_by: userName, edited_at: new Date().toISOString() } 
+          ? { ...req, amount: newAmount, edited_by: userName, edited_at: new Date().toISOString() } 
           : req
       ));
       
