@@ -76,7 +76,7 @@ const Login = () => {
       <div className="absolute inset-0 bg-black opacity-10 z-10"></div>
       
       <div className="-mt-30 bg-white backdrop-blur-sm p-8 rounded-lg shadow-lg w-full max-w-xl relative z-20 border border-white border-opacity-40">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">CRM Login</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">AMA Workspace</h1>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

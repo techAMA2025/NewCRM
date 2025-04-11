@@ -23,7 +23,7 @@ export default function Home() {
           </div> */}
           
           <h1 className="text-4xl sm:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-            AMA Legal Solutions CRM
+            AMA Workspace
           </h1>
           
           <p className="text-xl mb-8 text-gray-300">

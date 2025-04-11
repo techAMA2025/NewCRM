@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CRM | AMA Legal Solutions",
-  description: "CRM for AMA Legal Solutions",
+  title: "AMA Workspace",
+  description: "AMA Workspace",
 };
 
 export default function RootLayout({
