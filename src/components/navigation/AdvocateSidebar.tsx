@@ -2,11 +2,15 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments } from 'react-icons/fa'
+import { usePathname, useRouter } from 'next/navigation'
+import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt } from 'react-icons/fa'
+import { getAuth, signOut } from 'firebase/auth'
+import { toast } from 'react-hot-toast'
+import { app } from '@/firebase/firebase'
 
 const AdvocateSidebar = () => {
   const pathname = usePathname()
+  const router = useRouter()
   const [userName, setUserName] = useState('')
   
   useEffect(() => {
@@ -17,6 +21,24 @@ const AdvocateSidebar = () => {
   
   const isActive = (path: string) => {
     return pathname === path ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : ''
+  }
+
+  const handleLogout = async () => {
+    // Add confirmation dialog
+    if (!window.confirm('Are you sure you want to log out?')) {
+      return; // If user cancels, don't proceed with logout
+    }
+    
+    try {
+      const auth = getAuth(app);
+      await signOut(auth);
+      localStorage.removeItem('userName');
+      toast.success('Logged out successfully');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
   }
 
   return (
@@ -57,13 +79,13 @@ const AdvocateSidebar = () => {
           <li>
             <Link href="/advocate/communications" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/communications')}`}>
               <FaComments className="mr-3 text-indigo-400" />
-              <span>Communications</span>
+              <span>Comms (Coming Soon)</span>
             </Link>
           </li>
           <li>
             <Link href="/advocate/documents" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/documents')}`}>
               <FaFileAlt className="mr-3 text-indigo-400" />
-              <span>Documents</span>
+              <span>Docs (Coming Soon)</span>
             </Link>
           </li>
         </ul>
@@ -83,6 +105,16 @@ const AdvocateSidebar = () => {
             </div>
           </div>
         </div>
+      </div>
+      
+      <div className="px-6 mt-auto pt-10">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center px-6 py-3 rounded-lg bg-gradient-to-r from-red-700 to-red-900 hover:from-red-800 hover:to-red-950 text-white transition-all duration-200"
+        >
+          <FaSignOutAlt className="mr-3" />
+          <span>Logout</span>
+        </button>
       </div>
     </div>
   )

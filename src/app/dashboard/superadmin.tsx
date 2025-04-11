@@ -761,7 +761,7 @@ export default function SuperAdminDashboard() {
     },
   };
 
-  // Find converted leads data from datasets
+  // Prepare data for conversion analytics chart - converted vs non-converted leads
   const convertedLeadsData = {
     labels: ['Settleloans', 'Credsettlee', 'AMA'],
     datasets: [
@@ -769,9 +769,9 @@ export default function SuperAdminDashboard() {
         label: 'Converted Leads',
         data: leadsBySourceData.datasets.find(d => d.label === 'Converted')?.data || [0, 0, 0],
         backgroundColor: [
-          'rgba(52, 191, 163, 0.8)',  // Teal for Settleloans
-          'rgba(79, 70, 229, 0.8)',   // Indigo for Credsettlee
-          'rgba(249, 115, 22, 0.8)',  // Orange for AMA
+          'rgba(52, 191, 163, 0.9)',  // Teal for Settleloans
+          'rgba(79, 70, 229, 0.9)',   // Indigo for Credsettlee
+          'rgba(249, 115, 22, 0.9)',  // Orange for AMA
         ],
         borderColor: [
           'rgba(52, 191, 163, 1)',
@@ -779,22 +779,46 @@ export default function SuperAdminDashboard() {
           'rgba(249, 115, 22, 1)',
         ],
         borderWidth: 1,
+      },
+      {
+        label: 'Non-Converted Leads',
+        // Calculate non-converted leads for each source
+        data: [
+          sourceTotals.settleloans - (leadsBySourceData.datasets.find(d => d.label === 'Converted')?.data[0] || 0),
+          sourceTotals.credsettlee - (leadsBySourceData.datasets.find(d => d.label === 'Converted')?.data[1] || 0),
+          sourceTotals.ama - (leadsBySourceData.datasets.find(d => d.label === 'Converted')?.data[2] || 0)
+        ],
+        backgroundColor: [
+          'rgba(52, 191, 163, 0.2)',  // Lighter Teal for Settleloans
+          'rgba(79, 70, 229, 0.2)',   // Lighter Indigo for Credsettlee
+          'rgba(249, 115, 22, 0.2)',  // Lighter Orange for AMA
+        ],
+        borderColor: [
+          'rgba(52, 191, 163, 0.6)',
+          'rgba(79, 70, 229, 0.6)',
+          'rgba(249, 115, 22, 0.6)',
+        ],
+        borderWidth: 1,
       }
     ]
   };
   
-  // Horizontal bar chart options
+  // Horizontal bar chart options with stacked bars
   const horizontalBarOptions = {
     indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false,
+        display: true,
+        position: 'top' as const,
+        labels: {
+          color: 'rgba(255, 255, 255, 0.8)',
+        },
       },
       title: {
         display: true,
-        text: 'Converted Leads by Source',
+        text: 'Conversion Performance by Source',
         color: 'rgba(255, 255, 255, 0.9)',
         font: {
           size: 16
@@ -804,9 +828,22 @@ export default function SuperAdminDashboard() {
           bottom: 15
         }
       },
+      tooltip: {
+        callbacks: {
+          footer: (tooltipItems: any) => {
+            const sourceIndex = tooltipItems[0].dataIndex;
+            const totalLeads = sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama;
+            const sourceTotal = [sourceTotals.settleloans, sourceTotals.credsettlee, sourceTotals.ama][sourceIndex];
+            const convertedLeads = leadsBySourceData.datasets.find(d => d.label === 'Converted')?.data[sourceIndex] || 0;
+            const conversionRate = sourceTotal > 0 ? (convertedLeads / sourceTotal * 100).toFixed(1) : '0';
+            return `Conversion Rate: ${conversionRate}%`;
+          }
+        }
+      }
     },
     scales: {
       x: {
+        stacked: true,
         grid: {
           color: 'rgba(255, 255, 255, 0.1)',
         },
@@ -815,6 +852,7 @@ export default function SuperAdminDashboard() {
         }
       },
       y: {
+        stacked: true,
         grid: {
           display: false,
         },

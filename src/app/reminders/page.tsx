@@ -5,7 +5,7 @@ import { db } from "@/firebase/firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, updateDoc } from "firebase/firestore";
 import { FiCalendar, FiClock, FiTrash2, FiAlertCircle, FiEdit2 } from "react-icons/fi";
 import { format } from "date-fns";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
 
 interface Reminder {
@@ -31,6 +31,8 @@ export default function RemindersPage() {
   const [time, setTime] = useState("");
   const [priority, setPriority] = useState("medium");
   const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
+  // Add state for expired reminders prompt
+  const [showExpiredPrompt, setShowExpiredPrompt] = useState(true);
 
   useEffect(() => {
     // Fetch username from localStorage
@@ -151,8 +153,56 @@ export default function RemindersPage() {
     }
   };
 
+  const handleDeleteExpiredReminders = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to beginning of today
+    
+    // Show confirmation alert
+    if (window.confirm("Are you sure you want to delete all expired reminders?")) {
+      try {
+        setLoading(true);
+        
+        // Find all expired reminders
+        const expiredReminders = reminders.filter(reminder => {
+          const reminderDate = new Date(reminder.date);
+          reminderDate.setHours(0, 0, 0, 0);
+          return reminderDate < today;
+        });
+        
+        // Delete each expired reminder
+        const deletePromises = expiredReminders.map(reminder => 
+          deleteDoc(doc(db, "reminders", reminder.id))
+        );
+        
+        await Promise.all(deletePromises);
+        
+        if (expiredReminders.length > 0) {
+          toast.success(`Deleted ${expiredReminders.length} expired reminder(s)`);
+        } else {
+          toast("No reminders to delete", { icon: 'ℹ️' });
+        }
+        
+        // Refresh reminders list
+        fetchReminders();
+      } catch (error) {
+        console.error("Error deleting expired reminders:", error);
+        toast.error("Failed to delete expired reminders");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   return (
     <div className="flex">
+      <Toaster position="top-right" toastOptions={{
+        style: {
+          background: '#333',
+          color: '#fff',
+          zIndex: 9999
+        },
+      }} />
+      
       <AdvocateSidebar />
       
       <div className="flex-1 min-h-screen bg-gray-900 text-white">
@@ -310,6 +360,34 @@ export default function RemindersPage() {
             )}
           </div>
         </div>
+        
+        {/* Expired reminders prompt */}
+        {showExpiredPrompt && (
+          <div className="fixed bottom-6 right-6 bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700 max-w-sm z-10">
+            <div className="flex flex-col">
+              <p className="text-white mb-3">
+                Delete all reminders which are expired based on today's date?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button 
+                  onClick={() => setShowExpiredPrompt(false)}
+                  className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
+                >
+                  No
+                </button>
+                <button 
+                  onClick={() => {
+                    handleDeleteExpiredReminders();
+                    setShowExpiredPrompt(false);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

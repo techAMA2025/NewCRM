@@ -121,31 +121,58 @@ const AdvocateDashboard = () => {
           });
         });
         
-        // Sort reminders by date and priority
-        remindersList.sort((a, b) => {
-          // Create date objects for comparison
-          const dateA = new Date(`${a.date}${a.time ? ' ' + a.time : ''}`);
-          const dateB = new Date(`${b.date}${b.time ? ' ' + b.time : ''}`);
+        // Filter for today's reminders only
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        const todayReminders = remindersList.filter(reminder => {
+          // First, filter for today's date
+          if (reminder.date !== todayStr) return false;
           
-          // Skip past dates in priority
-          const aIsPast = isPast(dateA);
-          const bIsPast = isPast(dateB);
-          
-          if (aIsPast && !bIsPast) return 1;
-          if (!aIsPast && bIsPast) return -1;
-          
-          // Then sort by priority (high > medium > low)
-          const priorityOrder = { high: 0, medium: 1, low: 2 };
-          if (priorityOrder[a.priority as keyof typeof priorityOrder] !== priorityOrder[b.priority as keyof typeof priorityOrder]) {
-            return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+          // For reminders with specific times, filter out those more than 30 mins in the past
+          if (reminder.time) {
+            const reminderDateTime = new Date(`${reminder.date} ${reminder.time}`);
+            const thirtyMinutesAgo = new Date(today.getTime() - 30 * 60 * 1000);
+            
+            // If reminder time is more than 30 minutes in the past, exclude it
+            if (reminderDateTime < thirtyMinutesAgo) return false;
           }
           
-          // If priority is the same, sort by date
-          return dateA.getTime() - dateB.getTime();
+          return true;
         });
         
-        // Take only the first few upcoming reminders
-        setUpcomingReminders(remindersList.slice(0, 4));
+        // Sort reminders by time urgency and priority
+        todayReminders.sort((a, b) => {
+          // Create date objects for comparison
+          const now = new Date();
+          const timeA = a.time ? new Date(`${a.date} ${a.time}`) : new Date(`${a.date} 23:59:59`);
+          const timeB = b.time ? new Date(`${b.date} ${b.time}`) : new Date(`${b.date} 23:59:59`);
+          
+          // Calculate minutes until reminder
+          const minutesUntilA = Math.max(0, (timeA.getTime() - now.getTime()) / (1000 * 60));
+          const minutesUntilB = Math.max(0, (timeB.getTime() - now.getTime()) / (1000 * 60));
+          
+          // Increase priority if reminder is within 30 minutes
+          const urgentA = minutesUntilA <= 30;
+          const urgentB = minutesUntilB <= 30;
+          
+          // If one is urgent and the other isn't, the urgent one comes first
+          if (urgentA && !urgentB) return -1;
+          if (!urgentA && urgentB) return 1;
+          
+          // If both are urgent or both are not, use the actual time
+          if (minutesUntilA !== minutesUntilB) {
+            return minutesUntilA - minutesUntilB;
+          }
+          
+          // If times are equal, use priority
+          const priorityOrder = { high: 0, medium: 1, low: 2 };
+          return priorityOrder[a.priority as keyof typeof priorityOrder] - 
+                 priorityOrder[b.priority as keyof typeof priorityOrder];
+        });
+        
+        // Take only the first few reminders
+        setUpcomingReminders(todayReminders.slice(0, 4));
         
       } catch (error) {
         console.error('Error fetching advocate data:', error);
@@ -246,36 +273,48 @@ const AdvocateDashboard = () => {
         </div>
         
         <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Upcoming Reminders</h2>
+          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Today's Reminders</h2>
           <div className="space-y-4">
             {upcomingReminders.length > 0 ? (
-              upcomingReminders.map(reminder => (
-                <div key={reminder.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
-                  <div className="flex items-center">
-                    <div className={`w-2 h-2 rounded-full mr-2 ${getPriorityDot(reminder.priority)}`}></div>
-                    <p className={`text-sm ${getPriorityColor(reminder.priority)}`}>
-                      {format(new Date(reminder.date), "MMM dd, yyyy")}
-                      {reminder.time && `, ${reminder.time}`}
-                    </p>
+              upcomingReminders.map(reminder => {
+                // Calculate time urgency for display
+                const now = new Date();
+                const reminderTime = reminder.time ? new Date(`${reminder.date} ${reminder.time}`) : null;
+                const isUrgent = reminderTime && ((reminderTime.getTime() - now.getTime()) / (1000 * 60) <= 30);
+                
+                return (
+                  <div key={reminder.id} className={`border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200 ${isUrgent ? 'bg-red-900/20' : ''}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className={`w-2 h-2 rounded-full mr-2 ${getPriorityDot(reminder.priority)}`}></div>
+                        <p className={`text-sm ${isUrgent ? 'text-red-400 font-semibold' : getPriorityColor(reminder.priority)}`}>
+                          {reminder.time || "All day"}
+                          {isUrgent && " (Soon!)"}
+                        </p>
+                      </div>
+                      {reminderTime && (
+                        <p className="text-xs text-gray-400">
+                          {Math.max(0, Math.floor((reminderTime.getTime() - now.getTime()) / (1000 * 60)))} min left
+                        </p>
+                      )}
+                    </div>
+                    <p className="font-medium">{reminder.title}</p>
+                    {reminder.note && <p className="text-sm text-gray-400 mt-1 line-clamp-2">{reminder.note}</p>}
                   </div>
-                  <p className="font-medium">{reminder.title}</p>
-                  {reminder.note && <p className="text-sm text-gray-400 mt-1 line-clamp-2">{reminder.note}</p>}
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <p>No upcoming reminders</p>
+                <p>No reminders for today</p> 
                 <p className="text-sm mt-2">Add reminders in the Reminders section</p>
               </div>
             )}
           </div>
-          {upcomingReminders.length > 0 && (
-            <div className="mt-4 text-right">
-              <a href="/reminders" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
-                View all reminders →
-              </a>
-            </div>
-          )}
+          <div className="mt-4 text-right">
+            <a href="/reminders" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+              View all reminders →
+            </a>
+          </div>
         </div>
       </div>
     </div>
