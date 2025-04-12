@@ -8,6 +8,7 @@ import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
 import ClientEditModal from "@/components/clients/ClientEditModal";
 import toast, { Toaster } from "react-hot-toast";
 import RequestLetterForm from "./requestletter";
+import DemandNoticeForm from "./demandnotice";
 
 interface Bank {
   id: string;
@@ -117,14 +118,16 @@ function ClientViewModal({
   onClose,
   openDocumentViewer,
   openRequestLetterModal,
-  openLegalNoticeModal
+  openLegalNoticeModal,
+  openDemandNoticeModal
 }: { 
   client: Client | null, 
   isOpen: boolean, 
   onClose: () => void,
   openDocumentViewer: (url?: string, name?: string) => void,
   openRequestLetterModal: (client: Client) => void,
-  openLegalNoticeModal: (client: Client) => void
+  openLegalNoticeModal: (client: Client) => void,
+  openDemandNoticeModal: (client: Client) => void
 }) {
   if (!isOpen || !client) return null;
 
@@ -417,6 +420,15 @@ function ClientViewModal({
                         Request Letter
                       </button>
                       <button
+                        onClick={() => openDemandNoticeModal(client)}
+                        className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Demand Notice
+                      </button>
+                      <button
                         onClick={() => openLegalNoticeModal(client)}
                         className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
                       >
@@ -521,6 +533,7 @@ export default function AdvocateClientsPage() {
   const [isRequestLetterModalOpen, setIsRequestLetterModalOpen] = useState(false);
   const [isLegalNoticeModalOpen, setIsLegalNoticeModalOpen] = useState(false);
   const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null);
+  const [isDemandNoticeModalOpen, setIsDemandNoticeModalOpen] = useState(false);
 
   useEffect(() => {
     // Get the advocate name from localStorage
@@ -667,6 +680,12 @@ export default function AdvocateClientsPage() {
     setIsLegalNoticeModalOpen(true);
   };
 
+  const openDemandNoticeModal = (client: Client) => {
+    console.log("Opening demand notice modal for client:", client.name);
+    setSelectedClientForDoc(client);
+    setIsDemandNoticeModalOpen(true);
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -778,6 +797,7 @@ export default function AdvocateClientsPage() {
           openDocumentViewer={openDocumentViewer}
           openRequestLetterModal={openRequestLetterModal}
           openLegalNoticeModal={openLegalNoticeModal}
+          openDemandNoticeModal={openDemandNoticeModal}
         />
         <ClientEditModal
           client={editClient}
@@ -876,6 +896,30 @@ export default function AdvocateClientsPage() {
               <LegalNoticeForm 
                 client={selectedClientForDoc} 
                 onClose={() => setIsLegalNoticeModalOpen(false)} 
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Demand Notice Modal */}
+        {isDemandNoticeModalOpen && selectedClientForDoc && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+                <h2 className="text-2xl font-bold text-white">
+                  Generate Demand Notice
+                </h2>
+                <button 
+                  onClick={() => setIsDemandNoticeModalOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <DemandNoticeForm 
+                client={selectedClientForDoc} 
+                onClose={() => setIsDemandNoticeModalOpen(false)} 
               />
             </div>
           </div>
