@@ -57,43 +57,43 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
   // Complete bank data for dropdown and auto-filling
   const bankData = {
     "Axis Bank": {
-      address: "Mr. Sandeep Dam, Nodal officer Axis Bank Ltd, Axis House, Tower 3, 4th Floor, Sector128, Noida, UP- 201304.",
+      address: "Mr. Sandeep Dam, Nodal officer Axis Bank Ltd, Axis House, Tower 3, 4th Floor, Sector128, Noida, UP- 201304. Landline No: 0120-6210005. Mr. Caesar Pinto, Nodal Officer, Axis Bank LTD. NPC1, 5th Floor \"Gigaplex\", Plot No .I.T 5, MIDC Airoli Knowledge Park, Airoli, Navi Mumbai – 400708. Mrs. Neeta Bhatt Principal Nodal Officer, Axis Bank LTD. 4th Floor, Axis House, Wadia International Center, P.B. Marg, Worli, Mumbai – 400 025. Axis Bank Limited, 'Axis House', C-2, Wadia International Centre, Pandurang Budhkar Marg, Worli, Mumbai - 400 025. Axis Bank Limited, 'Trishul', 3rd Floor, Opp. Samartheshwar Temple, Near Law Garden, Ellisbridge, Ahmedabad - 380 006",
       email: "Circlenodalofficer.delhi1@axisbank.com, nodal.officer@axisbank.com, pno@axisbank.com"
     },
     "Ashv Finance Limited": {
-      address: "Ashv Finance Limited,12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062",
+      address: "Ashv Finance Limited,12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062. Grievance Redressal Officer, Ms. Monika Thadeshwar, 12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062.",
       email: "monika.thadeshwar@ashvfinance.com, info@ashvfinance.com, customersupport@ashvfinance.com"
     },
     "Niro": {
-      address: "Corporate Office: No 313/1 Workden, Ground floor, 7th Cross Patel, Rama Reddy Road, Domlur Layout, Bangalore 560071",
+      address: "Corporate Office: No 313/1 Workden, Ground floor, 7th Cross Patel, Rama Reddy Road, Domlur Layout, Bangalore 560071. Registered Office: 17/1 Bharat Apartments, 44/1, Fair field Layout, Race course road, Bengaluru, Karnataka – 560 001",
       email: "support@niro.money, grievance@niro.money, info@niro.money"
     },
     "Aditya Birla Fin": {
-      address: "Ms Rachana Padval, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063",
-      email: "abfl.nodalofficerwest@adityabirlacapital.com, grievance.finance@adityabirlacapital.com, care.finance@adityabirlacapital.com"
+      address: "Ms Rachana Padval, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063. Principal Nodal Officer Ms Smita Nadkarni, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063. Aditya Birla Finance Limited (A subsidiary of Aditya Birla Capital Ltd.) One World Center, Tower 1-C, 18th Floor, 841, Jupiter Mill Compound, Senapati Bapat Marg, Elphinstone Road, Mumbai 400 013. Mr Abhinav Chaudhry. Aditya Birla Housing Finance - Customer Service Cell, R Tech Park, 10th Floor, Niroln Complex, Off Western Express Highway Goregaon East, Mumbai - 400063. Aditya Birla Finance Limited (A subsidiary of Aditya Birla Capital Ltd.) Indian Rayon Compound, Veraval, Gujarat -362 266.",
+      email: "abfl.nodalofficerwest@adityabirlacapital.com, grievance.finance@adityabirlacapital.com, care.finance@adityabirlacapital.com, abhinav.c@adityabirlacapital.com, care.digitalfinance@adityabirlacapital.com, preethi.nair@adityabirlacapital.com"
     },
     "Amex": {
-      address: "Manager - Executive Correspondence Unit, American Express Banking Corp. Cyber City, Tower C, DLF Building No.8 Sector 25, DLF City Ph II, Gurgaon – 122002",
-      email: "Manager-Customerservicesindia@aexp.com, Head-Customerservicesindia@aexp.com, AEBCNodalOfficer@aexp.com"
+      address: "Manager - Executive Correspondence Unit, American Express Banking Corp. Cyber City, Tower C, DLF Building No.8 Sector 25, DLF City Ph II, Gurgaon – 122002. Ms. Priyameet Kaur, Head of Customer Service American Express Banking Corp. Cyber City, Tower C, DLF Building No.8, Sector 25, DLF City Ph II, Gurgaon – 122002 (Haryana). Mr. Ashish Pandey, Nodal Officer, American Express Banking Corp. Cyber City, Tower C, DLF Building No.8, Sector 25, DLF City Ph II, Gurgaon – 122002 (Haryana).",
+      email: "Manager-Customerservicesindia@aexp.com, Head-Customerservicesindia@aexp.com, AEBCNodalOfficer@aexp.com, Indiacollectionteam@aexp.com"
     },
     "Au Small Fin Bank Ltd": {
-      address: "Rasmiranjan Sarangi, AU SMALL FINANCE BANK LIMITED Corporate House, G Block, 2nd Floor, Kanakia Zillion, Junction of LBS & CST Marg, BKC Annex, Kurla (West), Mumbai, PIN – 400070",
+      address: "Rasmiranjan Sarangi, AU SMALL FINANCE BANK LIMITED Corporate House, G Block, 2nd Floor, Kanakia Zillion, Junction of LBS & CST Marg, BKC Annex, Kurla (West), Mumbai, PIN – 400070. Mr. Deepak Babber (Principal Nodal Officer) AU SMALL FINANCE BANK LIMITED Bank House, 6th Floor, Mile 0, Ajmer Road, Jaipur, Rajasthan, PIN – 302001.",
       email: "pno@aubank.in, rno.mumbai@aubank.in"
     },
     "Bajaj Fin": {
-      address: "Mr. Rinku Anand – Principal Nodal Officer Bajaj Finance Ltd, 12th Floor, Aggarwal Metro Heights, Plot - E5, Netaji Subhash Place, Pitampura, New Delhi 110 034",
-      email: "ospno@bajajfinserv.in, collection.support@bajajfinserv.in, grievanceredressalteam@bajajfinserv.in, wecare@bajajfinserv.in"
+      address: "Mr. Rinku Anand – Principal Nodal Officer Bajaj Finance Ltd, 12th Floor, Aggarwal Metro Heights, Plot - E5, Netaji Subhash Place, Pitampura, New Delhi 110 034 Tel. No. 011-43127827. To Bajaj Finserv, 4th Floor, Corporate Office, off Pune-Ahmednagar Road, Viman Nagar, Pune-411014, Maharashtra, India",
+      email: "ospno@bajajfinserv.in, collection.support@bajajfinserv.in, cdlegal@bajajfinserv.in, grievanceredressalteam@bajajfinserv.in, wecare@bajajfinserv.in, customerexperiencehead@bajajfinserv.in, investors@bajajfinserv.in"
     },
     "Bank of Baroda": {
-      address: "Y V S Koteswara Rao Assistant General Manager Bank of Baroda, Regional Office, #10-1-44/10 & 11, Peejay Plaza, 3rd Floor, VIP Road, Opp. Hotel Tycoon, Visakhapatnam – 530003, Andhra Pradesh",
-      email: "rm.vis@bankofbaroda.com, cs.ho@bankofbaroda.com, LEGAL.HEADOFFICE@bankofbaroda.com"
+      address: "Y V S Koteswara Rao Assistant General Manager Bank of Baroda, Regional Office, #10-1-44/10 & 11, Peejay Plaza, 3rd Floor, VIP Road, Opp. Hotel Tycoon, Visakhapatnam – 530003, Andhra Pradesh. Mr. Pankaj Mittal, General Manager (Operations & Services) Bank of Baroda, Head Office, Baroda Bhavan, R C Dutt Road, Alkapuri, BARODA - 390007, (Gujarat) India. Mr. Parshva Shah, 301 Orchid, Campa Cola Compund, B G Kher marg, Worli Naka Mumbai- 400018.",
+      email: "rm.vis@bankofbaroda.com, cs.ho@bankofbaroda.com, LEGAL.HEADOFFICE@bankofbaroda.com, Advparshvashah.bfsl@gmail.com"
     },
     "Cashe": {
       address: "CASHe, (Bhanix Finance)",
       email: "Collections.legal@cashe.co.in, Recovery@cashe.co.in, Pavan.mehta@cashe.co.in, support@cashe.co.in"
     },
     "Cholamandalam": {
-      address: "Mr. Krishnakumar K. P, Principal Nodal Officer, Cholamandalam Investment & Finance Company Limited (CIFCL), Chola Crest, C54-55 & Super B-4, Thiru-Vi-Ka Industrial Estate, Guindy, Chennai - 600032",
+      address: "Mr. Krishnakumar K. P, Principal Nodal Officer, Cholamandalam Investment & Finance Company Limited (CIFCL), Chola Crest, C54-55 & Super B-4, Thiru-Vi-Ka Industrial Estate, Guindy, Chennai - 600032.",
       email: "principalnodalofficer@chola.murugappa.com, customercare@chola.murugappa.com"
     },
     "CitiBank": {
@@ -384,34 +384,60 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
     setIsSubmitting(true);
     
     try {
-      // Format the data for API submission
-      const formBody = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        formBody.append(key, value);
+      console.log("Submitting form data:", JSON.stringify(formData, null, 2));
+      
+      const response = await fetch('/api/generate-letter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
       
-      // Call the document generation API
-      // This is where you would integrate with your document generation service
-      // For now, we'll simulate a successful response
-      toast.success("Document generation initiated. The document will download shortly.");
+      console.log("Response status:", response.status, response.statusText);
       
-      // In a real implementation, you would call an API endpoint:
-      // const response = await fetch('/api/generate-request-letter', {
-      //   method: 'POST',
-      //   body: formBody,
-      // });
+      // Check if the response indicates an error
+      if (!response.ok) {
+        // Only try to parse JSON for error responses
+        const contentType = response.headers.get('content-type');
+        console.log("Error response content type:", contentType);
+        
+        if (contentType && contentType.includes('application/json')) {
+          const errorText = await response.text(); // Get raw text first
+          console.log("Error response text:", errorText);
+          
+          try {
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.error || 'Failed to generate document');
+          } catch (parseError) {
+            console.error("Error parsing JSON response:", parseError);
+            throw new Error(`Failed to generate document: Unable to parse error response`);
+          }
+        } else {
+          // If it's not JSON, just use the status text
+          throw new Error(`Failed to generate document: ${response.statusText}`);
+        }
+      }
       
-      // if (response.ok) {
-      //   // Handle successful document generation
-      //   // This might involve triggering a download or showing a link
-      // } else {
-      //   throw new Error('Failed to generate document');
-      // }
+      // Get the document as a blob
+      const blob = await response.blob();
+      console.log("Document blob received, size:", blob.size);
       
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${formData.name1}_request_letter.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success("Document successfully generated and downloaded.");
       onClose();
     } catch (error) {
       console.error("Error generating document:", error);
-      toast.error("Failed to generate document. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to generate document. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
