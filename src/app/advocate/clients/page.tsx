@@ -15,6 +15,7 @@ interface Bank {
   accountNumber: string;
   loanType: string;
   loanAmount: string;
+  settled: boolean;
 }
 
 interface Client {
@@ -283,7 +284,14 @@ function ClientViewModal({
                     <div key={bank.id} className={`rounded-lg bg-gray-900/50 p-4 ${index !== client.banks.length - 1 ? 'mb-3' : ''}`}>
                       <div className="flex justify-between items-center mb-2">
                         <h4 className="text-white font-semibold">{bank.bankName}</h4>
-                        <span className="text-xs px-2 py-1 bg-purple-900/40 text-purple-300 rounded">{bank.loanType}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs px-2 py-1 bg-purple-900/40 text-purple-300 rounded">{bank.loanType}</span>
+                          {bank.settled && (
+                            <span className="text-xs px-2 py-1 bg-green-800/40 text-green-200 rounded-full">
+                              Settled
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>

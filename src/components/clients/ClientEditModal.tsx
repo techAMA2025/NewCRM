@@ -10,6 +10,7 @@ interface Bank {
   accountNumber: string;
   loanType: string;
   loanAmount: string;
+  settled: boolean;
 }
 
 interface Client {
@@ -43,7 +44,7 @@ interface ClientEditModalProps {
 }
 
 export default function ClientEditModal({ 
-  client, 
+  client,  
   isOpen, 
   onClose, 
   onClientUpdated 
@@ -70,7 +71,7 @@ export default function ClientEditModal({
     });
   };
 
-  const handleBankChange = (bankId: string, field: keyof Bank, value: string) => {
+  const handleBankChange = (bankId: string, field: keyof Bank, value: string | boolean) => {
     setFormData(prev => {
       if (!prev) return null;
       
@@ -94,7 +95,8 @@ export default function ClientEditModal({
         bankName: "",
         accountNumber: "",
         loanType: "Personal Loan",
-        loanAmount: ""
+        loanAmount: "",
+        settled: false
       };
       
       return { ...prev, banks: [...prev.banks, newBank] };
@@ -456,6 +458,27 @@ export default function ClientEditModal({
                           onChange={(e) => handleBankChange(bank.id, 'loanAmount', e.target.value)}
                           className="w-full bg-gray-600 border border-gray-500 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
+                      </div>
+                      
+                      {/* Settled checkbox */}
+                      <div className="md:col-span-2 mt-2">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={`settled-${bank.id}`}
+                            checked={bank.settled || false}
+                            onChange={(e) => handleBankChange(bank.id, 'settled', e.target.checked)}
+                            className="h-4 w-4 rounded text-purple-600 focus:ring-purple-500 bg-gray-700 border-gray-500"
+                          />
+                          <label htmlFor={`settled-${bank.id}`} className="ml-2 text-sm font-medium text-gray-300">
+                            Mark as Settled
+                          </label>
+                          {bank.settled && (
+                            <span className="ml-2 px-2 py-1 bg-green-800/40 text-green-200 text-xs rounded-full">
+                              Settled
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
