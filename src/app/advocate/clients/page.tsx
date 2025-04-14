@@ -9,6 +9,7 @@ import ClientEditModal from "@/components/clients/ClientEditModal";
 import toast, { Toaster } from "react-hot-toast";
 import RequestLetterForm from "./requestletter";
 import DemandNoticeForm from "./demandnotice";
+import ComplaintForHarassmentForm from "./cfhab";
 
 interface Bank {
   id: string;
@@ -119,7 +120,8 @@ function ClientViewModal({
   openDocumentViewer,
   openRequestLetterModal,
   openLegalNoticeModal,
-  openDemandNoticeModal
+  openDemandNoticeModal,
+  openHarassmentComplaintModal
 }: { 
   client: Client | null, 
   isOpen: boolean, 
@@ -127,7 +129,8 @@ function ClientViewModal({
   openDocumentViewer: (url?: string, name?: string) => void,
   openRequestLetterModal: (client: Client) => void,
   openLegalNoticeModal: (client: Client) => void,
-  openDemandNoticeModal: (client: Client) => void
+  openDemandNoticeModal: (client: Client) => void,
+  openHarassmentComplaintModal: (client: Client) => void
 }) {
   if (!isOpen || !client) return null;
 
@@ -377,16 +380,16 @@ function ClientViewModal({
             </div>
 
             {/* Document Section - Add this after Notes & Remarks */}
-            {client.documentUrl && (
-              <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm md:col-span-2 mt-5">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Client Document
-                </h3>
-                
-                <div className="bg-gray-900/50 rounded-lg p-4">
+            <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm md:col-span-2 mt-5">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Client Document
+              </h3>
+              
+              <div className="bg-gray-900/50 rounded-lg p-4">
+                {client.documentUrl ? (
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                       <p className="text-white font-medium">{client.documentName || "Client Document"}</p>
@@ -437,11 +440,53 @@ function ClientViewModal({
                         </svg>
                         Legal Notice
                       </button>
+                      <button
+                        onClick={() => openHarassmentComplaintModal(client)}
+                        className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Harassment Complaint
+                      </button>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex flex-col md:flex-row justify-between items-center">
+                    <p className="text-gray-400 mb-4 md:mb-0">No document uploaded for this client.</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => openRequestLetterModal(client)}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Request Letter
+                      </button>
+                      <button
+                        onClick={() => openDemandNoticeModal(client)}
+                        className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Demand Notice
+                      </button>
+                      <button
+                        onClick={() => openLegalNoticeModal(client)}
+                        className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Legal Notice
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
         
@@ -534,6 +579,7 @@ export default function AdvocateClientsPage() {
   const [isLegalNoticeModalOpen, setIsLegalNoticeModalOpen] = useState(false);
   const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null);
   const [isDemandNoticeModalOpen, setIsDemandNoticeModalOpen] = useState(false);
+  const [isHarassmentComplaintModalOpen, setIsHarassmentComplaintModalOpen] = useState(false);
 
   useEffect(() => {
     // Get the advocate name from localStorage
@@ -686,6 +732,12 @@ export default function AdvocateClientsPage() {
     setIsDemandNoticeModalOpen(true);
   };
 
+  const openHarassmentComplaintModal = (client: Client) => {
+    console.log("Opening harassment complaint modal for client:", client.name);
+    setSelectedClientForDoc(client);
+    setIsHarassmentComplaintModalOpen(true);
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -798,6 +850,7 @@ export default function AdvocateClientsPage() {
           openRequestLetterModal={openRequestLetterModal}
           openLegalNoticeModal={openLegalNoticeModal}
           openDemandNoticeModal={openDemandNoticeModal}
+          openHarassmentComplaintModal={openHarassmentComplaintModal}
         />
         <ClientEditModal
           client={editClient}
@@ -920,6 +973,30 @@ export default function AdvocateClientsPage() {
               <DemandNoticeForm 
                 client={selectedClientForDoc} 
                 onClose={() => setIsDemandNoticeModalOpen(false)} 
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Harassment Complaint Modal */}
+        {isHarassmentComplaintModalOpen && selectedClientForDoc && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+                <h2 className="text-2xl font-bold text-white">
+                  Complaint For Harassment Against Banks
+                </h2>
+                <button 
+                  onClick={() => setIsHarassmentComplaintModalOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <ComplaintForHarassmentForm 
+                client={selectedClientForDoc} 
+                onClose={() => setIsHarassmentComplaintModalOpen(false)} 
               />
             </div>
           </div>
