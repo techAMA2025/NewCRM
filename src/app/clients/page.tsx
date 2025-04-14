@@ -122,9 +122,8 @@ export default function ClientsPage() {
           ...doc.data()
         } as Client))
         
-        // Filter to only include clients with alloc_adv field
-        const allocatedClients = clientsData.filter(client => client.alloc_adv)
-        setClients(allocatedClients)
+        // Display all clients regardless of allocation status
+        setClients(clientsData)
       } catch (err) {
         console.error('Error fetching clients:', err)
         setError('Failed to load clients data')
@@ -515,7 +514,7 @@ export default function ClientsPage() {
                   <TableBody>
                     {clients.map(client => (
                       <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
-                        <TableCell className="font-medium text-white">{client.name.toUpperCase()}</TableCell>
+                        <TableCell className="font-medium text-white">{client.name ? client.name.toUpperCase() : 'N/A'}</TableCell>
                         <TableCell className="text-gray-300">{client.phone}</TableCell>
                         <TableCell className="text-gray-300 truncate max-w-[200px]">{client.email}</TableCell>
                         <TableCell>
@@ -534,7 +533,7 @@ export default function ClientsPage() {
                             <option value="Not Responding">Not Responding</option>
                           </select>
                         </TableCell>
-                        <TableCell className="text-gray-300">{client.city.toUpperCase()}</TableCell>
+                        <TableCell className="text-gray-300">{client.city ? client.city.toUpperCase() : 'N/A'}</TableCell>
                         <TableCell className="text-gray-300">{client.assignedTo}</TableCell>
                         <TableCell className="text-gray-300">{client.alloc_adv}</TableCell>
                         <TableCell className="text-right">
@@ -612,7 +611,7 @@ export default function ClientsPage() {
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Name</div>
-                    <div className="text-white font-medium">{selectedClient.name.toUpperCase()}</div>
+                    <div className="text-white font-medium">{selectedClient.name ? selectedClient.name.toUpperCase() : 'N/A'}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Phone</div>
@@ -624,7 +623,7 @@ export default function ClientsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">City</div>
-                    <div className="text-white">{selectedClient.city}</div>
+                    <div className="text-white">{selectedClient.city ? selectedClient.city.toUpperCase() : 'N/A'}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Occupation</div>
