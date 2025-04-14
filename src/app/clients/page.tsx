@@ -515,7 +515,7 @@ export default function ClientsPage() {
                   <TableBody>
                     {clients.map(client => (
                       <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
-                        <TableCell className="font-medium text-white">{client.name}</TableCell>
+                        <TableCell className="font-medium text-white">{client.name.toUpperCase()}</TableCell>
                         <TableCell className="text-gray-300">{client.phone}</TableCell>
                         <TableCell className="text-gray-300 truncate max-w-[200px]">{client.email}</TableCell>
                         <TableCell>
@@ -534,7 +534,7 @@ export default function ClientsPage() {
                             <option value="Not Responding">Not Responding</option>
                           </select>
                         </TableCell>
-                        <TableCell className="text-gray-300">{client.city}</TableCell>
+                        <TableCell className="text-gray-300">{client.city.toUpperCase()}</TableCell>
                         <TableCell className="text-gray-300">{client.assignedTo}</TableCell>
                         <TableCell className="text-gray-300">{client.alloc_adv}</TableCell>
                         <TableCell className="text-right">
@@ -612,7 +612,7 @@ export default function ClientsPage() {
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Name</div>
-                    <div className="text-white font-medium">{selectedClient.name}</div>
+                    <div className="text-white font-medium">{selectedClient.name.toUpperCase()}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Phone</div>
@@ -866,7 +866,7 @@ export default function ClientsPage() {
                     <label className="text-sm text-gray-400 block mb-1">Name</label>
                     <Input 
                       name="name"
-                      value={editingClient.name}
+                      value={editingClient.name ? editingClient.name.toUpperCase() : ''}
                       onChange={handleEditInputChange}
                       className="bg-gray-950 border-gray-700 text-white"
                     />
