@@ -51,6 +51,7 @@ import toast from 'react-hot-toast';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
 import { ClientDetailsModal } from '@/app/paymentreminder/components/modals/ClientDetailsModal';
 import { PaymentRecordModal } from './components/modals/PaymentRecordModal';
+import { ClientEditModal } from '@/app/paymentreminder/components/modals/ClientEditModal';
 import FilterBar from './components/FilterBar';
 
 type Client = {
@@ -140,6 +141,7 @@ export default function PaymentReminderPage() {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [sortBy, setSortBy] = useState<string | null>('date-desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [clientEditOpen, setClientEditOpen] = useState(false);
 
   // Move fetchClients outside useEffect and make it memoized with useCallback
   const fetchClients = useCallback(async () => {
@@ -442,6 +444,20 @@ export default function PaymentReminderPage() {
     return new Date(timestamp.seconds * 1000).toLocaleDateString();
   };
 
+  // Add this to refresh client data after an update
+  const handleClientUpdate = useCallback(() => {
+    fetchClients();
+    if (selectedClient) {
+      // Refresh the selected client data
+      const clientRef = doc(db, 'clients_payments', selectedClient.clientId);
+      getDoc(clientRef).then((docSnap) => {
+        if (docSnap.exists()) {
+          setSelectedClient({ clientId: docSnap.id, ...docSnap.data() } as Client);
+        }
+      });
+    }
+  }, [fetchClients, selectedClient]);
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
       <AdvocateSidebar />
@@ -538,14 +554,27 @@ export default function PaymentReminderPage() {
                                     </span>
                                   </td>
                                   <td className="p-4 border-b border-gray-800 text-center">
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm"
-                                      onClick={() => handleClientSelect(client)}
-                                      className="bg-gray-800 hover:bg-blue-900/20 text-blue-400 border-blue-900"
-                                    >
-                                      View Details
-                                    </Button>
+                                    <div className="flex gap-2 justify-center">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleClientSelect(client)}
+                                        className="bg-gray-800 hover:bg-blue-900/20 text-blue-400 border-blue-900"
+                                      >
+                                        View Details
+                                      </Button>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedClient(client);
+                                          setClientEditOpen(true);
+                                        }}
+                                        className="bg-gray-800 hover:bg-green-900/20 text-green-400 border-green-900"
+                                      >
+                                        Edit
+                                      </Button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -673,6 +702,13 @@ export default function PaymentReminderPage() {
         formData={paymentFormData}
         setFormData={setPaymentFormData}
         onSubmit={handleRecordPayment}
+      />
+      
+      <ClientEditModal
+        open={clientEditOpen}
+        onOpenChange={setClientEditOpen}
+        client={selectedClient}
+        onClientUpdate={handleClientUpdate}
       />
     </div>
   );
