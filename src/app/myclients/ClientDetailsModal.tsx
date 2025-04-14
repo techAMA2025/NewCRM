@@ -49,7 +49,7 @@ interface Client {
   remarks: string;
   queries: string;
   salesNotes: string;
-  source: string;
+  source_database: string;
   tenure: string;
   occupation: string;
   aadharNumber: string;
@@ -58,7 +58,6 @@ interface Client {
   leadId: string;
   startDate: string;
   message: string;
-  source_database: string;
 }
 
 interface ClientDetailsModalProps {

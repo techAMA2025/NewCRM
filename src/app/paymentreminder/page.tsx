@@ -113,6 +113,12 @@ type PaymentRequest = {
   dueDate: Timestamp; // Make dueDate required instead of optional
 }
 
+// Define the type for weekly filter
+type WeeklyFilter = {
+  status: string | null;
+  amount: string | null;
+};
+
 export default function PaymentReminderPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +148,14 @@ export default function PaymentReminderPage() {
   const [sortBy, setSortBy] = useState<string | null>('date-desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [clientEditOpen, setClientEditOpen] = useState(false);
+
+  // Update the state to use the type
+  const [weeklyFilters, setWeeklyFilters] = useState<Record<number, WeeklyFilter>>({
+    1: { status: null, amount: null },
+    2: { status: null, amount: null },
+    3: { status: null, amount: null },
+    4: { status: null, amount: null },
+  });
 
   // Move fetchClients outside useEffect and make it memoized with useCallback
   const fetchClients = useCallback(async () => {
@@ -428,13 +442,56 @@ export default function PaymentReminderPage() {
     });
   }
 
-  // Group clients by week of month - updated to use sorted clients
+  // Function to update filters for a specific week
+  const updateWeekFilter = (week: number, filterType: string, value: string | null) => {
+    setWeeklyFilters((prev: any)=> ({
+      ...prev,
+      [week]: {
+        ...prev[week],
+        [filterType]: value === 'all' ? null : value
+      }
+    }));
+  };
+
+  // Update clientsByWeek to use week-specific filters
   const clientsByWeek = sortedClients.reduce((acc, client) => {
     const week = client.weekOfMonth;
     if (!acc[week]) {
       acc[week] = [];
     }
-    acc[week].push(client);
+    
+    // Apply week-specific filters
+    const weekFilter = weeklyFilters[week] as WeeklyFilter;
+    let includeClient = true;
+    
+    // Filter by payment status
+    if (weekFilter && weekFilter.status) {
+      if (weekFilter.status === 'completed' && client.paymentsCompleted !== client.tenure) {
+        includeClient = false;
+      } else if (weekFilter.status === 'partial' && 
+                (client.paymentsCompleted === 0 || client.paymentsCompleted === client.tenure)) {
+        includeClient = false;
+      } else if (weekFilter.status === 'pending' && client.paymentsCompleted > 0) {
+        includeClient = false;
+      }
+    }
+    
+    // Filter by amount
+    if (weekFilter && weekFilter.amount && includeClient) {
+      if (weekFilter.amount === 'high' && client.monthlyFees <= 10000) {
+        includeClient = false;
+      } else if (weekFilter.amount === 'medium' && 
+                (client.monthlyFees < 5000 || client.monthlyFees > 10000)) {
+        includeClient = false;
+      } else if (weekFilter.amount === 'low' && client.monthlyFees >= 5000) {
+        includeClient = false;
+      }
+    }
+    
+    if (includeClient) {
+      acc[week].push(client);
+    }
+    
     return acc;
   }, {} as Record<number, Client[]>);
 
@@ -596,18 +653,66 @@ export default function PaymentReminderPage() {
                            week === 3 ? 'from-green-900/20 to-teal-900/20' : 
                            'from-orange-900/20 to-amber-900/20'}`}
                         >
-                          <CardTitle className={`
-                            ${week === 1 ? 'text-blue-300' : 
-                             week === 2 ? 'text-purple-300' : 
-                             week === 3 ? 'text-green-300' : 
-                             'text-orange-300'}`}
-                          >
-                            Week {week} Clients ({clientsByWeek[week]?.length || 0})
-                          </CardTitle>
-                          <CardDescription className="text-gray-400">
-                            Clients with payments due in week {week}
-                          </CardDescription>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className={`
+                                ${week === 1 ? 'text-blue-300' : 
+                                 week === 2 ? 'text-purple-300' : 
+                                 week === 3 ? 'text-green-300' : 
+                                 'text-orange-300'}`}
+                              >
+                                Week {week} Clients ({clientsByWeek[week]?.length || 0})
+                              </CardTitle>
+                              <CardDescription className="text-gray-400">
+                                Clients with payments due in week {week}
+                              </CardDescription>
+                            </div>
+                            </div>
+
+                            
+                            <div className="flex gap-2">
+                              <Select
+                                value={weeklyFilters[week].status || undefined}
+                                onValueChange={(value) => updateWeekFilter(week, 'status', value || null)}
+                              >
+                                <SelectTrigger className={`w-[130px] h-8 text-xs
+                                  ${week === 1 ? 'border-blue-800 bg-blue-950/30' : 
+                                   week === 2 ? 'border-purple-800 bg-purple-950/30' : 
+                                   week === 3 ? 'border-green-800 bg-green-950/30' : 
+                                   'border-orange-800 bg-orange-950/30'}`}
+                              >
+                                <SelectValue placeholder="Payment Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="partial">Partial</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            
+                            <Select
+                              value={weeklyFilters[week].amount || undefined}
+                              onValueChange={(value) => updateWeekFilter(week, 'amount', value || null)}
+                            >
+                              <SelectTrigger className={`w-[130px] h-8 text-xs
+                                ${week === 1 ? 'border-blue-800 bg-blue-950/30' : 
+                                 week === 2 ? 'border-purple-800 bg-purple-950/30' : 
+                                 week === 3 ? 'border-green-800 bg-green-950/30' : 
+                                 'border-orange-800 bg-orange-950/30'}`}
+                              >
+                                <SelectValue placeholder="Fee Amount" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Amounts</SelectItem>
+                                <SelectItem value="high">High ({'>'}₹10,000)</SelectItem>
+                                <SelectItem value="medium">Medium (₹5,000-₹10,000)</SelectItem>
+                                <SelectItem value="low">Low ({'<'}₹5,000)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </CardHeader>
+                        
                         <CardContent className="p-4">
                           {!clientsByWeek[week] || clientsByWeek[week].length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-8 text-center">
