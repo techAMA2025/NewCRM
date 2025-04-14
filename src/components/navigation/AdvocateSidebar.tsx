@@ -76,12 +76,12 @@ const AdvocateSidebar = () => {
               <span>Reminders</span>
             </Link>
           </li>
-          <li>
+          {/* <li>
             <Link href="/advocate/communications" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/communications')}`}>
               <FaComments className="mr-3 text-indigo-400" />
               <span>Comms (Coming Soon)</span>
             </Link>
-          </li>
+          </li> */}
           <li>
             <Link href="/advocate/documents" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/documents')}`}>
               <FaFileAlt className="mr-3 text-indigo-400" />
