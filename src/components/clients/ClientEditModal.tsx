@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/firebase/firebase';
+import { toast } from 'react-hot-toast';
 
 interface Bank {
   id: string;
@@ -34,6 +37,9 @@ interface Client {
   queries?: string;
   isPrimary: boolean;
   isSecondary: boolean;
+  documentUrl?: string;
+  documentName?: string;
+  documentUploadedAt?: Date;
 }
 
 interface ClientEditModalProps {
@@ -53,6 +59,8 @@ export default function ClientEditModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [fileUpload, setFileUpload] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Initialize form data when client changes
   useEffect(() => {
@@ -141,6 +149,72 @@ export default function ClientEditModal({
       setError("Failed to update client. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Check if file is a Word document
+      if (file.type === 'application/msword' || 
+          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setFileUpload(file);
+      } else {
+        toast.error("Please upload a Word document (.doc or .docx)");
+        e.target.value = '';
+      }
+    }
+  };
+  
+  const handleFileUpload = async () => {
+    if (!fileUpload || !formData) return;
+    
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `clients/${formData.id}/documents/${fileUpload.name}`);
+      
+      // Upload the file
+      const snapshot = await uploadBytes(storageRef, fileUpload);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      // Update Firestore
+      const clientRef = doc(db, 'clients', formData.id);
+      await updateDoc(clientRef, {
+        documentUrl: downloadURL,
+        documentName: fileUpload.name,
+        documentUploadedAt: new Date(),
+        lastModified: new Date()
+      });
+      
+      // Update local state
+      const updatedClient = {
+        ...formData,
+        documentUrl: downloadURL,
+        documentName: fileUpload.name,
+        documentUploadedAt: new Date()
+      };
+      
+      setFormData(updatedClient);
+      
+      // Update parent component
+      onClientUpdated(updatedClient);
+      
+      // Show success toast
+      toast.success("Document uploaded successfully");
+      
+      // Reset file upload state
+      setFileUpload(null);
+    } catch (err) {
+      console.error('Error uploading document:', err);
+      let errorMessage = "Failed to upload document";
+      if (err instanceof Error) {
+        errorMessage += `: ${err.message}`;
+      }
+      toast.error(errorMessage);
+    } finally {
+      setUploading(false);
     }
   };
   
@@ -485,6 +559,77 @@ export default function ClientEditModal({
                 ))}
               </div>
             )}
+          </div>
+          
+          {/* Document Upload */}
+          <div className="mt-6 bg-gray-800/50 rounded-lg p-4 border border-gray-800">
+            <h3 className="font-semibold text-lg mb-4 text-purple-400 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              Document Management
+            </h3>
+            
+            {formData?.documentUrl ? (
+              <div className="mb-4 p-3 bg-gray-900 rounded-lg border border-gray-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">{formData.documentName || 'Document'}</p>
+                    {formData.documentUploadedAt && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Uploaded: {new Date(formData.documentUploadedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => window.open(formData.documentUrl, '_blank')}
+                    className="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white text-sm rounded transition-colors duration-200"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1 inline-block">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    View Document
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-400 mb-4">No document has been uploaded for this client yet.</p>
+            )}
+            
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="text-sm text-gray-400 block mb-1">Upload Word Document</label>
+                <input 
+                  id="file-upload"
+                  type="file"
+                  accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleFileChange}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-600"
+                />
+              </div>
+              <button
+                onClick={handleFileUpload}
+                disabled={!fileUpload || uploading}
+                className={`px-4 py-2 rounded font-medium ${
+                  !fileUpload || uploading 
+                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                } transition-colors duration-200`}
+              >
+                {uploading ? (
+                  <div className="flex items-center">
+                    <div className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                    Uploading...
+                  </div>
+                ) : 'Upload Document'}
+              </button>
+            </div>
           </div>
           
           {/* Form Footer */}

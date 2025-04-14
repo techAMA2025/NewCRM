@@ -331,6 +331,24 @@ export default function ClientsPage() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Check if file is a Word document
+      if (file.type === 'application/msword' || 
+          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setFileUpload(file);
+      } else {
+        showToast(
+          "Invalid file type", 
+          "Please upload a Word document (.doc or .docx).",
+          "error"
+        );
+        e.target.value = '';
+      }
+    }
+  };
+
   const handleFileUpload = async () => {
     if (!fileUpload || !editingClient) return;
     
@@ -420,24 +438,6 @@ export default function ClientsPage() {
     } catch (err) {
       console.error("Test upload failed:", err);
       showToast("Test failed", `Error: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      // Check if file is a Word document
-      if (file.type === 'application/msword' || 
-          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        setFileUpload(file);
-      } else {
-        showToast(
-          "Invalid file type", 
-          "Please upload a Word document (.doc or .docx).",
-          "error"
-        );
-        e.target.value = '';
-      }
     }
   };
 
