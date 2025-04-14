@@ -47,6 +47,7 @@ interface Client {
   documentUrl?: string;
   documentName?: string;
   documentUploadedAt?: any;
+  source_database?: string;
 }
 
 function formatIndianCurrency(amount: string | number | undefined): string {
@@ -270,6 +271,10 @@ function ClientViewModal({
                 <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Occupation</span>
                   <span className="text-white w-2/3">{client.occupation || "Not specified"}</span>
+                </div>
+                <div className="flex border-b border-gray-700 pb-2">
+                  <span className="text-gray-400 w-1/3">Source</span>
+                  <span className="text-white w-2/3">{client.source_database || "Not specified"}</span>
                 </div>
                 <div className="flex">
                   <span className="text-gray-400 w-1/3">Tenure</span>
