@@ -38,7 +38,8 @@ interface Client {
   remarks: string;
   queries: string;
   salesNotes: string;
-  source: string;
+  source?: string;
+  source_database: string;
   tenure: string;
   occupation: string;
   aadharNumber: string;

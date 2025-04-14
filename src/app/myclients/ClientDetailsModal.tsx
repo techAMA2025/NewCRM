@@ -58,6 +58,7 @@ interface Client {
   leadId: string;
   startDate: string;
   message: string;
+  source_database: string;
 }
 
 interface ClientDetailsModalProps {
@@ -360,7 +361,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
                               </div>
                               <div className="ml-3">
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Source</p>
-                                <p className="font-medium dark:text-gray-200">{client.source}</p>
+                                <p className="font-medium dark:text-gray-200">{client.source_database}</p>
                               </div>
                             </div>
                           </div>
