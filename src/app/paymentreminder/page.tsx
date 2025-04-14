@@ -68,6 +68,7 @@ type Client = {
   advanceBalance: number;
   startDate: Timestamp;
   tenure: number;
+  createdAt?: Timestamp;
 }
 
 type MonthlyPayment = {
@@ -137,7 +138,7 @@ export default function PaymentReminderPage() {
   const [dueFilter, setDueFilter] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<string | null>('date-desc');
   const [currentPage, setCurrentPage] = useState(1);
 
   // Move fetchClients outside useEffect and make it memoized with useCallback
@@ -415,6 +416,10 @@ export default function PaymentReminderPage() {
           return (a.startDate?.seconds || 0) - (b.startDate?.seconds || 0);
         case 'due-desc':
           return (b.startDate?.seconds || 0) - (a.startDate?.seconds || 0);
+        case 'date-asc':
+          return ((a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+        case 'date-desc':
+          return ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         default:
           return 0;
       }
@@ -499,6 +504,7 @@ export default function PaymentReminderPage() {
                           <table className="w-full border-collapse">
                             <thead>
                               <tr className="bg-gray-800/50">
+                              <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Date</th>
                                 <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Client Name</th>
                                 <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Phone</th>
                                 <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Week</th>
@@ -511,9 +517,13 @@ export default function PaymentReminderPage() {
                             <tbody>
                               {sortedClients.map((client) => (
                                 <tr key={client.clientId} className="transition-colors hover:bg-blue-900/10">
-                                  <td className="p-4 border-b border-gray-800 text-gray-200">{client.clientName}</td>
+                                  <td className="p-4 border-b border-gray-800 text-gray-400">
+                                    {client.createdAt ? formatDate(client.createdAt) : 'Not available'}
+                                  </td>
+                                  <td className="p-4 border-b border-gray-800 text-gray-200">{client.clientName.toUpperCase()}</td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">{client.clientPhone}</td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">Week {client.weekOfMonth}</td>
+                                  
                                   <td className="p-4 border-b border-gray-800 text-right font-medium text-gray-200">₹{(client.monthlyFees || 0).toLocaleString()}</td>
                                   <td className="p-4 border-b border-gray-800 text-right text-gray-400">
                                     ₹{(client.paidAmount || 0).toLocaleString()} / ₹{(client.totalPaymentAmount || 0).toLocaleString()}
