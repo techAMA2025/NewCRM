@@ -49,11 +49,14 @@ interface Client {
   documentUploadedAt?: any;
 }
 
-function formatIndianCurrency(amount: string | undefined): string {
+function formatIndianCurrency(amount: string | number | undefined): string {
   if (!amount) return "—";
   
+  // Convert to string if it's not already a string
+  const amountStr = typeof amount === 'string' ? amount : String(amount);
+  
   // Remove any existing currency symbols or non-numeric characters except decimal point
-  const numericValue = amount.replace(/[^\d.]/g, '');
+  const numericValue = amountStr.replace(/[^\d.]/g, '');
   
   // Format with ₹ symbol and thousands separators (e.g., ₹1,50,000)
   const formatter = new Intl.NumberFormat('en-IN', {
