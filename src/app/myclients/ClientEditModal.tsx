@@ -35,7 +35,7 @@ interface Client {
   remarks: string;
   queries: string;
   salesNotes: string;
-  source: string;
+  source_database: string;
   tenure: string;
   occupation: string;
   aadharNumber: string;
@@ -76,7 +76,7 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
         remarks: client.remarks,
         queries: client.queries,
         salesNotes: client.salesNotes,
-        source: client.source,
+        source_database: client.source_database || '',
         tenure: client.tenure,
         occupation: client.occupation,
         aadharNumber: client.aadharNumber,
@@ -306,8 +306,8 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
                     Source
                   </label>
                   <select
-                    name="source"
-                    value={formData.source || ''}
+                    name="source_database"
+                    value={formData.source_database || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
