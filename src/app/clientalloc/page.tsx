@@ -366,8 +366,8 @@ export default function ClientAllocationPage() {
                       <TableHead className="text-gray-400">Name</TableHead>
                       <TableHead className="text-gray-400">Phone</TableHead>
                       <TableHead className="text-gray-400">Email</TableHead>
-                      <TableHead className="text-gray-400">Monthly Income</TableHead>
-                      <TableHead className="text-gray-400">Status</TableHead>
+                      <TableHead className="text-gray-400">Credit Card Dues</TableHead>
+                      <TableHead className="text-gray-400">Personal Loan Dues</TableHead>
                       <TableHead className="text-gray-400">Sales Person</TableHead>
                       <TableHead className="text-gray-400">Primary Allocation</TableHead>
                       <TableHead className="text-gray-400">Secondary Allocation</TableHead>
@@ -396,77 +396,102 @@ export default function ClientAllocationPage() {
                           const clientSecondaryAdvocate = client.alloc_adv_secondary || "";
                           return (
                             <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
-                              <TableCell className="text-gray-300">
-                                {client.convertedAt ? 
-                                  new Date(client.convertedAt.seconds * 1000).toLocaleDateString() : 
-                                  "N/A"}
-                              </TableCell>
-                              <TableCell className="font-medium text-white">{client.name}</TableCell>
-                              <TableCell className="text-gray-300">{client.phone}</TableCell>
-                              <TableCell className="text-gray-300 truncate max-w-[200px]">{client.email}</TableCell>
-                              <TableCell className="text-gray-300">
-                                <div className="flex items-center">
-                                  <FaRupeeSign className="h-3 w-3 text-green-500 mr-1" />
-                                  <span>{client.monthlyIncome}</span>
+                              <TableCell className="text-gray-300 max-w-[100px] truncate">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  {client.convertedAt ? 
+                                    new Date(client.convertedAt.seconds * 1000).toLocaleDateString() : 
+                                    "N/A"}
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <Badge className={`px-2 py-1 rounded-md border ${getStatusColor(client.status)}`}>
-                                  {client.status}
-                                </Badge>
+                              <TableCell className="font-medium text-white max-w-[120px] truncate">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  {client.name.toUpperCase()}
+                                </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="flex items-center">
-                                  <div className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center mr-2">
-                                    <User className="h-3 w-3" />
+                              <TableCell className="text-gray-300 max-w-[120px] truncate">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  {client.phone}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-gray-300 max-w-[150px] truncate">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  {client.email}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-gray-300 max-w-[120px] truncate">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  <div className="flex items-center">
+                                    <FaRupeeSign className="h-3 w-3 text-red-500 mr-1 flex-shrink-0" />
+                                    <span>{client.creditCardDues}</span>
                                   </div>
-                                  <span className="text-gray-300">{client.assignedTo}</span>
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-2">
-                                  <Select 
-                                    value={clientAdvocate} 
-                                    onValueChange={(value) => {
-                                      if (value !== client.alloc_adv) {
-                                        handleAdvocateChange(client, value);
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
-                                      <SelectValue placeholder="Select advocate" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                                      {advocates.map((advocate) => (
-                                        <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
-                                          {advocate.firstName} {advocate.lastName}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                              <TableCell className="text-gray-300 max-w-[120px] truncate">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  <div className="flex items-center">
+                                    <FaRupeeSign className="h-3 w-3 text-red-500 mr-1 flex-shrink-0" />
+                                    <span>{client.personalLoanDues}</span>
+                                  </div>
                                 </div>
                               </TableCell>
-                              <TableCell>
-                                <div className="flex items-center space-x-2">
-                                  <Select 
-                                    value={clientSecondaryAdvocate} 
-                                    onValueChange={(value) => {
-                                      if (value !== client.alloc_adv_secondary) {
-                                        handleSecondaryAdvocateChange(client, value);
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
-                                      <SelectValue placeholder="Select secondary" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                                      {advocates.map((advocate) => (
-                                        <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
-                                          {advocate.firstName} {advocate.lastName}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                              <TableCell className="max-w-[120px] truncate">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  <div className="flex items-center">
+                                    <div className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center mr-2 flex-shrink-0">
+                                      <User className="h-3 w-3" />
+                                    </div>
+                                    <span className="text-gray-300">{client.assignedTo}</span>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-[150px]">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  <div className="flex items-center space-x-2">
+                                    <Select 
+                                      value={clientAdvocate} 
+                                      onValueChange={(value) => {
+                                        if (value !== client.alloc_adv) {
+                                          handleAdvocateChange(client, value);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
+                                        <SelectValue placeholder="Select advocate" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                                        {advocates.map((advocate) => (
+                                          <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
+                                            {advocate.firstName} {advocate.lastName}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-[150px]">
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                  <div className="flex items-center space-x-2">
+                                    <Select 
+                                      value={clientSecondaryAdvocate} 
+                                      onValueChange={(value) => {
+                                        if (value !== client.alloc_adv_secondary) {
+                                          handleSecondaryAdvocateChange(client, value);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
+                                        <SelectValue placeholder="Select secondary" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                                        {advocates.map((advocate) => (
+                                          <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
+                                            {advocate.firstName} {advocate.lastName}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">
@@ -569,20 +594,6 @@ export default function ClientAllocationPage() {
                   Financial Information
                 </h3>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="text-gray-400">Credit Card Dues</div>
-                    <div className="text-red-400 flex items-center">
-                      <FaRupeeSign className="h-3 w-3 mr-1" />
-                      {selectedClient.creditCardDues}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="text-gray-400">Personal Loan Dues</div>
-                    <div className="text-red-400 flex items-center">
-                      <FaRupeeSign className="h-3 w-3 mr-1" />
-                      {selectedClient.personalLoanDues}
-                    </div>
-                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Monthly Fees</div>
                     <div className="text-orange-400 flex items-center">
