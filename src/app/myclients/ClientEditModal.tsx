@@ -55,7 +55,7 @@ interface ClientEditModalProps {
 
 export default function ClientEditModal({ client, isOpen, onClose, onClientUpdated }: ClientEditModalProps) {
   const [formData, setFormData] = useState<Partial<Client>>({});
-  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -305,13 +305,18 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Source
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="source"
                     value={formData.source || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
+                  >
+                    <option value="">Select Source</option>
+                    <option value="credsettlee">Cred Settle</option>
+                    <option value="ama">AMA</option>
+                    <option value="settleloans">Settle Loans</option>
+                    <option value="billcut">Bill Cut</option>
+                  </select>
                 </div>
               </div>
               
