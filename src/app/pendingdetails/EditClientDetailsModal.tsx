@@ -16,6 +16,18 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Array of Indian states for dropdown
+  const indianStates = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+    "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", 
+    "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", 
+    "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", 
+    "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", 
+    "Uttar Pradesh", "Uttarakhand", "West Bengal",
+    "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+  ];
+
   // Handle field changes
   const handleFieldChange = (field: string, value: any) => {
     setClientData((prevData: any) => ({
@@ -317,14 +329,20 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
                     />
                   </div>
                   <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-400">City</label>
-                    <input
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-400">State</label>
+                    <select
                       id="city"
-                      type="text"
                       value={clientData.city || ''}
                       onChange={(e) => handleFieldChange('city', e.target.value)}
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    >
+                      <option value="">Select state</option>
+                      {indianStates.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="occupation" className="block text-sm font-medium text-gray-400">Occupation</label>

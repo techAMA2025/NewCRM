@@ -4,6 +4,17 @@ import { Lead } from './types/lead'
 import  {db}  from '../../firebase/firebase'
 import { collection, doc, setDoc, writeBatch } from 'firebase/firestore'
 
+// Define Indian states array
+const indianStates = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", 
+  "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", 
+  "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", 
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", 
+  "Uttarakhand", "West Bengal", "Delhi", "Jammu and Kashmir", "Ladakh", 
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+  "Lakshadweep", "Puducherry"
+];
+
 interface EditClientModalProps {
   lead: Lead
   saving: boolean
@@ -155,12 +166,24 @@ const EditClientModal = ({
                     onChange={(value) => handleFieldChange('phone', value)}
                     required
                   />
-                  <InputField
-                    id="city"
-                    label="City" 
-                    value={lead.city || ''}
-                    onChange={(value) => handleFieldChange('city', value)}
-                  />
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-400 mb-1">
+                      State
+                    </label>
+                    <select
+                      id="city"
+                      value={lead.city || ''}
+                      onChange={(e) => handleFieldChange('city', e.target.value)}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select state</option>
+                      {indianStates.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <InputField
                     id="occupation"
                     label="Occupation"
