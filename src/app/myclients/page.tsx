@@ -82,6 +82,13 @@ export default function MyClientsPage() {
         clientsData.push({ id: doc.id, ...data });
       });
       
+      // Sort clients by lastModified timestamp (newest first)
+      clientsData.sort((a, b) => {
+        const dateA = a.lastModified?.toDate?.() || new Date(a.lastModified || 0);
+        const dateB = b.lastModified?.toDate?.() || new Date(b.lastModified || 0);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
       setClients(clientsData);
     } catch (error) {
       console.error("Error fetching clients:", error);
@@ -155,7 +162,7 @@ export default function MyClientsPage() {
                 }`}></div>
                 <div className="p-5">
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">{client.name}</h3>
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">{client.name.toUpperCase()}</h3>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-bold ${
                         client.status === 'Converted'

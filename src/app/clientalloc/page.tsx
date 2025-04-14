@@ -362,6 +362,7 @@ export default function ClientAllocationPage() {
                 <Table>
                   <TableHeader className="bg-gray-900">
                     <TableRow className="border-gray-800 hover:bg-gray-800/50">
+                      <TableHead className="text-gray-400">Date</TableHead>
                       <TableHead className="text-gray-400">Name</TableHead>
                       <TableHead className="text-gray-400">Phone</TableHead>
                       <TableHead className="text-gray-400">Email</TableHead>
@@ -376,97 +377,111 @@ export default function ClientAllocationPage() {
                   <TableBody>
                     {clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).length === 0 ? (
                       <TableRow className="border-gray-800 hover:bg-gray-800/50">
-                        <TableCell colSpan={9} className="text-center py-8 text-gray-400">
+                        <TableCell colSpan={10} className="text-center py-8 text-gray-400">
                           All clients have been fully allocated.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).map((client) => {
-                        const clientAdvocate = client.alloc_adv || "";
-                        const clientSecondaryAdvocate = client.alloc_adv_secondary || "";
-                        return (
-                          <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
-                            <TableCell className="font-medium text-white">{client.name}</TableCell>
-                            <TableCell className="text-gray-300">{client.phone}</TableCell>
-                            <TableCell className="text-gray-300 truncate max-w-[200px]">{client.email}</TableCell>
-                            <TableCell className="text-gray-300">
-                              <div className="flex items-center">
-                                <FaRupeeSign className="h-3 w-3 text-green-500 mr-1" />
-                                <span>{client.monthlyIncome}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={`px-2 py-1 rounded-md border ${getStatusColor(client.status)}`}>
-                                {client.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <div className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center mr-2">
-                                  <User className="h-3 w-3" />
+                      clients
+                        .filter(client => !client.alloc_adv || !client.alloc_adv_secondary)
+                        .sort((a, b) => {
+                          // Sort by convertedAt date in descending order (newest first)
+                          if (!a.convertedAt) return 1; // If a doesn't have date, move to end
+                          if (!b.convertedAt) return -1; // If b doesn't have date, move to end
+                          // Compare timestamps (larger seconds = more recent)
+                          return b.convertedAt.seconds - a.convertedAt.seconds;
+                        })
+                        .map((client) => {
+                          const clientAdvocate = client.alloc_adv || "";
+                          const clientSecondaryAdvocate = client.alloc_adv_secondary || "";
+                          return (
+                            <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
+                              <TableCell className="text-gray-300">
+                                {client.convertedAt ? 
+                                  new Date(client.convertedAt.seconds * 1000).toLocaleDateString() : 
+                                  "N/A"}
+                              </TableCell>
+                              <TableCell className="font-medium text-white">{client.name}</TableCell>
+                              <TableCell className="text-gray-300">{client.phone}</TableCell>
+                              <TableCell className="text-gray-300 truncate max-w-[200px]">{client.email}</TableCell>
+                              <TableCell className="text-gray-300">
+                                <div className="flex items-center">
+                                  <FaRupeeSign className="h-3 w-3 text-green-500 mr-1" />
+                                  <span>{client.monthlyIncome}</span>
                                 </div>
-                                <span className="text-gray-300">{client.assignedTo}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Select 
-                                  value={clientAdvocate} 
-                                  onValueChange={(value) => {
-                                    if (value !== client.alloc_adv) {
-                                      handleAdvocateChange(client, value);
-                                    }
-                                  }}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={`px-2 py-1 rounded-md border ${getStatusColor(client.status)}`}>
+                                  {client.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center">
+                                  <div className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center mr-2">
+                                    <User className="h-3 w-3" />
+                                  </div>
+                                  <span className="text-gray-300">{client.assignedTo}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  <Select 
+                                    value={clientAdvocate} 
+                                    onValueChange={(value) => {
+                                      if (value !== client.alloc_adv) {
+                                        handleAdvocateChange(client, value);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
+                                      <SelectValue placeholder="Select advocate" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                                      {advocates.map((advocate) => (
+                                        <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
+                                          {advocate.firstName} {advocate.lastName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  <Select 
+                                    value={clientSecondaryAdvocate} 
+                                    onValueChange={(value) => {
+                                      if (value !== client.alloc_adv_secondary) {
+                                        handleSecondaryAdvocateChange(client, value);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
+                                      <SelectValue placeholder="Select secondary" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                                      {advocates.map((advocate) => (
+                                        <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
+                                          {advocate.firstName} {advocate.lastName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  onClick={() => handleViewMore(client)}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  size="sm"
                                 >
-                                  <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
-                                    <SelectValue placeholder="Select advocate" />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                                    {advocates.map((advocate) => (
-                                      <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
-                                        {advocate.firstName} {advocate.lastName}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Select 
-                                  value={clientSecondaryAdvocate} 
-                                  onValueChange={(value) => {
-                                    if (value !== client.alloc_adv_secondary) {
-                                      handleSecondaryAdvocateChange(client, value);
-                                    }
-                                  }}
-                                >
-                                  <SelectTrigger className="bg-gray-900 border-gray-700 text-white h-8 text-xs w-40">
-                                    <SelectValue placeholder="Select secondary" />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                                    {advocates.map((advocate) => (
-                                      <SelectItem key={advocate.id} value={`${advocate.firstName} ${advocate.lastName}`}>
-                                        {advocate.firstName} {advocate.lastName}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                onClick={() => handleViewMore(client)}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                                size="sm"
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Details
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Details
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
                     )}
                   </TableBody>
                 </Table>
