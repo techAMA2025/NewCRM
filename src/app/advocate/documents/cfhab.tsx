@@ -10,21 +10,15 @@ interface CFHABFormProps {
 export default function CFHABForm({ onClose }: CFHABFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    applicantName: "",
-    applicantAddress: "",
-    applicantEmail: "",
-    applicantPhone: "",
-    respondentName: "",
-    respondentAddress: "",
-    respondentEmail: "",
-    complaintType: "Consumer Forum",
-    accountNumber: "",
-    caseDetails: "",
-    reliefSought: "",
-    previousCommunication: "",
-    issueDate: "",
-    forumLocation: "",
-    claimAmount: "",
+    bankName: "",
+    agentName: "",
+    agentNumber: "",
+    harassmentLocation: "House",
+    whoWasHarassed: "Family",
+    date: new Date().toISOString().split('T')[0],
+    clientName: "",
+    email: "",
+    loanNumber: ""
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -36,23 +30,48 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (!formData.bankName || !formData.date || !formData.clientName || !formData.loanNumber) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      // Format the data for API submission
-      const formBody = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        formBody.append(key, value);
+      // Call the API to generate the Word document
+      const response = await fetch('/api/cfhab', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
       
-      // Call the document generation API
-      toast.success("CFHAB document generation initiated. The document will download shortly.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate document');
+      }
       
-      // Close the modal after successful submission
+      // Get the document as a blob
+      const blob = await response.blob();
+      console.log("Document blob received, size:", blob.size);
+      
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${formData.clientName}_harassment_complaint.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success("CFHAB document successfully generated and downloaded.");
       onClose();
     } catch (error) {
       console.error("Error generating CFHAB document:", error);
-      toast.error("Failed to generate CFHAB document. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to generate CFHAB document. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -60,262 +79,180 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Applicant Details Section */}
-        <div className="md:col-span-2 mb-2">
-          <h3 className="text-md font-semibold text-purple-400">Applicant Details</h3>
-          <hr className="border-gray-700 mt-1" />
+      <div className="space-y-4">
+        {/* Bank Name */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-300">
+            Bank Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="bankName"
+            value={formData.bankName}
+            onChange={handleChange}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
+            placeholder="Enter bank name"
+            required
+          />
         </div>
         
-        {/* Applicant Name */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Applicant Name</label>
-          <input
-            type="text"
-            name="applicantName"
-            value={formData.applicantName}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter applicant's full name"
-          />
+        {/* Agent Name and Agent Number as separate fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Agent Name
+            </label>
+            <input
+              type="text"
+              name="agentName"
+              value={formData.agentName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
+              placeholder="Ex: John Doe"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Agent Number
+            </label>
+            <input
+              type="text"
+              name="agentNumber"
+              value={formData.agentNumber}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
+              placeholder="Ex: 9876543210"
+            />
+          </div>
         </div>
-
-        {/* Applicant Phone */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Applicant Phone</label>
-          <input
-            type="tel"
-            name="applicantPhone"
-            value={formData.applicantPhone}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter applicant's phone number"
-          />
-        </div>
-
-        {/* Applicant Email */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Applicant Email</label>
-          <input
-            type="email"
-            name="applicantEmail"
-            value={formData.applicantEmail}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter applicant's email"
-          />
-        </div>
-
-        {/* Forum Location */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Forum Location</label>
-          <input
-            type="text"
-            name="forumLocation"
-            value={formData.forumLocation}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Jurisdiction/Location of Forum"
-          />
-        </div>
-
-        {/* Applicant Address */}
-        <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Applicant Address</label>
-          <textarea
-            name="applicantAddress"
-            value={formData.applicantAddress}
-            onChange={handleChange}
-            required
-            rows={2}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter applicant's complete address"
-          />
-        </div>
-
-        {/* Respondent Details Section */}
-        <div className="md:col-span-2 mt-2 mb-2">
-          <h3 className="text-md font-semibold text-purple-400">Respondent Details</h3>
-          <hr className="border-gray-700 mt-1" />
-        </div>
-
-        {/* Respondent Name */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Respondent Name</label>
-          <input
-            type="text"
-            name="respondentName"
-            value={formData.respondentName}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter respondent's full name"
-          />
-        </div>
-
-        {/* Respondent Email */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Respondent Email</label>
-          <input
-            type="email"
-            name="respondentEmail"
-            value={formData.respondentEmail}
-            onChange={handleChange}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter respondent's email (if available)"
-          />
-        </div>
-
-        {/* Respondent Address */}
-        <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Respondent Address</label>
-          <textarea
-            name="respondentAddress"
-            value={formData.respondentAddress}
-            onChange={handleChange}
-            required
-            rows={2}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter respondent's complete address"
-          />
-        </div>
-
-        {/* Case Details Section */}
-        <div className="md:col-span-2 mt-2 mb-2">
-          <h3 className="text-md font-semibold text-purple-400">Case Details</h3>
-          <hr className="border-gray-700 mt-1" />
-        </div>
-
-        {/* Complaint Type */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Complaint Type</label>
+        
+        {/* Harassment Location */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-300">
+            Harassment Location <span className="text-red-500">*</span>
+          </label>
           <select
-            name="complaintType"
-            value={formData.complaintType}
+            name="harassmentLocation"
+            value={formData.harassmentLocation}
             onChange={handleChange}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
             required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
           >
-            <option value="Consumer Forum">Consumer Forum</option>
-            <option value="Banking Ombudsman">Banking Ombudsman</option>
-            <option value="RERA">RERA</option>
-            <option value="Insurance Ombudsman">Insurance Ombudsman</option>
+            <option value="House">House</option>
+            <option value="Office">Office</option>
+            <option value="Neighbours">Neighbours</option>
           </select>
         </div>
-
-        {/* Account Number */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Account/Policy/Reference Number</label>
-          <input
-            type="text"
-            name="accountNumber"
-            value={formData.accountNumber}
+        
+        {/* Who Was Harassed */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-300">
+            Who Was Harassed <span className="text-red-500">*</span>
+          </label>
+          <select
+            name="whoWasHarassed"
+            value={formData.whoWasHarassed}
             onChange={handleChange}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
             required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter relevant reference number"
-          />
+          >
+            <option value="Family">Family</option>
+            <option value="Colleagues">Colleagues</option>
+            <option value="Neighbours">Neighbours</option>
+          </select>
         </div>
-
-        {/* Issue Date */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Issue/Incident Date</label>
+        
+        {/* Date */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-300">
+            Date of Incident <span className="text-red-500">*</span>
+          </label>
           <input
             type="date"
-            name="issueDate"
-            value={formData.issueDate}
+            name="date"
+            value={formData.date}
             onChange={handleChange}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
             required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
           />
         </div>
-
-        {/* Claim Amount */}
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Claim Amount (₹)</label>
+        
+        {/* Client Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Client Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="clientName"
+              value={formData.clientName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
+              placeholder="Client's full name"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
+              placeholder="client@example.com"
+            />
+          </div>
+        </div>
+        
+        {/* Loan/Credit Card Number */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-300">
+            Loan/Credit Card Number <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
-            name="claimAmount"
-            value={formData.claimAmount}
+            name="loanNumber"
+            value={formData.loanNumber}
             onChange={handleChange}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
+            placeholder="Enter loan or credit card number"
             required
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter claim amount in INR"
           />
         </div>
-
-        {/* Case Details */}
-        <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Case Details</label>
-          <textarea
-            name="caseDetails"
-            value={formData.caseDetails}
-            onChange={handleChange}
-            required
-            rows={4}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Provide detailed description of the complaint/issue"
-          />
+        
+        {/* Form buttons */}
+        <div className="flex justify-end space-x-3 mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors duration-200 flex items-center"
+          >
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+              </>
+            ) : (
+              <>Generate CFHAB Document</>
+            )}
+          </button>
         </div>
-
-        {/* Relief Sought */}
-        <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Relief Sought</label>
-          <textarea
-            name="reliefSought"
-            value={formData.reliefSought}
-            onChange={handleChange}
-            required
-            rows={2}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Describe the specific relief you are seeking"
-          />
-        </div>
-
-        {/* Previous Communication */}
-        <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Previous Communication</label>
-          <textarea
-            name="previousCommunication"
-            value={formData.previousCommunication}
-            onChange={handleChange}
-            rows={2}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Reference any previous communications with dates (if applicable)"
-          />
-        </div>
-      </div>
-
-      {/* Form buttons */}
-      <div className="flex justify-end gap-3 pt-3 border-t border-gray-800 mt-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 text-sm"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors duration-200 flex items-center text-sm"
-        >
-          {isSubmitting ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Generating...
-            </>
-          ) : (
-            <>Generate CFHAB Document</>
-          )}
-        </button>
       </div>
     </form>
   );
