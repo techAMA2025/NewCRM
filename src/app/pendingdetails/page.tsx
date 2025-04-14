@@ -652,7 +652,6 @@ const MyClientsPage = () => {
       name: '',
       email: '',
       phone: '',
-      source: 'manual',
       status: 'Converted',
       assignedTo: currentUserName,
       remarks: '',
