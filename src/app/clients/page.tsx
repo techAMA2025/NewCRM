@@ -49,7 +49,7 @@ interface Client {
   personalLoanDues?: string
   remarks?: string
   salesNotes?: string
-  source?: string
+  source_database?: string
   startDate?: string
   tenure?: string
   banks?: Array<{
@@ -702,7 +702,7 @@ export default function ClientsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Source</div>
-                    <div className="text-white">{selectedClient.source || 'N/A'}</div>
+                    <div className="text-white">{selectedClient.source_database || 'N/A'}</div>
                   </div>
                 </div>
               </div>
@@ -1029,7 +1029,7 @@ export default function ClientsPage() {
                     <label className="text-sm text-gray-400 block mb-1">Source</label>
                     <Input 
                       name="source"
-                      value={editingClient.source || ''}
+                      value={editingClient.source_database  || ''}
                       onChange={handleEditInputChange}
                       className="bg-gray-950 border-gray-700 text-white"
                     />
