@@ -226,14 +226,14 @@ export default function MyClientsPage() {
         {selectedClient && (
           <>
             <ClientDetailsModal
-              client={selectedClient}
+              client={selectedClient as any}
               isOpen={isModalOpen}
               onClose={() => setIsModalOpen(false)}
               formatDate={formatDate}
             />
             
             <ClientEditModal
-              client={selectedClient}
+              client={selectedClient as any}
               isOpen={isEditModalOpen}
               onClose={() => setIsEditModalOpen(false)}
               onClientUpdated={handleClientUpdated}
