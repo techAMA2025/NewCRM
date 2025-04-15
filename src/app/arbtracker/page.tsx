@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
+import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import { FaPlus, FaSearch, FaLink, FaCheck, FaTimes, FaFileSignature, FaEnvelope } from 'react-icons/fa'
 import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewArbitrationCaseModel'
 import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
@@ -87,6 +88,15 @@ export default function ArbitrationTracker() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [currentCase, setCurrentCase] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<string>('advocate') // Default to advocate
+  
+  // Get user role from localStorage
+  useEffect(() => {
+    const storedRole = localStorage.getItem('userRole')
+    if (storedRole) {
+      setUserRole(storedRole.toLowerCase())
+    }
+  }, [])
   
   // Fetch arbitration cases from Firestore
   useEffect(() => {
@@ -300,7 +310,7 @@ export default function ArbitrationTracker() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <AdvocateSidebar />
+      {userRole === 'overlord' ? <OverlordSidebar /> : <AdvocateSidebar />}
       
       <div className="flex-1 p-8">
         <Toaster position="top-right" />
