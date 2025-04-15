@@ -73,7 +73,7 @@ const AdvocateSidebar = () => {
           <li>
             <Link href="/arbtracker" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/arbitration-tracker')}`}>
               <FaBalanceScale className="mr-3 text-indigo-400" />
-              <span>Arbitration Tracker</span>
+              <span>Arbitration</span>
             </Link>
           </li>
           <li>
