@@ -428,17 +428,17 @@ export default function RequestLetterForm({ client, onClose }: RequestLetterForm
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Name field - auto-filled and readonly */}
+        {/* Name field - should be editable */}
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Client Name</label>
           <input
             type="text"
             name="name1"
             value={formData.name1}
-            readOnly
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white cursor-not-allowed text-sm"
+            onChange={handleChange}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            required
           />
-          <p className="text-xs text-gray-500 mt-0.5">Auto-filled</p>
         </div>
 
         {/* Email - auto-filled and readonly */}
