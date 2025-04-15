@@ -47,7 +47,7 @@ const LeadNotesCell = ({ lead, fetchNotesHistory, crmDb, user }: LeadNotesCellPr
       }
       
       // Extract user name with proper fallbacks
-      const userName = loggedInUser?.displayName || 
+      const userName = loggedInUser?.userName || 
                        loggedInUser?.name || 
                        loggedInUser?.email || 
                        'Unknown User';

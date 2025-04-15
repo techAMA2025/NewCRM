@@ -446,6 +446,7 @@ const LeadsPage = () => {
         previousAssignee: leads.find(l => l.id === leadId)?.assignedTo || 'Unassigned',
         newAssignee: salesPersonName,
         timestamp: serverTimestamp(),
+        assignedById: localStorage.getItem('userName') || '',
         editor: {
           id: currentUser?.uid || 'unknown'
         }
@@ -529,10 +530,11 @@ const LeadsPage = () => {
           content: (item as any).content ? (item as any).content : 
                   ((item as any).assignmentChange ? `Assigned to ${(item as any).newAssignee || 'someone'}` : "Note updated"),
           createdAt: item.timestamp,
-          createdBy: (item as any).createdBy || ((item as any).editor?.name) || "Unknown user",
+          createdBy: (item as any).createdBy || ((item as any).editor?.name) || "",
           createdById: (item as any).createdById || ((item as any).editor?.id) || item.id,
           leadId: leadId,
-          displayDate: (item as any).displayDate || ''
+          displayDate: (item as any).displayDate || '',
+          assignedById: (item as any).assignedById || 'unknown'
         };
         return entry;
       });
@@ -754,6 +756,7 @@ const LeadsPage = () => {
                 showHistoryModal={showHistoryModal}
                 setShowHistoryModal={setShowHistoryModal}
                 currentHistory={currentHistory}
+
               />
               
               {/* Edit Lead Modal */}

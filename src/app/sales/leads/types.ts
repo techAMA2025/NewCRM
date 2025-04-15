@@ -38,6 +38,7 @@ export interface HistoryItem {
   createdById: string;
   displayDate?: string; // Optional to match usage pattern
   leadId: string;
+  assignedById: string;
 }
 
 export type SortDirection = 'ascending' | 'descending';

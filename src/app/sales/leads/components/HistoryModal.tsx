@@ -1,5 +1,4 @@
 import { FaHistory } from 'react-icons/fa';
-import { HistoryItem } from '../types';
 
 type HistoryEntry = {
   content: string;
@@ -8,6 +7,7 @@ type HistoryEntry = {
   createdById: string;
   displayDate?: string;
   leadId: string;
+  assignedById: string;
 };
 
 type HistoryModalProps = {
@@ -170,12 +170,14 @@ const HistoryModal = ({
                       </div>
                       
                       {/* Display creator name */}
-                      <div className="mb-2 text-xs">
-                        <span className="text-gray-500">Created by: </span>
-                        <span className="text-yellow-400">
-                          {entry.createdBy.split('@')[0].replace(/\./g, ' ').replace(/^\w|\s\w/g, c => c.toUpperCase())}
-                        </span>
-                      </div>
+                      {entry.createdBy && (
+                        <div className="mb-2 text-xs">
+                          <span className="text-gray-500">Created by: </span>
+                          <span className="text-yellow-400">
+                            {entry.createdBy}
+                          </span>
+                        </div>
+                      )}
                       
                       <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300 bg-gray-900 p-2 rounded border border-gray-700">
                         {entry.content || <span className="text-gray-500 italic">No content</span>}
