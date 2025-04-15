@@ -1,42 +1,44 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { Toaster } from 'react-hot-toast'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import { FaPlus, FaSearch, FaLink, FaCheck, FaTimes, FaFileSignature, FaEnvelope } from 'react-icons/fa'
 import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewArbitrationCaseModel'
+import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
 import { v4 as uuidv4 } from 'uuid'
+import { db } from '@/firebase/firebase'
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore'
+import { getFunctions, httpsCallable } from 'firebase/functions'
+import { initializeApp, getApp } from 'firebase/app'
 
-// Mock data for arbitration cases with the new fields
-const mockCases = [
-  {
-    id: 'ARB-2023-001',
-    clientName: 'Mahesh Mangnani',
-    type: 'Arbitration',
-    startDate: '03/04/2025',
-    time: '17:30',
-    status: 'In progress',
-    bankName: 'SBI',
-    password: '',
-    meetLink: '',
-    vakalatnama: false,
-    onlineLinkLetter: false,
-    teamEmails: 'shreyarora.amalegal@gmail.com, internama111@gmail.com, work.rahulgour@gmail.com, abhudash.amalegal@gmail.com, mehak.amalegal@gmail.com'
-  },
-  {
-    id: 'ARB-2023-002',
-    clientName: 'Mahesh Mangnani',
-    type: 'Arbitration',
-    startDate: '03/22/2025',
-    time: '16:30',
-    status: 'In progress',
-    bankName: 'Bajaj',
-    password: '',
-    meetLink: 'https://us05web.zoom.us/j/88511771916?pwd=m7ah4m7mqViVaDauMBewdQorbTLmME.1',
-    vakalatnama: true,
-    onlineLinkLetter: true,
-    teamEmails: 'shreyarora.amalegal@gmail.com, internama111@gmail.com, work.rahulgour@gmail.com, abhudash.amalegal@gmail.com, mehak.amalegal@gmail.com'
-  }
-]
+// Firebase configuration - copy this from your firebase.ts file
+// You may want to move this to an environment variable or config file
+const firebaseConfig = {
+    apiKey: "AIzaSyD72I02Uf1sg8TEJuanvXuwrA00LqWlbls",
+
+    authDomain: "amacrm-76fd1.firebaseapp.com",
+  
+    databaseURL: "https://amacrm-76fd1-default-rtdb.firebaseio.com",
+  
+    projectId: "amacrm-76fd1",
+  
+    storageBucket: "amacrm-76fd1.firebasestorage.app",
+  
+    messagingSenderId: "1008668372239",
+   
+    appId: "1:1008668372239:web:03cca86d1675df6450227a",
+  
+    measurementId: "G-X1B7CKLRST",
+};
+
+// Initialize Firebase if it hasn't been initialized yet
+let app: any;
+try {
+  app = getApp();
+} catch (error) {
+  app = initializeApp(firebaseConfig);
+}
 
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -65,23 +67,68 @@ const BooleanIndicator = ({ value }: { value: boolean }) => {
     <FaTimes className="text-red-500" />
 }
 
+// Boolean indicator component with label
+const BooleanIndicatorWithLabel = ({ value, label }: { value: boolean, label: string }) => {
+  return (
+    <div className="flex items-center">
+      {value ? 
+        <FaCheck className="text-green-500 mr-1" /> : 
+        <FaTimes className="text-red-500 mr-1" />}
+      <span className="text-xs text-gray-500">{label}</span>
+    </div>
+  );
+}
+
 export default function ArbitrationTracker() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [cases, setCases] = useState(mockCases)
+  const [cases, setCases] = useState<any[]>([])
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [currentCase, setCurrentCase] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  
+  // Fetch arbitration cases from Firestore
+  useEffect(() => {
+    const fetchCases = async () => {
+      try {
+        setLoading(true)
+        const arbitrationRef = collection(db, 'arbitration')
+        const q = query(arbitrationRef, orderBy('createdAt', 'desc'))
+        const snapshot = await getDocs(q)
+        
+        const caseData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          // Ensure teamEmails is always an array for consistency
+          teamEmails: Array.isArray(doc.data().teamEmails) 
+            ? doc.data().teamEmails 
+            : [] // If not an array, use empty array instead of trying to split
+        }))
+        
+        setCases(caseData)
+      } catch (error) {
+        console.error('Error fetching arbitration cases:', error)
+        alert('Failed to load cases. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchCases()
+  }, [])
   
   // Filter cases based on search term and status filter
   const filteredCases = cases.filter(arbitrationCase => {
     const matchesSearch = 
       searchTerm === '' || 
-      arbitrationCase.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      arbitrationCase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      arbitrationCase.bankName.toLowerCase().includes(searchTerm.toLowerCase())
+      arbitrationCase.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      arbitrationCase.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      arbitrationCase.bankName?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesStatus = 
       filterStatus === '' || 
-      arbitrationCase.status.toLowerCase() === filterStatus.toLowerCase()
+      arbitrationCase.status?.toLowerCase() === filterStatus.toLowerCase()
     
     return matchesSearch && matchesStatus
   })
@@ -94,15 +141,161 @@ export default function ArbitrationTracker() {
     setIsModalOpen(false)
   }
   
-  const handleSubmitCase = (caseData: ArbitrationCaseData) => {
-    // Create a new case with the submitted data and a generated ID
-    const newCase = {
-      id: `ARB-${new Date().getFullYear()}-${String(cases.length + 1).padStart(3, '0')}`,
-      ...caseData
+  const handleSubmitCase = async (caseData: ArbitrationCaseData) => {
+    try {
+      // Generate case ID
+      
+      // Prepare data for Firestore
+      const newCaseData = {
+        ...caseData,
+        createdAt: serverTimestamp(),
+        // teamEmails is already an array, no need to split
+        teamEmails: Array.isArray(caseData.teamEmails) ? caseData.teamEmails : []
+      }
+      
+      // Add document to Firestore
+      const arbitrationRef = collection(db, 'arbitration')
+      const docRef = await addDoc(arbitrationRef, newCaseData)
+      
+      // Add to local state (with ID from Firestore)
+      setCases(prevCases => [
+        {
+          ...newCaseData,
+          firestoreId: docRef.id
+        },
+        ...prevCases
+      ])
+    } catch (error) {
+      console.error('Error adding arbitration case:', error)
+      alert('Failed to create case. Please try again.')
     }
+  }
+
+  const handleSendEmailAndCalendar = async (arbitrationCase: any) => {
+    try {
+      // Email functionality - teamEmails should already be an array
+      const recipients = Array.isArray(arbitrationCase.teamEmails) 
+        ? arbitrationCase.teamEmails 
+        : []
+      
+      console.log(`Sending email to: ${recipients.join(', ')}`)
+      
+      // Calculate start and end date time from date and time strings
+      const startDate = new Date(arbitrationCase.startDate + 'T' + arbitrationCase.time);
+      const endDate = new Date(startDate);
+      endDate.setHours(endDate.getHours() + 1); // Default to 1 hour meeting
+      
+      // Use the Firebase app that we initialized at the top of the file
+      const functions = getFunctions(app);
+      const createCalendarEventFunction = httpsCallable(functions, 'createCalendarEvent');
+      
+      // Add console log to see what we're sending
+      const eventData = {
+        startDateTime: startDate.toISOString(),
+        endDateTime: endDate.toISOString(),
+        type: arbitrationCase.type,
+        clientName: arbitrationCase.clientName,
+        bankName: arbitrationCase.bankName,
+        adv_name: arbitrationCase.adv_name,
+        meetLink: arbitrationCase.meetLink,
+        notes: arbitrationCase.notes,
+        id: arbitrationCase.id,
+        startDate: arbitrationCase.startDate,
+        time: arbitrationCase.time,
+        teamEmails: recipients
+      };
+      
+      console.log('Sending event data to Cloud Function:', eventData);
+      
+      // Try to call the Cloud Function
+      try {
+        const result = await createCalendarEventFunction(eventData);
+        console.log('Function result:', result);
+        
+        // Update the database to mark this case as having been sent
+        const caseRef = doc(db, 'arbitration', arbitrationCase.id);
+        await updateDoc(caseRef, {
+          emailSent: true,
+          emailSentBy: localStorage.getItem('userName') || 'Unknown user',
+          emailSentAt: serverTimestamp()
+        });
+        
+        // Update the local state
+        setCases(prevCases => 
+          prevCases.map(c => 
+            c.id === arbitrationCase.id 
+              ? { 
+                  ...c, 
+                  emailSent: true, 
+                  emailSentBy: localStorage.getItem('userName') || 'Unknown user'
+                } 
+              : c
+          )
+        );
+        
+        // Show success notification
+        alert(`Email and calendar invitation sent to team for case ${arbitrationCase.id}`);
+      } catch (functionError: any) {
+        console.error('Cloud Function error:', functionError);
+        alert('There was an issue with the email service. Please contact your administrator with this message: ' + 
+              (functionError.message || 'Unknown error'));
+      }
+    } catch (error: any) {
+      console.error('Error details:', error);
+      alert('Failed to send email: ' + (error.message || 'Unknown error'));
+    }
+  }
+
+  const handleOpenEditModal = (arbitrationCase: any) => {
+    console.log('Opening edit modal with case:', arbitrationCase);
     
-    // Add the new case to the cases array
-    setCases(prevCases => [...prevCases, newCase])
+    // Make sure we're passing the complete case object including the document ID
+    setCurrentCase({
+      ...arbitrationCase,
+      // If the document ID isn't already in the object, make sure it's included
+      firestoreId: arbitrationCase.id  // In Firestore this should be the document ID
+    });
+    
+    setIsEditModalOpen(true);
+  }
+  
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false)
+  }
+  
+  const handleUpdateCase = async (id: string, updatedCaseData: ArbitrationCaseData) => {
+    try {
+      // We no longer need to update Firestore here
+      // That's now handled directly in the EditArbitrationCaseModal component
+      
+      // Ensure we properly update the UI state to reflect email status changes
+      // This ensures Send button becomes available again when relevant fields are edited
+      setCases(prevCases => 
+        prevCases.map(c => {
+          if (c.id === id) {
+            // Create updated case with all new values
+            const updatedCase = { ...c, ...updatedCaseData };
+            
+            // Check if emailSent was specifically set to false in the updates
+            // This happens when important fields like date, time, etc. change
+            if (updatedCaseData.hasOwnProperty('emailSent') && updatedCaseData.emailSent === false) {
+              console.log('Email status reset for case:', id);
+              // Make sure UI reflects this reset status
+              updatedCase.emailSent = false;
+              updatedCase.emailSentBy = null;
+              updatedCase.emailSentAt = null;
+            }
+            
+            return updatedCase;
+          }
+          return c;
+        })
+      );
+      
+      // No need for explicit alert since toast is shown in the modal
+    } catch (error) {
+      console.error('Error updating local state:', error);
+    }
   }
 
   return (
@@ -110,6 +303,8 @@ export default function ArbitrationTracker() {
       <AdvocateSidebar />
       
       <div className="flex-1 p-8">
+        <Toaster position="top-right" />
+        
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Arbitration Tracker</h1>
           <p className="text-gray-600 mt-2">Monitor and manage all your arbitration cases</p>
@@ -150,116 +345,8 @@ export default function ArbitrationTracker() {
             />
           </div>
         </div>
-        
-        {/* Cases Table */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Case ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Client Name
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Start Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Time
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Bank Name
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Meet Link
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vakalatnama
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Online Link Letter
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Team
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCases.map((arbitrationCase, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
-                      {arbitrationCase.id}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {arbitrationCase.clientName}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {arbitrationCase.type}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {arbitrationCase.startDate}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {arbitrationCase.time}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <StatusBadge status={arbitrationCase.status} />
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {arbitrationCase.bankName}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {arbitrationCase.meetLink ? (
-                        <a 
-                          href={arbitrationCase.meetLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 flex items-center"
-                        >
-                          <FaLink className="mr-1" /> Join
-                        </a>
-                      ) : (
-                        "Not available"
-                      )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                      <BooleanIndicator value={arbitrationCase.vakalatnama} />
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                      <BooleanIndicator value={arbitrationCase.onlineLinkLetter} />
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <button
-                        className="flex items-center text-gray-600 hover:text-indigo-600"
-                        title={arbitrationCase.teamEmails}
-                      >
-                        <FaEnvelope className="mr-1" /> Team
-                      </button>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <button className="text-indigo-600 hover:text-indigo-900 mr-3">View</button>
-                      <button className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+         {/* Summary Cards */}
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
           <div className="bg-white rounded-xl shadow-md p-6">
             <p className="text-sm text-gray-500 font-medium">Total Cases</p>
             <p className="text-3xl font-bold text-gray-800 mt-2">{cases.length}</p>
@@ -267,15 +354,22 @@ export default function ArbitrationTracker() {
           <div className="bg-white rounded-xl shadow-md p-6">
             <p className="text-sm text-gray-500 font-medium">In Progress</p>
             <p className="text-3xl font-bold text-gray-800 mt-2">
-              {cases.filter(c => c.status.toLowerCase() === 'in progress').length}
+              {cases.filter(c => c.status?.toLowerCase() === 'in progress').length}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-md p-6">
             <p className="text-sm text-gray-500 font-medium">Upcoming (7 days)</p>
             <p className="text-3xl font-bold text-gray-800 mt-2">
               {cases.filter(c => {
-                // Example logic - in a real app, use proper date comparison
-                return true; // Placeholder
+                // Calculate upcoming cases based on startDate
+                if (!c.startDate) return false;
+                
+                const caseDate = new Date(c.startDate);
+                const today = new Date();
+                const nextWeek = new Date();
+                nextWeek.setDate(today.getDate() + 7);
+                
+                return caseDate >= today && caseDate <= nextWeek;
               }).length}
             </p>
           </div>
@@ -286,6 +380,167 @@ export default function ArbitrationTracker() {
             </p>
           </div>
         </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center h-64 mt-5">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          </div>
+        )}
+        
+        {/* Cases Table */}
+        {!loading && (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden mt-5">
+            {filteredCases.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-gray-500">No arbitration cases found. Click "New Case" to add one.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                         Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Advocate
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                         Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Bank 
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Meet 
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Vakalatnama
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Online Link Letter
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Team
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email Sent
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Edited By
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredCases.map((arbitrationCase, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {arbitrationCase.clientName}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {arbitrationCase.adv_name || 'Not assigned'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {arbitrationCase.type}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {arbitrationCase.startDate}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {arbitrationCase.time}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <StatusBadge status={arbitrationCase.status} />
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {arbitrationCase.bankName}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {arbitrationCase.meetLink ? (
+                            <a 
+                              href={arbitrationCase.meetLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 flex items-center"
+                            >
+                              <FaLink className="mr-1" /> Join
+                            </a>
+                          ) : (
+                            "Not available"
+                          )}
+                        </td>
+                        <td className="px-20 py-4 whitespace-nowrap text-sm text-center">
+                          <BooleanIndicator value={arbitrationCase.vakalatnama} />
+                        </td>
+                        <td className="px-20 py-4 whitespace-nowrap text-sm text-center">
+                          <BooleanIndicator value={arbitrationCase.onlineLinkLetter} />
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <button
+                            className="flex items-center text-gray-600 hover:text-indigo-600"
+                            title={Array.isArray(arbitrationCase.teamEmails) 
+                              ? arbitrationCase.teamEmails.join(', ')
+                              : String(arbitrationCase.teamEmails)}
+                          >
+                            <FaEnvelope className="mr-1" /> Team
+                          </button>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          {arbitrationCase.emailSent ? (
+                            <div className="text-green-600" title={`Sent by ${arbitrationCase.emailSentBy || 'Unknown'}`}>
+                              <FaCheck className="inline mr-1" /> Sent
+                            </div>
+                          ) : (
+                            <div className="text-gray-500">
+                              <FaTimes className="inline mr-1" /> Not sent
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {arbitrationCase.lastedit_by || 'Not edited yet'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <button 
+                            className="text-indigo-600 hover:text-indigo-900 mr-3"
+                            onClick={() => handleOpenEditModal(arbitrationCase)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className={`text-white px-2 py-1 rounded ${
+                              arbitrationCase.emailSent 
+                                ? 'bg-gray-400 cursor-not-allowed' 
+                                : 'bg-indigo-600 hover:bg-indigo-700'
+                            }`}
+                            onClick={() => !arbitrationCase.emailSent && handleSendEmailAndCalendar(arbitrationCase)}
+                            disabled={arbitrationCase.emailSent}
+                            title={arbitrationCase.emailSent ? 'Email already sent' : 'Send email to team'}
+                          >
+                            {arbitrationCase.emailSent ? 'Sent' : 'Send'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+        
+       
       </div>
       
       {/* New Arbitration Case Modal */}
@@ -293,6 +548,14 @@ export default function ArbitrationTracker() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleSubmitCase}
+      />
+      
+      {/* Edit Arbitration Case Modal */}
+      <EditArbitrationCaseModal 
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        onUpdate={handleUpdateCase}
+        caseData={currentCase}
       />
     </div>
   )
