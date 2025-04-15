@@ -441,17 +441,18 @@ export default function RequestLetterForm({ client, onClose }: RequestLetterForm
           />
         </div>
 
-        {/* Email - auto-filled and readonly */}
+        {/* Email - make editable */}
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Client Email</label>
           <input
             type="email"
             name="email"
             value={formData.email}
-            readOnly
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white cursor-not-allowed text-sm"
+            onChange={handleChange}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            required
           />
-          <p className="text-xs text-gray-500 mt-0.5">Auto-filled</p>
+          <p className="text-xs text-gray-500 mt-0.5">Pre-filled from client data</p>
         </div>
 
         {/* Bank Selection Dropdown - spans full width */}
@@ -498,6 +499,9 @@ export default function RequestLetterForm({ client, onClose }: RequestLetterForm
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Enter bank email (use commas to separate multiple emails)"
           />
+          {formData.selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">You can edit these email addresses if needed</p>
+          )}
         </div>
 
         {/* Account Type (dropdown) */}
