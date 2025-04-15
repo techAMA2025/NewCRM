@@ -89,6 +89,7 @@ export default function ArbitrationTracker() {
   const [currentCase, setCurrentCase] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<string>('advocate') // Default to advocate
+  const [sendingEmailFor, setSendingEmailFor] = useState<string | null>(null) // Track which case is currently sending an email
   
   // Get user role from localStorage
   useEffect(() => {
@@ -183,6 +184,9 @@ export default function ArbitrationTracker() {
 
   const handleSendEmailAndCalendar = async (arbitrationCase: any) => {
     try {
+      // Set the current case as sending an email
+      setSendingEmailFor(arbitrationCase.id);
+      
       // Email functionality - teamEmails should already be an array
       const recipients = Array.isArray(arbitrationCase.teamEmails) 
         ? arbitrationCase.teamEmails 
@@ -253,6 +257,9 @@ export default function ArbitrationTracker() {
     } catch (error: any) {
       console.error('Error details:', error);
       alert('Failed to send email: ' + (error.message || 'Unknown error'));
+    } finally {
+      // Clear the sending state regardless of success or failure
+      setSendingEmailFor(null);
     }
   }
 
@@ -532,13 +539,26 @@ export default function ArbitrationTracker() {
                             className={`text-white px-2 py-1 rounded ${
                               arbitrationCase.emailSent 
                                 ? 'bg-gray-400 cursor-not-allowed' 
-                                : 'bg-indigo-600 hover:bg-indigo-700'
+                                : sendingEmailFor === arbitrationCase.id
+                                  ? 'bg-indigo-400 cursor-not-allowed'
+                                  : 'bg-indigo-600 hover:bg-indigo-700'
                             }`}
-                            onClick={() => !arbitrationCase.emailSent && handleSendEmailAndCalendar(arbitrationCase)}
-                            disabled={arbitrationCase.emailSent}
-                            title={arbitrationCase.emailSent ? 'Email already sent' : 'Send email to team'}
+                            onClick={() => !arbitrationCase.emailSent && sendingEmailFor === null && handleSendEmailAndCalendar(arbitrationCase)}
+                            disabled={arbitrationCase.emailSent || sendingEmailFor === arbitrationCase.id}
+                            title={
+                              arbitrationCase.emailSent 
+                                ? 'Email already sent' 
+                                : sendingEmailFor === arbitrationCase.id
+                                  ? 'Sending email...'
+                                  : 'Send email to team'
+                            }
                           >
-                            {arbitrationCase.emailSent ? 'Sent' : 'Send'}
+                            {arbitrationCase.emailSent 
+                              ? 'Sent' 
+                              : sendingEmailFor === arbitrationCase.id
+                                ? 'Sending...'
+                                : 'Send'
+                            }
                           </button>
                         </td>
                       </tr>
