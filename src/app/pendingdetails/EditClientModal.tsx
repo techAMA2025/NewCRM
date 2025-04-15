@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Lead } from './types/lead'
 // import firebase from '../../firebase/firebase'
-import  {db}  from '../../firebase/firebase'
+import  {db, storage}  from '../../firebase/firebase'
 import { collection, doc, setDoc, writeBatch } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 // Define Indian states array
 const indianStates = [
@@ -40,6 +41,12 @@ const EditClientModal = ({
 }: EditClientModalProps) => {
   // Create a state copy of the lead to track changes
   const [lead, setLead] = useState<Lead>({...initialLead});
+  
+  // Document upload states
+  const [fileUpload, setFileUpload] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   
   // Update local lead state when initialLead changes
   useEffect(() => {
@@ -89,7 +96,62 @@ const EditClientModal = ({
     }));
   };
 
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    setUploadSuccess(false);
+    
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Check if file is a Word document
+      if (file.type === 'application/msword' || 
+          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setFileUpload(file);
+      } else {
+        setUploadError("Please upload a Word document (.doc or .docx)");
+        e.target.value = '';
+      }
+    }
+  };
 
+  // Handle file upload
+  const handleFileUpload = async () => {
+    if (!fileUpload || !lead.id) return;
+    
+    setUploading(true);
+    setUploadError(null);
+    
+    try {
+      const storageRef = ref(storage, `leads/${lead.id}/documents/${fileUpload.name}`);
+      
+      // Upload the file
+      const snapshot = await uploadBytes(storageRef, fileUpload);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      // Update local state
+      setLead(prevLead => ({
+        ...prevLead,
+        documentUrl: downloadURL,
+        documentName: fileUpload.name,
+        documentUploadedAt: new Date()
+      }));
+      
+      setUploadSuccess(true);
+      setFileUpload(null);
+      
+      // If there's a file input, reset it
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      
+    } catch (err) {
+      console.error('Error uploading document:', err);
+      setUploadError('Failed to upload document. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -298,6 +360,93 @@ const EditClientModal = ({
                     Add Bank
                   </button>
               </div>
+              
+              {/* Document Upload Section */}
+              <FormSection title="Document Upload">
+                <div className="space-y-4">
+                  {lead.documentUrl ? (
+                    <div className="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                              <line x1="16" y1="13" x2="8" y2="13"></line>
+                              <line x1="16" y1="17" x2="8" y2="17"></line>
+                              <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            {lead.documentName || 'Document'}
+                          </p>
+                          {lead.documentUploadedAt && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Uploaded on: {lead.documentUploadedAt.toString()}
+                            </p>
+                          )}
+                        </div>
+                        <a 
+                          href={lead.documentUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+                        >
+                          View Document
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm italic">No document has been uploaded for this lead yet.</p>
+                  )}
+                  
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1">
+                      <label htmlFor="file-upload" className="block text-sm font-medium text-gray-400 mb-1">
+                        Upload Word Document
+                      </label>
+                      <input 
+                        id="file-upload"
+                        type="file"
+                        accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={handleFileChange}
+                        className="block w-full text-sm text-gray-400 
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-md file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-blue-600 file:text-white
+                                hover:file:bg-blue-700
+                                bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleFileUpload}
+                      disabled={!fileUpload || uploading}
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Uploading...
+                        </span>
+                      ) : 'Upload Document'}
+                    </button>
+                  </div>
+                  
+                  {uploadError && (
+                    <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
+                      {uploadError}
+                    </div>
+                  )}
+                  {uploadSuccess && (
+                    <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
+                      Document uploaded successfully!
+                    </div>
+                  )}
+                </div>
+              </FormSection>
               
               <FormSection title="Notes & Remarks">
                 <div className="space-y-4">
