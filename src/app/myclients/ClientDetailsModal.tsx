@@ -451,7 +451,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
                           <div className="bg-[#f5f5f5] dark:bg-[#30261d] p-4 rounded shadow-sm border-l-4 border-blue-300">
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center">
                               <FaClipboardList className="mr-1 text-blue-600" />
-                              Remarks
+                              Client Remarks
                             </p>
                             <p className="text-sm dark:text-gray-300">
                               {client.remarks || 'No remarks available'}
@@ -461,7 +461,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
                           <div className="bg-[#f5f5f5] dark:bg-[#30261d] p-4 rounded shadow-sm border-l-4 border-green-300">
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex items-center">
                               <FaClipboardList className="mr-1 text-green-600" />
-                              Queries
+                              Client Queries
                             </p>
                             <p className="text-sm dark:text-gray-300">
                               {client.queries || 'No queries available'}

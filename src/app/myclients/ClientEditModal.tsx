@@ -487,7 +487,7 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
               <div className="col-span-2 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Remarks
+                    Client Remarks
                   </label>
                   <textarea
                     name="remarks"
@@ -500,7 +500,7 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Queries
+                    Client Queries
                   </label>
                   <textarea
                     name="queries"

@@ -161,7 +161,7 @@ export default function PaymentReminderPage() {
   const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
-      const clientsRef = collection(db, 'clients_payments');
+      const clientsRef = collection(db, 'clients_payment'); ////////////////////////////////////////////////////////////////////
       const clientsSnapshot = await getDocs(clientsRef);
       const clientsList: Client[] = [];
       
