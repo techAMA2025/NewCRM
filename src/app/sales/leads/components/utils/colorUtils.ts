@@ -9,7 +9,7 @@ export const getStatusColor = (status: string) => {
     case 'Converted': return 'bg-emerald-900 text-emerald-100 border-emerald-700';
     case 'Loan Required': return 'bg-purple-900 text-purple-100 border-purple-700';
     case 'Cibil Issue': return 'bg-rose-900 text-rose-100 border-rose-700';
-    case 'Closed Lead': return 'bg-gray-800 text-gray-200 border-gray-700';
+    case 'Closed Lead': return 'bg-gray-500 text-white border-gray-700';
     case 'Select Status': 
     default: return 'bg-gray-700 text-gray-200 border-gray-600';
   }
