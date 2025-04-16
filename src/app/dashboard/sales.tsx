@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { 
   Card, 
@@ -66,6 +66,18 @@ const chartColors = {
   grid: "#333333",
 };
 
+// Define interface for task data
+interface Task {
+  id: string;
+  assignedBy: string;
+  assignedTo: string;
+  assigneeName: string;
+  title: string;
+  description: string;
+  status: string;
+  createdAt: any;
+}
+
 export default function SalesDashboard() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -91,6 +103,9 @@ export default function SalesDashboard() {
     'Unknown': '#6366f1', // indigo-500 (fallback)
   }), []);
 
+  // Add state for tasks
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
+
   useEffect(() => {
     // Get user details from localStorage
     const storedUserName = localStorage.getItem("userName");
@@ -105,6 +120,9 @@ export default function SalesDashboard() {
       
       // Fetch lead data for this specific user
       fetchLeadData(storedUserName);
+      
+      // Fetch tasks assigned to this user
+      fetchTaskData(storedUserName);
     } else {
       setIsLoading(false);
     }
@@ -245,6 +263,67 @@ export default function SalesDashboard() {
     }
   };
 
+  const fetchTaskData = async (userName: string) => {
+    try {
+      console.log(`Fetching tasks for user: ${userName}`);
+      
+      // Query tasks assigned to the current user
+      const tasksQuery = query(
+        collection(db, "tasks"),
+        where("assigneeName", "==", userName)
+      );
+      
+      const querySnapshot = await getDocs(tasksQuery);
+      console.log("Tasks query snapshot size:", querySnapshot.size);
+      
+      const tasksList: Task[] = [];
+      
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        tasksList.push({
+          id: doc.id,
+          assignedBy: data.assignedBy,
+          assignedTo: data.assignedTo,
+          assigneeName: data.assigneeName,
+          title: data.title,
+          description: data.description,
+          status: data.status,
+          createdAt: data.createdAt?.toDate() || new Date()
+        });
+      });
+      
+      // Sort tasks by creation date (newest first)
+      tasksList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      setAssignedTasks(tasksList);
+      console.log("Tasks loaded:", tasksList.length);
+      
+    } catch (error) {
+      console.error("Error fetching task data:", error);
+    }
+  };
+  
+  // Function to mark a task as completed
+  const markTaskAsCompleted = async (taskId: string) => {
+    try {
+      const taskRef = doc(db, 'tasks', taskId);
+      await updateDoc(taskRef, {
+        status: 'completed'
+      });
+      
+      // Update the local state to reflect the change
+      setAssignedTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, status: 'completed' } 
+            : task
+        )
+      );
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
       <div className="animate-pulse flex flex-col items-center">
@@ -315,6 +394,58 @@ export default function SalesDashboard() {
                 ></div>
               </div>
               <p className="text-sm text-gray-400">{leadsPercentage}% of target achieved</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tasks Section */}
+        <div className="mb-8">
+          <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-gray-100">Your Assigned Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {assignedTasks.length > 0 ? (
+                  assignedTasks.map(task => (
+                    <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium text-white">{task.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            task.status === 'completed' 
+                              ? 'bg-green-900 text-green-200' 
+                              : 'bg-yellow-900 text-yellow-200'
+                          }`}>
+                            {task.status}
+                          </span>
+                          {task.status !== 'completed' && (
+                            <button
+                              onClick={() => markTaskAsCompleted(task.id)}
+                              className="ml-2 px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                            >
+                              Mark Complete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+                      <div className="mt-2 flex justify-between text-xs text-gray-500">
+                        <span>Assigned by: {task.assignedBy}</span>
+                        <span>{new Date(task.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No tasks assigned to you</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { db } from '@/firebase/firebase'
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc } from 'firebase/firestore'
 import { format, isPast } from 'date-fns'
 
 // Define interface for client data
@@ -36,6 +36,18 @@ interface Arbitration {
   type: string;
 }
 
+// Define interface for task data
+interface Task {
+  id: string;
+  assignedBy: string;
+  assignedTo: string;
+  assigneeName: string;
+  title: string;
+  description: string;
+  status: string;
+  createdAt: any;
+}
+
 const AdvocateDashboard = () => {
   const [clientStats, setClientStats] = useState({
     activeClients: 0,
@@ -46,6 +58,7 @@ const AdvocateDashboard = () => {
   const [recentClients, setRecentClients] = useState<Client[]>([])
   const [todayArbitrations, setTodayArbitrations] = useState<Arbitration[]>([])
   const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([])
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -220,6 +233,36 @@ const AdvocateDashboard = () => {
         // Take only the first few reminders
         setUpcomingReminders(todayReminders.slice(0, 4));
         
+        // Fetch tasks assigned to this advocate
+        const tasksRef = collection(db, 'tasks');
+        const tasksQuery = query(
+          tasksRef,
+          where("assigneeName", "==", currentAdvocate)
+        );
+        
+        const tasksSnapshot = await getDocs(tasksQuery);
+        
+        const tasksList: Task[] = [];
+        
+        tasksSnapshot.forEach((doc) => {
+          const data = doc.data();
+          tasksList.push({
+            id: doc.id,
+            assignedBy: data.assignedBy,
+            assignedTo: data.assignedTo,
+            assigneeName: data.assigneeName,
+            title: data.title,
+            description: data.description,
+            status: data.status,
+            createdAt: data.createdAt?.toDate() || new Date()
+          });
+        });
+        
+        // Sort tasks by creation date (newest first)
+        tasksList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        
+        setAssignedTasks(tasksList);
+        
       } catch (error) {
         console.error('Error fetching advocate data:', error);
       } finally {
@@ -245,6 +288,27 @@ const AdvocateDashboard = () => {
       case "medium": return "bg-yellow-500";
       case "low": return "bg-green-500";
       default: return "bg-blue-500";
+    }
+  };
+
+  // Function to mark a task as completed
+  const markTaskAsCompleted = async (taskId: string) => {
+    try {
+      const taskRef = doc(db, 'tasks', taskId);
+      await updateDoc(taskRef, {
+        status: 'completed'
+      });
+      
+      // Update the local state to reflect the change
+      setAssignedTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, status: 'completed' } 
+            : task
+        )
+      );
+    } catch (error) {
+      console.error('Error updating task status:', error);
     }
   };
 
@@ -274,7 +338,50 @@ const AdvocateDashboard = () => {
           <p className="text-4xl font-bold text-yellow-400">{clientStats.notRespondingClients}</p>
         </div>
       </div>
-      
+      <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 mb-10">
+          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Your Assigned Tasks</h2>
+          <div className="space-y-4">
+            {assignedTasks.length > 0 ? (
+              assignedTasks.map(task => (
+                <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-white">{task.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        task.status === 'completed' 
+                          ? 'bg-green-900 text-green-200' 
+                          : 'bg-yellow-900 text-yellow-200'
+                      }`}>
+                        {task.status}
+                      </span>
+                      {task.status !== 'completed' && (
+                        <button
+                          onClick={() => markTaskAsCompleted(task.id)}
+                          className="ml-2 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                        >
+                          Mark Complete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+                  <div className="mt-2 flex justify-between text-xs text-gray-500">
+                    <span>Assigned by: {task.assignedBy}</span>
+                    <span>{new Date(task.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No tasks assigned to you</p>
+              </div>
+            )}
+          </div>
+        </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
           <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Today's Arbitrations</h2>
@@ -375,6 +482,8 @@ const AdvocateDashboard = () => {
             </a>
           </div>
         </div>
+        
+      
       </div>
     </div>
   )

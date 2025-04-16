@@ -911,15 +911,50 @@ export default function SuperAdminDashboard() {
               const loanType = bank.loanType || 'Unknown';
               analytics.loanTypeDistribution[loanType] = (analytics.loanTypeDistribution[loanType] || 0) + 1;
               
-              // Parse loan amount and add to total
+              // Enhanced parsing of loan amount to handle various Indian number formats
               if (bank.loanAmount) {
-                const cleanAmount = bank.loanAmount.replace(/,/g, '').match(/\d+/);
-                if (cleanAmount) {
-                  const amount = parseInt(cleanAmount[0], 10);
-                  if (!isNaN(amount)) {
-                    analytics.totalLoanAmount += amount;
-                    analytics.loanCount++;
-                  }
+                // Convert to string to ensure consistent handling
+                const amountStr = String(bank.loanAmount);
+                
+                // Handle various formats with a staged approach
+                let amount: number;
+                
+                // Try different parsing approaches in sequence
+                
+                // 1. Direct parse if it's already a number
+                if (typeof bank.loanAmount === 'number') {
+                  amount = bank.loanAmount;
+                }
+                // 2. Handle "lakh" and "crore" text representations
+                else if (amountStr.toLowerCase().includes('lakh')) {
+                  const match = amountStr.match(/(\d+(\.\d+)?)/);
+                  amount = match ? parseFloat(match[0]) * 100000 : NaN;
+                }
+                else if (amountStr.toLowerCase().includes('crore')) {
+                  const match = amountStr.match(/(\d+(\.\d+)?)/);
+                  amount = match ? parseFloat(match[0]) * 10000000 : NaN;
+                }
+                // 3. Try direct parsing for clean numbers
+                else {
+                  amount = parseFloat(amountStr);
+                }
+                
+                // 4. If still NaN, try removing all non-digit characters except decimal point
+                if (isNaN(amount)) {
+                  // Handle Indian format like "1,23,456.78" - remove commas first
+                  const cleanedStr = amountStr
+                    .replace(/[₹Rs.,\s]/g, '') // Remove rupee symbols, commas, spaces
+                    .replace(/^0+/, ''); // Remove leading zeros
+                  
+                  amount = parseFloat(cleanedStr);
+                }
+                
+                // Log problematic values to console for debugging
+                if (isNaN(amount)) {
+                  console.log('Could not parse loan amount:', bank.loanAmount);
+                } else {
+                  analytics.totalLoanAmount += amount;
+                  analytics.loanCount++;
                 }
               }
             });
