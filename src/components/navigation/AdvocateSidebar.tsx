@@ -97,7 +97,7 @@ const AdvocateSidebar = () => {
         </ul>
       </nav>
       
-      <div className="px-6 mt-10">
+      {/* <div className="px-6 mt-10">
         <div className="p-4 rounded-lg bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-800/30">
           <h3 className="text-sm font-medium text-indigo-300">Quick Stats</h3>
           <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
@@ -111,7 +111,7 @@ const AdvocateSidebar = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
       
       <div className="px-6 mt-auto pt-10">
         <button
