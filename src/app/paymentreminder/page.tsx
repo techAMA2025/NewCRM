@@ -11,7 +11,8 @@ import {
   Timestamp, 
   query, 
   where, 
-  orderBy 
+  orderBy,
+  or
 } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { 
@@ -161,13 +162,51 @@ export default function PaymentReminderPage() {
   const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
-      const clientsRef = collection(db, 'clients_payment'); ////////////////////////////////////////////////////////////////////
-      const clientsSnapshot = await getDocs(clientsRef);
+      
+      // Get current advocate username from localStorage
+      const currentAdvocate = localStorage.getItem('userName');
+      if (!currentAdvocate) {
+        setClients([]);
+        setLoading(false);
+        return;
+      }
+      
+      // First, query the clients collection to find allocated clients
+      const clientsQuery = query(
+        collection(db, 'clients'),
+        or(
+          where('alloc_adv', '==', currentAdvocate),
+          where('alloc_adv_secondary', '==', currentAdvocate)
+        )
+      );
+      
+      const clientsSnapshot = await getDocs(clientsQuery);
+      const allocatedClientIds = clientsSnapshot.docs.map(doc => doc.id);
+      
+      if (allocatedClientIds.length === 0) {
+        setClients([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Now fetch the corresponding client payment details
       const clientsList: Client[] = [];
       
-      clientsSnapshot.forEach((doc) => {
-        clientsList.push({ clientId: doc.id, ...doc.data() } as Client);
-      });
+      // Need to fetch in batches if there are many allocated clients
+      // Firestore "in" queries are limited to 10 values
+      const batchSize = 10;
+      for (let i = 0; i < allocatedClientIds.length; i += batchSize) {
+        const batch = allocatedClientIds.slice(i, i + batchSize);
+        const paymentsQuery = query(
+          collection(db, 'clients_payments'),
+          where('clientId', 'in', batch)
+        );
+        
+        const paymentsSnapshot = await getDocs(paymentsQuery);
+        paymentsSnapshot.forEach((doc) => {
+          clientsList.push({ clientId: doc.id, ...doc.data() } as Client);
+        });
+      }
       
       setClients(clientsList);
     } catch (error) {
