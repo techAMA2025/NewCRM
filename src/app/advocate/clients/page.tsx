@@ -576,6 +576,10 @@ export default function AdvocateClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [advocateName, setAdvocateName] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
   const [viewClient, setViewClient] = useState<Client | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
@@ -746,6 +750,34 @@ export default function AdvocateClientsPage() {
     setIsHarassmentComplaintModalOpen(true);
   };
 
+  const getFilteredClients = () => {
+    return clients.filter(client => {
+      const matchesSearch = searchQuery === "" || 
+        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.phone.includes(searchQuery) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === "all" || 
+        client.adv_status === statusFilter || 
+        (!client.adv_status && statusFilter === "Active");
+      
+      const matchesAssignment = 
+        assignmentFilter === "all" ||
+        (assignmentFilter === "primary" && client.isPrimary) ||
+        (assignmentFilter === "secondary" && client.isSecondary) ||
+        (assignmentFilter === "both" && client.isPrimary && client.isSecondary);
+      
+      const matchesCity = cityFilter === "all" || client.city === cityFilter;
+      
+      return matchesSearch && matchesStatus && matchesAssignment && matchesCity;
+    });
+  };
+
+  const getUniqueCities = () => {
+    const cities = clients.map(client => client.city).filter(Boolean);
+    return Array.from(new Set(cities)).sort();
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -755,12 +787,110 @@ export default function AdvocateClientsPage() {
       );
     }
 
+    const filteredClients = getFilteredClients();
+    const uniqueCities = getUniqueCities();
+
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-6 text-white">My Clients</h1>
-        {clients.length === 0 ? (
+        <h1 className="text-2xl font-bold mb-6 text-white">My Clients ({clients.length})</h1>
+        
+        {/* Search and Filters Section */}
+        <div className="mb-6 bg-gray-800 p-4 rounded-lg shadow-md">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search Bar */}
+            <div className="col-span-1 md:col-span-2">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  className="block w-full pl-10 pr-3 py-2 border-0 rounded-md bg-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  placeholder="Search by name, phone, or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="block w-full py-2 px-3 border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="all">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Dropped">Dropped</option>
+                <option value="Not Responding">Not Responding</option>
+              </select>
+            </div>
+            
+            {/* Assignment Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Assignment</label>
+              <select
+                value={assignmentFilter}
+                onChange={(e) => setAssignmentFilter(e.target.value)}
+                className="block w-full py-2 px-3 border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="all">All Assignments</option>
+                <option value="primary">Primary</option>
+                <option value="secondary">Secondary</option>
+                <option value="both">Primary & Secondary</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Second Row for City Filter */}
+          <div className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* City Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">City</label>
+                <select
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                  className="block w-full py-2 px-3 border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                >
+                  <option value="all">All Cities</option>
+                  {uniqueCities.map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Filter Stats */}
+              <div className="md:col-span-2 flex items-end">
+                <div className="text-gray-400 text-sm">
+                  Showing <span className="text-white font-medium">{filteredClients.length}</span> of <span className="text-white font-medium">{clients.length}</span> clients
+                  {searchQuery && <span> • Search: "{searchQuery}"</span>}
+                  {(statusFilter !== "all" || assignmentFilter !== "all" || cityFilter !== "all") && 
+                    <button 
+                      onClick={() => {
+                        setSearchQuery("");
+                        setStatusFilter("all");
+                        setAssignmentFilter("all");
+                        setCityFilter("all");
+                      }}
+                      className="ml-2 text-purple-400 hover:text-purple-300 focus:outline-none"
+                    >
+                      Clear Filters
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {filteredClients.length === 0 ? (
           <div className="text-center p-8 bg-gray-800 rounded-lg">
-            <p className="text-gray-300">No clients assigned to you yet.</p>
+            <p className="text-gray-300">No clients match your search criteria.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -778,7 +908,7 @@ export default function AdvocateClientsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
-                {clients.map((client) => (
+                {filteredClients.map((client) => (
                   <tr key={client.id} className="hover:bg-gray-700">
                     <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.name}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
