@@ -67,7 +67,16 @@ interface User {
 
 export default function ClientAllocationPage() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    showAllocated: true,
+    showUnallocated: true,
+    showPartiallyAllocated: true,
+  });
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [advocates, setAdvocates] = useState<User[]>([]);
@@ -81,6 +90,73 @@ export default function ClientAllocationPage() {
     type: 'success' // or 'error'
   });
 
+  // Filter clients based on search term and filter settings
+  useEffect(() => {
+    let result = [...clients];
+    
+    // Apply search filter
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter(client => 
+        client.name.toLowerCase().includes(term) ||
+        client.email.toLowerCase().includes(term) ||
+        client.phone.includes(term) ||
+        (client.city && client.city.toLowerCase().includes(term)) ||
+        (client.assignedTo && client.assignedTo.toLowerCase().includes(term))
+      );
+    }
+    
+    // Apply allocation filters
+    result = result.filter(client => {
+      const hasMainAdvocate = !!client.alloc_adv;
+      const hasSecondaryAdvocate = !!client.alloc_adv_secondary;
+      
+      if (!hasMainAdvocate && !hasSecondaryAdvocate) {
+        return filters.showUnallocated;
+      } else if (hasMainAdvocate && hasSecondaryAdvocate) {
+        return filters.showAllocated;
+      } else {
+        return filters.showPartiallyAllocated;
+      }
+    });
+    
+    setFilteredClients(result);
+  }, [clients, searchTerm, filters]);
+
+  const fetchData = async () => {
+    setRefreshing(true);
+    try {
+      // Fetch clients
+      const clientsCollection = collection(db, 'clients');
+      const clientsSnapshot = await getDocs(clientsCollection);
+      
+      const clientsList = clientsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Client[];
+      
+      setClients(clientsList);
+      
+      // Fetch advocates
+      const usersCollection = collection(db, 'users');
+      const advocatesQuery = query(usersCollection, where("role", "==", "advocate"));
+      const advocatesSnapshot = await getDocs(advocatesQuery);
+      
+      const advocatesList = advocatesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as User[];
+      
+      setAdvocates(advocatesList);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      showToast('Failed to fetch data', 'error');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     // Get user role from localStorage
     if (typeof window !== 'undefined') {
@@ -88,39 +164,27 @@ export default function ClientAllocationPage() {
       setUserRole(role);
     }
     
-    const fetchData = async () => {
-      try {
-        // Fetch clients
-        const clientsCollection = collection(db, 'clients');
-        const clientsSnapshot = await getDocs(clientsCollection);
-        
-        const clientsList = clientsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Client[];
-        
-        setClients(clientsList);
-        
-        // Fetch advocates
-        const usersCollection = collection(db, 'users');
-        const advocatesQuery = query(usersCollection, where("role", "==", "advocate"));
-        const advocatesSnapshot = await getDocs(advocatesQuery);
-        
-        const advocatesList = advocatesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as User[];
-        
-        setAdvocates(advocatesList);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
+
+  const handleRefresh = () => {
+    fetchData();
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleFilter = () => {
+    setFilterOpen(!filterOpen);
+  };
+
+  const handleFilterChange = (filterName: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterName]: !prev[filterName as keyof typeof prev]
+    }));
+  };
 
   const handleViewMore = (client: Client) => {
     setSelectedClient(client);
@@ -314,8 +378,13 @@ export default function ClientAllocationPage() {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">Client Allocation</h1>
-                <p className="text-gray-400 mt-1">Assign advocates to unallocated clients</p>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
+                  Client Allocation 
+                </h1>
+                <p className="text-gray-400 mt-1">
+                  Assign advocates to unallocated clients 
+                  ({clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).length} need allocation)
+                </p>
               </div>
               
               <div className="flex items-center space-x-4">
@@ -324,22 +393,76 @@ export default function ClientAllocationPage() {
                     type="text" 
                     placeholder="Search clients..." 
                     className="pl-10 pr-4 py-2 rounded-lg bg-gray-900 border border-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full md:w-64 text-sm"
+                    value={searchTerm}
+                    onChange={handleSearch}
                   />
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                 </div>
                 
-                <Button className="bg-gray-800 hover:bg-gray-700 text-white border-none">
+                <Button 
+                  className="bg-gray-800 hover:bg-gray-700 text-white border-none"
+                  onClick={handleFilter}
+                >
                   <Filter className="mr-2 h-4 w-4" />
                   Filter
                 </Button>
                 
-                <Button className="bg-gray-800 hover:bg-gray-700 text-white border-none">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Refresh
+                <Button 
+                  className="bg-gray-800 hover:bg-gray-700 text-white border-none"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
               </div>
             </div>
           </div>
+          
+          {/* Filter panel - conditionally rendered */}
+          {filterOpen && (
+            <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-800 animate-fade-in">
+              <h3 className="text-sm font-medium text-gray-400 mb-3">Filter Options</h3>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showUnallocated"
+                    checked={filters.showUnallocated}
+                    onChange={() => handleFilterChange('showUnallocated')}
+                    className="mr-2 h-4 w-4 rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
+                  />
+                  <label htmlFor="showUnallocated" className="text-sm text-gray-300">
+                    Unallocated Clients
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showPartiallyAllocated"
+                    checked={filters.showPartiallyAllocated}
+                    onChange={() => handleFilterChange('showPartiallyAllocated')}
+                    className="mr-2 h-4 w-4 rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
+                  />
+                  <label htmlFor="showPartiallyAllocated" className="text-sm text-gray-300">
+                    Partially Allocated
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showAllocated"
+                    checked={filters.showAllocated}
+                    onChange={() => handleFilterChange('showAllocated')}
+                    className="mr-2 h-4 w-4 rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
+                  />
+                  <label htmlFor="showAllocated" className="text-sm text-gray-300">
+                    Fully Allocated
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Main content */}
           {loading ? (
@@ -354,7 +477,7 @@ export default function ClientAllocationPage() {
               <div className="p-4 border-b border-gray-800 flex justify-between items-center">
                 <h2 className="font-semibold text-lg">Client Allocation</h2>
                 <div className="text-sm text-gray-400">
-                  {clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).length} clients need allocation
+                  {/* {filteredClients.length} clients found */}
                 </div>
               </div>
               
@@ -375,15 +498,14 @@ export default function ClientAllocationPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).length === 0 ? (
+                    {filteredClients.length === 0 ? (
                       <TableRow className="border-gray-800 hover:bg-gray-800/50">
                         <TableCell colSpan={10} className="text-center py-8 text-gray-400">
-                          All clients have been fully allocated.
+                          {searchTerm ? 'No clients match your search criteria.' : 'No clients available.'}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      clients
-                        .filter(client => !client.alloc_adv || !client.alloc_adv_secondary)
+                      filteredClients
                         .sort((a, b) => {
                           // Sort by convertedAt date in descending order (newest first)
                           if (!a.convertedAt) return 1; // If a doesn't have date, move to end
