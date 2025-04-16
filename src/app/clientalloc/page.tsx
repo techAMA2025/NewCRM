@@ -397,29 +397,29 @@ export default function ClientAllocationPage() {
                           return (
                             <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
                               <TableCell className="text-gray-300 max-w-[100px] truncate">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   {client.convertedAt ? 
                                     new Date(client.convertedAt.seconds * 1000).toLocaleDateString() : 
                                     "N/A"}
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium text-white max-w-[120px] truncate">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                              <TableCell className="font-medium text-white truncate max-w-[130px]">
+                                <div className="overflow-x-auto">
                                   {client.name.toUpperCase()}
                                 </div>
                               </TableCell>
                               <TableCell className="text-gray-300 max-w-[120px] truncate">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   {client.phone}
                                 </div>
                               </TableCell>
                               <TableCell className="text-gray-300 max-w-[150px] truncate">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   {client.email}
                                 </div>
                               </TableCell>
                               <TableCell className="text-gray-300 max-w-[120px] truncate">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   <div className="flex items-center">
                                     <FaRupeeSign className="h-3 w-3 text-red-500 mr-1 flex-shrink-0" />
                                     <span>{client.creditCardDues}</span>
@@ -427,7 +427,7 @@ export default function ClientAllocationPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="text-gray-300 max-w-[120px] truncate">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   <div className="flex items-center">
                                     <FaRupeeSign className="h-3 w-3 text-red-500 mr-1 flex-shrink-0" />
                                     <span>{client.personalLoanDues}</span>
@@ -435,7 +435,7 @@ export default function ClientAllocationPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="max-w-[120px] truncate">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   <div className="flex items-center">
                                     <div className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center mr-2 flex-shrink-0">
                                       <User className="h-3 w-3" />
@@ -445,7 +445,7 @@ export default function ClientAllocationPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="max-w-[150px]">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   <div className="flex items-center space-x-2">
                                     <Select 
                                       value={clientAdvocate} 
@@ -470,7 +470,7 @@ export default function ClientAllocationPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="max-w-[150px]">
-                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                                <div className="overflow-x-auto">
                                   <div className="flex items-center space-x-2">
                                     <Select 
                                       value={clientSecondaryAdvocate} 
@@ -706,6 +706,15 @@ export default function ClientAllocationPage() {
         }
         .animate-slide-in {
           animation: slide-in 0.3s ease-out forwards;
+        }
+        
+        /* Hide scrollbars but keep functionality */
+        .overflow-x-auto {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+        }
+        .overflow-x-auto::-webkit-scrollbar {
+          display: none;  /* Chrome, Safari and Opera */
         }
       `}</style>
     </div>
