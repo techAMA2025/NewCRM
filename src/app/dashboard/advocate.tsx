@@ -116,7 +116,6 @@ const AdvocateDashboard = () => {
         
         const arbitrationsQuery = query(
           arbitrationsRef,
-          where("adv_name", "==", currentAdvocate),
           where("startDate", "==", today)
         );
         
