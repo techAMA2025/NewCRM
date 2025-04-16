@@ -88,6 +88,20 @@ export default function ClientsPage() {
   const [isDocViewerOpen, setIsDocViewerOpen] = useState(false)
   const [viewingDocumentUrl, setViewingDocumentUrl] = useState("")
   const [viewingDocumentName, setViewingDocumentName] = useState("")
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [advocateFilter, setAdvocateFilter] = useState<string>('all')
+  const [cityFilter, setCityFilter] = useState<string>('all')
+  
+  // Lists for filter dropdowns
+  const [allAdvocates, setAllAdvocates] = useState<string[]>([])
+  const [allCities, setAllCities] = useState<string[]>([])
+  const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding'])
+
+  // Filtered clients based on search and filters
+  const [filteredClients, setFilteredClients] = useState<Client[]>([])
 
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -124,6 +138,14 @@ export default function ClientsPage() {
         
         // Display all clients regardless of allocation status
         setClients(clientsData)
+        setFilteredClients(clientsData)
+        
+        // Extract unique advocates and cities for filters
+        const advocates = Array.from(new Set(clientsData.map(client => client.alloc_adv).filter(Boolean) as string[]))
+        const cities = Array.from(new Set(clientsData.map(client => client.city).filter(Boolean) as string[]))
+        
+        setAllAdvocates(advocates)
+        setAllCities(cities)
       } catch (err) {
         console.error('Error fetching clients:', err)
         setError('Failed to load clients data')
@@ -446,6 +468,47 @@ export default function ClientsPage() {
     setIsDocViewerOpen(true);
   };
 
+  // Apply filters and search
+  useEffect(() => {
+    let results = [...clients]
+    
+    // Apply search term
+    if (searchTerm.trim() !== '') {
+      const searchLower = searchTerm.toLowerCase()
+      results = results.filter(client => 
+        (client.name && client.name.toLowerCase().includes(searchLower)) ||
+        (client.email && client.email.toLowerCase().includes(searchLower)) ||
+        (client.phone && client.phone.includes(searchTerm)) ||
+        (client.aadharNumber && client.aadharNumber.includes(searchTerm))
+      )
+    }
+    
+    // Apply advocate filter
+    if (advocateFilter !== 'all') {
+      results = results.filter(client => client.alloc_adv === advocateFilter)
+    }
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      results = results.filter(client => client.adv_status === statusFilter)
+    }
+    
+    // Apply city filter
+    if (cityFilter !== 'all') {
+      results = results.filter(client => client.city === cityFilter)
+    }
+    
+    setFilteredClients(results)
+  }, [clients, searchTerm, advocateFilter, statusFilter, cityFilter])
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('all')
+    setAdvocateFilter('all')
+    setCityFilter('all')
+  }
+
   if (loading) return (
     <div className="flex min-h-screen bg-gray-950">
       {renderSidebar()}
@@ -480,6 +543,134 @@ export default function ClientsPage() {
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">Allocated Clients</h1>
                 <p className="text-gray-400 mt-1">View clients who have been allocated to Advocates</p>
               </div>
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  <span className="text-sm font-medium">{filteredClients.length} clients</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Search and Filters */}
+          <div className="mb-6 bg-gray-900 rounded-xl border border-gray-800 p-4 shadow-lg">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              {/* Search */}
+              <div className="lg:col-span-2">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                      <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                    </svg>
+                  </div>
+                  <input
+                    type="search"
+                    className="w-full p-2.5 pl-10 text-sm bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Search by name, email, phone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              {/* Status Filter */}
+              <div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full bg-gray-800 border-gray-700 text-white">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 text-white border-gray-700">
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    {allStatuses.map(status => (
+                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Advocate Filter */}
+              <div>
+                <Select value={advocateFilter} onValueChange={setAdvocateFilter}>
+                  <SelectTrigger className="w-full bg-gray-800 border-gray-700 text-white">
+                    <SelectValue placeholder="Filter by advocate" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 text-white border-gray-700">
+                    <SelectItem value="all">All Advocates</SelectItem>
+                    {allAdvocates.map(advocate => (
+                      <SelectItem key={advocate} value={advocate}>{advocate}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* City Filter */}
+              <div>
+                <Select value={cityFilter} onValueChange={setCityFilter}>
+                  <SelectTrigger className="w-full bg-gray-800 border-gray-700 text-white">
+                    <SelectValue placeholder="Filter by city" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 text-white border-gray-700">
+                    <SelectItem value="all">All Cities</SelectItem>
+                    {allCities.map(city => (
+                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Active filters and reset */}
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              {(searchTerm || statusFilter !== 'all' || advocateFilter !== 'all' || cityFilter !== 'all') && (
+                <>
+                  <div className="text-sm text-gray-400">Active filters:</div>
+                  
+                  {searchTerm && (
+                    <Badge className="bg-purple-900/60 text-purple-300 hover:bg-purple-900 border-purple-700/50 px-3 py-1.5 flex items-center gap-1">
+                      Search: {searchTerm}
+                      <button onClick={() => setSearchTerm('')} className="ml-1 hover:text-white">
+                        ✕
+                      </button>
+                    </Badge>
+                  )}
+                  
+                  {statusFilter !== 'all' && (
+                    <Badge className="bg-blue-900/60 text-blue-300 hover:bg-blue-900 border-blue-700/50 px-3 py-1.5 flex items-center gap-1">
+                      Status: {statusFilter}
+                      <button onClick={() => setStatusFilter('all')} className="ml-1 hover:text-white">
+                        ✕
+                      </button>
+                    </Badge>
+                  )}
+                  
+                  {advocateFilter !== 'all' && (
+                    <Badge className="bg-amber-900/60 text-amber-300 hover:bg-amber-900 border-amber-700/50 px-3 py-1.5 flex items-center gap-1">
+                      Advocate: {advocateFilter}
+                      <button onClick={() => setAdvocateFilter('all')} className="ml-1 hover:text-white">
+                        ✕
+                      </button>
+                    </Badge>
+                  )}
+                  
+                  {cityFilter !== 'all' && (
+                    <Badge className="bg-green-900/60 text-green-300 hover:bg-green-900 border-green-700/50 px-3 py-1.5 flex items-center gap-1">
+                      City: {cityFilter}
+                      <button onClick={() => setCityFilter('all')} className="ml-1 hover:text-white">
+                        ✕
+                      </button>
+                    </Badge>
+                  )}
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="ml-2 text-gray-400 hover:text-white hover:bg-gray-800"
+                  >
+                    Reset All
+                  </Button>
+                </>
+              )}
             </div>
           </div>
           
@@ -488,13 +679,15 @@ export default function ClientsPage() {
             <div className="p-4 border-b border-gray-800 flex justify-between items-center">
               <h2 className="font-semibold text-lg">Allocated Clients</h2>
               <div className="text-sm text-gray-400">
-                {clients.length} clients currently allocated
+                {filteredClients.length} {filteredClients.length === 1 ? 'client' : 'clients'} found
               </div>
             </div>
             
-            {clients.length === 0 ? (
+            {filteredClients.length === 0 ? (
               <div className="p-8 text-center text-gray-400">
-                No clients have been allocated to Advocates yet.
+                {clients.length === 0 ? 
+                  "No clients have been allocated to Advocates yet." : 
+                  "No clients match your current filters. Try adjusting your search criteria."}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -512,7 +705,7 @@ export default function ClientsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clients.map(client => (
+                    {filteredClients.map(client => (
                       <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
                         <TableCell className="font-medium text-white">{client.name ? client.name.toUpperCase() : 'N/A'}</TableCell>
                         <TableCell className="text-gray-300">{client.phone}</TableCell>
