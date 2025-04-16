@@ -24,6 +24,18 @@ interface Reminder {
   createdAt: any
 }
 
+// Define interface for arbitration data
+interface Arbitration {
+  id: string;
+  clientName: string;
+  bankName: string;
+  startDate: string;
+  time: string;
+  meetLink: string;
+  status: string;
+  type: string;
+}
+
 const AdvocateDashboard = () => {
   const [clientStats, setClientStats] = useState({
     activeClients: 0,
@@ -32,6 +44,7 @@ const AdvocateDashboard = () => {
   })
   // Properly type the clients array
   const [recentClients, setRecentClients] = useState<Client[]>([])
+  const [todayArbitrations, setTodayArbitrations] = useState<Arbitration[]>([])
   const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -97,6 +110,43 @@ const AdvocateDashboard = () => {
           ]);
         }
         
+        // Fetch today's arbitrations
+        const arbitrationsRef = collection(db, 'arbitration');
+        const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+        
+        const arbitrationsQuery = query(
+          arbitrationsRef,
+          where("adv_name", "==", currentAdvocate),
+          where("startDate", "==", today)
+        );
+        
+        const arbitrationsSnapshot = await getDocs(arbitrationsQuery);
+        
+        const todayArbitrationsList: Arbitration[] = [];
+        
+        arbitrationsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          todayArbitrationsList.push({
+            id: doc.id,
+            clientName: data.clientName,
+            bankName: data.bankName,
+            startDate: data.startDate,
+            time: data.time,
+            meetLink: data.meetLink,
+            status: data.status,
+            type: data.type
+          });
+        });
+        
+        // Sort arbitrations by time
+        todayArbitrationsList.sort((a, b) => {
+          if (a.time < b.time) return -1;
+          if (a.time > b.time) return 1;
+          return 0;
+        });
+        
+        setTodayArbitrations(todayArbitrationsList);
+        
         // Fetch upcoming reminders
         const remindersRef = collection(db, 'reminders');
         const remindersQuery = query(
@@ -122,17 +172,14 @@ const AdvocateDashboard = () => {
         });
         
         // Filter for today's reminders only
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        
         const todayReminders = remindersList.filter(reminder => {
           // First, filter for today's date
-          if (reminder.date !== todayStr) return false;
+          if (reminder.date !== today) return false;
           
           // For reminders with specific times, filter out those more than 30 mins in the past
           if (reminder.time) {
             const reminderDateTime = new Date(`${reminder.date} ${reminder.time}`);
-            const thirtyMinutesAgo = new Date(today.getTime() - 30 * 60 * 1000);
+            const thirtyMinutesAgo = new Date(new Date().getTime() - 30 * 60 * 1000);
             
             // If reminder time is more than 30 minutes in the past, exclude it
             if (reminderDateTime < thirtyMinutesAgo) return false;
@@ -231,44 +278,57 @@ const AdvocateDashboard = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Recent Clients</h2>
+          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Today's Arbitrations</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-900">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Client Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Last Contact
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {recentClients.map((client) => (
-                  <tr key={client.id} className="hover:bg-gray-700 transition-colors duration-150">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
-                      {client.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${client.status === 'Active' ? 'bg-green-900 text-green-300' : 
-                          client.status === 'Not Responding' ? 'bg-yellow-900 text-yellow-300' : 
-                          client.status === 'Dropped' ? 'bg-red-900 text-red-300' :
-                          'bg-gray-700 text-gray-300'}`}>
-                        {client.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-400">
-                      {client.lastContact}
-                    </td>
+            {todayArbitrations.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-700">
+                <thead className="bg-gray-900">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Client Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Bank
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Meeting
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {todayArbitrations.map((arbitration) => (
+                    <tr key={arbitration.id} className="hover:bg-gray-700 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium">
+                        {arbitration.clientName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {arbitration.bankName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                        {arbitration.time}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <a 
+                          href={arbitration.meetLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          Join
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No arbitrations scheduled for today</p>
+              </div>
+            )}
           </div>
         </div>
         
