@@ -817,7 +817,6 @@ export default function AdvocateClientsPage() {
             
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -832,7 +831,6 @@ export default function AdvocateClientsPage() {
             
             {/* Assignment Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Assignment</label>
               <select
                 value={assignmentFilter}
                 onChange={(e) => setAssignmentFilter(e.target.value)}
@@ -849,8 +847,7 @@ export default function AdvocateClientsPage() {
           {/* Second Row for City Filter */}
           <div className="mt-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* City Filter */}
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">City</label>
                 <select
                   value={cityFilter}
@@ -862,7 +859,7 @@ export default function AdvocateClientsPage() {
                     <option key={city} value={city}>{city}</option>
                   ))}
                 </select>
-              </div>
+              </div> */}
               
               {/* Filter Stats */}
               <div className="md:col-span-2 flex items-end">
