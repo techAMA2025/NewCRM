@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, getDocs, query, orderBy, doc, updateDoc, where } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, doc, updateDoc, where, deleteDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase'
 import { 
   Table, 
@@ -120,6 +120,12 @@ export default function ClientsPage() {
 
   // Add new state for advocates list
   const [advocates, setAdvocates] = useState<User[]>([]);
+
+  // Add these to your existing state declarations
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [deleteConfirmationName, setDeleteConfirmationName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -573,6 +579,53 @@ export default function ClientsPage() {
     fetchAdvocates();
   }, []);
 
+  // Add this function to handle delete initiation
+  const handleDeleteInitiate = (client: Client) => {
+    setClientToDelete(client);
+    setDeleteConfirmationName('');
+    setIsDeleteModalOpen(true);
+  };
+
+  // Add this function to handle the actual deletion
+  const handleDeleteConfirm = async () => {
+    if (!clientToDelete || deleteConfirmationName !== clientToDelete.name) {
+      showToast(
+        "Error",
+        "The name you entered doesn't match. Please try again.",
+        "error"
+      );
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const clientRef = doc(db, 'clients', clientToDelete.id);
+      await deleteDoc(clientRef);
+      
+      // Update local state
+      setClients(clients.filter(client => client.id !== clientToDelete.id));
+      setFilteredClients(filteredClients.filter(client => client.id !== clientToDelete.id));
+      
+      showToast(
+        "Client deleted",
+        "The client has been successfully deleted.",
+        "success"
+      );
+      
+      setIsDeleteModalOpen(false);
+      setClientToDelete(null);
+    } catch (err) {
+      console.error('Error deleting client:', err);
+      showToast(
+        "Delete failed",
+        "Failed to delete the client. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex min-h-screen bg-gray-950">
       {renderSidebar()}
@@ -810,6 +863,14 @@ export default function ClientsPage() {
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                               Edit
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteInitiate(client)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                              size="sm"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                              Delete
                             </Button>
                           </div>
                         </TableCell>
@@ -1611,6 +1672,55 @@ export default function ClientsPage() {
                 className="w-full h-full border-0"
                 title="Document Viewer"
               ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && clientToDelete && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-md w-full animate-fade-in shadow-2xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-12 w-12 rounded-full bg-red-900/50 flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              </div>
+              <h3 className="text-xl font-bold text-red-500 mb-2">Delete Client</h3>
+              <p className="text-gray-400 mb-6">
+                This action cannot be undone. Please type <span className="font-semibold text-white">{clientToDelete.name}</span> to confirm deletion.
+              </p>
+              
+              <Input
+                type="text"
+                value={deleteConfirmationName}
+                onChange={(e) => setDeleteConfirmationName(e.target.value)}
+                placeholder={clientToDelete.name}
+                className="bg-gray-950 border-gray-700 text-white mb-4"
+              />
+              
+              <div className="flex gap-3 w-full">
+                <Button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  variant="outline"
+                  className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800 text-black"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteConfirmationName !== clientToDelete.name || isDeleting}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <div className="flex items-center justify-center">
+                      <div className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                      Deleting...
+                    </div>
+                  ) : (
+                    'Delete Client'
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
