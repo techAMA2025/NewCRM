@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, getDocs, query, orderBy, doc, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, doc, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/firebase/firebase'
 import { 
   Table, 
@@ -21,7 +21,7 @@ import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select'
 import toast from 'react-hot-toast'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/firebase/firebase'
@@ -65,6 +65,15 @@ interface Client {
   documentUploadedAt?: Date
 }
 
+interface User {
+  uid: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: string;
+}
+
 interface ToastMessage {
   id: number;
   title: string;
@@ -99,9 +108,18 @@ export default function ClientsPage() {
   const [allAdvocates, setAllAdvocates] = useState<string[]>([])
   const [allCities, setAllCities] = useState<string[]>([])
   const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding'])
+  const [allSources] = useState<string[]>([
+    'credsettlee',
+    'ama',
+    'settleloans',
+    'billcut'
+  ]);
 
   // Filtered clients based on search and filters
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
+
+  // Add new state for advocates list
+  const [advocates, setAdvocates] = useState<User[]>([]);
 
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -509,6 +527,52 @@ export default function ClientsPage() {
     setCityFilter('all')
   }
 
+  // Function to format source display name
+  const formatSourceName = (source: string): string => {
+    switch (source) {
+      case 'credsettlee':
+        return 'Cred Settle';
+      case 'ama':
+        return 'AMA';
+      case 'settleloans':
+        return 'Settle Loans';
+      case 'billcut':
+        return 'Bill Cut';
+      default:
+        return source;
+    }
+  };
+
+  // Add this to your existing useEffect or create a new one
+  useEffect(() => {
+    const fetchAdvocates = async () => {
+      try {
+        const advocatesQuery = query(
+          collection(db, 'users'),
+          where('role', '==', 'advocate'),
+          where('status', '==', 'active')
+        );
+        
+        const querySnapshot = await getDocs(advocatesQuery);
+        const advocatesData: User[] = querySnapshot.docs.map(doc => ({
+          uid: doc.id,
+          ...doc.data()
+        } as User));
+        
+        setAdvocates(advocatesData);
+      } catch (err) {
+        console.error('Error fetching advocates:', err);
+        showToast(
+          "Error",
+          "Failed to load advocates list",
+          "error"
+        );
+      }
+    };
+
+    fetchAdvocates();
+  }, []);
+
   if (loading) return (
     <div className="flex min-h-screen bg-gray-950">
       {renderSidebar()}
@@ -894,7 +958,7 @@ export default function ClientsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Source</div>
-                    <div className="text-white">{selectedClient.source_database || 'N/A'}</div>
+                    <div className="text-white">{selectedClient.source_database ? formatSourceName(selectedClient.source_database) : 'N/A'}</div>
                   </div>
                 </div>
               </div>
@@ -1119,23 +1183,55 @@ export default function ClientsPage() {
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">Primary Allocated Advocate</label>
-                    <Input 
-                      name="alloc_adv"
-                      value={editingClient.alloc_adv || ''}
-                      onChange={handleEditInputChange}
-                      className="bg-gray-950 border-gray-700 text-white"
-                    />
+                    <Select 
+                      defaultValue={editingClient.alloc_adv || "unassigned"}
+                      onValueChange={(value) => handleSelectChange('alloc_adv', value)}
+                    >
+                      <SelectTrigger className="bg-gray-950 border-gray-700 text-white">
+                        <SelectValue placeholder="Select primary advocate" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 text-white border-gray-700">
+                        <SelectGroup>
+                          <SelectLabel>Advocates</SelectLabel>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {advocates.map(advocate => (
+                            <SelectItem 
+                              key={advocate.uid} 
+                              value={`${advocate.firstName} ${advocate.lastName}`.trim()}
+                            >
+                              {advocate.firstName} {advocate.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">Secondary Allocated Advocate</label>
-                    <Input 
-                      name="alloc_adv"
-                      value={editingClient.alloc_adv || ''}
-                      onChange={handleEditInputChange}
-                      className="bg-gray-950 border-gray-700 text-white"
-                    />
+                    <Select 
+                      defaultValue={editingClient.alloc_adv_secondary || "unassigned"}
+                      onValueChange={(value) => handleSelectChange('alloc_adv_secondary', value)}
+                    >
+                      <SelectTrigger className="bg-gray-950 border-gray-700 text-white">
+                        <SelectValue placeholder="Select secondary advocate" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 text-white border-gray-700">
+                        <SelectGroup>
+                          <SelectLabel>Advocates</SelectLabel>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {advocates.map(advocate => (
+                            <SelectItem 
+                              key={advocate.uid} 
+                              value={`${advocate.firstName} ${advocate.lastName}`.trim()}
+                            >
+                              {advocate.firstName} {advocate.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div>
+                  {/* <div>
                     <label className="text-sm text-gray-400 block mb-1">Status</label>
                     <Select 
                       value={editingClient.status} 
@@ -1151,7 +1247,7 @@ export default function ClientsPage() {
                         <SelectItem value="Inactive">Inactive</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                 </div>
               </div>
               
@@ -1219,12 +1315,22 @@ export default function ClientsPage() {
                   </div>
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">Source</label>
-                    <Input 
-                      name="source"
-                      value={editingClient.source_database  || ''}
-                      onChange={handleEditInputChange}
-                      className="bg-gray-950 border-gray-700 text-white"
-                    />
+                    <Select 
+                      value={editingClient.source_database || 'none'} 
+                      onValueChange={(value) => handleSelectChange('source_database', value === 'none' ? '' : value)}
+                    >
+                      <SelectTrigger className="bg-gray-950 border-gray-700 text-white">
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 text-white border-gray-700">
+                        <SelectItem value="none">Select source</SelectItem>
+                        {allSources.map(source => (
+                          <SelectItem key={source} value={source}>
+                            {formatSourceName(source)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
