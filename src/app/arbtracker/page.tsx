@@ -9,7 +9,7 @@ import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewAr
 import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/firebase/firebase'
-import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { initializeApp, getApp } from 'firebase/app'
 
@@ -80,6 +80,13 @@ const BooleanIndicatorWithLabel = ({ value, label }: { value: boolean, label: st
   );
 }
 
+// Add these new interfaces after the existing ones
+interface RemarkHistory {
+  remark: string;
+  timestamp: any;
+  advocateName: string;
+}
+
 export default function ArbitrationTracker() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -90,6 +97,11 @@ export default function ArbitrationTracker() {
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<string>('advocate') // Default to advocate
   const [sendingEmailFor, setSendingEmailFor] = useState<string | null>(null) // Track which case is currently sending an email
+  const [remarks, setRemarks] = useState<{ [key: string]: string }>({});
+  const [latestRemarks, setLatestRemarks] = useState<{ [key: string]: string }>({});
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [selectedCaseHistory, setSelectedCaseHistory] = useState<RemarkHistory[]>([]);
+  const [selectedCaseId, setSelectedCaseId] = useState<string>("");
   
   // Get user role from localStorage
   useEffect(() => {
@@ -118,6 +130,9 @@ export default function ArbitrationTracker() {
         }))
         
         setCases(caseData)
+
+        // Fetch latest remarks for all cases
+        await Promise.all(caseData.map(caseItem => fetchLatestRemark(caseItem.id)));
       } catch (error) {
         console.error('Error fetching arbitration cases:', error)
         alert('Failed to load cases. Please try again.')
@@ -315,6 +330,72 @@ export default function ArbitrationTracker() {
     }
   }
 
+  const fetchLatestRemark = async (caseId: string) => {
+    try {
+      const historyRef = collection(db, 'arbitration', caseId, 'history');
+      const q = query(historyRef, orderBy("timestamp", "desc"), limit(1));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const latestRemark = snapshot.docs[0].data().remark;
+        setLatestRemarks(prev => ({ ...prev, [caseId]: latestRemark }));
+        setRemarks(prev => ({ ...prev, [caseId]: latestRemark }));
+      }
+    } catch (error) {
+      console.error("Error fetching latest remark:", error);
+    }
+  };
+
+  const handleRemarkChange = (caseId: string, value: string) => {
+    setRemarks(prev => ({ ...prev, [caseId]: value }));
+  };
+
+  const handleSaveRemark = async (caseId: string) => {
+    try {
+      const advocateName = localStorage.getItem("userName") || "Unknown Advocate";
+      const remarkText = remarks[caseId]?.trim();
+      
+      if (!remarkText) {
+        alert("Please enter a remark before saving");
+        return;
+      }
+
+      const historyRef = collection(db, 'arbitration', caseId, 'history');
+      await addDoc(historyRef, {
+        remark: remarkText,
+        timestamp: serverTimestamp(),
+        advocateName
+      });
+
+      // Update latest remarks
+      setLatestRemarks(prev => ({ ...prev, [caseId]: remarkText }));
+      setRemarks(prev => ({ ...prev, [caseId]: remarkText }));
+      alert("Remark saved successfully");
+    } catch (error) {
+      console.error("Error saving remark:", error);
+      alert("Failed to save remark");
+    }
+  };
+
+  const handleViewHistory = async (caseId: string) => {
+    try {
+      const historyRef = collection(db, 'arbitration', caseId, 'history');
+      const q = query(historyRef, orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      
+      const history = snapshot.docs.map(doc => ({
+        ...doc.data()
+      } as RemarkHistory));
+
+      setSelectedCaseHistory(history);
+      setSelectedCaseId(caseId);
+      setIsHistoryModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      alert("Failed to fetch history");
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       {userRole === 'overlord' ? <OverlordSidebar /> : <AdvocateSidebar />}
@@ -456,6 +537,9 @@ export default function ArbitrationTracker() {
                         Last Edited By
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Remarks
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -528,6 +612,31 @@ export default function ArbitrationTracker() {
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                           {arbitrationCase.lastedit_by || 'Not edited yet'}
                         </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="flex flex-col space-y-2">
+                            <textarea
+                              value={remarks[arbitrationCase.id] || ""}
+                              onChange={(e) => handleRemarkChange(arbitrationCase.id, e.target.value)}
+                              placeholder="Enter remark..."
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none"
+                              rows={2}
+                            />
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleSaveRemark(arbitrationCase.id)}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors duration-200"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => handleViewHistory(arbitrationCase.id)}
+                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors duration-200"
+                              >
+                                History
+                              </button>
+                            </div>
+                          </div>
+                        </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <button 
                             className="text-indigo-600 hover:text-indigo-900 mr-3"
@@ -587,6 +696,42 @@ export default function ArbitrationTracker() {
         onUpdate={handleUpdateCase}
         caseData={currentCase}
       />
+
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Remark History</h2>
+              <button 
+                onClick={() => setIsHistoryModalOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {selectedCaseHistory.map((history, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-purple-600 font-medium">{history.advocateName}</span>
+                    <span className="text-gray-500 text-sm">
+                      {history.timestamp?.toDate?.()?.toLocaleString('en-IN') || 'Unknown date'}
+                    </span>
+                  </div>
+                  <p className="text-gray-700">{history.remark}</p>
+                </div>
+              ))}
+              
+              {selectedCaseHistory.length === 0 && (
+                <div className="text-center text-gray-500 py-8">
+                  No remarks history available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
