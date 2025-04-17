@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
-import { FaTimes, FaSave, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTimes, FaSave, FaExclamationTriangle, FaPlus } from 'react-icons/fa';
 
 // Define the Bank type to match Firebase structure
 interface Bank {
@@ -88,9 +88,16 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
     }
   }, [isOpen, client]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | { name: string; value: string }) => {
+    if ('target' in e) {
+      // This is a regular DOM event
+      const { name, value } = e.target;
+      setFormData(prev => ({ ...prev, [name]: value }));
+    } else {
+      // This is a direct {name, value} object
+      const { name, value } = e;
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleBankChange = (index: number, field: keyof Bank, value: string) => {
@@ -163,400 +170,371 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-            Edit Client: {client.name}
-          </h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <FaTimes size={20} />
-          </button>
-        </div>
-        
-        <div className="overflow-y-auto p-6 max-h-[calc(90vh-8rem)]">
+    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center overflow-y-auto">
+      <div className="relative bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-white">
+              Edit Client: {client.name}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white"
+            >
+              <FaTimes className="h-6 w-6" />
+            </button>
+          </div>
+
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-center">
-              <FaExclamationTriangle className="mr-2" /> {error}
+            <div className="mb-4 p-3 bg-red-800 text-red-100 rounded-md">
+              {error}
             </div>
           )}
           
           {success && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            <div className="mb-4 p-3 bg-green-800 text-green-100 rounded-md">
               {success}
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Personal Information Section */}
-              <div className="col-span-2">
-                <h4 className="text-lg font-semibold mb-3 border-b pb-2 dark:text-white">
-                  Personal Information
-                </h4>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
+              <FormSection title="Personal Information">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InputField
+                    id="name"
+                    label="Full Name"
                     value={formData.name || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'name', value })}
                     required
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
-                  </label>
-                  <input
+                  <InputField
+                    id="email"
+                    label="Email"
                     type="email"
-                    name="email"
                     value={formData.email || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'email', value })}
                     required
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Phone
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
+                  <InputField
+                    id="phone"
+                    label="Phone"
                     value={formData.phone || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'phone', value })}
+                    type="tel"
                     required
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
+                  <InputField
+                    id="city"
+                    label="City"
                     value={formData.city || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'city', value })}
                   />
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Occupation
-                  </label>
-                  <input
-                    type="text"
-                    name="occupation"
+                  <InputField
+                    id="occupation"
+                    label="Occupation"
                     value={formData.occupation || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'occupation', value })}
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Aadhar Number
-                  </label>
-                  <input
-                    type="text"
-                    name="aadharNumber"
+                  <InputField
+                    id="aadharNumber"
+                    label="Aadhar Number"
                     value={formData.aadharNumber || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'aadharNumber', value })}
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status
-                  </label>
-                  <select
-                    name="status"
+                  <InputField
+                    id="status"
+                    label="Status"
                     value={formData.status || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'status', value })}
                     required
                   >
                     <option value="">Select Status</option>
                     <option value="Converted">Converted</option>
                     <option value="Pending">Pending</option>
                     <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Source
-                  </label>
-                  <select
-                    name="source_database"
+                  </InputField>
+                  <InputField
+                    id="source_database"
+                    label="Source"
                     value={formData.source_database || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'source_database', value })}
+                    required
                   >
                     <option value="">Select Source</option>
                     <option value="credsettlee">Cred Settle</option>
                     <option value="ama">AMA</option>
                     <option value="settleloans">Settle Loans</option>
                     <option value="billcut">Bill Cut</option>
-                  </select>
+                  </InputField>
                 </div>
-              </div>
-              
-              {/* Financial Information Section */}
-              <div className="col-span-2">
-                <h4 className="text-lg font-semibold mt-4 mb-3 border-b pb-2 dark:text-white">
-                  Financial Information
-                </h4>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Monthly Income (₹)
-                  </label>
-                  <input
-                    type="text"
-                    name="monthlyIncome"
+              </FormSection>
+
+              <FormSection title="Financial Information">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <InputField
+                    id="monthlyIncome"
+                    label="Monthly Income"
                     value={formData.monthlyIncome || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'monthlyIncome', value })}
+                    placeholder="₹"
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Monthly Fees (₹)
-                  </label>
-                  <input
-                    type="text"
-                    name="monthlyFees"
+                  <InputField
+                    id="monthlyFees"
+                    label="Monthly Fees"
                     value={formData.monthlyFees || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'monthlyFees', value })}
+                    placeholder="₹"
                   />
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Credit Card Dues (₹)
-                  </label>
-                  <input
-                    type="text"
-                    name="creditCardDues"
+                  <InputField
+                    id="creditCardDues"
+                    label="Credit Card Dues"
                     value={formData.creditCardDues || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'creditCardDues', value })}
+                    placeholder="₹"
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Personal Loan Dues (₹)
-                  </label>
-                  <input
-                    type="text"
-                    name="personalLoanDues"
+                  <InputField
+                    id="personalLoanDues"
+                    label="Personal Loan Dues"
                     value={formData.personalLoanDues || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'personalLoanDues', value })}
+                    placeholder="₹"
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tenure
-                  </label>
-                  <input
-                    type="text"
-                    name="tenure"
+                  <InputField
+                    id="tenure"
+                    label="Tenure"
                     value={formData.tenure || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    onChange={(value) => handleChange({ name: 'tenure', value })}
                   />
                 </div>
-              </div>
-              
-              {/* Bank Information Section */}
-              <div className="col-span-2">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-lg font-semibold mt-4 mb-3 border-b pb-2 dark:text-white">
-                    Bank Information
-                  </h4>
+              </FormSection>
+
+              <FormSection title="Bank Information">
+                <div className="space-y-4">
+                  {banks.map((bank, index) => (
+                    <BankForm
+                      key={bank.id}
+                      bank={bank}
+                      onUpdate={(field, value) => handleBankChange(index, field as keyof Bank, value)}
+                      onRemove={() => removeBank(index)}
+                    />
+                  ))}
                   <button
                     type="button"
                     onClick={addBank}
-                    className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                    className="mt-5 inline-flex items-center px-3 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
+                    <FaPlus className="-ml-1 mr-1 h-4 w-4" />
                     Add Bank
                   </button>
                 </div>
-                
-                {banks.map((bank, index) => (
-                  <div key={bank.id || index} className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h5 className="font-medium dark:text-white">Bank #{index + 1}</h5>
-                      <button
-                        type="button"
-                        onClick={() => removeBank(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <FaTimes />
-                      </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Bank Name
-                        </label>
-                        <input
-                          type="text"
-                          value={bank.bankName || ''}
-                          onChange={(e) => handleBankChange(index, 'bankName', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Account Number
-                        </label>
-                        <input
-                          type="text"
-                          value={bank.accountNumber || ''}
-                          onChange={(e) => handleBankChange(index, 'accountNumber', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Loan Type
-                        </label>
-                        <input
-                          type="text"
-                          value={bank.loanType || ''}
-                          onChange={(e) => handleBankChange(index, 'loanType', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Loan Amount (₹)
-                        </label>
-                        <input
-                          type="text"
-                          value={bank.loanAmount || ''}
-                          onChange={(e) => handleBankChange(index, 'loanAmount', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
-                      </div>
-                    </div>
+              </FormSection>
+
+              <FormSection title="Additional Information">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Client Remarks
+                    </label>
+                    <textarea
+                      name="remarks"
+                      value={formData.remarks || ''}
+                      onChange={(e) => handleChange({ name: 'remarks', value: e.target.value })}
+                      rows={3}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    ></textarea>
                   </div>
-                ))}
-              </div>
-              
-              {/* Notes Section */}
-              <div className="col-span-2">
-                <h4 className="text-lg font-semibold mt-4 mb-3 border-b pb-2 dark:text-white">
-                  Additional Information
-                </h4>
-              </div>
-              
-              <div className="col-span-2 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Client Remarks
-                  </label>
-                  <textarea
-                    name="remarks"
-                    value={formData.remarks || ''}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  ></textarea>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Client Queries
+                    </label>
+                    <textarea
+                      name="queries"
+                      value={formData.queries || ''}
+                      onChange={(e) => handleChange({ name: 'queries', value: e.target.value })}
+                      rows={3}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Sales Notes
+                    </label>
+                    <textarea
+                      name="salesNotes"
+                      value={formData.salesNotes || ''}
+                      onChange={(e) => handleChange({ name: 'salesNotes', value: e.target.value })}
+                      rows={3}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    ></textarea>
+                  </div>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Client Queries
-                  </label>
-                  <textarea
-                    name="queries"
-                    value={formData.queries || ''}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  ></textarea>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Sales Notes
-                  </label>
-                  <textarea
-                    name="salesNotes"
-                    value={formData.salesNotes || ''}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  ></textarea>
-                </div>
-              </div>
+              </FormSection>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center">
+                    <div className="animate-spin -ml-1 mr-2 h-4 w-4 text-white">
+                      {/* Spinner SVG */}
+                    </div>
+                    Saving...
+                  </span>
+                ) : (
+                  <>
+                    <FaSave className="mr-2" /> Save Changes
+                  </>
+                )}
+              </button>
             </div>
           </form>
-        </div>
-        
-        <div className="flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700 p-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <FaSave className="mr-2" /> Save Changes
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>
   );
-} 
+}
+
+// Add these new components
+interface FormSectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+const FormSection = ({ title, children }: FormSectionProps) => (
+  <div>
+    <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">{title}</h3>
+    <div className="bg-gray-750 p-4 rounded-lg border border-gray-700">
+      {children}
+    </div>
+  </div>
+);
+
+interface InputFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  required?: boolean;
+  placeholder?: string;
+  children?: React.ReactNode;
+}
+
+const InputField = ({ id, label, value, onChange, type = 'text', required = false, placeholder, children }: InputFieldProps) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-400">{label}</label>
+    {children ? (
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        required={required}
+      >
+        {children}
+      </select>
+    ) : (
+      <input
+        type={type}
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        required={required}
+        placeholder={placeholder}
+      />
+    )}
+  </div>
+);
+
+interface BankFormProps {
+  bank: Bank;
+  onUpdate: (field: keyof Bank, value: string) => void;
+  onRemove: () => void;
+}
+
+const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => (
+  <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+    <div className="flex justify-between items-center mb-2">
+      <h5 className="font-medium dark:text-white">Bank #{bank.id}</h5>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="text-red-500 hover:text-red-700"
+      >
+        <FaTimes />
+      </button>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Bank Name
+        </label>
+        <input
+          type="text"
+          value={bank.bankName || ''}
+          onChange={(e) => onUpdate('bankName', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Loan Type
+        </label>
+        <select
+          value={bank.loanType || ''}
+          onChange={(e) => onUpdate('loanType', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        >
+          <option value="">Select type</option>
+          <option value="Personal Loan">Personal Loan</option>
+          <option value="Home Loan">Home Loan</option>
+          <option value="Car Loan">Car Loan</option>
+          <option value="Credit Card">Credit Card</option>
+          <option value="Business Loan">Business Loan</option>
+          <option value="Education Loan">Education Loan</option>
+          <option value="Gold Loan">Gold Loan</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {bank.loanType === 'Credit Card' ? 'Card Number' : 'Loan/Account Number'}
+        </label>
+        <input
+          type="text"
+          value={bank.accountNumber || ''}
+          onChange={(e) => onUpdate('accountNumber', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {bank.loanType === 'Credit Card' ? 'Outstanding Amount' : 'Loan Amount'} (₹)
+        </label>
+        <input
+          type="text"
+          value={bank.loanAmount || ''}
+          onChange={(e) => onUpdate('loanAmount', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        />
+      </div>
+    </div>
+  </div>
+); 
