@@ -751,26 +751,33 @@ export default function AdvocateClientsPage() {
   };
 
   const getFilteredClients = () => {
-    return clients.filter(client => {
-      const matchesSearch = searchQuery === "" || 
-        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.phone.includes(searchQuery) ||
-        client.email.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = statusFilter === "all" || 
-        client.adv_status === statusFilter || 
-        (!client.adv_status && statusFilter === "Active");
-      
-      const matchesAssignment = 
-        assignmentFilter === "all" ||
-        (assignmentFilter === "primary" && client.isPrimary) ||
-        (assignmentFilter === "secondary" && client.isSecondary) ||
-        (assignmentFilter === "both" && client.isPrimary && client.isSecondary);
-      
-      const matchesCity = cityFilter === "all" || client.city === cityFilter;
-      
-      return matchesSearch && matchesStatus && matchesAssignment && matchesCity;
-    });
+    return clients
+      .filter(client => {
+        const matchesSearch = searchQuery === "" || 
+          client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          client.phone.includes(searchQuery) ||
+          client.email.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const matchesStatus = statusFilter === "all" || 
+          client.adv_status === statusFilter || 
+          (!client.adv_status && statusFilter === "Active");
+        
+        const matchesAssignment = 
+          assignmentFilter === "all" ||
+          (assignmentFilter === "primary" && client.isPrimary) ||
+          (assignmentFilter === "secondary" && client.isSecondary) ||
+          (assignmentFilter === "both" && client.isPrimary && client.isSecondary);
+        
+        const matchesCity = cityFilter === "all" || client.city === cityFilter;
+        
+        return matchesSearch && matchesStatus && matchesAssignment && matchesCity;
+      })
+      .sort((a, b) => {
+        // Convert Firestore timestamps to milliseconds for comparison
+        const dateA = a.convertedAt?.toMillis?.() || 0;
+        const dateB = b.convertedAt?.toMillis?.() || 0;
+        return dateB - dateA; // Sort in descending order (latest first)
+      });
   };
 
   const getUniqueCities = () => {
@@ -894,6 +901,7 @@ export default function AdvocateClientsPage() {
             <table className="w-full border-collapse bg-gray-800 shadow-md rounded-lg">
               <thead>
                 <tr className="bg-gray-700">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">City</th>
@@ -907,6 +915,7 @@ export default function AdvocateClientsPage() {
               <tbody className="divide-y divide-gray-700">
                 {filteredClients.map((client) => (
                   <tr key={client.id} className="hover:bg-gray-700">
+                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianDate(client.convertedAt)}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.name}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="text-gray-200">{formatIndianPhoneNumber(client.phone)}</div>
