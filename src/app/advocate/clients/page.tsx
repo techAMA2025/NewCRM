@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, updateDoc, addDoc, orderBy, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { Spinner } from "@/components/ui/spinner";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
@@ -48,6 +48,12 @@ interface Client {
   documentName?: string;
   documentUploadedAt?: any;
   source_database?: string;
+}
+
+interface RemarkHistory {
+  remark: string;
+  timestamp: any; // Firestore Timestamp
+  advocateName: string;
 }
 
 function formatIndianCurrency(amount: string | number | undefined): string {
@@ -592,6 +598,10 @@ export default function AdvocateClientsPage() {
   const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null);
   const [isDemandNoticeModalOpen, setIsDemandNoticeModalOpen] = useState(false);
   const [isHarassmentComplaintModalOpen, setIsHarassmentComplaintModalOpen] = useState(false);
+  const [remarks, setRemarks] = useState<{ [key: string]: string }>({});
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [selectedClientHistory, setSelectedClientHistory] = useState<RemarkHistory[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
 
   useEffect(() => {
     // Get the advocate name from localStorage
@@ -748,6 +758,55 @@ export default function AdvocateClientsPage() {
     console.log("Opening harassment complaint modal for client:", client.name);
     setSelectedClientForDoc(client);
     setIsHarassmentComplaintModalOpen(true);
+  };
+
+  const handleRemarkChange = (clientId: string, value: string) => {
+    setRemarks(prev => ({ ...prev, [clientId]: value }));
+  };
+
+  const handleSaveRemark = async (clientId: string) => {
+    try {
+      const advocateName = localStorage.getItem("userName") || "Unknown Advocate";
+      const remarkText = remarks[clientId]?.trim();
+      
+      if (!remarkText) {
+        toast.error("Please enter a remark before saving");
+        return;
+      }
+
+      const historyRef = collection(db, "clients", clientId, "history");
+      await addDoc(historyRef, {
+        remark: remarkText,
+        timestamp: serverTimestamp(),
+        advocateName
+      });
+
+      // Clear the input after saving
+      setRemarks(prev => ({ ...prev, [clientId]: "" }));
+      toast.success("Remark saved successfully");
+    } catch (error) {
+      console.error("Error saving remark:", error);
+      toast.error("Failed to save remark");
+    }
+  };
+
+  const handleViewHistory = async (clientId: string) => {
+    try {
+      const historyRef = collection(db, "clients", clientId, "history");
+      const q = query(historyRef, orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      
+      const history = snapshot.docs.map(doc => ({
+        ...doc.data()
+      } as RemarkHistory));
+
+      setSelectedClientHistory(history);
+      setSelectedClientId(clientId);
+      setIsHistoryModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      toast.error("Failed to fetch history");
+    }
   };
 
   const getFilteredClients = () => {
@@ -953,7 +1012,31 @@ export default function AdvocateClientsPage() {
                         <option value="Not Responding">Not Responding</option>
                       </select>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianCurrency(client.personalLoanDues)}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col space-y-2">
+                        <textarea
+                          value={remarks[client.id] || ""}
+                          onChange={(e) => handleRemarkChange(client.id, e.target.value)}
+                          placeholder="Enter remark..."
+                          className="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm resize-none"
+                          rows={2}
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleSaveRemark(client.id)}
+                            className="px-3 py-1 bg-green-700 hover:bg-green-600 text-white text-sm rounded transition-colors duration-200"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => handleViewHistory(client.id)}
+                            className="px-3 py-1 bg-purple-700 hover:bg-purple-600 text-white text-sm rounded transition-colors duration-200"
+                          >
+                            History
+                          </button>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianCurrency(client.creditCardDues)}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex space-x-2">
@@ -1142,6 +1225,43 @@ export default function AdvocateClientsPage() {
                 client={selectedClientForDoc} 
                 onClose={() => setIsHarassmentComplaintModalOpen(false)} 
               />
+            </div>
+          </div>
+        )}
+
+        {/* History Modal */}
+        {isHistoryModalOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 w-full max-w-2xl animate-fadeIn shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white">Remark History</h2>
+                <button 
+                  onClick={() => setIsHistoryModalOpen(false)}
+                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                {selectedClientHistory.map((history, index) => (
+                  <div key={index} className="bg-gray-800 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-purple-400 font-medium">{history.advocateName}</span>
+                      <span className="text-gray-400 text-sm">
+                        {history.timestamp?.toDate?.()?.toLocaleString('en-IN') || 'Unknown date'}
+                      </span>
+                    </div>
+                    <p className="text-white">{history.remark}</p>
+                  </div>
+                ))}
+                
+                {selectedClientHistory.length === 0 && (
+                  <div className="text-center text-gray-400 py-8">
+                    No remarks history available
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
