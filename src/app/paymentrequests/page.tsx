@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FiCheck, FiAlertTriangle, FiMail, FiPhone, FiUser, FiX, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { FiCheck, FiAlertTriangle, FiMail, FiPhone, FiUser, FiX, FiEdit, FiTrash2, FiSearch, FiFilter } from 'react-icons/fi';
 import { collection, getDocs, doc, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
@@ -19,6 +19,10 @@ export default function PaymentRequestsPage() {
   const [editingRequest, setEditingRequest] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<string>('');
   const [deletingRequest, setDeletingRequest] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const router = useRouter();
 
   useEffect(() => {
@@ -242,12 +246,38 @@ export default function PaymentRequestsPage() {
     }
   };
 
-  // Get sorted pending and approved requests
-  const pendingRequests = paymentRequests
+  const filteredRequests = useMemo(() => {
+    return paymentRequests.filter(request => {
+      const matchesSearch = 
+        request.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.clientEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.clientPhone.includes(searchTerm) ||
+        request.salesPersonName.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesSource = sourceFilter === 'all' || request.source === sourceFilter;
+      const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+      
+      let matchesDate = true;
+      const requestDate = new Date(request.timestamp);
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today.setDate(today.getDate() - 30));
+      const sevenDaysAgo = new Date(today.setDate(today.getDate() - 7));
+      
+      if (dateFilter === 'last7days') {
+        matchesDate = requestDate >= sevenDaysAgo;
+      } else if (dateFilter === 'last30days') {
+        matchesDate = requestDate >= thirtyDaysAgo;
+      }
+
+      return matchesSearch && matchesSource && matchesStatus && matchesDate;
+    });
+  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter]);
+
+  const pendingRequests = filteredRequests
     .filter(req => req.status === 'pending')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
-  const approvedRequests = paymentRequests
+  const approvedRequests = filteredRequests
     .filter(req => req.status === 'approved')
     .sort((a, b) => new Date(b.approvedAt).getTime() - new Date(a.approvedAt).getTime());
 
@@ -269,10 +299,85 @@ export default function PaymentRequestsPage() {
               </div>
               <div className="bg-gray-800 rounded-lg px-4 py-2">
                 <span className="text-gray-400 text-sm">Pending: </span>
-                <span className="text-white font-semibold">
-                  {pendingRequests.length}
-                </span>
+                <span className="text-white font-semibold">{pendingRequests.length}</span>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-800 rounded-lg p-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, phone, or sales person..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Sources</option>
+                  <option value="credsettlee">Cred Settle</option>
+                  <option value="ama">AMA</option>
+                  <option value="settleloans">Settle Loans</option>
+                  <option value="billcut">Bill Cut</option>
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                </select>
+
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Time</option>
+                  <option value="last7days">Last 7 Days</option>
+                  <option value="last30days">Last 30 Days</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {searchTerm && (
+                <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-3 py-1 rounded-full text-sm">
+                  Search: {searchTerm}
+                </span>
+              )}
+              {sourceFilter !== 'all' && (
+                <span className="bg-purple-900/50 text-purple-300 border border-purple-500 px-3 py-1 rounded-full text-sm capitalize">
+                  Source: {sourceFilter === 'credsettlee' ? 'Cred Settle' : 
+                          sourceFilter === 'ama' ? 'AMA' :
+                          sourceFilter === 'settleloans' ? 'Settle Loans' :
+                          sourceFilter === 'billcut' ? 'Bill Cut' : sourceFilter}
+                </span>
+              )}
+              {statusFilter !== 'all' && (
+                <span className="bg-green-900/50 text-green-300 border border-green-500 px-3 py-1 rounded-full text-sm capitalize">
+                  Status: {statusFilter}
+                </span>
+              )}
+              {dateFilter !== 'all' && (
+                <span className="bg-yellow-900/50 text-yellow-300 border border-yellow-500 px-3 py-1 rounded-full text-sm">
+                  Date: {dateFilter === 'last7days' ? 'Last 7 Days' : 'Last 30 Days'}
+                </span>
+              )}
             </div>
           </div>
         
@@ -293,7 +398,6 @@ export default function PaymentRequestsPage() {
             </div>
           ) : (
             <div className="space-y-10">
-              {/* Pending Requests Section */}
               <div>
                 <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
                   <span className="bg-yellow-900/50 text-yellow-300 border border-yellow-500 px-3 py-1 rounded-full text-sm font-medium mr-3">
@@ -320,8 +424,19 @@ export default function PaymentRequestsPage() {
                             <div className="flex-1">
                               <div className="flex items-center space-x-3 mb-3">
                                 <h3 className="text-xl font-semibold text-white">{request.clientName}</h3>
-                                <span className="bg-yellow-900/50 text-yellow-300 border border-yellow-500 px-3 py-1 rounded-full text-sm font-medium">
-                                  Pending
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  request.status === 'approved' 
+                                    ? 'bg-green-900/50 text-green-300 border border-green-500'
+                                    : 'bg-yellow-900/50 text-yellow-300 border border-yellow-500'
+                                }`}>
+                                  {request.status === 'approved' ? 'Approved' : 'Pending'}
+                                </span>
+                                <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-3 py-1 rounded-full text-sm font-medium capitalize">
+                                  {request.source === 'credsettlee' ? 'Cred Settle' :
+                                   request.source === 'ama' ? 'AMA' :
+                                   request.source === 'settleloans' ? 'Settle Loans' :
+                                   request.source === 'billcut' ? 'Bill Cut' :
+                                   request.source || 'Not specified'}
                                 </span>
                               </div>
                               
@@ -398,7 +513,6 @@ export default function PaymentRequestsPage() {
                           </div>
                         </div>
 
-                        {/* Confirmation Dialogs for this request */}
                         {confirmingRequest === request.id && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-gray-800 rounded-lg p-6 max-w-md mx-auto shadow-2xl border border-gray-700">
@@ -420,6 +534,9 @@ export default function PaymentRequestsPage() {
                                   <p className="text-white font-medium mb-2">{request.clientName}</p>
                                   <p className="text-gray-400 text-sm mb-2">Amount: <span className="text-white">₹{request.amount}</span></p>
                                   <p className="text-gray-400 text-sm">Requested by: <span className="text-white">{request.salesPersonName}</span></p>
+                                  <p className="text-gray-400 text-sm">Source: <span className="text-white capitalize">
+                                    {request.source || 'Not specified'}
+                                  </span></p>
                                 </div>
                               </div>
                               
@@ -462,6 +579,9 @@ export default function PaymentRequestsPage() {
                                 <div className="bg-gray-900 p-4 rounded-lg mb-4">
                                   <p className="text-white font-medium mb-2">{request.clientName}</p>
                                   <p className="text-gray-400 text-sm">Requested by: <span className="text-white">{request.salesPersonName}</span></p>
+                                  <p className="text-gray-400 text-sm">Source: <span className="text-white capitalize">
+                                    {request.source || 'Not specified'}
+                                  </span></p>
                                 </div>
                                 
                                 <div className="mb-4">
@@ -518,6 +638,9 @@ export default function PaymentRequestsPage() {
                                   <p className="text-white font-medium mb-2">{request.clientName}</p>
                                   <p className="text-gray-400 text-sm mb-2">Amount: <span className="text-white">₹{request.amount}</span></p>
                                   <p className="text-gray-400 text-sm">Status: <span className="text-white capitalize">{request.status}</span></p>
+                                  <p className="text-gray-400 text-sm">Source: <span className="text-white capitalize">
+                                    {request.source || 'Not specified'}
+                                  </span></p>
                                 </div>
                               </div>
                               
@@ -545,7 +668,6 @@ export default function PaymentRequestsPage() {
                 )}
               </div>
 
-              {/* Approved Requests Section */}
               <div>
                 <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
                   <span className="bg-green-900/50 text-green-300 border border-green-500 px-3 py-1 rounded-full text-sm font-medium mr-3">
@@ -572,8 +694,19 @@ export default function PaymentRequestsPage() {
                             <div className="flex-1">
                               <div className="flex items-center space-x-3 mb-3">
                                 <h3 className="text-xl font-semibold text-white">{request.clientName}</h3>
-                                <span className="bg-green-900/50 text-green-300 border border-green-500 px-3 py-1 rounded-full text-sm font-medium">
-                                  Approved
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  request.status === 'approved' 
+                                    ? 'bg-green-900/50 text-green-300 border border-green-500'
+                                    : 'bg-yellow-900/50 text-yellow-300 border border-yellow-500'
+                                }`}>
+                                  {request.status === 'approved' ? 'Approved' : 'Pending'}
+                                </span>
+                                <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-3 py-1 rounded-full text-sm font-medium capitalize">
+                                  {request.source === 'credsettlee' ? 'Cred Settle' :
+                                   request.source === 'ama' ? 'AMA' :
+                                   request.source === 'settleloans' ? 'Settle Loans' :
+                                   request.source === 'billcut' ? 'Bill Cut' :
+                                   request.source || 'Not specified'}
                                 </span>
                               </div>
                               
@@ -653,7 +786,6 @@ export default function PaymentRequestsPage() {
                           </div>
                         </div>
 
-                        {/* Confirmation Dialogs for this request */}
                         {editingRequest === request.id && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-gray-800 rounded-lg p-6 max-w-md mx-auto shadow-2xl border border-gray-700">
@@ -674,6 +806,9 @@ export default function PaymentRequestsPage() {
                                 <div className="bg-gray-900 p-4 rounded-lg mb-4">
                                   <p className="text-white font-medium mb-2">{request.clientName}</p>
                                   <p className="text-gray-400 text-sm">Requested by: <span className="text-white">{request.salesPersonName}</span></p>
+                                  <p className="text-gray-400 text-sm">Source: <span className="text-white capitalize">
+                                    {request.source || 'Not specified'}
+                                  </span></p>
                                 </div>
                                 
                                 <div className="mb-4">
@@ -730,6 +865,9 @@ export default function PaymentRequestsPage() {
                                   <p className="text-white font-medium mb-2">{request.clientName}</p>
                                   <p className="text-gray-400 text-sm mb-2">Amount: <span className="text-white">₹{request.amount}</span></p>
                                   <p className="text-gray-400 text-sm">Status: <span className="text-white capitalize">{request.status}</span></p>
+                                  <p className="text-gray-400 text-sm">Source: <span className="text-white capitalize">
+                                    {request.source || 'Not specified'}
+                                  </span></p>
                                 </div>
                               </div>
                               

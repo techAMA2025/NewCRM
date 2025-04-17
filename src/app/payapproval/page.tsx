@@ -21,6 +21,7 @@ interface Payment {
   timestamp: string;
   status: 'pending' | 'approved';
   approvedBy?: string;
+  source: string;
 }
 
 export default function PaymentApprovalPage() {
@@ -29,6 +30,7 @@ export default function PaymentApprovalPage() {
     clientEmail: '',
     clientPhone: '',
     amount: '',
+    source: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,7 +39,7 @@ export default function PaymentApprovalPage() {
   const [userPayments, setUserPayments] = useState<Payment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -87,6 +89,7 @@ export default function PaymentApprovalPage() {
         clientEmail: formData.clientEmail, 
         clientPhone: formData.clientPhone,
         amount: formData.amount,
+        source: formData.source,
         salesPersonName,
         timestamp: new Date().toISOString()
       };
@@ -109,6 +112,7 @@ export default function PaymentApprovalPage() {
           clientEmail: '',
           clientPhone: '',
           amount: '',
+          source: '',
         });
       }, 3000);
     } catch (error) {
@@ -276,6 +280,29 @@ export default function PaymentApprovalPage() {
                         className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg focus:ring-green-500 focus:border-green-500 block w-full pl-10 p-2.5"
                       />
                     </div>
+                  </motion.div>
+                  
+                  <motion.div 
+                    whileHover={{ y: -2 }}
+                    className="space-y-2 md:col-span-2"
+                  >
+                    <label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Source
+                    </label>
+                    <select
+                      id="source"
+                      name="source"
+                      value={formData.source}
+                      onChange={handleChange}
+                      required
+                      className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5"
+                    >
+                      <option value="">Select source</option>
+                      <option value="credsettlee">Cred Settle</option>
+                      <option value="ama">AMA</option>
+                      <option value="settleloans">Settle Loans</option>
+                      <option value="billcut">Bill Cut</option>
+                    </select>
                   </motion.div>
                 </div>
                 
