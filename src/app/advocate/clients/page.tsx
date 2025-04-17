@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, doc, updateDoc, addDoc, orderBy, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, updateDoc, addDoc, orderBy, serverTimestamp, limit } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { Spinner } from "@/components/ui/spinner";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
@@ -602,6 +602,7 @@ export default function AdvocateClientsPage() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedClientHistory, setSelectedClientHistory] = useState<RemarkHistory[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [latestRemarks, setLatestRemarks] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     // Get the advocate name from localStorage
@@ -619,7 +620,6 @@ export default function AdvocateClientsPage() {
       try {
         const clientsRef = collection(db, "clients");
         
-        // Modified query to get clients where the advocate is either primary or secondary
         const primaryQuery = query(clientsRef, where("alloc_adv", "==", advocateName));
         const secondaryQuery = query(clientsRef, where("alloc_adv_secondary", "==", advocateName));
         
@@ -630,7 +630,6 @@ export default function AdvocateClientsPage() {
         
         const clientsList: Client[] = [];
         
-        // Add primary clients with a flag
         primarySnapshot.forEach((doc) => {
           const clientData = doc.data();
           clientsList.push({ 
@@ -641,13 +640,11 @@ export default function AdvocateClientsPage() {
           } as Client);
         });
         
-        // Add secondary clients with a flag, avoiding duplicates
         secondarySnapshot.forEach((doc) => {
           const clientData = doc.data();
           const existingIndex = clientsList.findIndex(c => c.id === doc.id);
           
           if (existingIndex >= 0) {
-            // If the client is already in the list as primary, mark it as both
             clientsList[existingIndex].isSecondary = true;
           } else {
             clientsList.push({ 
@@ -660,6 +657,9 @@ export default function AdvocateClientsPage() {
         });
         
         setClients(clientsList);
+
+        // Fetch latest remarks for all clients
+        await Promise.all(clientsList.map(client => fetchLatestRemark(client.id)));
       } catch (error) {
         console.error("Error fetching clients:", error);
       } finally {
@@ -781,8 +781,11 @@ export default function AdvocateClientsPage() {
         advocateName
       });
 
+      // Update latest remarks
+      setLatestRemarks(prev => ({ ...prev, [clientId]: remarkText }));
+      
       // Clear the input after saving
-      setRemarks(prev => ({ ...prev, [clientId]: "" }));
+      setRemarks(prev => ({ ...prev, [clientId]: remarkText }));
       toast.success("Remark saved successfully");
     } catch (error) {
       console.error("Error saving remark:", error);
@@ -842,6 +845,22 @@ export default function AdvocateClientsPage() {
   const getUniqueCities = () => {
     const cities = clients.map(client => client.city).filter(Boolean);
     return Array.from(new Set(cities)).sort();
+  };
+
+  const fetchLatestRemark = async (clientId: string) => {
+    try {
+      const historyRef = collection(db, "clients", clientId, "history");
+      const q = query(historyRef, orderBy("timestamp", "desc"), limit(1));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const latestRemark = snapshot.docs[0].data().remark;
+        setLatestRemarks(prev => ({ ...prev, [clientId]: latestRemark }));
+        setRemarks(prev => ({ ...prev, [clientId]: latestRemark }));
+      }
+    } catch (error) {
+      console.error("Error fetching latest remark:", error);
+    }
   };
 
   const renderContent = () => {
