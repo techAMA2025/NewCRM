@@ -9,7 +9,7 @@ import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewAr
 import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/firebase/firebase'
-import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, deleteDoc } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { initializeApp, getApp } from 'firebase/app'
 
@@ -396,6 +396,24 @@ export default function ArbitrationTracker() {
     }
   };
 
+  const handleDeleteCase = async (caseId: string) => {
+    try {
+      if (!window.confirm('Are you sure you want to delete this case? This action cannot be undone.')) {
+        return;
+      }
+
+      // Delete the document from Firestore
+      await deleteDoc(doc(db, 'arbitration', caseId));
+
+      // Update local state
+      setCases(prevCases => prevCases.filter(c => c.id !== caseId));
+      alert('Case deleted successfully');
+    } catch (error) {
+      console.error('Error deleting case:', error);
+      alert('Failed to delete case. Please try again.');
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       {userRole === 'overlord' ? <OverlordSidebar /> : <AdvocateSidebar />}
@@ -669,6 +687,14 @@ export default function ArbitrationTracker() {
                                 : 'Send'
                             }
                           </button>
+                          {userRole === 'overlord' && (
+                            <button 
+                              className="text-red-600 hover:text-red-900 ml-3"
+                              onClick={() => handleDeleteCase(arbitrationCase.id)}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
