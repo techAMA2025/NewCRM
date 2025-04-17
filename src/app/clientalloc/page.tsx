@@ -94,8 +94,8 @@ export default function ClientAllocationPage() {
   useEffect(() => {
     let result = [...clients];
     
-    // First filter out allocated clients - only keep unallocated ones
-    result = result.filter(client => !client.alloc_adv && !client.alloc_adv_secondary);
+    // Show clients that are missing either primary or secondary advocate
+    result = result.filter(client => !client.alloc_adv || !client.alloc_adv_secondary);
     
     // Apply search filter
     if (searchTerm.trim() !== '') {
@@ -368,10 +368,10 @@ export default function ClientAllocationPage() {
             <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
-                  Unallocated Clients
+                  Incomplete Allocations
                 </h1>
                 <p className="text-gray-400 mt-1">
-                  Assign advocates to {filteredClients.length} unallocated clients
+                  Assign advocates to {filteredClients.length} partially allocated clients
                 </p>
               </div>
               
