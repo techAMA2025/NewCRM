@@ -94,6 +94,9 @@ export default function ClientAllocationPage() {
   useEffect(() => {
     let result = [...clients];
     
+    // First filter out allocated clients - only keep unallocated ones
+    result = result.filter(client => !client.alloc_adv && !client.alloc_adv_secondary);
+    
     // Apply search filter
     if (searchTerm.trim() !== '') {
       const term = searchTerm.toLowerCase().trim();
@@ -106,22 +109,8 @@ export default function ClientAllocationPage() {
       );
     }
     
-    // Apply allocation filters
-    result = result.filter(client => {
-      const hasMainAdvocate = !!client.alloc_adv;
-      const hasSecondaryAdvocate = !!client.alloc_adv_secondary;
-      
-      if (!hasMainAdvocate && !hasSecondaryAdvocate) {
-        return filters.showUnallocated;
-      } else if (hasMainAdvocate && hasSecondaryAdvocate) {
-        return filters.showAllocated;
-      } else {
-        return filters.showPartiallyAllocated;
-      }
-    });
-    
     setFilteredClients(result);
-  }, [clients, searchTerm, filters]);
+  }, [clients, searchTerm]);
 
   const fetchData = async () => {
     setRefreshing(true);
@@ -379,11 +368,10 @@ export default function ClientAllocationPage() {
             <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
-                  Client Allocation 
+                  Unallocated Clients
                 </h1>
                 <p className="text-gray-400 mt-1">
-                  Assign advocates to unallocated clients 
-                  ({clients.filter(client => !client.alloc_adv || !client.alloc_adv_secondary).length} need allocation)
+                  Assign advocates to {filteredClients.length} unallocated clients
                 </p>
               </div>
               
