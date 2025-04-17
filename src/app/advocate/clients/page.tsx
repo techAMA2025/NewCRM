@@ -578,7 +578,7 @@ export default function AdvocateClientsPage() {
   const [advocateName, setAdvocateName] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [assignmentFilter, setAssignmentFilter] = useState<string>("all");
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("primary");
   const [cityFilter, setCityFilter] = useState<string>("all");
   const [viewClient, setViewClient] = useState<Client | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
