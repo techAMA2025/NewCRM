@@ -116,6 +116,12 @@ export default function SuperAdminDashboard() {
     }
   });
 
+  // Add state for current month's payment data
+  const [currentMonthPayments, setCurrentMonthPayments] = useState({
+    collected: 0,
+    pending: 0
+  });
+
   // Function to apply date filter
   const applyDateFilter = () => {
     setIsLoading(true);
@@ -543,7 +549,7 @@ export default function SuperAdminDashboard() {
         datasets: [
           {
             label: 'Monthly Revenue',
-            data: salesAnalytics.monthlyRevenue,
+            data: salesAnalytics.monthlyRevenue, // Use actual data from state
             borderColor: 'rgba(75, 192, 192, 1)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
             tension: 0.4,
@@ -1069,7 +1075,7 @@ export default function SuperAdminDashboard() {
     ],
   });
 
-  // Add useEffect to fetch payment analytics
+  // Modify the fetchPaymentAnalytics useEffect
   useEffect(() => {
     const fetchPaymentAnalytics = async () => {
       try {
@@ -1088,56 +1094,58 @@ export default function SuperAdminDashboard() {
             partial: 0
           }
         };
+
+        // Get current month's start and end dates
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        
+        // Track current month's payments
+        let currentMonthCollected = 0;
+        let currentMonthPending = 0;
         
         // Process each client payment document
-        const paymentHistoryPromises: Promise<any>[] = [];
-        
-        paymentsSnapshot.forEach(doc => {
-          const clientPayment = doc.data();
+        paymentsSnapshot.forEach((clientDoc) => {
+          const clientPayment = clientDoc.data();
           analytics.clientCount++;
+          
+          // Add to total analytics
           analytics.totalPaymentsAmount += clientPayment.totalPaymentAmount || 0;
           analytics.totalPaidAmount += clientPayment.paidAmount || 0;
           analytics.totalPendingAmount += clientPayment.pendingAmount || 0;
+
+          // Calculate current month's data
+          // Each client has a monthlyFees amount
+          const monthlyFees = clientPayment.monthlyFees || 0;
           
-          // Fetch payment history for each client
-          const paymentHistoryRef = collection(doc.ref, 'payment_history');
-          const promise = getDocs(paymentHistoryRef).then(historySnap => {
-            historySnap.forEach(paymentDoc => {
-              const payment = paymentDoc.data();
+          // Check if this is a current client based on startDate
+          if (clientPayment.startDate) {
+            const startDate = clientPayment.startDate.toDate ? 
+              clientPayment.startDate.toDate() : new Date(clientPayment.startDate);
+            
+            // If client started before or during current month
+            if (startDate <= currentMonthEnd) {
+              // Add to pending amount for current month
+              currentMonthPending += monthlyFees;
               
-              // Count payment methods
-              const method = payment.paymentMethod || 'unknown';
-              analytics.paymentMethodDistribution[method] = 
-                (analytics.paymentMethodDistribution[method] || 0) + 1;
-              
-              // Count payment types
-              if (payment.type === 'partial') {
-                analytics.paymentTypeDistribution.partial++;
-              } else {
-                analytics.paymentTypeDistribution.full++;
+              // If they've made payments, subtract from pending and add to collected
+              if (clientPayment.paymentsCompleted > 0) {
+                const thisMonthPaid = Math.min(monthlyFees, clientPayment.paidAmount || 0);
+                currentMonthCollected += thisMonthPaid;
+                currentMonthPending -= thisMonthPaid;
               }
-              
-              // Add to monthly data if timestamp exists
-              if (payment.date) {
-                const paymentDate = payment.date.toDate ? payment.date.toDate() : new Date(payment.date);
-                if (paymentDate instanceof Date && !isNaN(paymentDate.getTime())) {
-                  const paymentMonth = paymentDate.getMonth();
-                  const currentMonth = new Date().getMonth();
-                  const monthDiff = (paymentMonth - currentMonth + 12) % 12;
-                  
-                  if (monthDiff <= 5) {
-                    const index = 5 - monthDiff;
-                    analytics.monthlyPaymentsData[index] += payment.amount || 0;
-                  }
-                }
-              }
-            });
-          });
-          paymentHistoryPromises.push(promise);
+            }
+          }
+
+          // Add to payment type distribution
+          if (clientPayment.paymentsCompleted > 0) {
+            if (clientPayment.paidAmount < monthlyFees) {
+              analytics.paymentTypeDistribution.partial++;
+            } else {
+              analytics.paymentTypeDistribution.full++;
+            }
+          }
         });
-        
-        // Wait for all payment history queries to complete
-        await Promise.all(paymentHistoryPromises);
         
         // Calculate completion rate
         const completionRate = analytics.totalPaymentsAmount > 0 
@@ -1146,6 +1154,24 @@ export default function SuperAdminDashboard() {
         
         setPaymentAnalytics({
           ...analytics,
+          completionRate
+        });
+        
+        // Update current month's payment data
+        setCurrentMonthPayments({
+          collected: currentMonthCollected,
+          pending: currentMonthPending
+        });
+        
+        console.log("Payment Analytics:", {
+          totalPayments: analytics.totalPaymentsAmount,
+          totalPaid: analytics.totalPaidAmount,
+          totalPending: analytics.totalPendingAmount,
+          clientCount: analytics.clientCount,
+          currentMonth: {
+            collected: currentMonthCollected,
+            pending: currentMonthPending,
+          },
           completionRate
         });
         
@@ -1771,12 +1797,14 @@ export default function SuperAdminDashboard() {
                   <p className="text-2xl font-bold text-white">{paymentAnalytics.clientCount}</p>
                 </div>
                 <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-4 rounded-lg border border-green-700/30 shadow-md">
-                  <p className="text-green-300 text-sm font-medium">Collected Amount</p>
-                  <p className="text-2xl font-bold text-white">₹{paymentAnalytics.totalPaidAmount.toLocaleString('en-IN')}</p>
+                  <p className="text-green-300 text-sm font-medium">This Month's Collection</p>
+                  <p className="text-2xl font-bold text-white">₹{currentMonthPayments.collected.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-green-300 mt-1">Total: ₹{paymentAnalytics.totalPaidAmount.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-4 rounded-lg border border-amber-700/30 shadow-md">
-                  <p className="text-amber-300 text-sm font-medium">Pending Amount</p>
-                  <p className="text-2xl font-bold text-white">₹{paymentAnalytics.totalPendingAmount.toLocaleString('en-IN')}</p>
+                  <p className="text-amber-300 text-sm font-medium">This Month's Pending</p>
+                  <p className="text-2xl font-bold text-white">₹{currentMonthPayments.pending.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-amber-300 mt-1">Total: ₹{paymentAnalytics.totalPendingAmount.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-4 rounded-lg border border-purple-700/30 shadow-md">
                   <p className="text-purple-300 text-sm font-medium">Collection Rate</p>
