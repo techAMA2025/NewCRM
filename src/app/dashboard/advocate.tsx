@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { db } from '@/firebase/firebase'
 import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc } from 'firebase/firestore'
 import { format, isPast } from 'date-fns'
+import { useRouter } from 'next/navigation'
 
 // Define interface for client data
 interface Client {
@@ -49,6 +50,7 @@ interface Task {
 }
 
 const AdvocateDashboard = () => {
+  const router = useRouter()
   const [clientStats, setClientStats] = useState({
     activeClients: 0,
     droppedClients: 0,
@@ -288,7 +290,7 @@ const AdvocateDashboard = () => {
       case "medium": return "bg-yellow-500";
       case "low": return "bg-green-500";
       default: return "bg-blue-500";
-    }
+    } 
   };
 
   // Function to mark a task as completed
@@ -312,6 +314,11 @@ const AdvocateDashboard = () => {
     }
   };
 
+  // Navigation handlers for client stats cards
+  const navigateToClients = (statusFilter: string) => {
+    router.push(`/advocate/clients?status=${statusFilter}`)
+  }
+
   if (loading) {
     return <div className="p-6 min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center">
       <div className="animate-pulse text-xl">Loading dashboard data...</div>
@@ -323,17 +330,26 @@ const AdvocateDashboard = () => {
       <h1 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Advocate Dashboard</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-blue-500 transition-all duration-300">
+        <div 
+          onClick={() => navigateToClients('Active')} 
+          className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-blue-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
+        >
           <h2 className="text-lg font-semibold mb-2 text-gray-300">Active Clients</h2>
           <p className="text-4xl font-bold text-blue-400">{clientStats.activeClients}</p>
         </div>
         
-        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-red-500 transition-all duration-300">
+        <div 
+          onClick={() => navigateToClients('Dropped')} 
+          className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-red-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
+        >
           <h2 className="text-lg font-semibold mb-2 text-gray-300">Dropped Clients</h2>
           <p className="text-4xl font-bold text-red-400">{clientStats.droppedClients}</p>
         </div>
         
-        <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-yellow-500 transition-all duration-300">
+        <div 
+          onClick={() => navigateToClients('Not Responding')} 
+          className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-yellow-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
+        >
           <h2 className="text-lg font-semibold mb-2 text-gray-300">Not Responding Clients</h2>
           <p className="text-4xl font-bold text-yellow-400">{clientStats.notRespondingClients}</p>
         </div>

@@ -10,6 +10,7 @@ import toast, { Toaster } from "react-hot-toast";
 import RequestLetterForm from "./requestletter";
 import DemandNoticeForm from "./demandnotice";
 import ComplaintForHarassmentForm from "./cfhab";
+import { useSearchParams } from "next/navigation";
 
 interface Bank {
   id: string;
@@ -579,6 +580,7 @@ function LegalNoticeForm({ client, onClose }: { client: Client, onClose: () => v
 }
 
 export default function AdvocateClientsPage() {
+  const searchParams = useSearchParams();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [advocateName, setAdvocateName] = useState<string>("");
@@ -609,8 +611,14 @@ export default function AdvocateClientsPage() {
     if (typeof window !== "undefined") {
       const userName = localStorage.getItem("userName");
       setAdvocateName(userName || "");
+      
+      // Check for status filter in URL
+      const status = searchParams.get("status");
+      if (status && ["Active", "Dropped", "Not Responding"].includes(status)) {
+        setStatusFilter(status);
+      }
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     async function fetchClients() {
