@@ -62,6 +62,7 @@ const AdvocateDashboard = () => {
   const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([])
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
     const fetchAdvocateData = async () => {
@@ -355,10 +356,22 @@ const AdvocateDashboard = () => {
         </div>
       </div>
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 mb-10">
-          <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Your Assigned Tasks</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+              {showHistory ? "Completed Tasks" : "Your Assigned Tasks"}
+            </h2>
+            <button 
+              onClick={() => setShowHistory(!showHistory)} 
+              className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            >
+              {showHistory ? "Show Pending Tasks" : "History"}
+            </button>
+          </div>
           <div className="space-y-4">
             {assignedTasks.length > 0 ? (
-              assignedTasks.map(task => (
+              assignedTasks
+                .filter(task => showHistory ? task.status === 'completed' : task.status !== 'completed')
+                .map(task => (
                 <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium text-white">{task.title}</h3>
@@ -393,7 +406,7 @@ const AdvocateDashboard = () => {
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <p>No tasks assigned to you</p>
+                <p>{showHistory ? "No completed tasks" : "No pending tasks assigned to you"}</p>
               </div>
             )}
           </div>
