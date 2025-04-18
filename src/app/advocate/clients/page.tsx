@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { collection, getDocs, query, where, doc, updateDoc, addDoc, orderBy, serverTimestamp, limit } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { Spinner } from "@/components/ui/spinner";
@@ -579,8 +579,8 @@ function LegalNoticeForm({ client, onClose }: { client: Client, onClose: () => v
   );
 }
 
-export default function AdvocateClientsPage() {
-  const searchParams = useSearchParams();
+// Create a client component for the filtered list
+function ClientsList() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [advocateName, setAdvocateName] = useState<string>("");
@@ -605,6 +605,8 @@ export default function AdvocateClientsPage() {
   const [selectedClientHistory, setSelectedClientHistory] = useState<RemarkHistory[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [latestRemarks, setLatestRemarks] = useState<{ [key: string]: string }>({});
+
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     // Get the advocate name from localStorage
@@ -1092,207 +1094,241 @@ export default function AdvocateClientsPage() {
   };
 
   return (
+    <div className="flex-1">
+      {renderContent()}
+      <ClientViewModal 
+        client={viewClient} 
+        isOpen={isViewModalOpen} 
+        onClose={closeViewModal}
+        openDocumentViewer={openDocumentViewer}
+        openRequestLetterModal={openRequestLetterModal}
+        openLegalNoticeModal={openLegalNoticeModal}
+        openDemandNoticeModal={openDemandNoticeModal}
+        openHarassmentComplaintModal={openHarassmentComplaintModal}
+      />
+      <ClientEditModal
+        client={editClient}
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        onClientUpdated={handleClientUpdated}
+      />
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            style: {
+              background: 'rgba(47, 133, 90, 0.9)',
+            },
+          },
+          error: {
+            duration: 3000,
+            style: {
+              background: 'rgba(175, 45, 45, 0.9)',
+            },
+          },
+        }}
+      />
+      
+      {/* Add document viewer modal */}
+      {isDocViewerOpen && viewingDocumentUrl && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 w-[95vw] max-w-6xl h-[90vh] shadow-2xl flex flex-col">
+            <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-800">
+              <h3 className="text-xl font-semibold text-white flex items-center">
+                {viewingDocumentName}
+              </h3>
+              <button 
+                onClick={() => setIsDocViewerOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 bg-white rounded overflow-hidden">
+              <iframe 
+                src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                className="w-full h-full border-0"
+                title="Document Viewer"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request Letter Modal */}
+      {isRequestLetterModalOpen && selectedClientForDoc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">
+                Generate Request Letter
+              </h2>
+              <button 
+                onClick={() => setIsRequestLetterModalOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <RequestLetterForm 
+              client={selectedClientForDoc} 
+              onClose={() => setIsRequestLetterModalOpen(false)} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Legal Notice Modal */}
+      {isLegalNoticeModalOpen && selectedClientForDoc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">
+                Generate Legal Notice
+              </h2>
+              <button 
+                onClick={() => setIsLegalNoticeModalOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <LegalNoticeForm 
+              client={selectedClientForDoc} 
+              onClose={() => setIsLegalNoticeModalOpen(false)} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Demand Notice Modal */}
+      {isDemandNoticeModalOpen && selectedClientForDoc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">
+                Generate Demand Notice
+              </h2>
+              <button 
+                onClick={() => setIsDemandNoticeModalOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <DemandNoticeForm 
+              client={selectedClientForDoc} 
+              onClose={() => setIsDemandNoticeModalOpen(false)} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Harassment Complaint Modal */}
+      {isHarassmentComplaintModalOpen && selectedClientForDoc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">
+                Complaint For Harassment Against Banks
+              </h2>
+              <button 
+                onClick={() => setIsHarassmentComplaintModalOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <ComplaintForHarassmentForm 
+              client={selectedClientForDoc} 
+              onClose={() => setIsHarassmentComplaintModalOpen(false)} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 w-full max-w-2xl animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">Remark History</h2>
+              <button 
+                onClick={() => setIsHistoryModalOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {selectedClientHistory.map((history, index) => (
+                <div key={index} className="bg-gray-800 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-purple-400 font-medium">{history.advocateName}</span>
+                    <span className="text-gray-400 text-sm">
+                      {history.timestamp?.toDate?.()?.toLocaleString('en-IN') || 'Unknown date'}
+                    </span>
+                  </div>
+                  <p className="text-white">{history.remark}</p>
+                </div>
+              ))}
+              
+              {selectedClientHistory.length === 0 && (
+                <div className="text-center text-gray-400 py-8">
+                  No remarks history available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Main page component
+export default function AdvocateClientsPage() {
+  return (
     <div className="flex bg-gray-900 min-h-screen">
       <AdvocateSidebar />
-      <div className="flex-1">
-        {renderContent()}
-        <ClientViewModal 
-          client={viewClient} 
-          isOpen={isViewModalOpen} 
-          onClose={closeViewModal}
-          openDocumentViewer={openDocumentViewer}
-          openRequestLetterModal={openRequestLetterModal}
-          openLegalNoticeModal={openLegalNoticeModal}
-          openDemandNoticeModal={openDemandNoticeModal}
-          openHarassmentComplaintModal={openHarassmentComplaintModal}
-        />
-        <ClientEditModal
-          client={editClient}
-          isOpen={isEditModalOpen}
-          onClose={closeEditModal}
-          onClientUpdated={handleClientUpdated}
-        />
-        <Toaster 
-          position="top-right"
-          toastOptions={{
+      <Suspense fallback={
+        <div className="flex-1 flex justify-center items-center">
+          <Spinner size="lg" />
+        </div>
+      }>
+        <ClientsList />
+      </Suspense>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
             style: {
-              background: '#333',
-              color: '#fff',
+              background: 'rgba(47, 133, 90, 0.9)',
             },
-            success: {
-              duration: 3000,
-              style: {
-                background: 'rgba(47, 133, 90, 0.9)',
-              },
+          },
+          error: {
+            duration: 3000,
+            style: {
+              background: 'rgba(175, 45, 45, 0.9)',
             },
-            error: {
-              duration: 3000,
-              style: {
-                background: 'rgba(175, 45, 45, 0.9)',
-              },
-            },
-          }}
-        />
-        
-        {/* Add document viewer modal */}
-        {isDocViewerOpen && viewingDocumentUrl && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 w-[95vw] max-w-6xl h-[90vh] shadow-2xl flex flex-col">
-              <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-800">
-                <h3 className="text-xl font-semibold text-white flex items-center">
-                  {viewingDocumentName}
-                </h3>
-                <button 
-                  onClick={() => setIsDocViewerOpen(false)}
-                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="flex-1 bg-white rounded overflow-hidden">
-                <iframe 
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
-                  className="w-full h-full border-0"
-                  title="Document Viewer"
-                ></iframe>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Request Letter Modal */}
-        {isRequestLetterModalOpen && selectedClientForDoc && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
-              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-                <h2 className="text-2xl font-bold text-white">
-                  Generate Request Letter
-                </h2>
-                <button 
-                  onClick={() => setIsRequestLetterModalOpen(false)}
-                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <RequestLetterForm 
-                client={selectedClientForDoc} 
-                onClose={() => setIsRequestLetterModalOpen(false)} 
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Legal Notice Modal */}
-        {isLegalNoticeModalOpen && selectedClientForDoc && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
-              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-                <h2 className="text-2xl font-bold text-white">
-                  Generate Legal Notice
-                </h2>
-                <button 
-                  onClick={() => setIsLegalNoticeModalOpen(false)}
-                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <LegalNoticeForm 
-                client={selectedClientForDoc} 
-                onClose={() => setIsLegalNoticeModalOpen(false)} 
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Demand Notice Modal */}
-        {isDemandNoticeModalOpen && selectedClientForDoc && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
-              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-                <h2 className="text-2xl font-bold text-white">
-                  Generate Demand Notice
-                </h2>
-                <button 
-                  onClick={() => setIsDemandNoticeModalOpen(false)}
-                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <DemandNoticeForm 
-                client={selectedClientForDoc} 
-                onClose={() => setIsDemandNoticeModalOpen(false)} 
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Harassment Complaint Modal */}
-        {isHarassmentComplaintModalOpen && selectedClientForDoc && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
-              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-                <h2 className="text-2xl font-bold text-white">
-                  Complaint For Harassment Against Banks
-                </h2>
-                <button 
-                  onClick={() => setIsHarassmentComplaintModalOpen(false)}
-                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <ComplaintForHarassmentForm 
-                client={selectedClientForDoc} 
-                onClose={() => setIsHarassmentComplaintModalOpen(false)} 
-              />
-            </div>
-          </div>
-        )}
-
-        {/* History Modal */}
-        {isHistoryModalOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 w-full max-w-2xl animate-fadeIn shadow-2xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-white">Remark History</h2>
-                <button 
-                  onClick={() => setIsHistoryModalOpen(false)}
-                  className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                {selectedClientHistory.map((history, index) => (
-                  <div key={index} className="bg-gray-800 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-purple-400 font-medium">{history.advocateName}</span>
-                      <span className="text-gray-400 text-sm">
-                        {history.timestamp?.toDate?.()?.toLocaleString('en-IN') || 'Unknown date'}
-                      </span>
-                    </div>
-                    <p className="text-white">{history.remark}</p>
-                  </div>
-                ))}
-                
-                {selectedClientHistory.length === 0 && (
-                  <div className="text-center text-gray-400 py-8">
-                    No remarks history available
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+          },
+        }}
+      />
     </div>
   );
 }
