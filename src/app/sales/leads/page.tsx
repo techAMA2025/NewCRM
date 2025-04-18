@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
 import { toast, ToastContainer } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
@@ -641,6 +641,28 @@ const LeadsPage = () => {
     }
   };
 
+  // Add delete lead function
+  const deleteLead = async (leadId: string) => {
+    try {
+      // Delete the lead document
+      await deleteDoc(doc(crmDb, 'crm_leads', leadId));
+      
+      // Update local state
+      const updatedLeads = leads.filter(lead => lead.id !== leadId);
+      setLeads(updatedLeads);
+      
+      // Update filtered leads
+      const updatedFilteredLeads = filteredLeads.filter(lead => lead.id !== leadId);
+      setFilteredLeads(updatedFilteredLeads);
+      
+      // Show success message
+      toast.success('Lead deleted successfully');
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast.error('Failed to delete lead: ' + (error instanceof Error ? error.message : String(error)));
+    }
+  };
+
   // Render sidebar based on user role
   const SidebarComponent = useMemo(() => {
     console.log('Current user role:', userRole);
@@ -734,6 +756,7 @@ const LeadsPage = () => {
                 updateLeadsState={updateLeadsState}
                 crmDb={crmDb}
                 user={currentUser}
+                deleteLead={deleteLead}
               />
               
               {/* Empty state message */}
@@ -756,7 +779,6 @@ const LeadsPage = () => {
                 showHistoryModal={showHistoryModal}
                 setShowHistoryModal={setShowHistoryModal}
                 currentHistory={currentHistory}
-
               />
               
               {/* Edit Lead Modal */}

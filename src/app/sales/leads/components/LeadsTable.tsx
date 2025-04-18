@@ -16,6 +16,7 @@ type LeadsTableProps = {
   updateLeadsState: (leadId: string, newValue: string) => void;
   crmDb: any;
   user: any;
+  deleteLead: (leadId: string) => Promise<void>;
 };
 
 const LeadsTable = ({
@@ -32,7 +33,8 @@ const LeadsTable = ({
   assignLeadToSalesperson,
   updateLeadsState,
   crmDb,
-  user
+  user,
+  deleteLead
 }: LeadsTableProps) => {
   return (
     <div className="bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
@@ -110,6 +112,16 @@ const LeadsTable = ({
               >
                 <span className="text-blue-400">Sales Notes</span>
               </th>
+              
+              {/* Add Delete Column Header - only visible for admin/overlord */}
+              {(userRole === 'admin' || userRole === 'overlord') && (
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]"
+                  scope="col"
+                >
+                  <span className="text-red-400">Delete</span>
+                </th>
+              )}
             </tr>
           </thead>
           
@@ -136,6 +148,7 @@ const LeadsTable = ({
                   updateLeadsState={updateLeadsState}
                   crmDb={crmDb}
                   user={user}
+                  deleteLead={deleteLead}
                 />
               ))
             )}

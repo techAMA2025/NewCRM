@@ -1,4 +1,4 @@
-import { FaEnvelope, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaTrash } from 'react-icons/fa';
 import { formatPhoneNumber, getFormattedDate } from './utils/formatters';
 import { getFinancialColor } from './utils/colorUtils';
 import StatusCell from './StatusCell';
@@ -23,6 +23,7 @@ type LeadRowProps = {
   updateLeadsState: (leadId: string, newValue: string) => void;
   crmDb: any;
   user: any;
+  deleteLead: (leadId: string) => Promise<void>;
 };
 
 const LeadRow = ({
@@ -37,7 +38,8 @@ const LeadRow = ({
   assignLeadToSalesperson,
   updateLeadsState,
   crmDb,
-  user
+  user,
+  deleteLead
 }: LeadRowProps) => {
   // Helper function for safer data access with case-insensitive matching
   const getLeadData = (keys: string[], defaultValue: string = 'N/A') => {
@@ -275,6 +277,23 @@ const LeadRow = ({
         crmDb={crmDb}
         user={user}
       />
+      
+      {/* Add Delete Button Cell - only visible for admin/overlord */}
+      {(userRole === 'admin' || userRole === 'overlord') && (
+        <td className="px-4 py-3 text-sm">
+          <button
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+                deleteLead(lead.id);
+              }
+            }}
+            className="text-red-500 hover:text-red-400 transition-colors duration-150"
+            title="Delete Lead"
+          >
+            <FaTrash />
+          </button>
+        </td>
+      )}
     </tr>
   );
 };
