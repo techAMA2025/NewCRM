@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { useRouter } from "next/navigation";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
@@ -33,6 +33,9 @@ export default function AssignTasks() {
   const [taskDescription, setTaskDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   // Fetch all users and tasks from the database
@@ -138,6 +141,32 @@ export default function AssignTasks() {
     });
   };
 
+  const handleDeleteInitiate = (task: Task) => {
+    setTaskToDelete(task);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!taskToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const taskRef = doc(db, 'tasks', taskToDelete.id);
+      await deleteDoc(taskRef);
+      
+      // Update local state
+      setTasks(tasks.filter(task => task.id !== taskToDelete.id));
+      setError('');
+      setIsDeleteModalOpen(false);
+      setTaskToDelete(null);
+    } catch (err) {
+      console.error('Error deleting task:', err);
+      setError('Failed to delete the task. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex bg-gray-900 min-h-screen">
@@ -224,13 +253,26 @@ export default function AssignTasks() {
                   <div key={task.id} className="border border-gray-700 rounded-lg p-4 bg-gray-750">
                     <div className="flex justify-between items-start">
                       <h3 className="text-lg font-semibold text-white">{task.title}</h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        task.status === 'completed' 
-                          ? 'bg-green-900 text-green-200' 
-                          : 'bg-yellow-900 text-yellow-200'
-                      }`}>
-                        {task.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          task.status === 'completed' 
+                            ? 'bg-green-900 text-green-200' 
+                            : 'bg-yellow-900 text-yellow-200'
+                        }`}>
+                          {task.status}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteInitiate(task)}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                          title="Delete Task"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18"></path>
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     
                     <p className="mt-2 text-gray-300 whitespace-pre-wrap">{task.description}</p>
@@ -251,6 +293,35 @@ export default function AssignTasks() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && taskToDelete && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-white mb-4">Delete Task</h3>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete the task "<span className="font-semibold">{taskToDelete.title}</span>"? 
+              This action cannot be undone.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
