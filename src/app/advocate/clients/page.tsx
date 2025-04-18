@@ -985,8 +985,8 @@ export default function AdvocateClientsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">City</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Assignment</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Personal Loan Dues</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Credit Card Dues</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Remarks</th>
+                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Credit Card Dues</th>? */}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1056,7 +1056,7 @@ export default function AdvocateClientsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianCurrency(client.creditCardDues)}</td>
+                    {/* <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianCurrency(client.creditCardDues)}</td> */}
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex space-x-2">
                         <button
