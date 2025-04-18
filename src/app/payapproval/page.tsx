@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import { BiRupee } from 'react-icons/bi';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
+import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
@@ -31,6 +32,7 @@ export default function PaymentApprovalPage() {
     clientPhone: '',
     amount: '',
     source: '',
+    reasonOfPayment: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +40,7 @@ export default function PaymentApprovalPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userPayments, setUserPayments] = useState<Payment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
+  const [userRole, setUserRole] = useState<string>('');
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -46,6 +49,9 @@ export default function PaymentApprovalPage() {
   
   useEffect(() => {
     fetchUserPayments();
+    // Get user role from localStorage
+    const role = localStorage.getItem('userRole') || 'sales';
+    setUserRole(role);
   }, []);
   
   const fetchUserPayments = async () => {
@@ -90,6 +96,7 @@ export default function PaymentApprovalPage() {
         clientPhone: formData.clientPhone,
         amount: formData.amount,
         source: formData.source,
+        reasonOfPayment: formData.reasonOfPayment,
         salesPersonName,
         timestamp: new Date().toISOString()
       };
@@ -113,6 +120,7 @@ export default function PaymentApprovalPage() {
           clientPhone: '',
           amount: '',
           source: '',
+          reasonOfPayment: '',
         });
       }, 3000);
     } catch (error) {
@@ -124,11 +132,15 @@ export default function PaymentApprovalPage() {
   
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen);
   
+  const renderSidebar = () => {
+    return userRole === 'advocate' ? <AdvocateSidebar /> : <SalesSidebar />;
+  };
+  
   return (
     <div className="flex bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
-        <SalesSidebar />
+        {renderSidebar()}
       </div>
       
       {/* Mobile Sidebar */}
@@ -139,7 +151,7 @@ export default function PaymentApprovalPage() {
         ></div>
         
         <div className={`fixed inset-y-0 left-0 transition-transform duration-300 transform ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <SalesSidebar />
+          {renderSidebar()}
           <button
             onClick={toggleMobileSidebar}
             className="absolute top-4 right-4 text-white"
@@ -281,6 +293,29 @@ export default function PaymentApprovalPage() {
                       />
                     </div>
                   </motion.div>
+                  
+                  {userRole === 'advocate' && (
+                    <motion.div 
+                      whileHover={{ y: -2 }}
+                      className="space-y-2 md:col-span-2"
+                    >
+                      <label htmlFor="reasonOfPayment" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Reason of Payment
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="reasonOfPayment"
+                          name="reasonOfPayment"
+                          value={formData.reasonOfPayment}
+                          onChange={handleChange}
+                          required={userRole === 'advocate'}
+                          className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5"
+                          placeholder="Describe the reason for this payment"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
                   
                   <motion.div 
                     whileHover={{ y: -2 }}

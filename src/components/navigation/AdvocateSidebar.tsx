@@ -94,6 +94,12 @@ const AdvocateSidebar = () => {
               <span>Documents</span>
             </Link>
           </li>
+          <li>
+            <Link href="/payapproval" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/payapproval')}`}>
+              <FaFileAlt className="mr-3 text-indigo-400" />
+              <span>Payment Approvals</span>
+            </Link>
+          </li> 
         </ul>
       </nav>
       
