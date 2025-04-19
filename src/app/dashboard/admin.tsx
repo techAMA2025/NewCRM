@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { db } from '@/firebase/firebase'
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -177,38 +177,86 @@ const AdminDashboard = () => {
   // Fetch targets for all sales users
   const fetchTargetsData = async () => {
     try {
-      const targetsRef = collection(db, 'targets')
-      const targetsSnap = await getDocs(targetsRef)
+      // Get current month and year
+      const date = new Date();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = months[date.getMonth()];
+      const currentYear = date.getFullYear();
       
-      const targetsData: TargetData[] = []
-      let totalAmount = 0
-      let totalTarget = 0
-      let totalLeadsConverted = 0
-      let totalLeadsTargetCount = 0
+      // Create the monthly document ID
+      const monthDocId = `${currentMonth}_${currentYear}`;
+      console.log(`Looking for targets in: ${monthDocId}`);
       
-      targetsSnap.forEach(doc => {
-        const data = doc.data()
-        targetsData.push({
-          id: doc.id,
-          ...data
-        })
+      // Check if the monthly document exists
+      const monthlyDocRef = doc(db, "targets", monthDocId);
+      const monthlyDocSnap = await getDoc(monthlyDocRef);
+      
+      const targetsData: TargetData[] = [];
+      let totalAmount = 0;
+      let totalTarget = 0;
+      let totalLeadsConverted = 0;
+      let totalLeadsTargetCount = 0;
+      
+      if (monthlyDocSnap.exists()) {
+        console.log("Monthly document exists, fetching from subcollection");
         
-        totalAmount += data.amountCollected || 0
-        totalTarget += data.amountCollectedTarget || 0
-        totalLeadsConverted += data.convertedLeads || 0
-        totalLeadsTargetCount += data.convertedLeadsTarget || 0
-      })
+        // Get all documents from the sales_targets subcollection
+        const salesTargetsRef = collection(db, "targets", monthDocId, "sales_targets");
+        const salesTargetsSnap = await getDocs(salesTargetsRef);
+        
+        salesTargetsSnap.forEach(doc => {
+          const data = doc.data();
+          
+          targetsData.push({
+            id: doc.id,
+            userId: data.userId,
+            userName: data.userName,
+            amountCollected: data.amountCollected || 0,
+            amountCollectedTarget: data.amountCollectedTarget || 0,
+            convertedLeads: data.convertedLeads || 0, // This might not exist in your structure
+            convertedLeadsTarget: data.convertedLeadsTarget || 0
+          });
+          
+          totalAmount += data.amountCollected || 0;
+          totalTarget += data.amountCollectedTarget || 0;
+          // Note: actual converted leads will be calculated from leads data
+          totalLeadsTargetCount += data.convertedLeadsTarget || 0;
+        });
+      } else {
+        console.log(`Monthly document ${monthDocId} does not exist, checking legacy data`);
+        
+        // Fallback to legacy target structure
+        const targetsRef = collection(db, 'targets');
+        const targetsSnap = await getDocs(targetsRef);
+        
+        targetsSnap.forEach(doc => {
+          const data = doc.data();
+          
+          // Skip monthly documents that might exist
+          if (data.month && data.year) return;
+          
+          targetsData.push({
+            id: doc.id,
+            ...data
+          });
+          
+          totalAmount += data.amountCollected || 0;
+          totalTarget += data.amountCollectedTarget || 0;
+          totalLeadsTargetCount += data.convertedLeadsTarget || 0;
+        });
+      }
       
-      setTargetData(targetsData)
-      setTotalAmountCollected(totalAmount)
-      setTotalAmountTarget(totalTarget)
-      setTotalConvertedLeads(totalLeadsConverted)
-      setTotalLeadsTarget(totalLeadsTargetCount)
+      setTargetData(targetsData);
+      setTotalAmountCollected(totalAmount);
+      setTotalAmountTarget(totalTarget);
+      setTotalLeadsTarget(totalLeadsTargetCount);
+      
+      // Actual converted leads count will be set from leadsData
       
     } catch (error) {
-      console.error('Error fetching targets data:', error)
+      console.error('Error fetching targets data:', error);
     }
-  }
+  };
   
   // Fetch leads data
   const fetchLeadsData = async () => {
@@ -296,7 +344,7 @@ const AdminDashboard = () => {
         monthlyLeadsData,
         amountCollected: totalAmountCollected,
         amountTarget: totalAmountTarget,
-        convertedLeads: actualConvertedLeads, // Use actual count instead of target value
+        convertedLeads: actualConvertedLeads,
         leadsTarget: totalLeadsTarget
       }
     } else {
@@ -320,13 +368,15 @@ const AdminDashboard = () => {
         )
       })
       
-      // More flexible target filtering
+      // Find the user's target from targetData
+      // This needs to be updated for the new structure
       const userTarget = targetData.find(target => {
         // Check if any user identifier matches any target identifier
         return userIdentifiers.some(identifier => 
           target.userId === identifier || 
           target.userName === identifier ||
-          target.userEmail === identifier
+          (target.userName && userObj?.fullName && 
+           target.userName.toLowerCase().includes(userObj.fullName.toLowerCase()))
         )
       })
       
@@ -392,11 +442,11 @@ const AdminDashboard = () => {
         monthlyLeadsData: filteredMonthlyData,
         amountCollected: userTarget?.amountCollected || 0,
         amountTarget: userTarget?.amountCollectedTarget || 0,
-        convertedLeads: actualUserConvertedLeads, // Use actual count instead of target value
+        convertedLeads: actualUserConvertedLeads,
         leadsTarget: userTarget?.convertedLeadsTarget || 0
       }
     }
-  }, [selectedUser, leadsData, targetData, statusData, monthlyLeadsData, totalAmountCollected, totalAmountTarget, totalConvertedLeads, totalLeadsTarget, salesUsers])
+  }, [selectedUser, leadsData, targetData, statusData, monthlyLeadsData, totalAmountCollected, totalAmountTarget, totalLeadsTarget, salesUsers])
 
   if (loading) {
     return <div className="p-6">Loading dashboard data...</div>
