@@ -6,7 +6,7 @@ import { db } from '@/firebase/firebase';
 import ClientDetailsModal from './ClientDetailsModal';
 import ClientEditModal from './ClientEditModal';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendarAlt, FaEye } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendarAlt, FaEye, FaFileAlt } from 'react-icons/fa';
 
 // Define the Bank type to match Firebase structure
 interface Bank {
@@ -57,6 +57,9 @@ export default function MyClientsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [userName, setUserName] = useState<string>('');
+  const [isDocViewerOpen, setIsDocViewerOpen] = useState(false);
+  const [viewingDocumentUrl, setViewingDocumentUrl] = useState("");
+  const [viewingDocumentName, setViewingDocumentName] = useState("");
 
   // Set dark theme on component mount and fetch clients
   useEffect(() => {
@@ -124,6 +127,12 @@ export default function MyClientsPage() {
     } catch (e) {
       return 'Invalid date';
     }
+  };
+
+  const openDocumentViewer = (url: string, name: string) => {
+    setViewingDocumentUrl(url);
+    setViewingDocumentName(name || "Document");
+    setIsDocViewerOpen(true);
   };
 
   return (
@@ -230,6 +239,7 @@ export default function MyClientsPage() {
               isOpen={isModalOpen}
               onClose={() => setIsModalOpen(false)}
               formatDate={formatDate}
+              openDocumentViewer={openDocumentViewer}
             />
             
             <ClientEditModal
@@ -239,6 +249,44 @@ export default function MyClientsPage() {
               onClientUpdated={handleClientUpdated}
             />
           </>
+        )}
+
+        {/* Document Viewer Modal */}
+        {isDocViewerOpen && viewingDocumentUrl && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-[#f5f5f5] dark:bg-[#30261d] rounded-xl border border-gray-700 dark:border-gray-800 p-4 w-[95vw] max-w-6xl h-[90vh] animate-fade-in shadow-2xl flex flex-col">
+              <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-300 dark:border-gray-800">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+                  <FaFileAlt className="mr-2" />
+                  {viewingDocumentName}
+                </h3>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => window.open(viewingDocumentUrl, '_blank')}
+                    className="flex items-center rounded-md border border-transparent bg-green-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600 transition-colors duration-300"
+                  >
+                    <FaFileAlt className="h-4 w-4 mr-1" />
+                    Download
+                  </button>
+                  <button 
+                    onClick={() => setIsDocViewerOpen(false)}
+                    className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 bg-white rounded overflow-hidden">
+                {/* Use Google Docs Viewer */}
+                <iframe 
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                  className="w-full h-full border-0"
+                  title="Document Viewer"
+                ></iframe>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

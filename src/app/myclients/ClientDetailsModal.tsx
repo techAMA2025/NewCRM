@@ -58,6 +58,9 @@ interface Client {
   leadId: string;
   startDate: string;
   message: string;
+  documentUrl?: string; // Add document URL
+  documentName?: string; // Add document name
+  documentUploadedAt?: any; // Add document upload timestamp
 }
 
 interface ClientDetailsModalProps {
@@ -65,9 +68,10 @@ interface ClientDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   formatDate: (timestamp: any) => string;
+  openDocumentViewer: (url: string, name: string) => void; // Add this prop
 }
 
-export default function ClientDetailsModal({ client, isOpen, onClose, formatDate }: ClientDetailsModalProps) {
+export default function ClientDetailsModal({ client, isOpen, onClose, formatDate, openDocumentViewer }: ClientDetailsModalProps) {
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-10" onClose={onClose}>
@@ -126,6 +130,42 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
                   </div>
                   
                   <div className="mt-6 space-y-8 max-h-[70vh] overflow-y-auto pr-2">
+                    {/* Document Section - Add this new section */}
+                    {client.documentUrl && (
+                      <div className="bg-[#f5f5f5] dark:bg-[#30261d] rounded-lg overflow-hidden shadow">
+                        <div className="bg-[#30261d] dark:bg-[#d39f10]/20 px-4 py-2">
+                          <h4 className="font-bold text-[#f5f5f5] dark:text-[#FFFFFF] flex items-center">
+                            <FaFileAlt className="mr-2" />
+                            Client Document
+                          </h4>
+                        </div>
+                        <div className="p-4">
+                          <div className="bg-[#f5f5f5] dark:bg-[#30261d] p-3 rounded-lg shadow-sm">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="font-medium dark:text-gray-200 flex items-center">
+                                  <FaFileAlt className="h-4 w-4 mr-2 text-[#d39f10]" />
+                                  {client.documentName || "Client Document"}
+                                </p>
+                                {client.documentUploadedAt && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Uploaded on: {formatDate(client.documentUploadedAt)}
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => openDocumentViewer(client.documentUrl || "", client.documentName || "Document")}
+                                className="flex items-center justify-center rounded-md border border-transparent bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 transition-colors duration-300"
+                              >
+                                <FaFileAlt className="h-4 w-4 mr-1" />
+                                View Document
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Personal Information */}
                     <div className="bg-[#f5f5f5] dark:bg-[#30261d] rounded-lg overflow-hidden shadow">
                       <div className="bg-[#30261d] dark:bg-[#d39f10]/20 px-4 py-2">
