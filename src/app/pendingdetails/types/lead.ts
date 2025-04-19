@@ -5,7 +5,7 @@ export type UserRole = 'admin' | 'sales' | 'advocate'
 
 // Define interfaces for lead data
 export interface Lead {
-  id: string
+  id?: string
   name: string
   email: string
   phone: string

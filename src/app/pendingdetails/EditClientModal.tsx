@@ -72,29 +72,79 @@ const EditClientModal = ({
       loanAmount: ''
     };
     
-    setLead(prevLead => ({
-      ...prevLead,
-      banks: [...(prevLead.banks || []), newBank]
-    }));
+    setLead(prevLead => {
+      const updatedLead = {
+        ...prevLead,
+        banks: [...(prevLead.banks || []), newBank]
+      };
+      return updatedLead;
+    });
   };
 
   // Handle updating a bank locally
   const handleUpdateBank = (bankId: string, field: string, value: string) => {
-    setLead(prevLead => ({
-      ...prevLead,
-      banks: (prevLead.banks || []).map(bank => 
+    setLead(prevLead => {
+      const updatedBanks = (prevLead.banks || []).map(bank => 
         bank.id === bankId ? { ...bank, [field]: value } : bank
-      )
-    }));
+      );
+      
+      const updatedLead = {
+        ...prevLead,
+        banks: updatedBanks
+      };
+      
+      // If loan type or amount changed, recalculate dues
+      if (field === 'loanType' || field === 'loanAmount') {
+        return calculateTotalDues(updatedLead);
+      }
+      
+      return updatedLead;
+    });
   };
 
   // Handle removing a bank locally
   const handleRemoveBank = (bankId: string) => {
-    setLead(prevLead => ({
-      ...prevLead,
-      banks: (prevLead.banks || []).filter(bank => bank.id !== bankId)
-    }));
+    setLead(prevLead => {
+      const updatedLead = {
+        ...prevLead,
+        banks: (prevLead.banks || []).filter(bank => bank.id !== bankId)
+      };
+      
+      return calculateTotalDues(updatedLead);
+    });
   };
+  
+  // Calculate total dues from banks
+  const calculateTotalDues = (leadData: Lead): Lead => {
+    let personalLoanTotal = 0;
+    let creditCardTotal = 0;
+    
+    if (leadData.banks && leadData.banks.length > 0) {
+      leadData.banks.forEach(bank => {
+        const amount = parseFloat(bank.loanAmount) || 0;
+        
+        if (bank.loanType === 'Personal Loan' || bank.loanType === 'Business Loan') {
+          // Add both Personal Loan and Business Loan to personalLoanTotal
+          personalLoanTotal += amount;
+        } else if (bank.loanType === 'Credit Card') {
+          creditCardTotal += amount;
+        }
+      });
+    }
+    
+    return {
+      ...leadData,
+      personalLoanDues: personalLoanTotal.toString(),
+      creditCardDues: creditCardTotal.toString()
+    };
+  };
+
+  // Effect to calculate totals when banks change
+  useEffect(() => {
+    if (lead.banks && lead.banks.length > 0) {
+      setLead(prevLead => calculateTotalDues(prevLead));
+    }
+  }, []);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,23 +204,103 @@ const EditClientModal = ({
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent submission if already saving
+    if (saving) return;
+    
     // Log the lead object to see what's being sent
     console.log('Submitting lead with source:', lead.source_database);
     
-    // Create a cleaned version of the lead to send
-    const leadToSave = {...lead};
-    
-    // If this is a new lead (ID starts with 'new-'), remove the temporary ID
-    // so that Firebase can generate a proper document ID
-    if (leadToSave.id && leadToSave.id.startsWith('new-')) {
-      // We don't delete the ID here, but we'll handle this in the parent component
-      console.log('Processing new lead creation');
+    try {
+      // Create a cleaned version of the lead to send
+      const leadToSave = {...lead};
+      
+      // If this is a new lead (ID starts with 'new-'), generate an ID based on the source
+      if (leadToSave.id && leadToSave.id.startsWith('new-')) {
+        console.log('Processing new lead creation');
+        
+        // Generate a new ID based on source database
+        if (leadToSave.source_database) {
+          const timestamp = Date.now();
+          const sourcePrefix = leadToSave.source_database.substring(0, 3).toUpperCase();
+          leadToSave.id = `${sourcePrefix}-${timestamp}`;
+          console.log('Generated new lead ID:', leadToSave.id);
+        } else {
+          // If no source selected, remove the ID to let Firebase generate one
+          (leadToSave as any).id = undefined;
+          console.log('No source selected, letting Firebase generate ID');
+        }
+      }
+      
+      // Generate agreement document if this is a complete lead with required fields
+      if (leadToSave.name && leadToSave.email && leadToSave.startDate && 
+          leadToSave.tenure && leadToSave.monthlyFees) {
+        try {
+          const documentData = await generateAgreementDocument(leadToSave);
+          
+          // Update the lead object with document information before saving
+          if (documentData) {
+            leadToSave.documentName = documentData.documentName;
+            leadToSave.documentUrl = documentData.documentUrl;
+            leadToSave.documentUploadedAt = new Date(documentData.documentUploadedAt);
+          }
+        } catch (error) {
+          console.error('Error generating agreement document:', error);
+          // Continue with save even if document generation fails
+        }
+      }
+      
+      // Pass the lead to onSave
+      onSave(leadToSave);
+    } catch (error) {
+      console.error('Error in save process:', error);
+      // The parent component should handle setting saveError
     }
-    
-    // Pass the lead to onSave
-    onSave(leadToSave);
+  };
+
+  // Function to generate agreement document
+  const generateAgreementDocument = async (leadData: Lead): Promise<{documentName: string, documentUrl: string, documentUploadedAt: string} | null> => {
+    try {
+      setUploading(true);
+      setUploadError(null);
+      
+      const response = await fetch('/api/agreement', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(leadData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate agreement');
+      }
+      
+      const data = await response.json();
+      
+      // Update lead with document information
+      setLead(prevLead => ({
+        ...prevLead,
+        documentUrl: data.documentUrl,
+        documentName: data.documentName,
+        documentUploadedAt: new Date(data.documentUploadedAt)
+      }));
+      
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000);
+      
+      return data;
+      
+    } catch (error) {
+      console.error('Error generating agreement:', error);
+      setUploadError('Failed to generate agreement document');
+      setTimeout(() => setUploadError(null), 3000);
+      return null;
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -179,7 +309,7 @@ const EditClientModal = ({
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-white">
-              {lead.id.startsWith('new-') ? 'Add New Client' : 'Edit Client Details'}
+              {lead.id?.startsWith('new-') ? 'Add New Client' : 'Edit Client Details'}
             </h2>
             <button
               onClick={onClose}
@@ -227,6 +357,19 @@ const EditClientModal = ({
                     value={lead.phone || ''}
                     onChange={(value) => handleFieldChange('phone', value)}
                     required
+                  />
+                  <InputField
+                    id="dob"
+                    label="Date of Birth"
+                    type="date"
+                    value={lead.dob || ''}
+                    onChange={(value) => handleFieldChange('dob', value)}
+                  />
+                  <InputField
+                    id="panNumber"
+                    label="PAN Number"
+                    value={lead.panNumber || ''}
+                    onChange={(value) => handleFieldChange('panNumber', value)}
                   />
                   <div>
                     <label htmlFor="city" className="block text-sm font-medium text-gray-400 mb-1">
@@ -531,21 +674,33 @@ interface InputFieldProps {
   disabled?: boolean
 }
 
-const InputField = ({ id, label, value, onChange, type = 'text', required = false, placeholder, disabled = false }: InputFieldProps) => (
-  <div>
-    <label htmlFor={id} className="block text-sm font-medium text-gray-400">{label}</label>
-    <input
-      type={type}
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
-      required={required}
-      placeholder={placeholder}
-      disabled={disabled}
-    />
-  </div>
-)
+const InputField = ({ id, label, value, onChange, type = 'text', required = false, placeholder, disabled = false }: InputFieldProps) => {
+  // Determine if this is a numeric field
+  const isNumericField = ['number', 'tel'].includes(type) || 
+                         id.includes('Dues') || 
+                         id.includes('Income') || 
+                         id.includes('Fees') || 
+                         id.includes('Amount');
+  
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-400">{label}</label>
+      <input
+        type={type}
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
+        required={required}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+      {isNumericField && (
+        <p className="mt-1 text-xs text-amber-400">Please enter numbers only (no commas)</p>
+      )}
+    </div>
+  )
+}
 
 interface BankFormProps {
   bank: any
@@ -586,13 +741,8 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => (
         >
           <option value="">Select type</option>
           <option value="Personal Loan">Personal Loan</option>
-          <option value="Home Loan">Home Loan</option>
-          <option value="Car Loan">Car Loan</option>
           <option value="Credit Card">Credit Card</option>
           <option value="Business Loan">Business Loan</option>
-          <option value="Education Loan">Education Loan</option>
-          <option value="Gold Loan">Gold Loan</option>
-          <option value="Other">Other</option>
         </select>
       </div>
       <div>
@@ -625,6 +775,7 @@ const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => (
           placeholder="₹"
           className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
+        <p className="mt-1 text-xs text-amber-400">Please enter numbers only (no commas)</p>
       </div>
     </div>
   </div>
