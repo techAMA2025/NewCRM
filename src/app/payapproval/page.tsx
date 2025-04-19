@@ -9,7 +9,7 @@ import {
 import { BiRupee } from 'react-icons/bi';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, setDoc, increment, deleteDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
 interface Payment {
@@ -134,6 +134,307 @@ export default function PaymentApprovalPage() {
   
   const renderSidebar = () => {
     return userRole === 'advocate' ? <AdvocateSidebar /> : <SalesSidebar />;
+  };
+  
+  const updateSalesTargetAmountCollected = async (salesPersonName: string, amount: number, isDelete: boolean = false) => {
+    try {
+      // Get current month and year
+      const date = new Date();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = months[date.getMonth()];
+      const currentYear = date.getFullYear();
+      
+      // Create the monthly document ID
+      const monthDocId = `${currentMonth}_${currentYear}`;
+      
+      // Check if the monthly document exists
+      const monthlyDocRef = doc(db, "targets", monthDocId);
+      const monthlyDocSnap = await getDoc(monthlyDocRef);
+      
+      if (monthlyDocSnap.exists()) {
+        // Find the specific salesperson in the subcollection
+        const salesTargetsQuery = query(
+          collection(db, "targets", monthDocId, "sales_targets"),
+          where("userName", "==", salesPersonName)
+        );
+        
+        const salesTargetsSnap = await getDocs(salesTargetsQuery);
+        
+        if (!salesTargetsSnap.empty) {
+          // Found the salesperson's target document
+          const salesTargetDoc = salesTargetsSnap.docs[0];
+          const salesTargetRef = doc(db, "targets", monthDocId, "sales_targets", salesTargetDoc.id);
+          
+          // Update the amount collected
+          // If deleting, subtract; otherwise add
+          const updateAmount = isDelete ? -Number(amount) : Number(amount);
+          
+          await updateDoc(salesTargetRef, {
+            amountCollected: increment(updateAmount),
+            updatedAt: new Date()
+          });
+          
+          console.log(`Updated ${salesPersonName}'s target amount by ${updateAmount}`);
+        } else {
+          // Salesperson not found in subcollection, create a new entry
+          console.log(`Creating new target for ${salesPersonName}`);
+          
+          // Try to find user ID in users collection
+          const usersQuery = query(
+            collection(db, "users"),
+            where("firstName", "==", salesPersonName.split(' ')[0])
+          );
+          
+          const usersSnap = await getDocs(usersQuery);
+          const userId = !usersSnap.empty ? usersSnap.docs[0].id : 'unknown';
+          
+          // Create a new document in the subcollection
+          await addDoc(collection(db, "targets", monthDocId, "sales_targets"), {
+            userId: userId,
+            userName: salesPersonName,
+            amountCollected: Number(amount),
+            amountCollectedTarget: 0, // Default target
+            convertedLeadsTarget: 0,  // Default target
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            createdBy: 'system_payment_approval'
+          });
+        }
+      } else {
+        // Monthly document doesn't exist yet, create it with metadata
+        console.log(`Creating new monthly document: ${monthDocId}`);
+        
+        await setDoc(monthlyDocRef, {
+          month: currentMonth,
+          year: currentYear,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: 'system_payment_approval'
+        });
+        
+        // Try to find user ID in users collection
+        const usersQuery = query(
+          collection(db, "users"),
+          where("firstName", "==", salesPersonName.split(' ')[0])
+        );
+        
+        const usersSnap = await getDocs(usersQuery);
+        const userId = !usersSnap.empty ? usersSnap.docs[0].id : 'unknown';
+        
+        // Create a new document in the subcollection
+        await addDoc(collection(db, "targets", monthDocId, "sales_targets"), {
+          userId: userId,
+          userName: salesPersonName,
+          amountCollected: Number(amount),
+          amountCollectedTarget: 0, // Default target
+          convertedLeadsTarget: 0,  // Default target
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: 'system_payment_approval'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating sales target:', error);
+    }
+  };
+  
+  const approvePayment = async (paymentId: string, amount: string, salesPersonName: string) => {
+    try {
+      // Update payment status in the payments collection
+      const paymentRef = doc(db, 'payments', paymentId);
+      
+      // Get current user's name who is approving
+      const approverName = localStorage.getItem('userName') || 'Unknown';
+      
+      await updateDoc(paymentRef, {
+        status: 'approved',
+        approvedBy: approverName,
+        approvedAt: new Date().toISOString()
+      });
+      
+      // Update the sales target with this amount
+      await updateSalesTargetAmountCollected(salesPersonName, Number(amount), false);
+      
+      // Refresh the payment list
+      if (userRole === 'advocate') {
+        fetchAllPayments();
+      } else {
+        fetchUserPayments();
+      }
+      
+      // Show success message
+      alert('Payment request approved successfully!');
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      alert('Error approving payment. Please try again.');
+    }
+  };
+  
+  const editPayment = async (paymentId: string, oldAmount: string, newAmount: string, salesPersonName: string) => {
+    try {
+      // Update payment in the payments collection
+      const paymentRef = doc(db, 'payments', paymentId);
+      
+      await updateDoc(paymentRef, {
+        amount: newAmount,
+        updatedAt: new Date().toISOString()
+      });
+      
+      // Update the sales target
+      // First, remove the old amount
+      await updateSalesTargetAmountCollected(salesPersonName, Number(oldAmount), true);
+      
+      // Then add the new amount
+      await updateSalesTargetAmountCollected(salesPersonName, Number(newAmount), false);
+      
+      // Refresh the payment list
+      if (userRole === 'advocate') {
+        fetchAllPayments();
+      } else {
+        fetchUserPayments();
+      }
+      
+      // Show success message
+      alert('Payment updated successfully!');
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      alert('Error updating payment. Please try again.');
+    }
+  };
+  
+  const deletePayment = async (paymentId: string, amount: string, salesPersonName: string) => {
+    try {
+      // Confirm deletion
+      if (!confirm('Are you sure you want to delete this payment request?')) {
+        return;
+      }
+      
+      // Delete payment from the payments collection
+      const paymentRef = doc(db, 'payments', paymentId);
+      await deleteDoc(paymentRef);
+      
+      // If payment was approved, update the sales target to remove this amount
+      const paymentDoc = await getDoc(paymentRef);
+      if (paymentDoc.exists() && paymentDoc.data().status === 'approved') {
+        await updateSalesTargetAmountCollected(salesPersonName, Number(amount), true);
+      }
+      
+      // Refresh the payment list
+      if (userRole === 'advocate') {
+        fetchAllPayments();
+      } else {
+        fetchUserPayments();
+      }
+      
+      // Show success message
+      alert('Payment deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      alert('Error deleting payment. Please try again.');
+    }
+  };
+  
+  const fetchAllPayments = async () => {
+    try {
+      setLoadingPayments(true);
+      
+      const paymentsRef = collection(db, 'payments');
+      const q = query(paymentsRef);
+      const querySnapshot = await getDocs(q);
+      
+      const payments = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }) as Payment);
+      
+      // Sort by timestamp descending (newest first)
+      payments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      setUserPayments(payments);
+      setLoadingPayments(false);
+    } catch (error) {
+      console.error('Error fetching all payment requests:', error);
+      setLoadingPayments(false);
+    }
+  };
+  
+  const renderPayments = () => {
+    if (loadingPayments) {
+      return <div className="text-center py-4">Loading payment requests...</div>;
+    }
+    
+    if (userPayments.length === 0) {
+      return <div className="text-center py-4">No payment requests found.</div>;
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-300">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+            <tr>
+              <th scope="col" className="px-6 py-3">Client Name</th>
+              <th scope="col" className="px-6 py-3">Amount</th>
+              <th scope="col" className="px-6 py-3">Source</th>
+              <th scope="col" className="px-6 py-3">Sales Person</th>
+              <th scope="col" className="px-6 py-3">Date</th>
+              <th scope="col" className="px-6 py-3">Status</th>
+              <th scope="col" className="px-6 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {userPayments.map((payment) => (
+              <tr key={payment.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                <td className="px-6 py-4">{payment.clientName}</td>
+                <td className="px-6 py-4">₹{payment.amount}</td>
+                <td className="px-6 py-4">{payment.source}</td>
+                <td className="px-6 py-4">{payment.salesPersonName}</td>
+                <td className="px-6 py-4">{new Date(payment.timestamp).toLocaleDateString()}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    payment.status === 'approved' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-700/30 dark:text-green-400' 
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700/30 dark:text-yellow-400'
+                  }`}>
+                    {payment.status === 'approved' ? 'Approved' : 'Pending'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 space-x-2">
+                  {userRole === 'advocate' && payment.status === 'pending' && (
+                    <button
+                      onClick={() => approvePayment(payment.id, payment.amount, payment.salesPersonName)}
+                      className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-xs px-3 py-1.5"
+                    >
+                      Approve
+                    </button>
+                  )}
+                  {userRole === 'advocate' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          const newAmount = prompt('Enter new amount:', payment.amount);
+                          if (newAmount && !isNaN(Number(newAmount))) {
+                            editPayment(payment.id, payment.amount, newAmount, payment.salesPersonName);
+                          }
+                        }}
+                        className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deletePayment(payment.id, payment.amount, payment.salesPersonName)}
+                        className="text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-xs px-3 py-1.5"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   };
   
   return (
@@ -392,62 +693,7 @@ export default function PaymentApprovalPage() {
             <div className="mt-12 bg-white dark:bg-gray-800/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-300">Recent Payment Requests</h2>
               
-              {loadingPayments ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500"></div>
-                </div>
-              ) : userPayments.length === 0 ? (
-                <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="py-3 px-4 bg-gray-50 dark:bg-gray-800/80">
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">No recent requests found.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {userPayments.map((payment) => (
-                        <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{payment.clientName}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{payment.clientEmail}</div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-gray-200">₹{payment.amount}</div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {new Date(payment.timestamp).toLocaleDateString()}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              payment.status === 'approved' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400' 
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'
-                            }`}>
-                              {payment.status === 'approved' ? 'Approved' : 'Pending'}
-                            </span>
-                            {payment.status === 'approved' && payment.approvedBy && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                by {payment.approvedBy}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {renderPayments()}
             </div>
           </motion.div>
         </div>

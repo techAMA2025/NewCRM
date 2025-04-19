@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FiCheck, FiAlertTriangle, FiMail, FiPhone, FiUser, FiX, FiEdit, FiTrash2, FiSearch, FiFilter } from 'react-icons/fi';
-import { collection, getDocs, doc, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, query, where, deleteDoc, getDoc, addDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
@@ -88,25 +88,8 @@ export default function PaymentRequestsPage() {
       const request = paymentRequests.find(req => req.id === requestId);
       
       if (request && request.salesPersonName) {
-        // Find the target document for this salesperson using their name
-        const targetsRef = collection(db, 'targets');
-        const q = query(targetsRef, where("userName", "==", request.salesPersonName));
-        const targetSnapshot = await getDocs(q);
-        
-        if (!targetSnapshot.empty) {
-          const targetDoc = targetSnapshot.docs[0];
-          const targetData = targetDoc.data();
-          
-          // Calculate the new amount collected
-          const currentAmount = targetData.amountCollected || 0;
-          const newAmount = currentAmount + Number(request.amount);
-          
-          // Update the target document
-          await updateDoc(doc(db, 'targets', targetDoc.id), {
-            amountCollected: newAmount,
-            updatedAt: new Date().toISOString()
-          });
-        }
+        // Update the salesperson's target with the new amount collected
+        await updateSalesTargetForApprovedPayment(request.salesPersonName, Number(request.amount));
       }
 
       // Update the local state
@@ -122,6 +105,123 @@ export default function PaymentRequestsPage() {
       console.error('Error approving payment:', err);
       setError('Failed to approve payment');
       setConfirmingRequest(null);
+    }
+  };
+
+  // Helper function to update sales target when a payment is approved
+  const updateSalesTargetForApprovedPayment = async (salesPersonName: string, amount: number) => {
+    try {
+      // Get current month and year
+      const date = new Date();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = months[date.getMonth()];
+      const currentYear = date.getFullYear();
+      
+      // Create the monthly document ID
+      const monthDocId = `${currentMonth}_${currentYear}`;
+      
+      // Check if the monthly document exists
+      const monthlyDocRef = doc(db, "targets", monthDocId);
+      const monthlyDocSnap = await getDoc(monthlyDocRef);
+      
+      if (monthlyDocSnap.exists()) {
+        // Find the salesperson in the subcollection
+        const salesTargetsQuery = query(
+          collection(db, "targets", monthDocId, "sales_targets"),
+          where("userName", "==", salesPersonName)
+        );
+        
+        const salesTargetsSnap = await getDocs(salesTargetsQuery);
+        
+        if (!salesTargetsSnap.empty) {
+          // Found target record, update it
+          const targetDoc = salesTargetsSnap.docs[0];
+          const targetRef = doc(db, "targets", monthDocId, "sales_targets", targetDoc.id);
+          
+          // Get current amount collected
+          const targetData = targetDoc.data();
+          const currentAmount = targetData.amountCollected || 0;
+          
+          // Update with the new amount
+          await updateDoc(targetRef, {
+            amountCollected: currentAmount + amount,
+            updatedAt: new Date().toISOString()
+          });
+          
+          console.log(`Updated ${salesPersonName}'s target: added ${amount}`);
+        } else {
+          // No target found for this salesperson, create one
+          console.log(`Creating new target for ${salesPersonName}`);
+          
+          // Try to get user data from users collection
+          let userId = '';
+          try {
+            const usersQuery = query(
+              collection(db, "users"),
+              where("firstName", "==", salesPersonName.split(' ')[0])
+            );
+            const usersSnap = await getDocs(usersQuery);
+            if (!usersSnap.empty) {
+              userId = usersSnap.docs[0].id;
+            }
+          } catch (e) {
+            console.error("Error finding user:", e);
+          }
+          
+          // Create new target in subcollection
+          await addDoc(collection(db, "targets", monthDocId, "sales_targets"), {
+            userId: userId || 'unknown',
+            userName: salesPersonName,
+            amountCollected: amount,
+            amountCollectedTarget: 0,
+            convertedLeadsTarget: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: userName || 'system'
+          });
+        }
+      } else {
+        // Monthly document doesn't exist, create it with metadata
+        console.log(`Creating new monthly document ${monthDocId}`);
+        
+        await setDoc(monthlyDocRef, {
+          month: currentMonth,
+          year: currentYear,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: userName || 'system'
+        });
+        
+        // Try to get user data
+        let userId = '';
+        try {
+          const usersQuery = query(
+            collection(db, "users"),
+            where("firstName", "==", salesPersonName.split(' ')[0])
+          );
+          const usersSnap = await getDocs(usersQuery);
+          if (!usersSnap.empty) {
+            userId = usersSnap.docs[0].id;
+          }
+        } catch (e) {
+          console.error("Error finding user:", e);
+        }
+        
+        // Create new target in subcollection
+        await addDoc(collection(db, "targets", monthDocId, "sales_targets"), {
+          userId: userId || 'unknown',
+          userName: salesPersonName,
+          amountCollected: amount,
+          amountCollectedTarget: 0,
+          convertedLeadsTarget: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: userName || 'system'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating sales target:', error);
+      throw error;
     }
   };
 
@@ -154,27 +254,13 @@ export default function PaymentRequestsPage() {
         edited_at: new Date().toISOString()
       });
 
-      // If this is an approved payment, update the target collection
+      // If this is an approved payment, update the target collection with the difference
       if (request && request.status === 'approved' && request.salesPersonName) {
-        // Find the target document for this salesperson
-        const targetsRef = collection(db, 'targets');
-        const q = query(targetsRef, where("userName", "==", request.salesPersonName));
-        const targetSnapshot = await getDocs(q);
-        
-        if (!targetSnapshot.empty) {
-          const targetDoc = targetSnapshot.docs[0];
-          const targetData = targetDoc.data();
-          
-          // Calculate the amount difference
-          const currentTotal = targetData.amountCollected || 0;
-          const newTotal = currentTotal - oldAmount + newAmount;
-          
-          // Update the target document
-          await updateDoc(doc(db, 'targets', targetDoc.id), {
-            amountCollected: newTotal,
-            updatedAt: new Date().toISOString()
-          });
-        }
+        await updateSalesTargetForEditedPayment(
+          request.salesPersonName, 
+          oldAmount, 
+          newAmount
+        );
       }
 
       // Update the local state
@@ -191,6 +277,69 @@ export default function PaymentRequestsPage() {
       console.error('Error editing payment:', err);
       setError('Failed to edit payment amount');
       setEditingRequest(null);
+    }
+  };
+
+  // Helper function to update sales target when a payment is edited
+  const updateSalesTargetForEditedPayment = async (salesPersonName: string, oldAmount: number, newAmount: number) => {
+    try {
+      // Calculate the difference (can be positive or negative)
+      const amountDifference = newAmount - oldAmount;
+      
+      // If there's no change, we can exit early
+      if (amountDifference === 0) return;
+      
+      // Get current month and year
+      const date = new Date();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = months[date.getMonth()];
+      const currentYear = date.getFullYear();
+      
+      // Create the monthly document ID
+      const monthDocId = `${currentMonth}_${currentYear}`;
+      
+      // Find the salesperson's target record
+      const monthlyDocRef = doc(db, "targets", monthDocId);
+      const monthlyDocSnap = await getDoc(monthlyDocRef);
+      
+      if (monthlyDocSnap.exists()) {
+        // Find the salesperson in the subcollection
+        const salesTargetsQuery = query(
+          collection(db, "targets", monthDocId, "sales_targets"),
+          where("userName", "==", salesPersonName)
+        );
+        
+        const salesTargetsSnap = await getDocs(salesTargetsQuery);
+        
+        if (!salesTargetsSnap.empty) {
+          // Found the target document, update it with the difference
+          const targetDoc = salesTargetsSnap.docs[0];
+          const targetRef = doc(db, "targets", monthDocId, "sales_targets", targetDoc.id);
+          
+          // Get current amount collected
+          const targetData = targetDoc.data();
+          const currentAmount = targetData.amountCollected || 0;
+          
+          // Update with the difference
+          await updateDoc(targetRef, {
+            amountCollected: currentAmount + amountDifference,
+            updatedAt: new Date().toISOString()
+          });
+          
+          console.log(`Updated ${salesPersonName}'s target: adjusted by ${amountDifference}`);
+        } else {
+          // No target found for this salesperson, create one (rare case)
+          console.warn(`No target found for ${salesPersonName} during edit, creating new one`);
+          await updateSalesTargetForApprovedPayment(salesPersonName, newAmount);
+        }
+      } else {
+        // Monthly document doesn't exist (rare case for an approved payment)
+        console.warn(`No monthly document found during edit, creating new one`);
+        await updateSalesTargetForApprovedPayment(salesPersonName, newAmount);
+      }
+    } catch (error) {
+      console.error('Error updating sales target during edit:', error);
+      throw error;
     }
   };
 
@@ -213,25 +362,7 @@ export default function PaymentRequestsPage() {
 
       // If this was an approved request, update the salesperson's target
       if (request && request.status === 'approved' && request.salesPersonName) {
-        // Find the target document for this salesperson using their name
-        const targetsRef = collection(db, 'targets');
-        const q = query(targetsRef, where("userName", "==", request.salesPersonName));
-        const targetSnapshot = await getDocs(q);
-        
-        if (!targetSnapshot.empty) {
-          const targetDoc = targetSnapshot.docs[0];
-          const targetData = targetDoc.data();
-          
-          // Calculate the new amount collected by subtracting the deleted request amount
-          const currentAmount = targetData.amountCollected || 0;
-          const newAmount = Math.max(0, currentAmount - Number(request.amount)); // Ensure it doesn't go below 0
-          
-          // Update the target document
-          await updateDoc(doc(db, 'targets', targetDoc.id), {
-            amountCollected: newAmount,
-            updatedAt: new Date().toISOString()
-          });
-        }
+        await updateSalesTargetForDeletedPayment(request.salesPersonName, Number(request.amount));
       }
 
       // Update the local state by removing the deleted request
@@ -243,6 +374,62 @@ export default function PaymentRequestsPage() {
       console.error('Error deleting payment request:', err);
       setError('Failed to delete payment request');
       setDeletingRequest(null);
+    }
+  };
+
+  // Helper function to update sales target when a payment is deleted
+  const updateSalesTargetForDeletedPayment = async (salesPersonName: string, amount: number) => {
+    try {
+      // Get current month and year
+      const date = new Date();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = months[date.getMonth()];
+      const currentYear = date.getFullYear();
+      
+      // Create the monthly document ID
+      const monthDocId = `${currentMonth}_${currentYear}`;
+      
+      // Check if the monthly document exists
+      const monthlyDocRef = doc(db, "targets", monthDocId);
+      const monthlyDocSnap = await getDoc(monthlyDocRef);
+      
+      if (monthlyDocSnap.exists()) {
+        // Find the salesperson in the subcollection
+        const salesTargetsQuery = query(
+          collection(db, "targets", monthDocId, "sales_targets"),
+          where("userName", "==", salesPersonName)
+        );
+        
+        const salesTargetsSnap = await getDocs(salesTargetsQuery);
+        
+        if (!salesTargetsSnap.empty) {
+          // Found the target document, reduce the amount collected
+          const targetDoc = salesTargetsSnap.docs[0];
+          const targetRef = doc(db, "targets", monthDocId, "sales_targets", targetDoc.id);
+          
+          // Get current amount collected
+          const targetData = targetDoc.data();
+          const currentAmount = targetData.amountCollected || 0;
+          
+          // Calculate new amount, ensuring it doesn't go below zero
+          const newAmount = Math.max(0, currentAmount - amount);
+          
+          // Update with the new amount
+          await updateDoc(targetRef, {
+            amountCollected: newAmount,
+            updatedAt: new Date().toISOString()
+          });
+          
+          console.log(`Updated ${salesPersonName}'s target: removed ${amount}`);
+        } else {
+          console.warn(`No target found for ${salesPersonName} during deletion`);
+        }
+      } else {
+        console.warn(`No monthly document found during deletion`);
+      }
+    } catch (error) {
+      console.error('Error updating sales target for deleted payment:', error);
+      throw error;
     }
   };
 
