@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale } from 'react-icons/fa'
+import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -96,13 +96,13 @@ const AdvocateSidebar = () => {
           </li>
           <li>
             <Link href="/payapproval" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/payapproval')}`}>
-              <FaFileAlt className="mr-3 text-indigo-400" />
+              <FaMoneyCheckAlt className="mr-3 text-indigo-400" />
               <span>Payment Approvals</span>
             </Link>
           </li> 
         </ul>
       </nav>
-      
+       
       {/* <div className="px-6 mt-10">
         <div className="p-4 rounded-lg bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-800/30">
           <h3 className="text-sm font-medium text-indigo-300">Quick Stats</h3>
