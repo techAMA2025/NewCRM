@@ -49,6 +49,7 @@ interface Client {
   documentName?: string;
   documentUploadedAt?: any;
   source_database?: string;
+  request_letter?: boolean;
 }
 
 interface RemarkHistory {
@@ -621,6 +622,7 @@ function ClientsList() {
   const [selectedClientHistory, setSelectedClientHistory] = useState<RemarkHistory[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [latestRemarks, setLatestRemarks] = useState<{ [key: string]: string }>({});
+  const [requestLetterStates, setRequestLetterStates] = useState<{ [key: string]: boolean }>({});
 
   const searchParams = useSearchParams();
 
@@ -664,6 +666,12 @@ function ClientsList() {
             isPrimary: true, 
             isSecondary: false 
           } as Client);
+          
+          // Initialize request letter states
+          setRequestLetterStates(prev => ({
+            ...prev,
+            [doc.id]: clientData.request_letter || false
+          }));
         });
         
         secondarySnapshot.forEach((doc) => {
@@ -835,6 +843,35 @@ function ClientsList() {
     } catch (error) {
       console.error("Error fetching history:", error);
       toast.error("Failed to fetch history");
+    }
+  };
+
+  const handleRequestLetterChange = async (clientId: string, checked: boolean) => {
+    try {
+      // Update local state first
+      setRequestLetterStates(prev => ({
+        ...prev,
+        [clientId]: checked
+      }));
+      
+      // Update in Firebase
+      const clientRef = doc(db, "clients", clientId);
+      await updateDoc(clientRef, {
+        request_letter: checked
+      });
+      
+      // Success notification
+      toast.success(`Request letter status ${checked ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error("Error updating request letter status:", error);
+      
+      // Revert local state on error
+      setRequestLetterStates(prev => ({
+        ...prev,
+        [clientId]: !checked
+      }));
+      
+      toast.error("Failed to update request letter status");
     }
   };
 
@@ -1027,8 +1064,8 @@ function ClientsList() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">City</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Assignment</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Request Letter</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Remarks</th>
-                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Credit Card Dues</th>? */}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1090,6 +1127,16 @@ function ClientsList() {
                         <option value="Not Responding">Not Responding</option>
                       </select>
                     </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={requestLetterStates[client.id] || false}
+                          onChange={(e) => handleRequestLetterChange(client.id, e.target.checked)}
+                          className="w-5 h-5 rounded-sm text-purple-600 border-gray-600 bg-gray-700 focus:ring-purple-500 focus:ring-opacity-25"
+                        />
+                      </div>
+                    </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col space-y-2">
                         <textarea
@@ -1115,7 +1162,6 @@ function ClientsList() {
                         </div>
                       </div>
                     </td>
-                    {/* <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianCurrency(client.creditCardDues)}</td> */}
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex space-x-2">
                         <button
