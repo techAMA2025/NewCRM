@@ -47,6 +47,7 @@ interface Task {
   description: string;
   status: string;
   createdAt: any;
+  feedback?: string;
 }
 
 const AdvocateDashboard = () => {
@@ -63,6 +64,9 @@ const AdvocateDashboard = () => {
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [currentTaskId, setCurrentTaskId] = useState("")
+  const [feedback, setFeedback] = useState("")
 
   useEffect(() => {
     const fetchAdvocateData = async () => {
@@ -257,7 +261,8 @@ const AdvocateDashboard = () => {
             title: data.title,
             description: data.description,
             status: data.status,
-            createdAt: data.createdAt?.toDate() || new Date()
+            createdAt: data.createdAt?.toDate() || new Date(),
+            feedback: data.feedback
           });
         });
         
@@ -296,20 +301,33 @@ const AdvocateDashboard = () => {
 
   // Function to mark a task as completed
   const markTaskAsCompleted = async (taskId: string) => {
+    // Show modal and set current task ID
+    setCurrentTaskId(taskId);
+    setFeedback("");
+    setShowModal(true);
+  };
+
+  // Function to complete task with feedback
+  const completeTaskWithFeedback = async () => {
     try {
-      const taskRef = doc(db, 'tasks', taskId);
+      const taskRef = doc(db, 'tasks', currentTaskId);
       await updateDoc(taskRef, {
-        status: 'completed'
+        status: 'completed',
+        feedback: feedback,
+        completedAt: new Date()
       });
       
       // Update the local state to reflect the change
       setAssignedTasks(prevTasks => 
         prevTasks.map(task => 
-          task.id === taskId 
-            ? { ...task, status: 'completed' } 
+          task.id === currentTaskId 
+            ? { ...task, status: 'completed', feedback: feedback } 
             : task
         )
       );
+      
+      // Close the modal
+      setShowModal(false);
     } catch (error) {
       console.error('Error updating task status:', error);
     }
@@ -394,6 +412,12 @@ const AdvocateDashboard = () => {
                     </div>
                   </div>
                   <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+                  {task.status === 'completed' && task.feedback && (
+                    <div className="mt-2 bg-gray-700/50 p-2 rounded border-l-2 border-green-500">
+                      <p className="text-xs text-green-400 font-medium mb-1">Completion Feedback:</p>
+                      <p className="text-sm text-gray-300">{task.feedback}</p>
+                    </div>
+                  )}
                   <div className="mt-2 flex justify-between text-xs text-gray-500">
                     <span>Assigned by: {task.assignedBy}</span>
                     <span>{new Date(task.createdAt).toLocaleDateString('en-US', {
@@ -514,6 +538,37 @@ const AdvocateDashboard = () => {
         
       
       </div>
+
+      {/* Task completion feedback modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-xl shadow-xl border border-gray-700 w-full max-w-md">
+            <h3 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+              Task Completion Feedback
+            </h3>
+            <textarea
+              className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-white mb-4 h-32"
+              placeholder="Add your feedback about this task (optional)"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+            ></textarea>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={completeTaskWithFeedback}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              >
+                Complete Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

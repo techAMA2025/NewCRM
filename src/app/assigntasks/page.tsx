@@ -23,6 +23,7 @@ interface Task {
   status: string;
   createdAt: any;
   assigneeName?: string; // Added to store the name of the assigned user
+  feedback?: string; // Added to store completion feedback
 }
 
 export default function AssignTasks() {
@@ -276,6 +277,14 @@ export default function AssignTasks() {
                     </div>
                     
                     <p className="mt-2 text-gray-300 whitespace-pre-wrap">{task.description}</p>
+                    
+                    {/* Display feedback if task is completed and has feedback */}
+                    {task.status === 'completed' && task.feedback && (
+                      <div className="mt-3 bg-gray-700 p-3 rounded border-l-2 border-green-500">
+                        <h4 className="text-sm text-green-400 font-medium mb-1">Completion Feedback:</h4>
+                        <p className="text-sm text-gray-300">{task.feedback}</p>
+                      </div>
+                    )}
                     
                     <div className="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400">
                       <div className="flex justify-between">
