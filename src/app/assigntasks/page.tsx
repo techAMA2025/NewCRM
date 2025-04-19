@@ -20,10 +20,11 @@ interface Task {
   assignedBy: string;
   title: string;
   description: string;
-  status: string;
+  status: string; // can be "not completed", "partially-completed", or "completed"
   createdAt: any;
   assigneeName?: string; // Added to store the name of the assigned user
   feedback?: string; // Added to store completion feedback
+  completedAt?: Date; // Added to store when the task was completed
 }
 
 export default function AssignTasks() {
@@ -258,7 +259,9 @@ export default function AssignTasks() {
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           task.status === 'completed' 
                             ? 'bg-green-900 text-green-200' 
-                            : 'bg-yellow-900 text-yellow-200'
+                            : task.status === 'partially-completed'
+                              ? 'bg-yellow-900 text-yellow-200'
+                              : 'bg-yellow-900 text-yellow-200'
                         }`}>
                           {task.status}
                         </span>
@@ -278,10 +281,16 @@ export default function AssignTasks() {
                     
                     <p className="mt-2 text-gray-300 whitespace-pre-wrap">{task.description}</p>
                     
-                    {/* Display feedback if task is completed and has feedback */}
-                    {task.status === 'completed' && task.feedback && (
-                      <div className="mt-3 bg-gray-700 p-3 rounded border-l-2 border-green-500">
-                        <h4 className="text-sm text-green-400 font-medium mb-1">Completion Feedback:</h4>
+                    {/* Display feedback if task is completed or partially completed and has feedback */}
+                    {(task.status === 'completed' || task.status === 'partially-completed') && task.feedback && (
+                      <div className={`mt-3 bg-gray-700 p-3 rounded border-l-2 ${
+                        task.status === 'completed' ? 'border-green-500' : 'border-yellow-500'
+                      }`}>
+                        <h4 className={`text-sm ${
+                          task.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
+                        } font-medium mb-1`}>
+                          {task.status === 'completed' ? 'Completion Feedback:' : 'Partial Completion Feedback:'}
+                        </h4>
                         <p className="text-sm text-gray-300">{task.feedback}</p>
                       </div>
                     )}
@@ -293,6 +302,12 @@ export default function AssignTasks() {
                       </div>
                       <div className="mt-1">
                         Created: {formatDate(task.createdAt)}
+                        {task.completedAt && (
+                          <span className="ml-3">
+                            {task.status === 'completed' ? 'Completed' : 'Partially Completed'}: 
+                            {formatDate(task.completedAt)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -67,6 +67,7 @@ const AdvocateDashboard = () => {
   const [showModal, setShowModal] = useState(false)
   const [currentTaskId, setCurrentTaskId] = useState("")
   const [feedback, setFeedback] = useState("")
+  const [completionType, setCompletionType] = useState<"completed" | "partially-completed">("completed")
 
   useEffect(() => {
     const fetchAdvocateData = async () => {
@@ -299,11 +300,12 @@ const AdvocateDashboard = () => {
     } 
   };
 
-  // Function to mark a task as completed
-  const markTaskAsCompleted = async (taskId: string) => {
+  // Function to mark a task as completed or partially completed
+  const markTaskAs = async (taskId: string, type: "completed" | "partially-completed") => {
     // Show modal and set current task ID
     setCurrentTaskId(taskId);
     setFeedback("");
+    setCompletionType(type);
     setShowModal(true);
   };
 
@@ -312,7 +314,7 @@ const AdvocateDashboard = () => {
     try {
       const taskRef = doc(db, 'tasks', currentTaskId);
       await updateDoc(taskRef, {
-        status: 'completed',
+        status: completionType,
         feedback: feedback,
         completedAt: new Date()
       });
@@ -321,7 +323,7 @@ const AdvocateDashboard = () => {
       setAssignedTasks(prevTasks => 
         prevTasks.map(task => 
           task.id === currentTaskId 
-            ? { ...task, status: 'completed', feedback: feedback } 
+            ? { ...task, status: completionType, feedback: feedback } 
             : task
         )
       );
@@ -397,17 +399,38 @@ const AdvocateDashboard = () => {
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         task.status === 'completed' 
                           ? 'bg-green-900 text-green-200' 
-                          : 'bg-yellow-900 text-yellow-200'
+                          : task.status === 'partially-completed'
+                            ? 'bg-yellow-900 text-yellow-200'
+                            : 'bg-yellow-900 text-yellow-200'
                       }`}>
                         {task.status}
                       </span>
                       {task.status !== 'completed' && (
-                        <button
-                          onClick={() => markTaskAsCompleted(task.id)}
-                          className="ml-2 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-                        >
-                          Mark Complete
-                        </button>
+                        <div className="flex ml-2 space-x-2">
+                          {task.status === 'partially-completed' ? (
+                            <button
+                              onClick={() => markTaskAs(task.id, "completed")}
+                              className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                            >
+                              Mark Complete
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => markTaskAs(task.id, "completed")}
+                                className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                              >
+                                Mark Complete
+                              </button>
+                              <button
+                                onClick={() => markTaskAs(task.id, "partially-completed")}
+                                className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors"
+                              >
+                                Partially Completed
+                              </button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -544,7 +567,7 @@ const AdvocateDashboard = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-xl shadow-xl border border-gray-700 w-full max-w-md">
             <h3 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-              Task Completion Feedback
+              {completionType === "completed" ? "Task Completion Feedback" : "Partial Completion Feedback"}
             </h3>
             <textarea
               className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-white mb-4 h-32"
@@ -561,9 +584,13 @@ const AdvocateDashboard = () => {
               </button>
               <button
                 onClick={completeTaskWithFeedback}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                className={`px-4 py-2 ${
+                  completionType === "completed" 
+                    ? "bg-blue-600 hover:bg-blue-700" 
+                    : "bg-yellow-600 hover:bg-yellow-700"
+                } text-white rounded-md transition-colors`}
               >
-                Complete Task
+                {completionType === "completed" ? "Complete Task" : "Mark Partially Complete"}
               </button>
             </div>
           </div>
