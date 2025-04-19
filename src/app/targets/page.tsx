@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, getDocs, query, where, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc, doc, getDoc, updateDoc, setDoc, deleteDoc, collectionGroup } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { useAuth } from '@/context/AuthContext';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
@@ -21,9 +21,20 @@ type Target = {
   userName: string;
   convertedLeadsTarget: number;
   amountCollectedTarget: number;
+  month?: string;
+  year?: number;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
+};
+
+type MonthlyData = {
+  [userId: string]: {
+    userName?: string;
+    convertedLeadsTarget: number;
+    amountCollectedTarget: number;
+    amountCollected: number;
+  };
 };
 
 export default function TargetsPage() {
@@ -37,6 +48,8 @@ export default function TargetsPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [viewMetric, setViewMetric] = useState<'convertedLeads' | 'amountCollected'>('convertedLeads');
+  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -141,15 +154,42 @@ export default function TargetsPage() {
     try {
       const tempTargets = { ...targets };
       
-      for (const user of users) {
-        const q = query(collection(db, 'targets'), where('userId', '==', user.id));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          const targetData = querySnapshot.docs[0].data();
+      // Create a monthly document ID
+      const monthDocId = `${selectedMonth}_${selectedYear}`;
+      
+      // Try to get the monthly document
+      const monthlyDocRef = doc(db, 'targets', monthDocId);
+      const monthlyDocSnap = await getDoc(monthlyDocRef);
+      
+      if (monthlyDocSnap.exists()) {
+        // Monthly document exists, now fetch targets from its subcollection
+        for (const user of users) {
+          // Get the user's target from the subcollection
+          const userTargetRef = doc(db, 'targets', monthDocId, 'sales_targets', user.id);
+          const userTargetSnap = await getDoc(userTargetRef);
+          
+          if (userTargetSnap.exists()) {
+            // User has targets in the subcollection
+            const targetData = userTargetSnap.data();
+            tempTargets[user.id] = {
+              convertedLeads: targetData.convertedLeadsTarget || 0,
+              amountCollected: targetData.amountCollectedTarget || 0
+            };
+          } else {
+            // No target in subcollection for this user
+            tempTargets[user.id] = {
+              convertedLeads: 0,
+              amountCollected: 0
+            };
+          }
+        }
+      } else {
+        // No monthly document exists yet
+        for (const user of users) {
+          // Initialize with zeros
           tempTargets[user.id] = {
-            convertedLeads: targetData.convertedLeadsTarget || 0,
-            amountCollected: targetData.amountCollectedTarget || 0
+            convertedLeads: 0,
+            amountCollected: 0
           };
         }
       }
@@ -165,11 +205,15 @@ export default function TargetsPage() {
       const tempProgress = { ...progress };
       const userProgressData: { userId: string; progressPercentage: number }[] = [];
       
+      // Create a monthly document ID
+      const monthDocId = `${selectedMonth}_${selectedYear}`;
+      
       for (const user of users) {
         // Fetch lead conversion data
         const leadsQuery = query(
           collection(db, 'crm_leads'),
           where('assignedTo', '==', user.firstName + (user.lastName ? ' ' + user.lastName : ''))
+          // Add filters for month/year if your leads have timestamp fields
         );
         const leadsSnapshot = await getDocs(leadsQuery);
         
@@ -181,17 +225,21 @@ export default function TargetsPage() {
           }
         });
         
-        // Fetch amount collected data from the targets collection
-        const targetsQuery = query(
-          collection(db, 'targets'),
-          where('userId', '==', user.id)
-        );
-        const targetsSnapshot = await getDocs(targetsQuery);
-        
         let amountCollected = 0;
-        if (!targetsSnapshot.empty) {
-          const targetData = targetsSnapshot.docs[0].data();
-          amountCollected = targetData.amountCollected || 0;
+        
+        // Check if we have a monthly document with subcollections
+        const monthlyDocRef = doc(db, 'targets', monthDocId);
+        const monthlyDocSnap = await getDoc(monthlyDocRef);
+        
+        if (monthlyDocSnap.exists()) {
+          // Monthly document exists, check in subcollection
+          const userTargetRef = doc(db, 'targets', monthDocId, 'sales_targets', user.id);
+          const userTargetSnap = await getDoc(userTargetRef);
+          
+          if (userTargetSnap.exists()) {
+            const targetData = userTargetSnap.data();
+            amountCollected = targetData.amountCollected || 0;
+          }
         }
         
         tempProgress[user.id] = {
@@ -199,7 +247,7 @@ export default function TargetsPage() {
           amountCollected: amountCollected
         };
         
-        // Calculate progress percentage for sorting (based on the currently viewed metric)
+        // Calculate progress percentage
         const targetValue = viewMetric === 'convertedLeads' 
           ? targets[user.id]?.convertedLeads || 0
           : targets[user.id]?.amountCollected || 0;
@@ -254,43 +302,56 @@ export default function TargetsPage() {
       setError('');
       setSuccess('');
       
-      // Create or update targets for each sales user
+      // Create the monthly document ID
+      const monthDocId = `${selectedMonth}_${selectedYear}`;
+      const monthlyDocRef = doc(db, 'targets', monthDocId);
+      
+      // Create or update the main monthly document with metadata
+      await setDoc(monthlyDocRef, {
+        month: selectedMonth,
+        year: selectedYear,
+        updatedAt: new Date(),
+        updatedBy: user.uid,
+        createdAt: new Date(), // This will only apply if document doesn't exist
+        createdBy: user.uid,   // This will only apply if document doesn't exist
+      }, { merge: true }); // Use merge to avoid overwriting existing fields
+      
+      // Now update each user's target in the subcollection
       for (const salesUser of salesUsers) {
-        // Make sure we have the targets object for this user
-        if (!targets[salesUser.id]) {
-          continue; // Skip this user if no target data
-        }
+        // Skip if no target data
+        if (!targets[salesUser.id]) continue;
         
-        const targetData = {
-          userId: salesUser.id,
-          userName: salesUser.firstName || '',
-          convertedLeadsTarget: Number(targets[salesUser.id].convertedLeads) || 0,
-          amountCollectedTarget: Number(targets[salesUser.id].amountCollected) || 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          createdBy: user.uid
-        };
+        // Reference to the user's document in the subcollection
+        const userTargetRef = doc(db, 'targets', monthDocId, 'sales_targets', salesUser.id);
         
-        // Check if target already exists
-        const q = query(collection(db, 'targets'), where('userId', '==', salesUser.id));
-        const querySnapshot = await getDocs(q);
+        // Check if the user already has a document in the subcollection
+        const userTargetSnap = await getDoc(userTargetRef);
         
-        if (querySnapshot.empty) {
-          // Create new target
-          await addDoc(collection(db, 'targets'), targetData);
-        } else {
-          // Update existing target
-          const targetDoc = querySnapshot.docs[0];
-          await updateDoc(doc(db, 'targets', targetDoc.id), {
-            convertedLeadsTarget: targetData.convertedLeadsTarget,
-            amountCollectedTarget: targetData.amountCollectedTarget,
+        if (userTargetSnap.exists()) {
+          // Update existing document
+          await updateDoc(userTargetRef, {
+            userName: salesUser.firstName + (salesUser.lastName ? ' ' + salesUser.lastName : ''),
+            convertedLeadsTarget: Number(targets[salesUser.id].convertedLeads) || 0,
+            amountCollectedTarget: Number(targets[salesUser.id].amountCollected) || 0,
             updatedAt: new Date()
+          });
+        } else {
+          // Create new document in subcollection
+          await setDoc(userTargetRef, {
+            userId: salesUser.id,
+            userName: salesUser.firstName + (salesUser.lastName ? ' ' + salesUser.lastName : ''),
+            convertedLeadsTarget: Number(targets[salesUser.id].convertedLeads) || 0,
+            amountCollectedTarget: Number(targets[salesUser.id].amountCollected) || 0,
+            amountCollected: 0, // Initialize with zero
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            createdBy: user.uid
           });
         }
       }
       
       setSuccess('Targets have been set successfully!');
-      setShowForm(false); // Hide form after successful submission
+      setShowForm(false);
     } catch (error) {
       console.error('Error setting targets:', error);
       setError('Failed to set targets. Please try again.');
@@ -298,6 +359,12 @@ export default function TargetsPage() {
       setSubmitting(false);
     }
   };
+
+  // Get current month in format "Jan", "Feb", etc.
+  function getCurrentMonth() {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months[new Date().getMonth()];
+  }
 
   // Add effect to re-sort when viewMetric changes
   useEffect(() => {
@@ -330,6 +397,15 @@ export default function TargetsPage() {
       setSalesUsers(sortedUsers);
     }
   }, [viewMetric, progress, targets]);
+
+  // Effect to refresh data when month/year changes
+  useEffect(() => {
+    if (salesUsers.length > 0) {
+      // When month or year changes, re-fetch targets and progress
+      fetchExistingTargets(salesUsers);
+      fetchProgressData(salesUsers);
+    }
+  }, [selectedMonth, selectedYear]);
 
   if (loading && authChecked) {
     return (
@@ -367,11 +443,37 @@ export default function TargetsPage() {
             </div>
           )}
           
+          {/* Month Selector */}
+          <div className="mb-6 flex items-center">
+            <label className="text-white mr-3">Month/Year:</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((month) => (
+                <option key={month} value={month}>{month}</option>
+              ))}
+            </select>
+            
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {[2023, 2024, 2025, 2026, 2027].map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          
           {/* Current Targets Table */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center">
-                <h2 className="text-xl font-semibold text-white">Current Targets</h2>
+                <h2 className="text-xl font-semibold text-white">
+                  Current Targets - {selectedMonth} {selectedYear}
+                </h2>
                 <div className="ml-4 flex rounded-md shadow-sm">
                   <button
                     type="button"
@@ -595,3 +697,5 @@ export default function TargetsPage() {
     </div>
   );
 }
+
+

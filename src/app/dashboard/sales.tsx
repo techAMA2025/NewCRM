@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { 
   Card, 
@@ -83,6 +83,9 @@ export default function SalesDashboard() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [targetData, setTargetData] = useState<TargetData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Add state for current month and year
+  const [currentMonth, setCurrentMonth] = useState<string>(getCurrentMonth());
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   
   // Replace dummy data with real lead data
   const [totalLeads, setTotalLeads] = useState(0);
@@ -128,36 +131,111 @@ export default function SalesDashboard() {
     }
   }, []);
 
+  // Helper function to get current month in format "Jan", "Feb", etc.
+  function getCurrentMonth() {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months[new Date().getMonth()];
+  }
+
   const fetchTargetDataByUserName = async (userName: string) => {
     try {
       console.log(`Fetching targets for user: ${userName}`);
       
-      // Query targets collection where userName matches the current user's name
-      const targetsQuery = query(
-        collection(db, "targets"),
-        where("userName", "==", userName)
-      );
+      // Create the monthly document ID
+      const monthDocId = `${currentMonth}_${currentYear}`;
+      console.log(`Looking for targets in: ${monthDocId}`);
       
-      const querySnapshot = await getDocs(targetsQuery);
-      console.log("Query snapshot size:", querySnapshot.size);
+      // First get the monthly document to see if it exists
+      const monthlyDocRef = doc(db, "targets", monthDocId);
+      const monthlyDocSnap = await getDoc(monthlyDocRef);
       
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        const data = doc.data() as TargetData;
-        console.log("Target data found:", data);
-        setTargetData(data);
-      } else {
-        console.log("No target data found for this user");
+      if (monthlyDocSnap.exists()) {
+        console.log("Monthly document exists, checking subcollection");
         
-        // Check if there are any targets in the collection at all
-        const allTargetsSnapshot = await getDocs(collection(db, "targets"));
-        console.log("Total targets in collection:", allTargetsSnapshot.size);
+        // Query the subcollection for this user
+        const salesTargetsQuery = query(
+          collection(db, "targets", monthDocId, "sales_targets"),
+          where("userName", "==", userName)
+        );
         
-        if (allTargetsSnapshot.size > 0) {
-          console.log("Available userNames in targets:");
-          allTargetsSnapshot.forEach(doc => {
-            console.log(doc.data().userName);
+        const querySnapshot = await getDocs(salesTargetsQuery);
+        console.log("User target query snapshot size:", querySnapshot.size);
+        
+        if (!querySnapshot.empty) {
+          // Found user's target in subcollection
+          const targetDoc = querySnapshot.docs[0];
+          const data = targetDoc.data() as TargetData;
+          console.log("Target data found in subcollection:", data);
+          setTargetData(data);
+        } else {
+          console.log("No target found for this user in subcollection");
+          
+          // Try finding by userId instead if userName doesn't match
+          const salesTargetsAltQuery = collection(db, "targets", monthDocId, "sales_targets");
+          const altQuerySnapshot = await getDocs(salesTargetsAltQuery);
+          
+          // Loop through all targets
+          let foundTarget = false;
+          altQuerySnapshot.forEach(doc => {
+            const data = doc.data();
+            // Check if this looks like the right user (case-insensitive comparison)
+            if (data.userName && 
+                data.userName.toLowerCase().includes(userName.toLowerCase())) {
+              console.log("Found possible match by partial name:", data.userName);
+              setTargetData(data as TargetData);
+              foundTarget = true;
+            }
           });
+          
+          if (!foundTarget) {
+            console.log("No target found for this user at all");
+          }
+        }
+      } else {
+        console.log(`Monthly document ${monthDocId} does not exist`);
+        
+        // Try checking previous month if we're early in current month
+        if (new Date().getDate() <= 5) {
+          const prevMonthIndex = new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1;
+          const prevMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][prevMonthIndex];
+          const prevYear = new Date().getMonth() === 0 ? currentYear - 1 : currentYear;
+          
+          console.log(`Trying previous month: ${prevMonth}_${prevYear}`);
+          
+          const prevMonthDocRef = doc(db, "targets", `${prevMonth}_${prevYear}`);
+          const prevMonthDocSnap = await getDoc(prevMonthDocRef);
+          
+          if (prevMonthDocSnap.exists()) {
+            // Query the subcollection for this user in previous month
+            const prevSalesTargetsQuery = query(
+              collection(db, "targets", `${prevMonth}_${prevYear}`, "sales_targets"),
+              where("userName", "==", userName)
+            );
+            
+            const prevQuerySnapshot = await getDocs(prevSalesTargetsQuery);
+            
+            if (!prevQuerySnapshot.empty) {
+              const prevTargetDoc = prevQuerySnapshot.docs[0];
+              const prevData = prevTargetDoc.data() as TargetData;
+              console.log("Found target in previous month:", prevData);
+              setTargetData(prevData);
+            }
+          }
+        }
+        
+        // As a fallback, check for old-style targets
+        const legacyTargetsQuery = query(
+          collection(db, "targets"),
+          where("userName", "==", userName)
+        );
+        
+        const legacyQuerySnapshot = await getDocs(legacyTargetsQuery);
+        
+        if (!legacyQuerySnapshot.empty) {
+          const legacyDoc = legacyQuerySnapshot.docs[0];
+          const legacyData = legacyDoc.data() as TargetData;
+          console.log("Found legacy target data:", legacyData);
+          setTargetData(legacyData);
         }
       }
     } catch (error) {
@@ -357,7 +435,7 @@ export default function SalesDashboard() {
     <div className="p-6 bg-gray-900 text-gray-100 min-h-screen">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-          Sales Dashboard for {targetData.userName}
+          Sales Dashboard for {targetData.userName} - {currentMonth} {currentYear}
         </h1>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
