@@ -26,6 +26,12 @@ const EditClientDetailsButton = ({
     
     try {
       // First try to find the client record using the lead ID
+      if (!lead.id) {
+        setError('No lead ID available');
+        setIsLoading(false);
+        return;
+      }
+      
       const clientRef = doc(db, 'clients', lead.id);
       let clientDoc = await getDoc(clientRef);
       
