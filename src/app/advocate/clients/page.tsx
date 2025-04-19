@@ -177,6 +177,21 @@ function ClientViewModal({
                 </span>
               </div>
               <h2 className="text-3xl font-bold text-white tracking-tight mb-1">{client.name}</h2>
+              <div className="text-sm mb-2">
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  client.source_database === "credsettlee" ? "bg-emerald-800 text-emerald-200" :
+                  client.source_database === "ama" ? "bg-amber-800 text-amber-200" :
+                  client.source_database === "settleloans" ? "bg-blue-800 text-blue-200" :
+                  client.source_database === "billcut" ? "bg-purple-800 text-purple-200" :
+                  "bg-gray-700 text-gray-300"
+                }`}>
+                  {client.source_database === "credsettlee" ? "Cred Settle" :
+                   client.source_database === "ama" ? "AMA" :
+                   client.source_database === "settleloans" ? "Settle Loans" :
+                   client.source_database === "billcut" ? "Bill Cut" :
+                   client.source_database || "Not specified"}
+                </span>
+              </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-300">
                 <div className="flex items-center">
                   <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -586,6 +601,7 @@ function ClientsList() {
   const [advocateName, setAdvocateName] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [assignmentFilter, setAssignmentFilter] = useState<string>("primary");
   const [cityFilter, setCityFilter] = useState<string>("all");
   const [viewClient, setViewClient] = useState<Client | null>(null);
@@ -834,6 +850,9 @@ function ClientsList() {
           client.adv_status === statusFilter || 
           (!client.adv_status && statusFilter === "Active");
         
+        const matchesSource = sourceFilter === "all" || 
+          client.source_database === sourceFilter;
+        
         const matchesAssignment = 
           assignmentFilter === "all" ||
           (assignmentFilter === "primary" && client.isPrimary) ||
@@ -842,7 +861,7 @@ function ClientsList() {
         
         const matchesCity = cityFilter === "all" || client.city === cityFilter;
         
-        return matchesSearch && matchesStatus && matchesAssignment && matchesCity;
+        return matchesSearch && matchesStatus && matchesSource && matchesAssignment && matchesCity;
       })
       .sort((a, b) => {
         // Convert Firestore timestamps to milliseconds for comparison
@@ -855,6 +874,11 @@ function ClientsList() {
   const getUniqueCities = () => {
     const cities = clients.map(client => client.city).filter(Boolean);
     return Array.from(new Set(cities)).sort();
+  };
+
+  const getUniqueSources = () => {
+    const sources = clients.map(client => client.source_database).filter(Boolean);
+    return Array.from(new Set(sources)).sort();
   };
 
   const fetchLatestRemark = async (clientId: string) => {
@@ -884,6 +908,7 @@ function ClientsList() {
 
     const filteredClients = getFilteredClients();
     const uniqueCities = getUniqueCities();
+    const uniqueSources = getUniqueSources();
 
     return (
       <div className="p-6">
@@ -891,7 +916,7 @@ function ClientsList() {
         
         {/* Search and Filters Section */}
         <div className="mb-6 bg-gray-800 p-4 rounded-lg shadow-md">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search Bar */}
             <div className="col-span-1 md:col-span-2">
               <div className="relative">
@@ -924,48 +949,55 @@ function ClientsList() {
               </select>
             </div>
             
-            {/* Assignment Filter */}
+            {/* Source Filter */}
             <div>
               <select
-                value={assignmentFilter}
-                onChange={(e) => setAssignmentFilter(e.target.value)}
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
                 className="block w-full py-2 px-3 border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
               >
-                <option value="all">All Assignments</option>
-                <option value="primary">Primary</option>
-                <option value="secondary">Secondary</option>
-                <option value="both">Primary & Secondary</option>
+                <option value="all">All Sources</option>
+                {uniqueSources.map(source => (
+                  <option key={source} value={source}>
+                    {source === "credsettlee" ? "Cred Settle" :
+                     source === "ama" ? "AMA" :
+                     source === "settleloans" ? "Settle Loans" :
+                     source === "billcut" ? "Bill Cut" :
+                     source}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
           
-          {/* Second Row for City Filter */}
+          {/* Second Row for Assignment Filter and City Filter */}
           <div className="mt-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">City</label>
+              {/* Assignment Filter */}
+              <div>
                 <select
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
+                  value={assignmentFilter}
+                  onChange={(e) => setAssignmentFilter(e.target.value)}
                   className="block w-full py-2 px-3 border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 >
-                  <option value="all">All Cities</option>
-                  {uniqueCities.map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
+                  <option value="all">All Assignments</option>
+                  <option value="primary">Primary</option>
+                  <option value="secondary">Secondary</option>
+                  <option value="both">Primary & Secondary</option>
                 </select>
-              </div> */}
+              </div>
               
               {/* Filter Stats */}
               <div className="md:col-span-2 flex items-end">
                 <div className="text-gray-400 text-sm">
                   Showing <span className="text-white font-medium">{filteredClients.length}</span> of <span className="text-white font-medium">{clients.length}</span> clients
                   {searchQuery && <span> • Search: "{searchQuery}"</span>}
-                  {(statusFilter !== "all" || assignmentFilter !== "all" || cityFilter !== "all") && 
+                  {(statusFilter !== "all" || sourceFilter !== "all" || assignmentFilter !== "all" || cityFilter !== "all") && 
                     <button 
                       onClick={() => {
                         setSearchQuery("");
                         setStatusFilter("all");
+                        setSourceFilter("all");
                         setAssignmentFilter("all");
                         setCityFilter("all");
                       }}
@@ -1004,7 +1036,24 @@ function ClientsList() {
                 {filteredClients.map((client) => (
                   <tr key={client.id} className="hover:bg-gray-700">
                     <td className="px-4 py-4 whitespace-nowrap text-gray-200">{formatIndianDate(client.convertedAt)}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">{client.name}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-gray-200">
+                      {client.name}
+                      <div className="text-sm mb-2">
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  client.source_database === "credsettlee" ? "bg-emerald-800 text-emerald-200" :
+                  client.source_database === "ama" ? "bg-amber-800 text-amber-200" :
+                  client.source_database === "settleloans" ? "bg-blue-800 text-blue-200" :
+                  client.source_database === "billcut" ? "bg-purple-800 text-purple-200" :
+                  "bg-gray-700 text-gray-300"
+                }`}>
+                  {client.source_database === "credsettlee" ? "Cred Settle" :
+                   client.source_database === "ama" ? "AMA" :
+                   client.source_database === "settleloans" ? "Settle Loans" :
+                   client.source_database === "billcut" ? "Bill Cut" :
+                   client.source_database || "Not specified"}
+                </span>
+              </div>
+                    </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="text-gray-200">{formatIndianPhoneNumber(client.phone)}</div>
                       <div className="text-sm text-gray-400">{client.email}</div>
