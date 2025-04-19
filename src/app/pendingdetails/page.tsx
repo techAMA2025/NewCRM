@@ -225,23 +225,21 @@ const MyClientsPage = () => {
         const clientExistsMap: {[key: string]: boolean} = {};
         
         // Create promises for all lead checks
-        const checkPromises = sortedLeads.map(async (lead) => {
+        await Promise.all(leads.map(async (lead) => {
           try {
-            const clientQuery = query(
-              collection(crmDb, 'clients'), 
-              where('leadId', '==', lead.id)
-            );
+            if (!lead.id) return; // Skip if no ID
+            
+            const clientQuery = query(collection(crmDb, 'clients'), where('leadId', '==', lead.id));
             const clientSnapshot = await getDocs(clientQuery);
             clientExistsMap[lead.id] = !clientSnapshot.empty;
             console.log(`Lead ${lead.id} (${lead.name}) has client record: ${!clientSnapshot.empty}`);
           } catch (err) {
             console.error(`Error checking client record for lead ${lead.id}:`, err);
-            clientExistsMap[lead.id] = false;
+            if (lead.id) { // Add null check here too
+              clientExistsMap[lead.id] = false;
+            }
           }
-        });
-        
-        // Wait for all checks to complete
-        await Promise.all(checkPromises);
+        }));
         
         // Update state with results
         setClientRecordExists(clientExistsMap);
@@ -458,6 +456,13 @@ const MyClientsPage = () => {
   // Function to handle saving the updated lead
   const handleSaveLead = async (updatedLead: Lead) => {
     try {
+      if (!updatedLead.id) {
+        console.error("ID is undefined");
+        setSaveError("Missing ID for lead");
+        setSavingLead(false);
+        return;
+      }
+
       setSavingLead(true)
       setSaveError(null)
       setSaveSuccess(false)
@@ -476,8 +481,8 @@ const MyClientsPage = () => {
         ...dataToUpdate,
         source_database: source_database || 'manual', // Ensure source is preserved
         lastModified: Timestamp.now(),
-        leadId: id.startsWith('new-') ? null : updatedLead.id, // Reference to original lead ID if not new
-        convertedFromLead: !id.startsWith('new-'),
+        leadId: id && id.startsWith('new-') ? null : updatedLead.id, // Reference to original lead ID if not new
+        convertedFromLead: id && !id.startsWith('new-'),
         convertedAt: Timestamp.now()
       }
       
@@ -760,7 +765,7 @@ const MyClientsPage = () => {
   
   // Simplified function to get row class - only mark completed leads as green
   const getCompletionRowClass = (lead: Lead) => {
-    if (clientRecordExists[lead.id]) {
+    if (lead.id && clientRecordExists[lead.id]) {
       return 'border-l-4 border-green-500'; // Green border for completed leads
     }
     return ''; // No special border for incomplete leads
@@ -768,7 +773,7 @@ const MyClientsPage = () => {
   
   // Function to get the tooltip text with missing fields
   const getMissingFieldsTooltip = (lead: Lead) => {
-    if (clientRecordExists[lead.id]) {
+    if (lead.id && clientRecordExists[lead.id]) {
       return 'Client record complete';
     }
     
