@@ -286,12 +286,6 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     const fetchSalesAnalytics = async () => {
       try {
-        // Fetch all target documents
-        const targetsCollection = collection(db, 'targets');
-        const targetsSnapshot = await getDocs(targetsCollection);
-        
-        let totalTarget = 0;
-        
         // Initialize monthly data (last 6 months)
         const monthlyData = [0, 0, 0, 0, 0, 0];
         const currentMonth = new Date().getMonth();
@@ -304,46 +298,45 @@ export default function SuperAdminDashboard() {
           last6MonthsLabels.unshift(monthNames[monthIndex]);
         }
         
-        // Process each target document
-        targetsSnapshot.forEach((doc) => {
-          const targetData = doc.data();
-          
-          // Sum up targets
-          totalTarget += targetData.amountCollectedTarget || 0;
-        });
+        // Get current year and last 6 months for fetching targets
+        const currentYear = new Date().getFullYear();
+        const targetMonths = [];
         
-        // Fetch payments data for total revenue and average deal size
-        const paymentsCollection = collection(db, 'payments');
-        const paymentsSnapshot = await getDocs(paymentsCollection);
+        for (let i = 0; i < 6; i++) {
+          const monthIndex = (currentMonth - i + 12) % 12;
+          const year = monthIndex > currentMonth ? currentYear - 1 : currentYear;
+          targetMonths.push({
+            monthName: `${monthNames[monthIndex]}_${year}`,
+            index: 5 - i // Reverse index for chart data
+          });
+        }
         
+        let totalTarget = 0;
         let totalCollected = 0;
         let totalPayments = 0;
         
-        paymentsSnapshot.forEach((doc) => {
-          const paymentData = doc.data();
-          // Handle amount as string by parsing to number
-          if (paymentData.amount) {
-            const amount = parseFloat(paymentData.amount);
-            if (!isNaN(amount)) {
-              totalCollected += amount;
-              totalPayments++;
+        // Fetch targets from each month's sales_targets subcollection
+        await Promise.all(targetMonths.map(async ({ monthName, index }) => {
+          try {
+            // Get all targets from this month's sales_targets subcollection
+            const salesTargetsRef = collection(db, `targets/${monthName}/sales_targets`);
+            const salesTargetsSnapshot = await getDocs(salesTargetsRef);
+            
+            salesTargetsSnapshot.forEach((doc) => {
+              const targetData = doc.data();
               
-              // If the payment has a timestamp string, add to monthly data
-              if (paymentData.timestamp) {
-                const paymentDate = new Date(paymentData.timestamp);
-                if (paymentDate instanceof Date && !isNaN(paymentDate.getTime())) {
-                  const paymentMonth = paymentDate.getMonth();
-                  const monthDiff = (paymentMonth - currentMonth + 12) % 12;
-                  
-                  if (monthDiff <= 5) {
-                    const index = 5 - monthDiff;
-                    monthlyData[index] += amount;
-                  }
-                }
-              }
-            }
+              // Sum up targets and collections
+              totalTarget += targetData.amountCollectedTarget || 0;
+              totalCollected += targetData.amountCollected || 0;
+              
+              // Add this month's collection to monthly data
+              monthlyData[index] += targetData.amountCollected || 0;
+            });
+          } catch (error) {
+            console.log(`No targets found for ${monthName} or other error:`, error);
+            // Continue with other months if one fails
           }
-        });
+        }));
         
         // Fetch leads data for conversion rate
         const leadsCollection = collection(db, 'crm_leads');
@@ -362,7 +355,7 @@ export default function SuperAdminDashboard() {
         });
         
         // Calculate average deal size and conversion rate
-        const avgDealSize = totalPayments > 0 ? Math.round(totalCollected / totalPayments) : 0;
+        const avgDealSize = totalCollected > 0 ? Math.round(totalCollected / salespeople.length) : 0;
         const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
         
         // Set the sales analytics state with actual monthly data
@@ -380,8 +373,9 @@ export default function SuperAdminDashboard() {
         
         console.log("Monthly revenue data:", monthlyData);
         console.log("Month labels:", last6MonthsLabels);
-        console.log("Total revenue (from payments):", totalCollected);
-        console.log("Total payments count:", totalPayments);
+        console.log("Total revenue:", totalCollected);
+        console.log("Total target:", totalTarget);
+        console.log("Total salespeople:", salespeople.length);
         console.log("Total leads:", totalLeads);
         console.log("Converted leads:", convertedLeads);
         console.log("Conversion rate:", conversionRate + "%");
@@ -392,32 +386,68 @@ export default function SuperAdminDashboard() {
     };
     
     fetchSalesAnalytics();
-  }, []);
+  }, [salespeople.length]);
 
   // Add useEffect to fetch all salespeople
   useEffect(() => {
     const fetchSalespeople = async () => {
       try {
-        // Query all targets to get salespeople data
-        const targetsCollection = collection(db, 'targets');
-        const targetsSnapshot = await getDocs(targetsCollection);
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         
-        const salespeople: {id: string, name: string}[] = [];
+        // Construct current month document path
+        const currentMonthName = `${monthNames[currentMonth]}_${currentYear}`;
+        const salesTargetsRef = collection(db, `targets/${currentMonthName}/sales_targets`);
         
-        targetsSnapshot.forEach((doc) => {
-          const targetData = doc.data();
-          if (targetData.userName) {
-            salespeople.push({
-              id: doc.id,
-              name: targetData.userName
-            });
-          }
-        });
-        
-        // Sort alphabetically by name
-        salespeople.sort((a, b) => a.name.localeCompare(b.name));
-        
-        setSalespeople(salespeople);
+        try {
+          const salesTargetsSnapshot = await getDocs(salesTargetsRef);
+          
+          const salespeople: {id: string, name: string}[] = [];
+          
+          salesTargetsSnapshot.forEach((doc) => {
+            const targetData = doc.data();
+            if (targetData.userName) {
+              salespeople.push({
+                id: doc.id,
+                name: targetData.userName
+              });
+            }
+          });
+          
+          // Sort alphabetically by name
+          salespeople.sort((a, b) => a.name.localeCompare(b.name));
+          
+          setSalespeople(salespeople);
+        } catch (error) {
+          console.log("Error or no data for current month, trying previous month");
+          
+          // If current month has no data, try previous month
+          const prevMonthIndex = (currentMonth - 1 + 12) % 12;
+          const prevMonthYear = prevMonthIndex > currentMonth ? currentYear - 1 : currentYear;
+          const prevMonthName = `${monthNames[prevMonthIndex]}_${prevMonthYear}`;
+          
+          const prevMonthTargetsRef = collection(db, `targets/${prevMonthName}/sales_targets`);
+          const prevMonthSnapshot = await getDocs(prevMonthTargetsRef);
+          
+          const salespeople: {id: string, name: string}[] = [];
+          
+          prevMonthSnapshot.forEach((doc) => {
+            const targetData = doc.data();
+            if (targetData.userName) {
+              salespeople.push({
+                id: doc.id,
+                name: targetData.userName
+              });
+            }
+          });
+          
+          // Sort alphabetically by name
+          salespeople.sort((a, b) => a.name.localeCompare(b.name));
+          
+          setSalespeople(salespeople);
+        }
       } catch (error) {
         console.error("Error fetching salespeople:", error);
       }
@@ -426,7 +456,7 @@ export default function SuperAdminDashboard() {
     fetchSalespeople();
   }, []);
   
-  // Add useEffect to fetch individual salesperson data when selected
+  // Update useEffect to fetch individual salesperson data when selected
   useEffect(() => {
     const fetchIndividualSalesData = async () => {
       if (!selectedSalesperson) {
@@ -435,66 +465,73 @@ export default function SuperAdminDashboard() {
       }
       
       try {
-        // Get the target document for the selected salesperson
-        const targetRef = doc(db, 'targets', selectedSalesperson);
-        const targetSnap = await getDoc(targetRef);
+        // Get current date info
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         
-        if (targetSnap.exists()) {
-          const targetData = targetSnap.data();
-          const targetAmount = targetData.amountCollectedTarget || 0;
-          const collectedAmount = targetData.amountCollected || 0;
-          const conversionRate = targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
-          
-          // Get leads data to generate monthly data
-          const leadsQuery = query(
-            collection(db, 'crm_leads'),
-            where('assignedTo', '==', targetData.userName)
-          );
-          const leadsSnapshot = await getDocs(leadsQuery);
-          
-          // Group leads by month
-          const monthlyData: { [key: number]: number } = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
-          
-          leadsSnapshot.forEach((doc) => {
-            const leadData = doc.data();
-            
-            if (leadData.convertedToClient === true || leadData.status === 'Converted') {
-              // Get the month from timestamp
-              let date;
-              if (leadData.convertedAt) {
-                date = leadData.convertedAt.toDate ? leadData.convertedAt.toDate() : new Date(leadData.convertedAt);
-              } else if (leadData.timestamp) {
-                date = leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp);
-              } else {
-                date = new Date();
-              }
-              
-              // Get month (0-based)
-              const month = date.getMonth();
-              // Only consider last 6 months
-              const currentMonth = new Date().getMonth();
-              
-              // Convert to our 0-5 scale (with 5 being current month)
-              const relativeMonth = (month - currentMonth + 12) % 12;
-              if (relativeMonth <= 5) {
-                // Calculate index (5 = current month, 0 = 5 months ago)
-                const index = 5 - relativeMonth;
-                monthlyData[index] = (monthlyData[index] || 0) + 1;
-              }
-            }
-          });
-          
-          // Create data for the chart
-          const monthlyValues = Object.values(monthlyData);
-          
-          setIndividualSalesData({
-            name: targetData.userName,
-            targetAmount: targetAmount,
-            collectedAmount: collectedAmount,
-            conversionRate: conversionRate,
-            monthlyData: monthlyValues
+        // Get the last 6 months
+        const last6Months = [];
+        for (let i = 0; i < 6; i++) {
+          const monthIndex = (currentMonth - i + 12) % 12;
+          const year = monthIndex > currentMonth ? currentYear - 1 : currentYear;
+          last6Months.push({
+            monthName: `${monthNames[monthIndex]}_${year}`,
+            index: 5 - i // Reverse index for chart data
           });
         }
+        
+        // Initialize monthly data array
+        const monthlyData = [0, 0, 0, 0, 0, 0];
+        
+        // Get selected salesperson's name
+        let salespersonName = "";
+        let targetAmount = 0;
+        let collectedAmount = 0;
+        
+        // Find the most recent data for this salesperson
+        for (const { monthName, index } of last6Months) {
+          try {
+            const targetRef = doc(db, `targets/${monthName}/sales_targets/${selectedSalesperson}`);
+            const targetSnap = await getDoc(targetRef);
+            
+            if (targetSnap.exists()) {
+              const targetData = targetSnap.data();
+              
+              // If we haven't set the name yet (first found data)
+              if (!salespersonName) {
+                salespersonName = targetData.userName || "";
+                targetAmount = targetData.amountCollectedTarget || 0;
+                collectedAmount = targetData.amountCollected || 0;
+              }
+              
+              // Add this month's collection to monthly data
+              monthlyData[index] = targetData.amountCollected || 0;
+            }
+          } catch (error) {
+            console.log(`No data for ${monthName} or other error:`, error);
+            // Continue with other months
+          }
+        }
+        
+        // Calculate conversion rate
+        const conversionRate = targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
+        
+        // Get leads data for monthly conversions
+        const leadsQuery = query(
+          collection(db, 'crm_leads'),
+          where('assignedTo', '==', salespersonName)
+        );
+        const leadsSnapshot = await getDocs(leadsQuery);
+        
+        setIndividualSalesData({
+          name: salespersonName,
+          targetAmount: targetAmount,
+          collectedAmount: collectedAmount,
+          conversionRate: conversionRate,
+          monthlyData: monthlyData
+        });
       } catch (error) {
         console.error("Error fetching individual sales data:", error);
       }
