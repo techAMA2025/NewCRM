@@ -51,7 +51,7 @@ const ClientTable = ({ leads, clientRecordExists, onViewLead, onEditLead }: Clie
               <ClientTableRow 
                 key={lead.id}
                 lead={lead}
-                hasClientRecord={clientRecordExists[lead.id]}
+                hasClientRecord={lead.id ? clientRecordExists[lead.id] : false}
                 onView={() => onViewLead(lead)}
                 onEdit={() => onEditLead(lead)}
               />
