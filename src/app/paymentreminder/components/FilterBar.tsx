@@ -3,7 +3,7 @@ import SearchBar from './SearchBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar, IndianRupee, Filter, Clock, ArrowUpDown } from "lucide-react";
+import { Calendar, IndianRupee, Filter, Clock, ArrowUpDown, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 
@@ -39,6 +39,10 @@ interface FilterBarProps {
   
   // Pagination
   setCurrentPage: (page: number) => void;
+  
+  // Allocation filter
+  allocFilter: string | null;
+  setAllocFilter: (alloc: string | null) => void;
 }
 
 export default function FilterBar({
@@ -57,7 +61,9 @@ export default function FilterBar({
   setDateRange,
   sortBy,
   setSortBy,
-  setCurrentPage
+  setCurrentPage,
+  allocFilter,
+  setAllocFilter
 }: FilterBarProps) {
   // Helper functions for display texts
   const getPaymentStatusText = (status: string) => {
@@ -97,6 +103,14 @@ export default function FilterBar({
       case 'due-asc': return 'Due Date ↑';
       case 'due-desc': return 'Due Date ↓';
       default: return 'Sort By';
+    }
+  };
+  
+  const getAllocationText = (filter: string) => {
+    switch (filter) {
+      case 'primary': return 'Primary Allocation';
+      case 'secondary': return 'Secondary Allocation';
+      default: return 'Allocation Type';
     }
   };
   
@@ -152,6 +166,7 @@ export default function FilterBar({
     setSortBy(null);
     setWeekFilter(null);
     setSearchQuery('');
+    setAllocFilter(null);
     setCurrentPage(1);
   };
 
@@ -162,7 +177,8 @@ export default function FilterBar({
     dueFilter, 
     startDate || endDate ? 'dateRange' : null,
     weekFilter,
-    sortBy
+    sortBy,
+    allocFilter
   ].filter(Boolean).length;
 
   return (
@@ -228,6 +244,36 @@ export default function FilterBar({
               setCurrentPage(1);
             }} className={`hover:bg-gray-700 ${filterPaid === 'notpaid' ? 'bg-gray-700' : ''}`}>
               Not Paid
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        {/* Allocation Filter */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className={`bg-gray-700 border-gray-600 text-white ${allocFilter ? 'ring-2 ring-blue-500' : ''}`}>
+              <Users className="mr-2 h-4 w-4" />
+              {allocFilter ? getAllocationText(allocFilter) : 'Allocation Type'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
+            <DropdownMenuItem onClick={() => {
+              setAllocFilter(null);
+              setCurrentPage(1);
+            }} className={`hover:bg-gray-700 ${!allocFilter ? 'bg-gray-700' : ''}`}>
+              All Allocations
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              setAllocFilter('primary');
+              setCurrentPage(1);
+            }} className={`hover:bg-gray-700 ${allocFilter === 'primary' ? 'bg-gray-700' : ''}`}>
+              Primary
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              setAllocFilter('secondary');
+              setCurrentPage(1);
+            }} className={`hover:bg-gray-700 ${allocFilter === 'secondary' ? 'bg-gray-700' : ''}`}>
+              Secondary
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

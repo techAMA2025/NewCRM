@@ -71,6 +71,7 @@ type Client = {
   startDate: Timestamp;
   tenure: number;
   createdAt?: Timestamp;
+  allocationType?: 'primary' | 'secondary';
 }
 
 type MonthlyPayment = {
@@ -158,6 +159,9 @@ export default function PaymentReminderPage() {
     4: { status: null, amount: null },
   });
 
+  // Update the initial allocFilter state to 'primary' instead of null
+  const [allocFilter, setAllocFilter] = useState<string | null>('primary');
+
   // Move fetchClients outside useEffect and make it memoized with useCallback
   const fetchClients = useCallback(async () => {
     try {
@@ -181,7 +185,13 @@ export default function PaymentReminderPage() {
       );
       
       const clientsSnapshot = await getDocs(clientsQuery);
-      const allocatedClientIds = clientsSnapshot.docs.map(doc => doc.id);
+      const allocatedClients = clientsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        alloc_adv: doc.data().alloc_adv,
+        alloc_adv_secondary: doc.data().alloc_adv_secondary
+      }));
+      
+      const allocatedClientIds = allocatedClients.map(client => client.id);
       
       if (allocatedClientIds.length === 0) {
         setClients([]);
@@ -204,7 +214,15 @@ export default function PaymentReminderPage() {
         
         const paymentsSnapshot = await getDocs(paymentsQuery);
         paymentsSnapshot.forEach((doc) => {
-          clientsList.push({ clientId: doc.id, ...doc.data() } as Client);
+          // Find the allocation type for this client
+          const clientAllocation = allocatedClients.find(client => client.id === doc.id);
+          const allocationType = clientAllocation?.alloc_adv === currentAdvocate ? 'primary' : 'secondary';
+          
+          clientsList.push({ 
+            clientId: doc.id, 
+            ...doc.data(),
+            allocationType // Add allocation type to client data
+          } as Client);
         });
       }
       
@@ -450,8 +468,13 @@ export default function PaymentReminderPage() {
       }
     }
     
+    // Allocation filter
+    const matchesAllocation = !allocFilter || 
+      (allocFilter === 'primary' && client.allocationType === 'primary') ||
+      (allocFilter === 'secondary' && client.allocationType === 'secondary');
+    
     return matchesSearch && matchesWeek && matchesPaymentStatus && 
-           matchesAmount && matchesDateRange && matchesDueFilter;
+           matchesAmount && matchesDateRange && matchesDueFilter && matchesAllocation;
   });
 
   // Apply sorting
@@ -579,6 +602,8 @@ export default function PaymentReminderPage() {
             sortBy={sortBy}
             setSortBy={setSortBy}
             setCurrentPage={setCurrentPage}
+            allocFilter={allocFilter}
+            setAllocFilter={setAllocFilter}
           />
           
           {loading ? (
@@ -616,9 +641,10 @@ export default function PaymentReminderPage() {
                           <table className="w-full border-collapse">
                             <thead>
                               <tr className="bg-gray-800/50">
-                              <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Date</th>
+                                <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Date</th>
                                 <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Client Name</th>
                                 <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Phone</th>
+                                <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Allocation</th>
                                 <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Week</th>
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Monthly Fee</th>
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Paid / Total</th>
@@ -634,8 +660,15 @@ export default function PaymentReminderPage() {
                                   </td>
                                   <td className="p-4 border-b border-gray-800 text-gray-200">{client.clientName.toUpperCase()}</td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">{client.clientPhone}</td>
+                                  <td className="p-4 border-b border-gray-800">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium inline-block
+                                      ${client.allocationType === 'primary' 
+                                        ? 'bg-indigo-900/30 text-indigo-300 border border-indigo-700/50' 
+                                        : 'bg-pink-900/30 text-pink-300 border border-pink-700/50'}`}>
+                                      {client.allocationType === 'primary' ? 'Primary' : 'Secondary'}
+                                    </span>
+                                  </td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">Week {client.weekOfMonth}</td>
-                                  
                                   <td className="p-4 border-b border-gray-800 text-right font-medium text-gray-200">₹{(client.monthlyFees || 0).toLocaleString()}</td>
                                   <td className="p-4 border-b border-gray-800 text-right text-gray-400">
                                     ₹{(client.paidAmount || 0).toLocaleString()} / ₹{(client.totalPaymentAmount || 0).toLocaleString()}
@@ -784,7 +817,15 @@ export default function PaymentReminderPage() {
                                 >
                                   <div className="flex justify-between items-start">
                                     <div>
-                                      <h4 className="font-medium text-gray-200">{client.clientName}</h4>
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="font-medium text-gray-200">{client.clientName}</h4>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium
+                                          ${client.allocationType === 'primary' 
+                                            ? 'bg-indigo-900/30 text-indigo-300 border border-indigo-700/50' 
+                                            : 'bg-pink-900/30 text-pink-300 border border-pink-700/50'}`}>
+                                          {client.allocationType === 'primary' ? 'Primary' : 'Secondary'}
+                                        </span>
+                                      </div>
                                       <p className="text-sm text-gray-400 mt-1">{client.clientPhone}</p>
                                     </div>
                                     <div className="text-right">
