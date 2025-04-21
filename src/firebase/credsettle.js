@@ -5,7 +5,7 @@ import { getDatabase } from "firebase/database";
 import { getStorage } from 'firebase/storage';
 // Firebase configuration object
 const firebaseConfig = {
-  apiKey: "AIzaSyAJ7rZD96MxIHQ7k4uwQgqaDpJsnKuhhJA",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_CREDSETTLE_API_KEY,
   authDomain: "credsettlee.firebaseapp.com",
   projectId: "credsettlee",
   storageBucket: "credsettlee.appspot.com",
