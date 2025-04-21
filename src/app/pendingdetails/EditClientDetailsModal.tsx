@@ -35,6 +35,8 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
     "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
   ];
 
+  const [shouldGenerateAgreement, setShouldGenerateAgreement] = useState(false);
+
   // Handle field changes
   const handleFieldChange = (field: string, value: any) => {
     setClientData((prevData: any) => ({
@@ -188,8 +190,8 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
       // Get a reference to the client document
       const clientRef = doc(db, 'clients', clientData.id);
       
-      // Generate agreement document if this is a complete client with required fields
-      if (clientData.name && clientData.email && clientData.startDate && 
+      // Generate agreement document if checkbox is checked and client has required fields
+      if (shouldGenerateAgreement && clientData.name && clientData.email && clientData.startDate && 
           clientData.tenure && clientData.monthlyFees) {
         try {
           const documentData = await generateAgreementDocument(clientData);
@@ -614,115 +616,87 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
                 )}
               </div>
 
-              {/* Document Upload Section */}
+              {/* Document Upload */}
               <div>
                 <h3 className="text-sm font-medium text-blue-400 uppercase tracking-wider mb-4">Document Upload</h3>
-                <div className="space-y-4">
-                  {clientData.documentUrl ? (
-                    <div className="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-white font-medium flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                              <polyline points="14 2 14 8 20 8"></polyline>
-                              <line x1="16" y1="13" x2="8" y2="13"></line>
-                              <line x1="16" y1="17" x2="8" y2="17"></line>
-                              <polyline points="10 9 9 9 8 9"></polyline>
-                            </svg>
-                            {clientData.documentName || 'Document'}
+                
+                {clientData.documentUrl ? (
+                  <div className="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                          </svg>
+                          {clientData.documentName || 'Document'}
+                        </p>
+                        {clientData.documentUploadedAt && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Uploaded on: {clientData.documentUploadedAt.toString()}
                           </p>
-                          {clientData.documentUploadedAt && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              Uploaded on: {clientData.documentUploadedAt.toString()}
-                            </p>
-                          )}
+                        )}
+                      </div>
+                      <a 
+                        href={clientData.documentUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+                      >
+                        View Document
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gray-700 rounded-lg border border-gray-600">
+                      <div className="flex flex-col md:flex-row gap-4 mb-4">
+                        <div className="flex-1">
+                          <label htmlFor="file-upload" className="block text-sm font-medium text-gray-400 mb-1">
+                            Upload Word Document
+                          </label>
+                          <input 
+                            id="file-upload"
+                            type="file"
+                            accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            onChange={handleFileChange}
+                            className="block w-full text-sm text-gray-400 
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-600 file:text-white
+                                    hover:file:bg-blue-700
+                                    bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3"
+                          />
                         </div>
-                        <a 
-                          href={clientData.documentUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+                        <button
+                          type="button"
+                          onClick={handleFileUpload}
+                          disabled={!fileUpload || uploading}
+                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          View Document
-                        </a>
+                          {uploading ? 'Uploading...' : 'Upload Document'}
+                        </button>
+                      </div>
+                      
+                      {/* Agreement generation checkbox */}
+                      <div className="mt-3">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={shouldGenerateAgreement}
+                            onChange={(e) => setShouldGenerateAgreement(e.target.checked)}
+                            className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out bg-gray-700 border-gray-500 rounded"
+                          />
+                          <span className="ml-2 text-sm text-gray-300">Generate agreement document</span>
+                        </label>
                       </div>
                     </div>
-                  ) : (
-                    <p className="text-gray-400 text-sm italic">No document has been uploaded for this client yet.</p>
-                  )}
-                  
-                  <div className="flex items-end gap-3">
-                    <div className="flex-1">
-                      <label htmlFor="file-upload" className="block text-sm font-medium text-gray-400 mb-1">
-                        Upload Word Document
-                      </label>
-                      <input 
-                        id="file-upload"
-                        type="file"
-                        accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        onChange={handleFileChange}
-                        className="block w-full text-sm text-gray-400 
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-md file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-blue-600 file:text-white
-                                hover:file:bg-blue-700
-                                bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleFileUpload}
-                      disabled={!fileUpload || uploading}
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {uploading ? (
-                        <span className="flex items-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Uploading...
-                        </span>
-                      ) : 'Upload Document'}
-                    </button>
                   </div>
-                  
-                  {uploadError && (
-                    <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
-                      {uploadError}
-                    </div>
-                  )}
-                  {uploadSuccess && (
-                    <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
-                      Document uploaded successfully!
-                    </div>
-                  )}
-                  
-                  {/* Generate Agreement Button */}
-                  <div className="mt-4">
-                    <button
-                      type="button"
-                      onClick={() => generateAgreementDocument(clientData)}
-                      disabled={uploading || !clientData.name || !clientData.email || !clientData.startDate || !clientData.tenure || !clientData.monthlyFees}
-                      className="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {uploading ? (
-                        <span className="flex items-center justify-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Generating...
-                        </span>
-                      ) : 'Generate Agreement Document'}
-                    </button>
-                    <p className="mt-2 text-xs text-gray-400 text-center">
-                      This will automatically generate a client agreement document based on the client information.
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Notes & Remarks */}

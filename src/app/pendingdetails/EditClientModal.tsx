@@ -48,6 +48,9 @@ const EditClientModal = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   
+  // Add state for agreement generation checkbox
+  const [shouldGenerateAgreement, setShouldGenerateAgreement] = useState(false);
+  
   // Update local lead state when initialLead changes
   useEffect(() => {
     setLead({...initialLead});
@@ -234,8 +237,8 @@ const EditClientModal = ({
         }
       }
       
-      // Generate agreement document if this is a complete lead with required fields
-      if (leadToSave.name && leadToSave.email && leadToSave.startDate && 
+      // Generate agreement document only if checkbox is checked and required fields are present
+      if (shouldGenerateAgreement && leadToSave.name && leadToSave.email && leadToSave.startDate && 
           leadToSave.tenure && leadToSave.monthlyFees) {
         try {
           const documentData = await generateAgreementDocument(leadToSave);
@@ -541,53 +544,86 @@ const EditClientModal = ({
                     <p className="text-gray-400 text-sm italic">No document has been uploaded for this lead yet.</p>
                   )}
                   
-                  <div className="flex items-end gap-3">
-                    <div className="flex-1">
-                      <label htmlFor="file-upload" className="block text-sm font-medium text-gray-400 mb-1">
-                        Upload Word Document
-                      </label>
-                      <input 
-                        id="file-upload"
-                        type="file"
-                        accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        onChange={handleFileChange}
-                        className="block w-full text-sm text-gray-400 
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-md file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-blue-600 file:text-white
-                                hover:file:bg-blue-700
-                                bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3"
-                      />
+                  <div className="p-4 bg-gray-700 rounded-lg border border-gray-600">
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1">
+                        <label htmlFor="file-upload" className="block text-sm font-medium text-gray-400 mb-1">
+                          Upload Word Document
+                        </label>
+                        <input 
+                          id="file-upload"
+                          type="file"
+                          accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          onChange={handleFileChange}
+                          className="block w-full text-sm text-gray-400 
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-md file:border-0
+                                  file:text-sm file:font-semibold
+                                  file:bg-blue-600 file:text-white
+                                  hover:file:bg-blue-700
+                                  bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleFileUpload}
+                        disabled={!fileUpload || uploading}
+                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {uploading ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Uploading...
+                          </span>
+                        ) : 'Upload Document'}
+                      </button>
                     </div>
+                    
+                    {/* Generate Agreement checkbox */}
+                    <div className="mt-3">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={shouldGenerateAgreement}
+                          onChange={(e) => setShouldGenerateAgreement(e.target.checked)}
+                          className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out bg-gray-700 border-gray-500 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-300">Generate agreement document</span>
+                      </label>
+                    </div>
+                    
+                    {uploadError && (
+                      <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
+                        {uploadError}
+                      </div>
+                    )}
+                    {uploadSuccess && (
+                      <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
+                        Document uploaded successfully!
+                      </div>
+                    )}
+                    
+                    {/* Generate Agreement Button */}
                     <button
                       type="button"
-                      onClick={handleFileUpload}
-                      disabled={!fileUpload || uploading}
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => generateAgreementDocument(lead)}
+                      disabled={uploading || !lead.name || !lead.email || !lead.startDate || !lead.tenure || !lead.monthlyFees || !shouldGenerateAgreement}
+                      className="mt-4 w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {uploading ? (
-                        <span className="flex items-center">
+                        <span className="flex items-center justify-center">
                           <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Uploading...
+                          Generating...
                         </span>
-                      ) : 'Upload Document'}
+                      ) : 'Generate Agreement Document'}
                     </button>
                   </div>
-                  
-                  {uploadError && (
-                    <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
-                      {uploadError}
-                    </div>
-                  )}
-                  {uploadSuccess && (
-                    <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
-                      Document uploaded successfully!
-                    </div>
-                  )}
                 </div>
               </FormSection>
               
