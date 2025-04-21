@@ -5,7 +5,7 @@ import { getFirestore } from "firebase/firestore";
 
 // Your Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_WORKSPACE_API_KEY,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_WORKSPACE_API,
 
   authDomain: "amacrm-76fd1.firebaseapp.com",
 

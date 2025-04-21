@@ -4,7 +4,7 @@
 
     // SettleLoans Firebase config
     const firebaseConfig = {
-        apiKey: process.env.NEXT_PUBLIC_FIREBASE_SETTLEROANS_API_KEY,
+        apiKey: process.env.NEXT_PUBLIC_FIREBASE_SETTLEROANS_API,
 
         authDomain: "settle-loan.firebaseapp.com",
       

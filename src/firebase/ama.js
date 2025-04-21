@@ -6,7 +6,7 @@ import { getStorage } from "firebase/storage";
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_AMA_API_KEY,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_AMA_API,
   authDomain: "amalegalsolutionss.firebaseapp.com",
   projectId: "amalegalsolutionss",
   storageBucket: "amalegalsolutionss.firebasestorage.app",
