@@ -7,6 +7,7 @@ import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaCommen
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
+import { FiCheckSquare } from 'react-icons/fi'
 
 const AdvocateSidebar = () => {
   const pathname = usePathname()
@@ -100,6 +101,14 @@ const AdvocateSidebar = () => {
               <span>Payment Approvals</span>
             </Link>
           </li> 
+        {userName === "Rahul Gour" || userName === "Advocate Shrey" && (
+            <li>
+              <Link href="/assigntasks" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/assigntasks')}`}>
+                <FiCheckSquare className="mr-3 text-indigo-400" />
+                <span>Tasks</span>
+              </Link>
+            </li>
+          )}
         </ul>
       </nav>
        

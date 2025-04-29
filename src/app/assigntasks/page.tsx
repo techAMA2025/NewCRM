@@ -5,6 +5,7 @@ import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from "fir
 import { db } from "@/firebase/config";
 import { useRouter } from "next/navigation";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
+import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
 
 // Update the interface to make properties optional
 interface User {
@@ -38,7 +39,14 @@ export default function AssignTasks() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
   const router = useRouter();
+
+  // Fetch user role from localStorage on component mount
+  useEffect(() => {
+    const role = localStorage.getItem("userRole") || "";
+    setUserRole(role);
+  }, []);
 
   // Fetch all users and tasks from the database
   useEffect(() => {
@@ -172,15 +180,18 @@ export default function AssignTasks() {
   if (loading) {
     return (
       <div className="flex bg-gray-900 min-h-screen">
-        <OverlordSidebar />
+        {userRole === "overlord" ? <OverlordSidebar /> : <AdvocateSidebar />}
         <div className="flex-1 p-8 text-white">Loading data...</div>
       </div>
     );
   }
 
+  // Check if user is an overlord (able to create tasks)
+  const isOverlord = userRole === "overlord";
+
   return (
     <div className="flex bg-gray-900 min-h-screen">
-      <OverlordSidebar />
+      {userRole === "overlord" ? <OverlordSidebar /> : <AdvocateSidebar />}
       
       <div className="flex-1 flex flex-col md:flex-row p-4 gap-8">
         {/* Task Form - Left Side */}
@@ -194,13 +205,20 @@ export default function AssignTasks() {
               </div>
             )}
             
+            {!isOverlord && (
+              <div className="bg-yellow-900 border border-yellow-700 text-yellow-100 px-4 py-3 rounded mb-4">
+                Only Overlords can create tasks.
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block mb-2 text-gray-300">Assign To:</label>
                 <select
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
-                  className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                  className={`w-full p-2 border rounded bg-gray-700 border-gray-600 text-white ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={!isOverlord}
                 >
                   <option value="">Select a user</option>
                   {users.map((user) => (
@@ -217,8 +235,9 @@ export default function AssignTasks() {
                   type="text"
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
-                  className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                  className={`w-full p-2 border rounded bg-gray-700 border-gray-600 text-white ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
                   placeholder="Enter task title"
+                  disabled={!isOverlord}
                 />
               </div>
               
@@ -227,14 +246,16 @@ export default function AssignTasks() {
                 <textarea
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
-                  className="w-full p-2 border rounded h-32 bg-gray-700 border-gray-600 text-white"
+                  className={`w-full p-2 border rounded h-32 bg-gray-700 border-gray-600 text-white ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
                   placeholder="Enter task details"
+                  disabled={!isOverlord}
                 />
               </div>
               
               <button
                 type="submit"
-                className="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 w-full"
+                className={`bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 w-full ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={!isOverlord}
               >
                 Assign Task
               </button>
@@ -265,17 +286,19 @@ export default function AssignTasks() {
                         }`}>
                           {task.status}
                         </span>
-                        <button
-                          onClick={() => handleDeleteInitiate(task)}
-                          className="text-red-400 hover:text-red-300 transition-colors"
-                          title="Delete Task"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                          </svg>
-                        </button>
+                        {isOverlord && (
+                          <button
+                            onClick={() => handleDeleteInitiate(task)}
+                            className="text-red-400 hover:text-red-300 transition-colors"
+                            title="Delete Task"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 6h18"></path>
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                     
