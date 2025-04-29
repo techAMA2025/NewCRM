@@ -37,6 +37,17 @@ interface Arbitration {
   type: string;
 }
 
+// Define interface for letter data
+interface Letter {
+  id: string;
+  clientName: string;
+  letterType?: string;
+  status?: string;
+  createdAt?: any;
+  bankName?: string;
+  dueDate?: string;
+}
+
 // Define interface for task data
 interface Task {
   id: string;
@@ -62,6 +73,7 @@ const AdvocateDashboard = () => {
   const [todayArbitrations, setTodayArbitrations] = useState<Arbitration[]>([])
   const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([])
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([])
+  const [pendingLetters, setPendingLetters] = useState<Letter[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -84,14 +96,20 @@ const AdvocateDashboard = () => {
         
         const clientsSnapshot = await getDocs(advocateClientsQuery);
         
-        // Count clients by status
+        // Count clients by status and also collect pending letters
         let activeCount = 0;
         let droppedCount = 0;
         let notRespondingCount = 0;
         
         const recentClientsList: Client[] = [];
+        const pendingLettersList: Letter[] = [];
+        
+        // Debug counter to see how many clients we're processing
+        let totalClients = 0;
+        let letterEligibleClients = 0;
         
         clientsSnapshot.forEach((doc) => {
+          totalClients++;
           const clientData = doc.data();
           const status = clientData.adv_status;
           
@@ -109,7 +127,22 @@ const AdvocateDashboard = () => {
               lastContact: clientData.lastModified?.toDate().toISOString().split('T')[0] || 'N/A'
             });
           }
+          
+          // Check for pending letters - only for clients assigned to current advocate
+          // and where request_letter is false or not present
+          if (clientData.alloc_adv === currentAdvocate && clientData.request_letter !== true) {
+            letterEligibleClients++;
+            pendingLettersList.push({
+              id: doc.id,
+              clientName: clientData.name,
+              bankName: clientData.bank || 'Not specified',
+              dueDate: clientData.nextFollowUp || clientData.lastFollowUp
+            });
+          }
         });
+        
+        console.log(`Processed ${totalClients} total clients, ${letterEligibleClients} eligible for letters`);
+        console.log(`Found ${pendingLettersList.length} pending letters`);
         
         // Update stats
         setClientStats({
@@ -130,6 +163,16 @@ const AdvocateDashboard = () => {
             { id: '4', name: 'Alex Chen', status: 'Dropped', lastContact: '2023-08-05' },
           ]);
         }
+        
+        // Sort pending letters by due date (if available)
+        pendingLettersList.sort((a, b) => {
+          if (a.dueDate && b.dueDate) {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          }
+          return 0;
+        });
+        
+        setPendingLetters(pendingLettersList);
         
         // Fetch today's arbitrations
         const arbitrationsRef = collection(db, 'arbitration');
@@ -560,6 +603,53 @@ const AdvocateDashboard = () => {
         </div>
         
       
+      </div>
+
+      {/* Pending Letters Section - Updated */}
+      <div className="mt-6 bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+        <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Pending Letters</h2>
+        <div className="overflow-x-auto">
+          {pendingLetters.length > 0 ? (
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-900">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Client Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {pendingLetters.map((letter) => (
+                  <tr key={letter.id} className="hover:bg-gray-700 transition-colors duration-150">
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">
+                      {letter.clientName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button 
+                        onClick={() => router.push(`/advocate/clients?search=${encodeURIComponent(letter.clientName)}`)}
+                        className="text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        View Client
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No pending letters at this time</p>
+            </div>
+          )}
+        </div>
+        <div className="mt-4 text-right">
+          <a href="/advocate/clients" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+            View all clients →
+          </a>
+        </div>
       </div>
 
       {/* Task completion feedback modal */}
