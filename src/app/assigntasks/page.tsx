@@ -40,6 +40,11 @@ export default function AssignTasks() {
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState("");
+  const [dateFilterEnd, setDateFilterEnd] = useState("");
   const router = useRouter();
 
   // Fetch user role from localStorage on component mount
@@ -177,6 +182,44 @@ export default function AssignTasks() {
     }
   };
 
+  // Filter tasks based on search query and filters
+  const filteredTasks = tasks.filter(task => {
+    // Text search (title and description)
+    const matchesSearch = searchQuery === "" || 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      task.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Status filter
+    const matchesStatus = statusFilter === "all" || task.status === statusFilter;
+    
+    // Assignee filter
+    const matchesAssignee = assigneeFilter === "" || task.assignedTo === assigneeFilter;
+    
+    // Date filter
+    let matchesDate = true;
+    if (dateFilterStart) {
+      const startDate = new Date(dateFilterStart);
+      startDate.setHours(0, 0, 0, 0);
+      matchesDate = matchesDate && task.createdAt >= startDate;
+    }
+    if (dateFilterEnd) {
+      const endDate = new Date(dateFilterEnd);
+      endDate.setHours(23, 59, 59, 999);
+      matchesDate = matchesDate && task.createdAt <= endDate;
+    }
+    
+    return matchesSearch && matchesStatus && matchesAssignee && matchesDate;
+  });
+
+  // Reset all filters
+  const resetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setAssigneeFilter("");
+    setDateFilterStart("");
+    setDateFilterEnd("");
+  };
+
   if (loading) {
     return (
       <div className="flex bg-gray-900 min-h-screen">
@@ -268,11 +311,101 @@ export default function AssignTasks() {
           <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
             <h1 className="text-2xl font-bold mb-6 text-white">Assigned Tasks</h1>
             
-            {tasks.length === 0 ? (
-              <div className="text-gray-400 text-center py-8">No tasks have been assigned yet.</div>
+            {/* Add search and filter section */}
+            <div className="mb-6 space-y-4">
+              {/* Search bar */}
+              <div>
+                <label className="block mb-2 text-sm text-gray-300">Search Tasks</label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by title or description"
+                  className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Status filter */}
+                <div>
+                  <label className="block mb-2 text-sm text-gray-300">Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="not completed">Not Completed</option>
+                    <option value="partially-completed">Partially Completed</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                
+                {/* Assignee filter */}
+                <div>
+                  <label className="block mb-2 text-sm text-gray-300">Assigned To</label>
+                  <select
+                    value={assigneeFilter}
+                    onChange={(e) => setAssigneeFilter(e.target.value)}
+                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                  >
+                    <option value="">All Users</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.firstName || ''} {user.lastName || ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Date filter - start */}
+                <div>
+                  <label className="block mb-2 text-sm text-gray-300">From Date</label>
+                  <input
+                    type="date"
+                    value={dateFilterStart}
+                    onChange={(e) => setDateFilterStart(e.target.value)}
+                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                  />
+                </div>
+                
+                {/* Date filter - end */}
+                <div>
+                  <label className="block mb-2 text-sm text-gray-300">To Date</label>
+                  <input
+                    type="date"
+                    value={dateFilterEnd}
+                    onChange={(e) => setDateFilterEnd(e.target.value)}
+                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                  />
+                </div>
+              </div>
+              
+              {/* Reset filters button */}
+              <div className="flex justify-end">
+                <button 
+                  onClick={resetFilters}
+                  className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            </div>
+            
+            {/* Results count */}
+            <div className="mb-4 text-gray-400 text-sm">
+              Showing {filteredTasks.length} of {tasks.length} tasks
+            </div>
+            
+            {filteredTasks.length === 0 ? (
+              <div className="text-gray-400 text-center py-8">
+                {tasks.length > 0 
+                  ? "No tasks match your search criteria."
+                  : "No tasks have been assigned yet."}
+              </div>
             ) : (
               <div className="space-y-4">
-                {tasks.map((task) => (
+                {filteredTasks.map((task) => (
                   <div key={task.id} className="border border-gray-700 rounded-lg p-4 bg-gray-750">
                     <div className="flex justify-between items-start">
                       <h3 className="text-lg font-semibold text-white">{task.title}</h3>
