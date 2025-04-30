@@ -725,7 +725,7 @@ const AdminDashboard = () => {
                   <tbody className="divide-y divide-gray-700">
                     {pendingLetters.map((letter) => (
                       <tr key={letter.id} className="hover:bg-gray-750 transition-colors duration-150">
-                        <td className="px-6 py-4 whitespace-nowrap font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-white">
                           {letter.clientName}
                         </td>
                         {/* <td className="px-6 py-4 whitespace-nowrap">
