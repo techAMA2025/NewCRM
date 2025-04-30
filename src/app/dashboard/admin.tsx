@@ -89,6 +89,18 @@ interface MonthlyData {
   [key: string]: { total: number; converted: number };
 }
 
+// Add this Letter interface to your existing interfaces
+interface Letter {
+  id: string;
+  clientName: string;
+  letterType?: string;
+  status?: string;
+  createdAt?: any;
+  bankName?: string;
+  dueDate?: string;
+  advocateName?: string; // Adding advocate information for admin view
+}
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -108,6 +120,7 @@ const AdminDashboard = () => {
   const [totalAmountTarget, setTotalAmountTarget] = useState(0)
   const [totalConvertedLeads, setTotalConvertedLeads] = useState(0)
   const [totalLeadsTarget, setTotalLeadsTarget] = useState(0)
+  const [pendingLetters, setPendingLetters] = useState<Letter[]>([])
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -163,6 +176,9 @@ const AdminDashboard = () => {
         
         // Fetch leads data
         await fetchLeadsData()
+        
+        // Add this new function call
+        await fetchPendingLetters();
         
       } catch (error) {
         console.error('Error fetching admin stats:', error)
@@ -330,6 +346,55 @@ const AdminDashboard = () => {
       console.error('Error fetching leads data:', error)
     }
   }
+  
+  // Add this new function to fetch pending letters
+  const fetchPendingLetters = async () => {
+    try {
+      // Fetch clients where request_letter isn't true
+      const clientsRef = collection(db, 'clients');
+      const clientsSnapshot = await getDocs(clientsRef);
+      
+      const pendingLettersList: Letter[] = [];
+      
+      clientsSnapshot.forEach((doc) => {
+        const clientData = doc.data();
+        
+        // Check for pending letters - clients where request_letter is false or not present
+        if (clientData.request_letter !== true) {
+          pendingLettersList.push({
+            id: doc.id,
+            clientName: clientData.name,
+            bankName: clientData.bank || 'Not specified',
+            dueDate: clientData.nextFollowUp || clientData.lastFollowUp,
+            advocateName: clientData.alloc_adv || 'Unassigned' // Include advocate name for admin view
+          });
+        }
+      });
+      
+      // Sort pending letters by advocate name and due date
+      pendingLettersList.sort((a, b) => {
+        // First sort by advocate name
+        if (!a.advocateName && !b.advocateName) return 0;
+        if (!a.advocateName) return 1; // Items without advocateName come last
+        if (!b.advocateName) return -1; // Items with advocateName come first
+        
+        // Then do string comparison when both names exist
+        if (a.advocateName < b.advocateName) return -1;
+        if (a.advocateName > b.advocateName) return 1;
+        
+        // Then by due date if advocate names are the same
+        if (a.dueDate && b.dueDate) {
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        }
+        return 0;
+      });
+      
+      setPendingLetters(pendingLettersList);
+      
+    } catch (error) {
+      console.error('Error fetching pending letters:', error);
+    }
+  };
   
   // Filter data based on selected user
   const filteredData = useMemo(() => {
@@ -624,40 +689,81 @@ const AdminDashboard = () => {
         </div>
       </div>
       
-      {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800 dark:text-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Admin Actions</h2>
-          <div className="space-y-4">
-            <Link href="/admin/users" className="block w-full bg-blue-600 text-white py-2 px-4 rounded text-center hover:bg-blue-700">
-              Manage Users
-            </Link>
-            <button className="w-full bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700">
-              System Settings
-            </button>
-            <button className="w-full bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700">
-              Audit Logs
-            </button>
-          </div>
-        </div>
+      {/* Add this Pending Letters Section before the end of the component */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+          Pending Client Letters
+        </h2>
         
-        <div className="bg-white p-6 rounded-lg shadow-md dark:bg-gray-800 dark:text-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-          <div className="space-y-3">
-            <div className="border-b border-gray-700 pb-2">
-              <p className="text-sm text-gray-400">Today, 10:30 AM</p>
-              <p>New user registered: John Doe</p>
+        <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-gray-100">Clients Requiring Letters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pendingLetters.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-700">
+                  <thead className="bg-gray-800">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Client Name
+                      </th>
+                      {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Bank
+                      </th> */}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Assigned Advocate
+                      </th>
+                      {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Follow-up Date
+                      </th> */}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {pendingLetters.map((letter) => (
+                      <tr key={letter.id} className="hover:bg-gray-750 transition-colors duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium">
+                          {letter.clientName}
+                        </td>
+                        {/* <td className="px-6 py-4 whitespace-nowrap">
+                          {letter.bankName}
+                        </td> */}
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                          {letter.advocateName}
+                        </td>
+                        {/* <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                          {letter.dueDate || 'Not set'}
+                        </td> */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Link 
+                            href={`/admin/clients/${letter.id}`}
+                            className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                          >
+                            View Client
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No pending letters at this time</p>
+              </div>
+            )}
+            
+            <div className="mt-4 text-right">
+              <Link href="/admin/clients" className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                View all clients →
+              </Link>
             </div>
-            <div className="border-b border-gray-700 pb-2">
-              <p className="text-sm text-gray-400">Yesterday, 3:45 PM</p>
-              <p>System backup completed</p>
-            </div>
-            <div className="border-b border-gray-700 pb-2">
-              <p className="text-sm text-gray-400">Yesterday, 11:15 AM</p>
-              <p>User role updated: Jane Smith (Sales → Admin)</p>
-            </div>
-          </div>
-        </div>
-      </div> */}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
