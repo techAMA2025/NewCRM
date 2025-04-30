@@ -739,7 +739,7 @@ const AdminDashboard = () => {
                         </td> */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Link 
-                            href={`/admin/clients/${letter.id}`}
+                            href={`/clients`}
                             className="text-indigo-400 hover:text-indigo-300 transition-colors"
                           >
                             View Client
