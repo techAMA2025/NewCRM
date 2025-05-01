@@ -60,7 +60,7 @@ const OverlordSidebar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      const auth = getAuth(app);
+      const auth = getAuth(app); 
       await signOut(auth);
       localStorage.removeItem('userName');
       toast.success('Logged out successfully');

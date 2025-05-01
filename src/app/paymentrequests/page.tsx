@@ -23,6 +23,7 @@ export default function PaymentRequestsPage() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('current');
   const router = useRouter();
 
   useEffect(() => {
@@ -456,9 +457,30 @@ export default function PaymentRequestsPage() {
         matchesDate = requestDate >= thirtyDaysAgo;
       }
 
-      return matchesSearch && matchesSource && matchesStatus && matchesDate;
+      // Add month filter logic
+      let matchesMonth = true;
+      if (monthFilter !== 'all') {
+        const currentDate = new Date();
+        const requestMonth = requestDate.getMonth();
+        const requestYear = requestDate.getFullYear();
+        
+        if (monthFilter === 'current') {
+          // Current month
+          matchesMonth = 
+            requestMonth === currentDate.getMonth() && 
+            requestYear === currentDate.getFullYear();
+        } else {
+          // Specific month selected in format "month-year" (e.g., "3-2023")
+          const [selectedMonth, selectedYear] = monthFilter.split('-').map(Number);
+          matchesMonth = 
+            requestMonth === selectedMonth && 
+            requestYear === selectedYear;
+        }
+      }
+
+      return matchesSearch && matchesSource && matchesStatus && matchesDate && matchesMonth;
     });
-  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter]);
+  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter]);
 
   const pendingRequests = filteredRequests
     .filter(req => req.status === 'pending')
@@ -530,6 +552,14 @@ export default function PaymentRequestsPage() {
                 </select>
 
                 <select
+                  value={monthFilter}
+                  onChange={(e) => setMonthFilter(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {generateMonthOptions()}
+                </select>
+
+                <select
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
                   className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -558,6 +588,18 @@ export default function PaymentRequestsPage() {
               {statusFilter !== 'all' && (
                 <span className="bg-green-900/50 text-green-300 border border-green-500 px-3 py-1 rounded-full text-sm capitalize">
                   Status: {statusFilter}
+                </span>
+              )}
+              {monthFilter !== 'all' && (
+                <span className="bg-orange-900/50 text-orange-300 border border-orange-500 px-3 py-1 rounded-full text-sm">
+                  Month: {monthFilter === 'current' ? 'Current Month' : (() => {
+                    const months = [
+                      "January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"
+                    ];
+                    const [month, year] = monthFilter.split('-').map(Number);
+                    return `${months[month]} ${year}`;
+                  })()}
                 </span>
               )}
               {dateFilter !== 'all' && (
@@ -1088,3 +1130,38 @@ export default function PaymentRequestsPage() {
     </div>
   );
 }
+
+const generateMonthOptions = () => {
+  const options = [];
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  
+  // Add "All Months" option
+  options.push(<option key="all" value="all">All Months</option>);
+  
+  // Add "Current Month" option
+  options.push(<option key="current" value="current">Current Month</option>);
+  
+  // Add previous months (up to 12 months back)
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
+  for (let i = 0; i < 12; i++) {
+    let month = currentMonth - i;
+    let year = currentYear;
+    
+    if (month < 0) {
+      month += 12;
+      year -= 1;
+    }
+    
+    const value = `${month}-${year}`;
+    const label = `${months[month]} ${year}`;
+    options.push(<option key={value} value={value}>{label}</option>);
+  }
+  
+  return options;
+};

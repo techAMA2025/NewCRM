@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { collection, getDocs, query, where, doc, updateDoc, addDoc, orderBy, serverTimestamp, limit } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, updateDoc, addDoc, orderBy, serverTimestamp, limit, getDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { Spinner } from "@/components/ui/spinner";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
@@ -11,6 +11,7 @@ import RequestLetterForm from "./requestletter";
 import DemandNoticeForm from "./demandnotice";
 import ComplaintForHarassmentForm from "./cfhab";
 import { useSearchParams } from "next/navigation";
+import DocumentEditor from './DocumentEditor';
 
 interface Bank {
   id: string;
@@ -50,6 +51,15 @@ interface Client {
   documentUploadedAt?: any;
   source_database?: string;
   request_letter?: boolean;
+  documents?: {
+    type: string;
+    bankName?: string;
+    accountType?: string;
+    createdAt?: string;
+    url?: string;
+    name?: string;
+    lastEdited?: string;
+  }[];
 }
 
 interface RemarkHistory {
@@ -133,7 +143,8 @@ function ClientViewModal({
   openRequestLetterModal,
   openLegalNoticeModal,
   openDemandNoticeModal,
-  openHarassmentComplaintModal
+  openHarassmentComplaintModal,
+  openDocumentEditor
 }: { 
   client: Client | null, 
   isOpen: boolean, 
@@ -142,7 +153,8 @@ function ClientViewModal({
   openRequestLetterModal: (client: Client) => void,
   openLegalNoticeModal: (client: Client) => void,
   openDemandNoticeModal: (client: Client) => void,
-  openHarassmentComplaintModal: (client: Client) => void
+  openHarassmentComplaintModal: (client: Client) => void,
+  openDocumentEditor: (url: string, name: string, index: number) => void
 }) {
   if (!isOpen || !client) return null;
 
@@ -416,106 +428,180 @@ function ClientViewModal({
                 <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                Client Document
+                Client Documents
               </h3>
               
               <div className="bg-gray-900/50 rounded-lg p-4">
-                {client.documentUrl ? (
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                      <p className="text-white font-medium">{client.documentName || "Client Document"}</p>
-                      {client.documentUploadedAt && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          Uploaded: {typeof client.documentUploadedAt === 'object' && client.documentUploadedAt.toDate ? 
-                            client.documentUploadedAt.toDate().toLocaleDateString('en-US', {
-                              year: 'numeric', month: 'short', day: 'numeric'
-                            }) : 'Unknown date'}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2 w-full md:w-auto justify-start md:justify-end">
-                      <button
-                        onClick={() => openDocumentViewer(client.documentUrl, client.documentName || "Document")}
-                        className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        View Document
-                      </button>
-                      <button
-                        onClick={() => openRequestLetterModal(client)}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Request Letter
-                      </button>
-                      <button
-                        onClick={() => openDemandNoticeModal(client)}
-                        className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        Demand Notice
-                      </button>
-                      <button
-                        onClick={() => openLegalNoticeModal(client)}
-                        className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Legal Notice
-                      </button>
-                      <button
-                        onClick={() => openHarassmentComplaintModal(client)}
-                        className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Harassment Complaint
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col md:flex-row justify-between items-center">
-                    <p className="text-gray-400 mb-4 md:mb-0">No document uploaded for this client.</p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => openRequestLetterModal(client)}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Request Letter
-                      </button>
-                      <button
-                        onClick={() => openDemandNoticeModal(client)}
-                        className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        Demand Notice
-                      </button>
-                      <button
-                        onClick={() => openLegalNoticeModal(client)}
-                        className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Legal Notice
-                      </button>
+                {/* Document List Section */}
+                {client.documents && client.documents.length > 0 ? (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-purple-300 mb-2">Saved Documents</h4>
+                    <div className="bg-gray-800/50 rounded-lg divide-y divide-gray-700">
+                      {client.documents.map((doc, index) => (
+                        <div key={index} className="p-3 flex justify-between items-center">
+                          <div>
+                            <p className="text-white text-sm font-medium">{doc.type === "request_letter" ? "Request Letter" : 
+                                                                          doc.type === "demand_notice" ? "Demand Notice" : 
+                                                                          doc.type === "legal_notice" ? "Legal Notice" : 
+                                                                          doc.type === "harassment_complaint" ? "Harassment Complaint" : 
+                                                                          "Document"}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              {doc.bankName && (
+                                <span className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded text-xs">
+                                  {doc.bankName}
+                                </span>
+                              )}
+                              {doc.accountType && (
+                                <span className="px-2 py-0.5 bg-purple-900/30 text-purple-300 rounded text-xs">
+                                  {doc.accountType}
+                                </span>
+                              )}
+                              {doc.createdAt && (
+                                <span className="text-xs text-gray-500">
+                                  {new Date(doc.createdAt).toLocaleDateString()}
+                                </span>
+                              )}
+                              {doc.lastEdited && (
+                                <span className="text-xs text-green-500">
+                                  Edited: {new Date(doc.lastEdited).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openDocumentViewer(doc.url, doc.name)}
+                              className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded flex items-center"
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Only open editor if both URL and name are defined
+                                if (doc.url && doc.name) {
+                                  openDocumentEditor(doc.url, doc.name, index);
+                                } else {
+                                  toast.error("Document URL or name is missing");
+                                }
+                              }}
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-gray-200 text-xs rounded flex items-center"
+                              disabled={!doc.url || !doc.name}
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                )}
+                ) : null}
+
+                {/* Original Document Section */}
+                <div className={client.documents && client.documents.length > 0 ? "pt-3 border-t border-gray-700" : ""}>
+                  {client.documentUrl ? (
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <p className="text-white font-medium">{client.documentName || "Client Document"}</p>
+                        {client.documentUploadedAt && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Uploaded: {typeof client.documentUploadedAt === 'object' && client.documentUploadedAt.toDate ? 
+                              client.documentUploadedAt.toDate().toLocaleDateString('en-US', {
+                                year: 'numeric', month: 'short', day: 'numeric'
+                              }) : 'Unknown date'}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 w-full md:w-auto justify-start md:justify-end">
+                        <button
+                          onClick={() => openDocumentViewer(client.documentUrl, client.documentName || "Document")}
+                          className="px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View Document
+                        </button>
+                        <button
+                          onClick={() => openRequestLetterModal(client)}
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Request Letter
+                        </button>
+                        <button
+                          onClick={() => openDemandNoticeModal(client)}
+                          className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          Demand Notice
+                        </button>
+                        <button
+                          onClick={() => openLegalNoticeModal(client)}
+                          className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Legal Notice
+                        </button>
+                        <button
+                          onClick={() => openHarassmentComplaintModal(client)}
+                          className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Harassment Complaint
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col md:flex-row justify-between items-center">
+                      <p className="text-gray-400 mb-4 md:mb-0">No original document uploaded for this client.</p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => openRequestLetterModal(client)}
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Request Letter
+                        </button>
+                        <button
+                          onClick={() => openDemandNoticeModal(client)}
+                          className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          Demand Notice
+                        </button>
+                        <button
+                          onClick={() => openLegalNoticeModal(client)}
+                          className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Legal Notice
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -623,6 +709,11 @@ function ClientsList() {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [latestRemarks, setLatestRemarks] = useState<{ [key: string]: string }>({});
   const [requestLetterStates, setRequestLetterStates] = useState<{ [key: string]: boolean }>({});
+  const [editingDocument, setEditingDocument] = useState<{
+    url: string;
+    name: string;
+    index: number;
+  } | null>(null);
 
   const searchParams = useSearchParams();
 
@@ -1188,6 +1279,11 @@ function ClientsList() {
     );
   };
 
+  // Add a function to open the document editor
+  const openDocumentEditor = (url: string, name: string, index: number) => {
+    setEditingDocument({ url, name, index });
+  };
+
   return (
     <div className="flex-1">
       {renderContent()}
@@ -1200,6 +1296,7 @@ function ClientsList() {
         openLegalNoticeModal={openLegalNoticeModal}
         openDemandNoticeModal={openDemandNoticeModal}
         openHarassmentComplaintModal={openHarassmentComplaintModal}
+        openDocumentEditor={openDocumentEditor}
       />
       <ClientEditModal
         client={editClient}
@@ -1386,6 +1483,33 @@ function ClientsList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Document Editor Modal */}
+      {editingDocument && viewClient && (
+        <DocumentEditor
+          documentUrl={editingDocument.url}
+          documentName={editingDocument.name}
+          documentIndex={editingDocument.index}
+          clientId={viewClient.id}
+          onClose={() => setEditingDocument(null)}
+          onDocumentUpdated={() => {
+            // Refresh client data
+            // You might want to implement a more targeted refresh
+            const clientRef = doc(db, "clients", viewClient.id);
+            getDoc(clientRef).then((docSnap) => {
+              if (docSnap.exists()) {
+                const updatedClient = { id: docSnap.id, ...docSnap.data() } as Client;
+                setViewClient(updatedClient);
+                
+                // Also update in the main clients list
+                setClients(prevClients =>
+                  prevClients.map(c => c.id === viewClient.id ? updatedClient : c)
+                );
+              }
+            });
+          }}
+        />
       )}
     </div>
   );

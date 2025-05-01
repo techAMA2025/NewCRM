@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { ref, uploadBytes, getDownloadURL, uploadString } from "firebase/storage";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db, storage } from "@/firebase/firebase";
+import mammoth from 'mammoth';
 
 interface Bank {
   id: string;
@@ -423,17 +427,82 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
       const blob = await response.blob();
       console.log("Document blob received, size:", blob.size);
       
+      // Generate a filename
+      const filename = `${formData.name1}_request_letter_${new Date().toISOString().replace(/[:.]/g, '-')}.docx`;
+      
+      // Upload to Firebase Storage
+      const storageRef = ref(storage, `client_documents/${client.id}/request_letters/${filename}`);
+      
+      // Upload the blob
+      const uploadTask = await uploadBytes(storageRef, blob);
+      console.log("Document uploaded to Firebase Storage", uploadTask);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(uploadTask.ref);
+      console.log("Document download URL:", downloadURL);
+      
+      // Update client document record in Firestore
+      const clientRef = doc(db, "clients", client.id);
+      
+      // Get existing documents array or create new one
+      const clientDoc = await getDoc(clientRef);
+      const existingData = clientDoc.data() || {};
+      const documents = existingData.documents || [];
+      
+      try {
+        // For document editing capability, we need to convert to HTML
+        const arrayBuffer = await blob.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        const htmlContent = result.value;
+        
+        // Upload the HTML version for editing
+        const htmlStorageRef = ref(storage, `client_documents/${client.id}/request_letters/html/${filename.replace('.docx', '.html')}`);
+        await uploadString(htmlStorageRef, htmlContent, 'raw', { contentType: 'text/html' });
+        const htmlDownloadURL = await getDownloadURL(htmlStorageRef);
+        
+        // Add the htmlUrl to the document metadata
+        documents.push({
+          type: "request_letter",
+          name: filename,
+          url: downloadURL,       // Original DOCX URL
+          htmlUrl: htmlDownloadURL, // HTML version for editing
+          bankName: formData.selectedBank,
+          createdAt: new Date().toISOString(),
+          accountType: formData.accountType
+        });
+        
+        // Update client record
+        await updateDoc(clientRef, { 
+          documents: documents,
+          request_letter: true,
+          lastUpdated: serverTimestamp()
+        });
+        
+        console.log("Client record updated with document reference");
+      } catch (uploadError) {
+        console.error("Error preparing document for editing:", uploadError);
+        // Now documents is in scope
+        documents.push({
+          type: "request_letter",
+          name: filename,
+          url: downloadURL,
+          bankName: formData.selectedBank,
+          createdAt: new Date().toISOString(),
+          accountType: formData.accountType
+        });
+      }
+      
       // Create a download link and trigger download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${formData.name1}_request_letter.docx`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast.success("Document successfully generated and downloaded.");
+      toast.success("Document successfully generated, saved to client record, and downloaded.");
       onClose();
     } catch (error) {
       console.error("Error generating document:", error);

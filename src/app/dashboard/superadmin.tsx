@@ -122,6 +122,10 @@ export default function SuperAdminDashboard() {
     pending: 0
   });
 
+  // Add state for month and year filters
+  const [selectedAnalyticsMonth, setSelectedAnalyticsMonth] = useState<number | null>(null);
+  const [selectedAnalyticsYear, setSelectedAnalyticsYear] = useState<number | null>(null);
+
   // Function to apply date filter
   const applyDateFilter = () => {
     setIsLoading(true);
@@ -288,97 +292,186 @@ export default function SuperAdminDashboard() {
       try {
         // Initialize monthly data (last 6 months)
         const monthlyData = [0, 0, 0, 0, 0, 0];
-        const currentMonth = new Date().getMonth();
+        
+        // Get current date info
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        // Determine which month/year to use - either selected or current
+        const targetMonth = selectedAnalyticsMonth !== null ? selectedAnalyticsMonth : currentMonth;
+        const targetYear = selectedAnalyticsYear !== null ? selectedAnalyticsYear : currentYear;
+        const targetMonthName = monthNames[targetMonth];
+        
+        // Create labels for the last 6 months relative to target month
         const last6MonthsLabels = [];
-        
-        // Create labels for the last 6 months
         for (let i = 5; i >= 0; i--) {
-          const monthIndex = (currentMonth - i + 12) % 12;
-          last6MonthsLabels.unshift(monthNames[monthIndex]);
-        }
-        
-        // Get current year and last 6 months for fetching targets
-        const currentYear = new Date().getFullYear();
-        const targetMonths = [];
-        
-        for (let i = 0; i < 6; i++) {
-          const monthIndex = (currentMonth - i + 12) % 12;
-          const year = monthIndex > currentMonth ? currentYear - 1 : currentYear;
-          targetMonths.push({
-            monthName: `${monthNames[monthIndex]}_${year}`,
-            index: 5 - i // Reverse index for chart data
+          // Calculate month index relative to target month
+          const monthIndex = (targetMonth - i + 12) % 12;
+          
+          // Calculate year for this month
+          const yearForThisMonth = targetYear - (targetMonth < monthIndex ? 1 : 0);
+          
+          // Store both name and full identifier
+          last6MonthsLabels.unshift({
+            label: monthNames[monthIndex],
+            fullLabel: `${monthNames[monthIndex]} ${yearForThisMonth}`,
+            month: monthIndex,
+            year: yearForThisMonth
           });
         }
         
         let totalTarget = 0;
         let totalCollected = 0;
-        let totalPayments = 0;
+        let paymentBasedRevenue = 0;
+        let hasPaymentData = false;
         
-        // Fetch targets from each month's sales_targets subcollection
-        await Promise.all(targetMonths.map(async ({ monthName, index }) => {
-          try {
-            // Get all targets from this month's sales_targets subcollection
-            const salesTargetsRef = collection(db, `targets/${monthName}/sales_targets`);
-            const salesTargetsSnapshot = await getDocs(salesTargetsRef);
-            
-            salesTargetsSnapshot.forEach((doc) => {
-              const targetData = doc.data();
-              
-              // Sum up targets and collections
-              totalTarget += targetData.amountCollectedTarget || 0;
-              totalCollected += targetData.amountCollected || 0;
-              
-              // Add this month's collection to monthly data
-              monthlyData[index] += targetData.amountCollected || 0;
-            });
-          } catch (error) {
-            console.log(`No targets found for ${monthName} or other error:`, error);
-            // Continue with other months if one fails
-          }
-        }));
-        
-        // Fetch leads data for conversion rate
-        const leadsCollection = collection(db, 'crm_leads');
-        const leadsSnapshot = await getDocs(leadsCollection);
-        
-        let totalLeads = 0;
-        let convertedLeads = 0;
-        
-        leadsSnapshot.forEach((doc) => {
-          const leadData = doc.data();
-          totalLeads++;
+        // First, try to get revenue from payments collection (most accurate)
+        try {
+          const paymentsCollection = collection(db, 'payments');
+          const paymentsSnapshot = await getDocs(paymentsCollection);
           
-          if (leadData.status === 'Converted') {
-            convertedLeads++;
+          // Get target month's start and end dates
+          const startOfMonth = new Date(targetYear, targetMonth, 1);
+          const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+          
+          console.log(`Looking for payments between:`, 
+            startOfMonth.toISOString(), 
+            endOfMonth.toISOString()
+          );
+          
+          let paymentCount = 0;
+          
+          paymentsSnapshot.forEach((doc) => {
+            const payment = doc.data();
+            
+            if (payment.status === 'approved' && payment.timestamp) {
+              // Convert timestamp string to Date object
+              const paymentDate = new Date(payment.timestamp);
+              
+              // Debug log to see all payments
+              console.log(`Payment date:`, paymentDate.toISOString(), 
+                `Amount: ${payment.amount}`, 
+                `Status: ${payment.status}`,
+                `In range: ${paymentDate >= startOfMonth && paymentDate <= endOfMonth}`
+              );
+              
+              // Check if payment is in target month
+              if (paymentDate >= startOfMonth && paymentDate <= endOfMonth) {
+                // Add to target month revenue
+                const amount = parseFloat(payment.amount) || 0;
+                paymentBasedRevenue += amount;
+                paymentCount++;
+                hasPaymentData = true;
+              }
+            }
+          });
+          
+          console.log(`Found ${paymentCount} approved payments for ${targetMonthName} ${targetYear} totaling ₹${paymentBasedRevenue}`);
+          
+        } catch (error) {
+          console.error("Error fetching payments data:", error);
+        }
+        
+        // Whether we have payment data or not, always fetch target data from the targets collection
+        console.log(`Fetching target data for ${targetMonthName} ${targetYear}`);
+        
+        try {
+          const targetMonthDoc = `${targetMonthName}_${targetYear}`;
+          const salesTargetsRef = collection(db, `targets/${targetMonthDoc}/sales_targets`);
+          const salesTargetsSnapshot = await getDocs(salesTargetsRef);
+          
+          let targetDataCount = 0;
+          
+          // Reset totalTarget to ensure we get the correct sum
+          totalTarget = 0;
+          
+          salesTargetsSnapshot.forEach((doc) => {
+            const targetData = doc.data();
+            targetDataCount++;
+            
+            // Sum up targets for target month
+            const targetAmount = targetData.amountCollectedTarget || 0;
+            totalTarget += targetAmount;
+            
+            console.log(`Target for ${targetData.userName || 'unnamed'}: ₹${targetAmount}`);
+            
+            // Only use collected amount if we don't have payment data
+            if (!hasPaymentData) {
+              totalCollected += targetData.amountCollected || 0;
+            }
+          });
+          
+          console.log(`Found ${targetDataCount} target entries for ${targetMonthName} ${targetYear} with total target: ₹${totalTarget}`);
+          
+          if (targetDataCount === 0) {
+            // If target data isn't found for the selected month, try to find the closest available month's data
+            console.log(`No targets found for ${targetMonthName} ${targetYear}, trying to find closest month data`);
+            
+            // Try previous months in the same year
+            for (let m = targetMonth - 1; m >= 0; m--) {
+              const prevMonthName = monthNames[m];
+              const prevMonthDoc = `${prevMonthName}_${targetYear}`;
+              
+              try {
+                const prevTargetsRef = collection(db, `targets/${prevMonthDoc}/sales_targets`);
+                const prevTargetsSnapshot = await getDocs(prevTargetsRef);
+                
+                if (!prevTargetsSnapshot.empty) {
+                  console.log(`Found data in previous month: ${prevMonthName} ${targetYear}`);
+                  
+                  // Use this month's data
+                  totalTarget = 0;
+                  
+                  prevTargetsSnapshot.forEach((doc) => {
+                    const targetData = doc.data();
+                    totalTarget += targetData.amountCollectedTarget || 0;
+                    
+                    if (!hasPaymentData) {
+                      totalCollected += targetData.amountCollected || 0;
+                    }
+                  });
+                  
+                  console.log(`Using ${prevMonthName} ${targetYear} total target: ₹${totalTarget}`);
+                  break;
+                }
+              } catch (err) {
+                console.log(`Error checking ${prevMonthName}: ${err}`);
+              }
+            }
           }
-        });
+          
+        } catch (error) {
+          console.log(`Error fetching targets for ${targetMonthName} ${targetYear}:`, error);
+        }
         
-        // Calculate average deal size and conversion rate
-        const avgDealSize = totalCollected > 0 ? Math.round(totalCollected / salespeople.length) : 0;
-        const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+        // If we have payment data, use it (most accurate for collections)
+        if (hasPaymentData) {
+          totalCollected = paymentBasedRevenue;
+        }
         
-        // Set the sales analytics state with actual monthly data
+        // Create analytics stats
+        const analyticsStats = {
+          conversionRate: totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : 0,
+          avgDealSize: 0 // Will be calculated later
+        };
+        
+        // Set the sales analytics state with target month data for total
         setSalesAnalytics({
           totalTargetAmount: totalTarget,
           totalCollectedAmount: totalCollected,
           monthlyRevenue: monthlyData,
-          conversionRate: conversionRate,
-          avgDealSize: avgDealSize
+          conversionRate: analyticsStats.conversionRate,
+          avgDealSize: analyticsStats.avgDealSize
         });
         
         // Update the labels to show actual month names
-        salesData.labels = last6MonthsLabels;
+        salesData.labels = last6MonthsLabels.map(info => info.label);
         salesData.datasets[0].data = monthlyData;
         
-        console.log("Monthly revenue data:", monthlyData);
-        console.log("Month labels:", last6MonthsLabels);
-        console.log("Total revenue:", totalCollected);
-        console.log("Total target:", totalTarget);
-        console.log("Total salespeople:", salespeople.length);
-        console.log("Total leads:", totalLeads);
-        console.log("Converted leads:", convertedLeads);
-        console.log("Conversion rate:", conversionRate + "%");
+        console.log(`${targetMonthName} ${targetYear} final revenue: ₹${totalCollected}`);
+        console.log(`${targetMonthName} ${targetYear} target: ₹${totalTarget}`);
         
       } catch (error) {
         console.error("Error fetching sales analytics:", error);
@@ -386,7 +479,7 @@ export default function SuperAdminDashboard() {
     };
     
     fetchSalesAnalytics();
-  }, [salespeople.length]);
+  }, [salespeople.length, selectedAnalyticsMonth, selectedAnalyticsYear]);
 
   // Add useEffect to fetch all salespeople
   useEffect(() => {
@@ -1296,22 +1389,69 @@ export default function SuperAdminDashboard() {
                 }
               </CardTitle>
               
-              {/* Salesperson Dropdown */}
-              <div className="flex items-center">
-                <label htmlFor="salesperson" className="mr-2 text-gray-300">View:</label>
-                <select
-                  id="salesperson"
-                  className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={selectedSalesperson || "all"}
-                  onChange={handleSalespersonChange}
-                >
-                  <option value="all">All Salespeople</option>
-                  {salespeople.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.name}
-                    </option>
-                  ))}
-                </select>
+              {/* Add Month/Year Filters alongside Salesperson Dropdown */}
+              <div className="flex items-center gap-3">
+                {/* Month-Year Filter */}
+                <div className="flex items-center gap-2">
+                  <select
+                    className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={selectedAnalyticsMonth !== null ? selectedAnalyticsMonth : new Date().getMonth()}
+                    onChange={(e) => setSelectedAnalyticsMonth(parseInt(e.target.value))}
+                  >
+                    <option value="0">January</option>
+                    <option value="1">February</option>
+                    <option value="2">March</option>
+                    <option value="3">April</option>
+                    <option value="4">May</option>
+                    <option value="5">June</option>
+                    <option value="6">July</option>
+                    <option value="7">August</option>
+                    <option value="8">September</option>
+                    <option value="9">October</option>
+                    <option value="10">November</option>
+                    <option value="11">December</option>
+                  </select>
+                  
+                  <select
+                    className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={selectedAnalyticsYear !== null ? selectedAnalyticsYear : new Date().getFullYear()}
+                    onChange={(e) => setSelectedAnalyticsYear(parseInt(e.target.value))}
+                  >
+                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                  
+                  {(selectedAnalyticsMonth !== null || selectedAnalyticsYear !== null) && (
+                    <button 
+                      onClick={() => {
+                        setSelectedAnalyticsMonth(null);
+                        setSelectedAnalyticsYear(null);
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 bg-blue-900/30 px-2 py-1 rounded-md"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                
+                {/* Existing Salesperson Dropdown */}
+                <div className="flex items-center">
+                  <label htmlFor="salesperson" className="mr-2 text-gray-300">View:</label>
+                  <select
+                    id="salesperson"
+                    className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={selectedSalesperson || "all"}
+                    onChange={handleSalespersonChange}
+                  >
+                    <option value="all">All Salespeople</option>
+                    {salespeople.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
