@@ -2,7 +2,7 @@
 
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { db } from '@/firebase/firebase';
-import { collection, getDocs, doc, updateDoc, Timestamp, getDoc, query, limit, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, Timestamp, getDoc, query, limit, where, orderBy, deleteDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { 
   Box, 
@@ -19,7 +19,14 @@ import {
   createTheme,
   CssBaseline,
   Paper,
-  Badge
+  Badge,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  TextField,
+  InputAdornment,
+  DialogActions
 } from '@mui/material';
 import { 
   AttachMoney,
@@ -198,6 +205,11 @@ export default function MonthlyPaymentRequests() {
   const [error, setError] = useState<string | null>(null);
   const [isOverlord, setIsOverlord] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<PaymentRequest | null>(null);
+  const [newAmount, setNewAmount] = useState<number>(0);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deletingRequest, setDeletingRequest] = useState<{id: string, clientId: string} | null>(null);
   const router = useRouter();
 
   // Optimize fetchPaymentRequests function
@@ -349,6 +361,77 @@ export default function MonthlyPaymentRequests() {
     } catch (err) {
       console.error('Error approving payment request:', err);
       setError('Failed to approve payment request');
+    }
+  };
+
+  const handleDeleteRequest = (id: string, clientId: string) => {
+    setDeletingRequest({ id, clientId });
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingRequest) return;
+    
+    try {
+      // Reference to the payment request document
+      const paymentRef = doc(db, `clients_payments/${deletingRequest.clientId}/payment_history`, deletingRequest.id);
+      
+      // Delete the document
+      await deleteDoc(paymentRef);
+      
+      // Update local state to remove the deleted request
+      setPaymentRequests(prevRequests => 
+        prevRequests.filter(req => !(req.id === deletingRequest.id && req.clientId === deletingRequest.clientId))
+      );
+      
+      // Close the confirmation dialog
+      setIsDeleteConfirmOpen(false);
+      setDeletingRequest(null);
+      
+    } catch (err) {
+      console.error('Error deleting payment request:', err);
+      setError('Failed to delete payment request');
+    }
+  };
+
+  const handleEditRequest = (request: PaymentRequest) => {
+    setEditingRequest(request);
+    setNewAmount(request.requestedAmount);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRequest) return;
+    
+    try {
+      // Reference to the payment request document
+      const paymentRef = doc(
+        db, 
+        `clients_payments/${editingRequest.clientId}/payment_history`, 
+        editingRequest.id
+      );
+      
+      // Update the document with new amount
+      await updateDoc(paymentRef, {
+        requestedAmount: newAmount
+      });
+      
+      // Update local state
+      setPaymentRequests(prevRequests =>
+        prevRequests.map(req =>
+          req.id === editingRequest.id && req.clientId === editingRequest.clientId
+            ? { ...req, requestedAmount: newAmount }
+            : req
+        )
+      );
+      
+      // Close the modal
+      setIsEditModalOpen(false);
+      setEditingRequest(null);
+      
+    } catch (err) {
+      console.error('Error updating payment request:', err);
+      setError('Failed to update payment request');
     }
   };
 
@@ -510,6 +593,8 @@ export default function MonthlyPaymentRequests() {
                     key={request.id} 
                     request={request} 
                     onApprove={() => approvePaymentRequest(request.id, request.clientId)}
+                    onDelete={() => handleDeleteRequest(request.id, request.clientId)}
+                    onEdit={() => handleEditRequest(request)}
                     formatDate={formatDate}
                   />
                 ))}
@@ -536,6 +621,8 @@ export default function MonthlyPaymentRequests() {
                   key={request.id} 
                   request={request} 
                   onApprove={() => {}}
+                  onDelete={() => handleDeleteRequest(request.id, request.clientId)}
+                  onEdit={() => {}}
                   formatDate={formatDate}
                 />
               ))}
@@ -543,6 +630,95 @@ export default function MonthlyPaymentRequests() {
           </Box>
         </Box>
       </Box>
+
+      {/* Edit Amount Modal */}
+      <Dialog open={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
+        <DialogTitle sx={{ bgcolor: 'background.paper', color: 'white' }}>
+          Edit Payment Amount
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'background.paper', pt: 2 }}>
+          <DialogContentText sx={{ color: 'grey.400', mb: 2 }}>
+            Update the requested payment amount for {editingRequest?.clientName}
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Payment Amount"
+            type="number"
+            fullWidth
+            variant="outlined"
+            value={newAmount}
+            onChange={(e) => setNewAmount(Number(e.target.value))}
+            InputProps={{
+              startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                color: 'white',
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'primary.main',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: 'grey.400',
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ bgcolor: 'background.paper', px: 3, pb: 3 }}>
+          <Button 
+            onClick={() => setIsEditModalOpen(false)}
+            variant="outlined"
+            color="secondary"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveEdit} 
+            variant="contained"
+            color="primary"
+          >
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={isDeleteConfirmOpen} 
+        onClose={() => setIsDeleteConfirmOpen(false)}
+      >
+        <DialogTitle sx={{ bgcolor: 'background.paper', color: 'white' }}>
+          Confirm Deletion
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'background.paper', pt: 2 }}>
+          <DialogContentText sx={{ color: 'grey.400' }}>
+            Are you sure you want to delete this payment request? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ bgcolor: 'background.paper', px: 3, pb: 3 }}>
+          <Button 
+            onClick={() => setIsDeleteConfirmOpen(false)}
+            variant="outlined"
+            color="secondary"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDelete} 
+            variant="contained"
+            color="error"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ThemeProvider>
   );
 }
@@ -551,11 +727,13 @@ export default function MonthlyPaymentRequests() {
 interface RequestCardProps {
   request: PaymentRequest;
   onApprove: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
   formatDate: (timestamp: any) => string;
 }
 
 // Define the RequestCard component
-const RequestCard = ({ request, onApprove, formatDate }: RequestCardProps) => {
+const RequestCard = ({ request, onApprove, onDelete, onEdit, formatDate }: RequestCardProps) => {
   return (
     <Card sx={{ p: 0, overflow: 'hidden', height: '100%' }}>
       <Box sx={{ 
@@ -699,6 +877,20 @@ const RequestCard = ({ request, onApprove, formatDate }: RequestCardProps) => {
             </Button>
             <Button
               variant="outlined"
+              color="secondary"
+              size="small"
+              sx={{ 
+                py: 0.75,
+                background: 'rgba(140, 92, 255, 0.05)', 
+                borderColor: 'rgba(140, 92, 255, 0.3)',
+                color: '#8C5CFF'
+              }}
+              onClick={onEdit}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outlined"
               color="error"
               size="small"
               sx={{ 
@@ -707,8 +899,9 @@ const RequestCard = ({ request, onApprove, formatDate }: RequestCardProps) => {
                 borderColor: 'rgba(255, 90, 101, 0.3)',
                 color: '#FF5A65'
               }}
+              onClick={onDelete}
             >
-              Reject
+              Delete
             </Button>
           </Box>
         )}
