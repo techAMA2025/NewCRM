@@ -23,6 +23,7 @@ interface Payment {
   status: 'pending' | 'approved';
   approvedBy?: string;
   source: string;
+  reasonOfPayment?: string;
 }
 
 export default function PaymentApprovalPage() {
@@ -41,11 +42,20 @@ export default function PaymentApprovalPage() {
   const [userPayments, setUserPayments] = useState<Payment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+  
+  useEffect(() => {
+    // Get user role and name from localStorage when component mounts
+    const storedUserRole = localStorage.getItem('userRole') || '';
+    const storedUserName = localStorage.getItem('userName') || '';
+    setUserRole(storedUserRole);
+    setUserName(storedUserName);
+  }, []);
   
   useEffect(() => {
     if (userRole === 'advocate') {
@@ -137,6 +147,7 @@ export default function PaymentApprovalPage() {
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen);
   
   const renderSidebar = () => {
+    // Check if the user role is 'advocate'
     return userRole === 'advocate' ? <AdvocateSidebar /> : <SalesSidebar />;
   };
   
@@ -342,9 +353,16 @@ export default function PaymentApprovalPage() {
     try {
       setLoadingPayments(true);
       
-      // Just get all payments
       const paymentsRef = collection(db, 'payments');
-      const q = query(paymentsRef);
+      let q;
+      
+      // If user is "Rahul Gour", only show his payments
+      if (userName === "Rahul Gour") {
+        q = query(paymentsRef, where('salesPersonName', '==', userName));
+      } else {
+        // For other advocates, show all payments
+        q = query(paymentsRef);
+      }
       
       const querySnapshot = await getDocs(q);
       
@@ -383,8 +401,11 @@ export default function PaymentApprovalPage() {
               <th scope="col" className="px-6 py-3">Source</th>
               <th scope="col" className="px-6 py-3">Sales Person</th>
               <th scope="col" className="px-6 py-3">Date</th>
+              {userRole === 'advocate' && (
+                <th scope="col" className="px-6 py-3">Reason of Payment</th>
+              )}
               <th scope="col" className="px-6 py-3">Status</th>
-              <th scope="col" className="px-6 py-3">Actions</th>
+              {/* <th scope="col" className="px-6 py-3">Actions</th> */}
             </tr>
           </thead>
           <tbody>
@@ -397,6 +418,9 @@ export default function PaymentApprovalPage() {
                 <td className="px-6 py-4">
                   {new Date(payment.timestamp).toLocaleDateString('en-GB')}
                 </td>
+                {userRole === 'advocate' && (
+                  <td className="px-6 py-4">{payment.reasonOfPayment || '-'}</td>
+                )}
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded text-xs font-medium ${
                     payment.status === 'approved' 
@@ -406,7 +430,7 @@ export default function PaymentApprovalPage() {
                     {payment.status === 'approved' ? 'Approved' : 'Pending'}
                   </span>
                 </td>
-                <td className="px-6 py-4 space-x-2">
+                {/* <td className="px-6 py-4 space-x-2">
                   {userRole === 'advocate' && payment.status === 'pending' && (
                     <button
                       onClick={() => approvePayment(payment.id, payment.amount, payment.salesPersonName)}
@@ -436,7 +460,7 @@ export default function PaymentApprovalPage() {
                       </button>
                     </>
                   )}
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>
