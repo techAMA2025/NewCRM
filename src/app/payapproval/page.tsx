@@ -41,6 +41,7 @@ export default function PaymentApprovalPage() {
   const [userPayments, setUserPayments] = useState<Payment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
+  const [monthFilter, setMonthFilter] = useState<string>('');
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -48,6 +49,11 @@ export default function PaymentApprovalPage() {
   };
   
   useEffect(() => {
+    // Set default month filter to current month (YYYY-MM format)
+    const today = new Date();
+    const currentMonthFilter = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    setMonthFilter(currentMonthFilter);
+    
     fetchUserPayments();
     // Get user role from localStorage
     const role = localStorage.getItem('userRole') || 'sales';
@@ -64,10 +70,19 @@ export default function PaymentApprovalPage() {
       const q = query(paymentsRef, where('salesPersonName', '==', salesPersonName));
       const querySnapshot = await getDocs(q);
       
-      const payments = querySnapshot.docs.map(doc => ({
+      let payments = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }) as Payment);
+      
+      // Filter by selected month if not "all"
+      if (monthFilter !== 'all') {
+        const [year, month] = monthFilter.split('-').map(Number);
+        payments = payments.filter(payment => {
+          const paymentDate = new Date(payment.timestamp);
+          return paymentDate.getFullYear() === year && paymentDate.getMonth() === (month - 2);
+        });
+      }
       
       // Sort by timestamp descending (newest first)
       payments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -342,10 +357,19 @@ export default function PaymentApprovalPage() {
       const q = query(paymentsRef);
       const querySnapshot = await getDocs(q);
       
-      const payments = querySnapshot.docs.map(doc => ({
+      let payments = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }) as Payment);
+      
+      // Filter by selected month if not "all"
+      if (monthFilter !== 'all') {
+        const [year, month] = monthFilter.split('-').map(Number);
+        payments = payments.filter(payment => {
+          const paymentDate = new Date(payment.timestamp);
+          return paymentDate.getFullYear() === year && paymentDate.getMonth() === (month - 1);
+        });
+      }
       
       // Sort by timestamp descending (newest first)
       payments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -691,7 +715,39 @@ export default function PaymentApprovalPage() {
             </div>
             
             <div className="mt-12 bg-white dark:bg-gray-800/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-300">Recent Payment Requests</h2>
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-300">Recent Payment Requests</h2>
+                <div className="flex items-center">
+                  <label htmlFor="monthFilter" className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Filter by Month:
+                  </label>
+                  <select
+                    id="monthFilter"
+                    value={monthFilter}
+                    onChange={(e) => {
+                      setMonthFilter(e.target.value);
+                      setTimeout(() => {
+                        userRole === 'advocate' ? fetchAllPayments() : fetchUserPayments();
+                      }, 0);
+                    }}
+                    className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg focus:ring-green-500 focus:border-green-500 p-2 text-sm min-w-[180px]"
+                  >
+                    {/* Generate options for the last 12 months */}
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const date = new Date();
+                      date.setMonth(date.getMonth() - i);
+                      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                      return (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                    <option value="all">All Time</option>
+                  </select>
+                </div>
+              </div>
               
               {renderPayments()}
             </div>
