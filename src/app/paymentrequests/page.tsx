@@ -24,6 +24,7 @@ export default function PaymentRequestsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('current');
+  const [requestTypeFilter, setRequestTypeFilter] = useState('all');
   const router = useRouter();
 
   useEffect(() => {
@@ -445,6 +446,13 @@ export default function PaymentRequestsPage() {
       const matchesSource = sourceFilter === 'all' || request.source === sourceFilter;
       const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
       
+      // Add request type filter logic
+      const isAdvocateRequest = !!request.reasonOfPayment;
+      const matchesRequestType = 
+        requestTypeFilter === 'all' || 
+        (requestTypeFilter === 'advocate' && isAdvocateRequest) ||
+        (requestTypeFilter === 'salesperson' && !isAdvocateRequest);
+      
       let matchesDate = true;
       const requestDate = new Date(request.timestamp);
       const today = new Date();
@@ -478,9 +486,9 @@ export default function PaymentRequestsPage() {
         }
       }
 
-      return matchesSearch && matchesSource && matchesStatus && matchesDate && matchesMonth;
+      return matchesSearch && matchesSource && matchesStatus && matchesDate && matchesMonth && matchesRequestType;
     });
-  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter]);
+  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter, requestTypeFilter]);
 
   const pendingRequests = filteredRequests
     .filter(req => req.status === 'pending')
@@ -530,6 +538,16 @@ export default function PaymentRequestsPage() {
 
               <div className="flex flex-wrap gap-3">
                 <select
+                  value={requestTypeFilter}
+                  onChange={(e) => setRequestTypeFilter(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Request Types</option>
+                  <option value="salesperson">Salesperson Requests</option>
+                  <option value="advocate">Advocate Requests</option>
+                </select>
+                
+                <select
                   value={sourceFilter}
                   onChange={(e) => setSourceFilter(e.target.value)}
                   className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -575,6 +593,11 @@ export default function PaymentRequestsPage() {
               {searchTerm && (
                 <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-3 py-1 rounded-full text-sm">
                   Search: {searchTerm}
+                </span>
+              )}
+              {requestTypeFilter !== 'all' && (
+                <span className="bg-indigo-900/50 text-indigo-300 border border-indigo-500 px-3 py-1 rounded-full text-sm capitalize">
+                  Type: {requestTypeFilter}
                 </span>
               )}
               {sourceFilter !== 'all' && (
@@ -646,7 +669,9 @@ export default function PaymentRequestsPage() {
                         key={request.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700 hover:border-gray-600 transition-colors"
+                        className={`bg-gray-800 rounded-lg shadow-lg overflow-hidden border ${request.reasonOfPayment 
+                          ? 'border-purple-700 hover:border-purple-600' 
+                          : 'border-gray-700 hover:border-gray-600'} transition-colors`}
                       >
                         <div className="p-6">
                           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
@@ -659,6 +684,13 @@ export default function PaymentRequestsPage() {
                                     : 'bg-yellow-900/50 text-yellow-300 border border-yellow-500'
                                 }`}>
                                   {request.status === 'approved' ? 'Approved' : 'Pending'}
+                                </span>
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  request.reasonOfPayment 
+                                    ? 'bg-purple-900/50 text-purple-300 border border-purple-500'
+                                    : 'bg-blue-900/50 text-blue-300 border border-blue-500'
+                                }`}>
+                                  {request.reasonOfPayment ? 'Advocate' : 'Salesperson'}
                                 </span>
                                 <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-3 py-1 rounded-full text-sm font-medium capitalize">
                                   {request.source === 'credsettlee' ? 'Cred Settle' :
@@ -691,6 +723,13 @@ export default function PaymentRequestsPage() {
                                   </p>
                                 </div>
                               </div>
+                              
+                              {request.reasonOfPayment && (
+                                <div className="mt-3 p-3 bg-purple-900/20 border border-purple-800 rounded-lg">
+                                  <p className="text-purple-300 font-medium mb-1">Reason for Payment:</p>
+                                  <p className="text-white">{request.reasonOfPayment}</p>
+                                </div>
+                              )}
                             </div>
 
                             <div className="text-right">
@@ -916,7 +955,9 @@ export default function PaymentRequestsPage() {
                         key={request.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700 hover:border-gray-600 transition-colors"
+                        className={`bg-gray-800 rounded-lg shadow-lg overflow-hidden border ${request.reasonOfPayment 
+                          ? 'border-purple-700 hover:border-purple-600' 
+                          : 'border-gray-700 hover:border-gray-600'} transition-colors`}
                       >
                         <div className="p-6">
                           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
@@ -929,6 +970,13 @@ export default function PaymentRequestsPage() {
                                     : 'bg-yellow-900/50 text-yellow-300 border border-yellow-500'
                                 }`}>
                                   {request.status === 'approved' ? 'Approved' : 'Pending'}
+                                </span>
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  request.reasonOfPayment 
+                                    ? 'bg-purple-900/50 text-purple-300 border border-purple-500'
+                                    : 'bg-blue-900/50 text-blue-300 border border-blue-500'
+                                }`}>
+                                  {request.reasonOfPayment ? 'Advocate' : 'Salesperson'}
                                 </span>
                                 <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-3 py-1 rounded-full text-sm font-medium capitalize">
                                   {request.source === 'credsettlee' ? 'Cred Settle' :
@@ -961,6 +1009,13 @@ export default function PaymentRequestsPage() {
                                   </p>
                                 </div>
                               </div>
+                              
+                              {request.reasonOfPayment && (
+                                <div className="mt-3 p-3 bg-purple-900/20 border border-purple-800 rounded-lg">
+                                  <p className="text-purple-300 font-medium mb-1">Reason for Payment:</p>
+                                  <p className="text-white">{request.reasonOfPayment}</p>
+                                </div>
+                              )}
                             </div>
 
                             <div className="text-right">
