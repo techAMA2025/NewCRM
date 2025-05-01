@@ -72,7 +72,6 @@ type Client = {
   tenure: number;
   createdAt?: Timestamp;
   allocationType?: 'primary' | 'secondary';
-  expectedPaymentDate?: Timestamp;
 }
 
 type MonthlyPayment = {
@@ -578,30 +577,6 @@ export default function PaymentReminderPage() {
     }
   }, [fetchClients, selectedClient]);
 
-  // Add a new function to handle expected payment date changes
-  const handleExpectedPaymentDateChange = async (clientId: string, date: Date) => {
-    try {
-      const clientRef = doc(db, 'clients_payments', clientId);
-      await updateDoc(clientRef, {
-        expectedPaymentDate: Timestamp.fromDate(date)
-      });
-      
-      // Update the local state to reflect the change
-      setClients(prevClients => 
-        prevClients.map(client => 
-          client.clientId === clientId 
-            ? { ...client, expectedPaymentDate: Timestamp.fromDate(date) } 
-            : client
-        )
-      );
-      
-      toast.success('Expected payment date updated successfully');
-    } catch (error) {
-      console.error('Error updating expected payment date:', error);
-      toast.error('Failed to update expected payment date');
-    }
-  };
-
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
       <AdvocateSidebar />
@@ -674,7 +649,6 @@ export default function PaymentReminderPage() {
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Monthly Fee</th>
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Paid / Total</th>
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Status</th>
-                                <th className="text-left p-4 font-medium text-gray-300 border-b border-gray-700">Expected Payment Date</th>
                                 <th className="text-center p-4 font-medium text-gray-300 border-b border-gray-700">Actions</th>
                               </tr>
                             </thead>
@@ -707,55 +681,6 @@ export default function PaymentReminderPage() {
                                       {client.paymentsCompleted === client.tenure ? 'Completed' : 
                                        client.paymentsCompleted > 0 ? 'Partial' : 'Pending'}
                                     </span>
-                                  </td>
-                                  <td className="p-4 border-b border-gray-800 text-center">
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button 
-                                          variant="outline" 
-                                          size="sm"
-                                          className="bg-gray-800 hover:bg-purple-900/20 text-purple-400 border-purple-900"
-                                        >
-                                          {client.expectedPaymentDate 
-                                            ? formatDate(client.expectedPaymentDate)
-                                            : "Set Date"}
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent className="bg-gray-900 border-gray-700">
-                                        <DialogHeader>
-                                          <DialogTitle className="text-gray-200">Set Expected Payment Date</DialogTitle>
-                                          <DialogDescription className="text-gray-400">
-                                            Choose the expected date of payment for {client.clientName}
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="py-4">
-                                          <Input
-                                            type="date"
-                                            className="bg-gray-800 border-gray-700 text-gray-200"
-                                            defaultValue={client.expectedPaymentDate 
-                                              ? new Date(client.expectedPaymentDate.seconds * 1000).toISOString().split('T')[0]
-                                              : new Date().toISOString().split('T')[0]
-                                            }
-                                            onChange={(e) => {
-                                              if (e.target.value) {
-                                                handleExpectedPaymentDateChange(client.clientId, new Date(e.target.value));
-                                              }
-                                            }}
-                                          />
-                                        </div>
-                                        <DialogFooter>
-                                          <Button 
-                                            type="button" 
-                                            variant="outline"
-                                            onClick={() => document.querySelector('[data-state="open"]')?.dispatchEvent(
-                                              new KeyboardEvent('keydown', { key: 'Escape' })
-                                            )}
-                                          >
-                                            Close
-                                          </Button>
-                                        </DialogFooter>
-                                      </DialogContent>
-                                    </Dialog>
                                   </td>
                                   <td className="p-4 border-b border-gray-800 text-center">
                                     <div className="flex gap-2 justify-center">
@@ -894,6 +819,14 @@ export default function PaymentReminderPage() {
                                     <div>
                                       <div className="flex items-center gap-2">
                                         <h4 className="font-medium text-gray-200">{client.clientName}</h4>
+                                        
+                                        {/* Current month payment status indicator */}
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium
+                                          ${client.pendingAmount === 0 ? 'bg-green-900/30 text-green-300 border border-green-700/50' : 
+                                            'bg-red-900/30 text-red-300 border border-red-700/50'}`}>
+                                          {client.pendingAmount === 0 ? 'Current Month Paid' : 'Current Month Unpaid'}
+                                        </span>
+                                        
                                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium
                                           ${client.allocationType === 'primary' 
                                             ? 'bg-indigo-900/30 text-indigo-300 border border-indigo-700/50' 
@@ -934,7 +867,7 @@ export default function PaymentReminderPage() {
 
       <ClientDetailsModal
         open={clientDetailsOpen}
-        onOpenChange={setClientDetailsOpen}
+        onClose={setClientDetailsOpen}
         client={selectedClient}
         monthlyPayments={monthlyPayments}
         paymentHistory={paymentHistory as any}

@@ -82,7 +82,7 @@ type PaymentRequest = {
 
 interface ClientDetailsModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: (value: boolean) => void;
   client: Client | null;
   monthlyPayments: MonthlyPayment[];
   paymentHistory: PaymentHistory[];
@@ -104,7 +104,7 @@ interface ClientDetailsModalProps {
 
 export function ClientDetailsModal({
   open,
-  onOpenChange,
+  onClose,
   client,
   monthlyPayments,
   paymentHistory,
@@ -119,7 +119,7 @@ export function ClientDetailsModal({
 }: ClientDetailsModalProps) {
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-[90%] w-[1200px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">{client?.clientName}</DialogTitle>
