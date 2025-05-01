@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { db } from '@/firebase/firebase';
-import { collection, getDocs, doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, Timestamp, getDoc, query, limit, where, orderBy } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { 
   Box, 
@@ -200,6 +200,50 @@ export default function MonthlyPaymentRequests() {
   const [userName, setUserName] = useState<string | null>(null);
   const router = useRouter();
 
+  // Optimize fetchPaymentRequests function
+  const fetchPaymentRequests = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Limit the number of clients fetched and order them
+      const clientsQuery = query(collection(db, 'clients_payments'), limit(50));
+      const clientsSnapshot = await getDocs(clientsQuery);
+      
+      // Create an array of promises to fetch payment history
+      const requestPromises = clientsSnapshot.docs.map(async (clientDoc) => {
+        const clientId = clientDoc.id;
+        const clientName = clientDoc.data().clientName || 'Unknown Client';
+        
+        // Limit and sort the payment history
+        const historyQuery = query(
+          collection(db, `clients_payments/${clientId}/payment_history`),
+          orderBy('requestDate', 'desc'),
+          limit(10)
+        );
+        
+        const historySnapshot = await getDocs(historyQuery);
+        
+        return historySnapshot.docs.map(doc => ({
+          id: doc.id,
+          clientId,
+          clientName,
+          ...doc.data()
+        })) as PaymentRequest[];
+      });
+      
+      // Execute all requests in parallel instead of sequentially
+      const results = await Promise.all(requestPromises);
+      const allRequests = results.flat();
+      
+      setPaymentRequests(allRequests);
+    } catch (err) {
+      console.error('Error fetching payment requests:', err);
+      setError('Failed to load payment requests');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Check if user is overlord
     const userRole = localStorage.getItem('userRole');
@@ -209,45 +253,22 @@ export default function MonthlyPaymentRequests() {
     if (userRole !== 'overlord') {
       setError('Only overlords can access this page');
       setIsOverlord(false);
-      // Optionally redirect to another page
-      // router.push('/dashboard');
     } else {
       setIsOverlord(true);
       fetchPaymentRequests();
     }
-  }, []);
+  }, [fetchPaymentRequests]);
 
-  const fetchPaymentRequests = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Get all clients first
-      const clientsSnapshot = await getDocs(collection(db, 'clients_payments'));
-      
-      let allRequests: PaymentRequest[] = [];
-      
-      // Fetch payment history for each client
-      for (const clientDoc of clientsSnapshot.docs) {
-        const clientId = clientDoc.id;
-        const historySnapshot = await getDocs(collection(db, `clients_payments/${clientId}/payment_history`));
-        
-        const clientRequests = historySnapshot.docs.map(doc => ({
-          id: doc.id,
-          clientId,
-          ...doc.data()
-        })) as PaymentRequest[];
-        
-        allRequests = [...allRequests, ...clientRequests];
-      }
-      
-      setPaymentRequests(allRequests);
-      setIsLoading(false);
-    } catch (err) {
-      console.error('Error fetching payment requests:', err);
-      setError('Failed to load payment requests');
-      setIsLoading(false);
-    }
-  };
+  // Memoize the filtered request arrays to prevent unnecessary recalculations
+  const pendingRequests = useMemo(() => 
+    paymentRequests.filter(req => req.payment_status !== 'approved'),
+    [paymentRequests]
+  );
+  
+  const approvedRequests = useMemo(() => 
+    paymentRequests.filter(req => req.payment_status === 'approved'),
+    [paymentRequests]
+  );
 
   const approvePaymentRequest = async (id: string, clientId: string) => {
     try {
@@ -437,13 +458,13 @@ export default function MonthlyPaymentRequests() {
                 border: '1px solid rgba(255,255,255,0.08)',
                 backdropFilter: 'blur(10px)',
               }}>
-                <Badge color="warning" badgeContent=" " variant="dot" sx={{ mr: 1, '& .MuiBadge-badge': { animation: 'pulse 2s infinite' } }}>
+                <Badge color="warning" badgeContent=" " variant="dot" sx={{ mr: 1 }}>
                   <Notifications sx={{ color: 'warning.main' }} />
                 </Badge>
                 <Box>
                   <Typography color="grey.400" variant="caption" sx={{ display: 'block' }}>Pending</Typography>
                   <Typography color="white" fontWeight="bold">
-                    {paymentRequests.filter(req => req.payment_status !== 'approved').length}
+                    {pendingRequests.length}
                   </Typography>
                 </Box>
               </Box>
@@ -453,29 +474,18 @@ export default function MonthlyPaymentRequests() {
           {/* Pending Requests Section */}
           <Box sx={{ mb: 5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Chip 
-                label="Pending" 
-                color="warning" 
-                sx={{ mr: 2 }} 
-                icon={<Badge sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  bgcolor: 'warning.main',
-                  animation: 'pulse 2s infinite',
-                  '@keyframes pulse': {
-                    '0%': { boxShadow: '0 0 0 0 rgba(255, 138, 72, 0.7)' },
-                    '70%': { boxShadow: '0 0 0 6px rgba(255, 138, 72, 0)' },
-                    '100%': { boxShadow: '0 0 0 0 rgba(255, 138, 72, 0)' },
-                  },
-                }} />}
-              />
+              <Chip label="Pending" color="warning" sx={{ mr: 2 }} icon={<Badge sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: 'warning.main',
+              }} />} />
               <Typography variant="h6" color="white">
-                Pending Requests ({paymentRequests.filter(req => req.payment_status !== 'approved').length})
+                Pending Requests ({pendingRequests.length})
               </Typography>
             </Box>
             
-            {paymentRequests.filter(req => req.payment_status !== 'approved').length === 0 ? (
+            {pendingRequests.length === 0 ? (
               <Card sx={{ p: 4, bgcolor: 'background.paper', textAlign: 'center' }}>
                 <Box sx={{ 
                   p: 2, 
@@ -490,22 +500,19 @@ export default function MonthlyPaymentRequests() {
                 </Box>
               </Card>
             ) : (
-              // Render pending requests here
               <Box sx={{ 
                 display: 'grid', 
                 gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
                 gap: 2.5
               }}>
-                {paymentRequests
-                  .filter(req => req.payment_status !== 'approved')
-                  .map(request => (
-                    <RequestCard 
-                      key={request.id} 
-                      request={request} 
-                      onApprove={() => approvePaymentRequest(request.id, request.clientId)}
-                      formatDate={formatDate}
-                    />
-                  ))}
+                {pendingRequests.map(request => (
+                  <MemoizedRequestCard 
+                    key={request.id} 
+                    request={request} 
+                    onApprove={() => approvePaymentRequest(request.id, request.clientId)}
+                    formatDate={formatDate}
+                  />
+                ))}
               </Box>
             )}
           </Box>
@@ -513,14 +520,9 @@ export default function MonthlyPaymentRequests() {
           {/* Approved Requests Section */}
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Chip 
-                label="Approved" 
-                color="success" 
-                sx={{ mr: 2 }} 
-                icon={<CheckCircle sx={{ fontSize: '0.8rem' }} />}
-              />
+              <Chip label="Approved" color="success" sx={{ mr: 2 }} icon={<CheckCircle sx={{ fontSize: '0.8rem' }} />} />
               <Typography variant="h6" color="white">
-                Approved Requests ({paymentRequests.filter(req => req.payment_status === 'approved').length})
+                Approved Requests ({approvedRequests.length})
               </Typography>
             </Box>
             
@@ -529,16 +531,14 @@ export default function MonthlyPaymentRequests() {
               gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
               gap: 2.5
             }}>
-              {paymentRequests
-                .filter(req => req.payment_status === 'approved')
-                .map(request => (
-                  <RequestCard 
-                    key={request.id} 
-                    request={request} 
-                    onApprove={() => {}}  // No action needed for approved requests
-                    formatDate={formatDate}
-                  />
-                ))}
+              {approvedRequests.map(request => (
+                <MemoizedRequestCard 
+                  key={request.id} 
+                  request={request} 
+                  onApprove={() => {}}
+                  formatDate={formatDate}
+                />
+              ))}
             </Box>
           </Box>
         </Box>
@@ -547,14 +547,15 @@ export default function MonthlyPaymentRequests() {
   );
 }
 
-// Update the RequestCard component
+// Define interface first
 interface RequestCardProps {
   request: PaymentRequest;
   onApprove: () => void;
-  formatDate: (timestamp: Timestamp) => string;
+  formatDate: (timestamp: any) => string;
 }
 
-const RequestCard: React.FC<RequestCardProps> = ({ request, onApprove, formatDate }) => {
+// Define the RequestCard component
+const RequestCard = ({ request, onApprove, formatDate }: RequestCardProps) => {
   return (
     <Card sx={{ p: 0, overflow: 'hidden', height: '100%' }}>
       <Box sx={{ 
@@ -715,3 +716,6 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onApprove, formatDat
     </Card>
   );
 };
+
+// Memoize after defining the component
+const MemoizedRequestCard = memo(RequestCard);
