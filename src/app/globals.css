@@ -119,4 +119,24 @@
   body {
     @apply bg-background text-foreground;
   }
+  .react-day-picker-day button {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Fix the calendar container to ensure even spacing */
+  .rdp-month {
+    width: 100% !important;
+  }
+  
+  .rdp-cell {
+    padding: 0 !important;
+    width: 40px !important;
+    height: 40px !important;
+  }
 }

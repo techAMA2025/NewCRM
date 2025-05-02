@@ -47,13 +47,20 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Search, AlertCircle } from 'lucide-react';
+import { Loader2, Search, AlertCircle, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
 import { ClientDetailsModal } from '@/app/paymentreminder/components/modals/ClientDetailsModal';
 import { PaymentRecordModal } from './components/modals/PaymentRecordModal';
 import { ClientEditModal } from '@/app/paymentreminder/components/modals/ClientEditModal';
 import FilterBar from './components/FilterBar';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 type Client = {
   clientId: string;
@@ -162,6 +169,8 @@ export default function PaymentReminderPage() {
   // Update the initial allocFilter state to 'primary' instead of null
   const [allocFilter, setAllocFilter] = useState<string | null>('primary');
 
+  const [expectedPaymentDates, setExpectedPaymentDates] = useState<Record<string, Date | undefined>>({});
+
   // Move fetchClients outside useEffect and make it memoized with useCallback
   const fetchClients = useCallback(async () => {
     try {
@@ -201,6 +210,7 @@ export default function PaymentReminderPage() {
       
       // Now fetch the corresponding client payment details
       const clientsList: Client[] = [];
+      const dates: Record<string, Date | undefined> = {};
       
       // Need to fetch in batches if there are many allocated clients
       // Firestore "in" queries are limited to 10 values
@@ -218,15 +228,22 @@ export default function PaymentReminderPage() {
           const clientAllocation = allocatedClients.find(client => client.id === doc.id);
           const allocationType = clientAllocation?.alloc_adv === currentAdvocate ? 'primary' : 'secondary';
           
+          const data = doc.data();
+          // Get expected payment date if it exists
+          if (data.expectedPaymentDate) {
+            dates[doc.id] = new Date(data.expectedPaymentDate.seconds * 1000);
+          }
+          
           clientsList.push({ 
             clientId: doc.id, 
-            ...doc.data(),
+            ...data,
             allocationType // Add allocation type to client data
           } as Client);
         });
       }
       
       setClients(clientsList);
+      setExpectedPaymentDates(dates);
     } catch (error) {
       console.error('Error fetching clients:', error);
       toast.error('Failed to load clients');
@@ -577,6 +594,36 @@ export default function PaymentReminderPage() {
     }
   }, [fetchClients, selectedClient]);
 
+  // Handle updating expected payment date
+  const handleUpdateExpectedPaymentDate = async (clientId: string, date: Date | undefined) => {
+    try {
+      // Update state first for immediate feedback
+      setExpectedPaymentDates(prev => ({
+        ...prev,
+        [clientId]: date
+      }));
+      
+      // Update in Firestore
+      const clientRef = doc(db, 'clients_payments', clientId);
+      
+      if (date) {
+        await updateDoc(clientRef, {
+          expectedPaymentDate: Timestamp.fromDate(date)
+        });
+        toast.success("Expected payment date updated");
+      } else {
+        // If date is undefined, remove the field
+        await updateDoc(clientRef, {
+          expectedPaymentDate: null
+        });
+        toast.success("Expected payment date removed");
+      }
+    } catch (error) {
+      console.error('Error updating payment date:', error);
+      toast.error('Failed to update expected payment date');
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
       <AdvocateSidebar />
@@ -649,6 +696,7 @@ export default function PaymentReminderPage() {
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Monthly Fee</th>
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Paid / Total</th>
                                 <th className="text-right p-4 font-medium text-gray-300 border-b border-gray-700">Status</th>
+                                <th className="text-center p-4 font-medium text-gray-300 border-b border-gray-700">Expected Payment Date</th>
                                 <th className="text-center p-4 font-medium text-gray-300 border-b border-gray-700">Actions</th>
                               </tr>
                             </thead>
@@ -681,6 +729,45 @@ export default function PaymentReminderPage() {
                                       {client.paymentsCompleted === client.tenure ? 'Completed' : 
                                        client.paymentsCompleted > 0 ? 'Partial' : 'Pending'}
                                     </span>
+                                  </td>
+                                  <td className="p-4 border-b border-gray-800 text-center">
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className={`w-[180px] justify-between text-left font-normal bg-gray-800 hover:bg-blue-900/20 border-gray-700 ${
+                                            !expectedPaymentDates[client.clientId] ? 'text-gray-500' : 'text-gray-200'
+                                          }`}
+                                        >
+                                          {expectedPaymentDates[client.clientId] 
+                                            ? format(expectedPaymentDates[client.clientId]!, "PPP")
+                                            : "Set payment date"}
+                                          <CalendarIcon className="ml-2 h-4 w-4 opacity-50" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0 bg-gray-900 border-gray-700" align="center">
+                                        <Calendar
+                                          mode="single"
+                                          selected={expectedPaymentDates[client.clientId] || undefined}
+                                          onSelect={(date) => handleUpdateExpectedPaymentDate(client.clientId, date)}
+                                          initialFocus
+                                          className="bg-gray-900 text-gray-200 react-day-picker-day"
+                                        />
+                                        {expectedPaymentDates[client.clientId] && (
+                                          <div className="p-3 border-t border-gray-700">
+                                            <Button 
+                                              variant="destructive" 
+                                              size="sm" 
+                                              className="w-full bg-red-900/50 hover:bg-red-900 text-red-200"
+                                              onClick={() => handleUpdateExpectedPaymentDate(client.clientId, undefined)}
+                                            >
+                                              Clear Date
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </PopoverContent>
+                                    </Popover>
                                   </td>
                                   <td className="p-4 border-b border-gray-800 text-center">
                                     <div className="flex gap-2 justify-center">
