@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import { ref, uploadString, getDownloadURL, getStorage, getBlob } from 'firebase/storage';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db, storage } from '@/firebase/firebase';
 import toast from 'react-hot-toast';
 import mammoth from 'mammoth';
@@ -33,11 +33,14 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   // Function to extract the storage path from a Firebase Storage URL
   const extractPathFromUrl = (url: string): string | null => {
     try {
+      console.log("Extracting path from URL:", url);
+      
       // Parse the URL
       const parsedUrl = new URL(url);
       
       // Check if it's a Firebase Storage URL
       if (!parsedUrl.hostname.includes('firebasestorage.googleapis.com')) {
+        console.warn("Not a Firebase Storage URL");
         return null;
       }
       
@@ -46,9 +49,12 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       
       // Make sure to decode URI components (e.g., %2F to /)
       if (path) {
-        return decodeURIComponent(path.split('?')[0]);
+        const decodedPath = decodeURIComponent(path.split('?')[0]);
+        console.log("Extracted path:", decodedPath);
+        return decodedPath;
       }
       
+      console.warn("Could not extract path from URL");
       return null;
     } catch (error) {
       console.error("Error parsing URL:", error);
@@ -57,11 +63,42 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
   };
 
   useEffect(() => {
+    async function validateClient() {
+      try {
+        console.log("Validating client ID:", clientId);
+        if (!clientId) {
+          throw new Error("Client ID is missing");
+        }
+        
+        // Check if client exists
+        const clientDoc = await getDoc(doc(db, "clients", clientId));
+        if (!clientDoc.exists()) {
+          throw new Error("Client document does not exist");
+        }
+        
+        console.log("Client validation successful");
+        return true;
+      } catch (error) {
+        console.error("Client validation failed:", error);
+        toast.error("Client validation failed: " + (error as Error).message);
+        return false;
+      }
+    }
+    
     async function loadDocument() {
       try {
         setIsLoading(true);
         
         console.log("Document URL received:", documentUrl);
+        console.log("Document name:", documentName);
+        console.log("Document index:", documentIndex);
+        console.log("Client ID:", clientId);
+        
+        // Validate client first
+        const isValid = await validateClient();
+        if (!isValid) {
+          throw new Error("Invalid client data");
+        }
         
         // Extract the storage path from the URL
         const storagePath = extractPathFromUrl(documentUrl);
@@ -72,73 +109,96 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
         
         console.log("Extracted storage path:", storagePath);
         
-        // Use the Firebase Storage SDK to get the blob with custom settings to avoid retry issues
-        const storageRef = ref(storage, storagePath);
+        // Check if it's a DOCX or another format
+        const isDocx = storagePath.toLowerCase().endsWith('.docx');
+        const isPdf = storagePath.toLowerCase().endsWith('.pdf');
         
-        console.log("Created storage reference:", storageRef.fullPath);
-        
-        // First check if an HTML version exists
-        try {
-          const htmlPath = storagePath.replace('.docx', '.html');
-          const htmlRef = ref(storage, htmlPath);
-          const htmlBlob = await getBlob(htmlRef);
-          
-          // If HTML version exists, use it directly
-          const htmlText = await htmlBlob.text();
-          setContent(htmlText);
-          console.log("HTML version loaded directly");
+        if (isPdf) {
+          setContent('<p>PDF documents cannot be edited directly in this editor. Please convert to DOCX first.</p>');
+          setIsLoading(false);
           return;
-        } catch (htmlError) {
-          console.log("No HTML version found, will convert DOCX:", htmlError);
         }
         
-        // If we reach here, try getting the DOCX and converting it
-        let attempts = 0;
-        const maxAttempts = 3;
-        let lastError;
+        // First check if an HTML version exists
+        const htmlPath = isDocx ? storagePath.replace('.docx', '.html') : storagePath + '.html';
+        console.log("Looking for HTML version at:", htmlPath);
         
-        while (attempts < maxAttempts) {
+        try {
+          // Try to get the HTML version first through our proxy
+          const htmlProxyUrl = `/api/document-proxy?path=${encodeURIComponent(htmlPath)}`;
+          console.log("Fetching HTML via proxy:", htmlProxyUrl);
+          
+          const htmlResponse = await fetch(htmlProxyUrl);
+          
+          if (htmlResponse.ok) {
+            // If HTML version exists, use it directly
+            const htmlText = await htmlResponse.text();
+            console.log("HTML version found and loaded, length:", htmlText.length);
+            setContent(htmlText);
+          } else {
+            throw new Error("HTML version not found");
+          }
+        } catch (htmlError) {
+          console.log("No HTML version found, will try to convert DOCX:", htmlError);
+          
+          if (!isDocx) {
+            throw new Error(`Unsupported document format. Expected .docx but got ${storagePath.split('.').pop()}`);
+          }
+          
+          // If we reach here, try getting the DOCX via our proxy and converting it
           try {
-            const blob = await getBlob(storageRef);
+            const docxProxyUrl = `/api/document-proxy?path=${encodeURIComponent(storagePath)}`;
+            console.log("Fetching DOCX via proxy:", docxProxyUrl);
+            
+            const docxResponse = await fetch(docxProxyUrl);
+            
+            if (!docxResponse.ok) {
+              throw new Error(`Failed to fetch DOCX: ${docxResponse.statusText}`);
+            }
+            
+            const blob = await docxResponse.blob();
             console.log("Document blob fetched, size:", blob.size);
             
             // Convert DOCX to HTML
+            console.log("Converting DOCX to HTML...");
             const result = await mammoth.convertToHtml({ arrayBuffer: await blob.arrayBuffer() });
+            console.log("Document converted to HTML, length:", result.value.length);
             setContent(result.value);
-            console.log("Document converted to HTML");
-            return;
-          } catch (error) {
-            lastError = error;
-            console.warn(`Attempt ${attempts + 1} failed:`, error);
-            attempts++;
             
-            // Short delay between retries
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Save the HTML version for future use
+            const storageRef = ref(storage, htmlPath);
+            await uploadString(storageRef, result.value, 'raw', { contentType: 'text/html' });
+            console.log("Saved HTML version for future use");
+          } catch (docxError) {
+            console.error("Failed to load or convert DOCX:", docxError);
+            throw new Error("Could not load or convert the document: " + (docxError as Error).message);
           }
         }
-        
-        // If we reached here, all attempts failed
-        throw lastError || new Error("Failed to load document after multiple attempts");
       } catch (error) {
         console.error("Error loading document:", error);
         
         // Set fallback content if we can't load the document
-        setContent('<p>Unable to load document content for editing. Please try again later.</p>');
-        toast.error("Failed to load document for editing");
+        setContent('<p>Unable to load document content for editing. Error: ' + (error as Error).message + '</p>');
+        toast.error("Failed to load document: " + (error as Error).message);
       } finally {
         setIsLoading(false);
       }
     }
     
     loadDocument();
-  }, [documentUrl]);
+  }, [documentUrl, documentName, documentIndex, clientId]);
 
   const handleSave = async () => {
-    if (!editorRef.current) return;
+    if (!editorRef.current) {
+      console.error("Editor reference is not available");
+      toast.error("Editor not initialized properly");
+      return;
+    }
     
     try {
       setIsSaving(true);
       const htmlContent = editorRef.current.getContent();
+      console.log("Saving HTML content, length:", htmlContent.length);
       
       // Extract the storage path for the original document
       const originalPath = extractPathFromUrl(documentUrl);
@@ -148,13 +208,17 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       }
       
       // Create a new path for the HTML version
-      const htmlPath = originalPath.replace('.docx', '.html');
+      const htmlPath = originalPath.endsWith('.docx') 
+        ? originalPath.replace('.docx', '.html') 
+        : originalPath + '.html';
+      
       console.log("HTML storage path:", htmlPath);
       
       // Create a reference to the new path
       const storageRef = ref(storage, htmlPath);
       
       // Upload the HTML content
+      console.log("Uploading HTML content to storage...");
       await uploadString(storageRef, htmlContent, 'raw', { contentType: 'text/html' });
       console.log("HTML content uploaded to storage");
       
@@ -163,19 +227,53 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       console.log("HTML URL:", htmlUrl);
       
       // Update the document reference in Firestore
+      console.log("Updating Firestore document...");
+      console.log("Client ID:", clientId);
+      console.log("Document index:", documentIndex);
+      
       const clientRef = doc(db, "clients", clientId);
-      await updateDoc(clientRef, {
+      
+      // First get the current client data to ensure we're updating correctly
+      const clientSnapshot = await getDoc(clientRef);
+      if (!clientSnapshot.exists()) {
+        throw new Error("Client document not found");
+      }
+      
+      const clientData = clientSnapshot.data();
+      console.log("Client data retrieved, has documents:", !!clientData.documents);
+      
+      // Check if the documents array exists
+      if (!clientData.documents || !Array.isArray(clientData.documents)) {
+        console.error("Client doesn't have a documents array or it's not valid");
+        throw new Error("Client document structure is invalid");
+      }
+      
+      // Check if the document index is valid
+      if (documentIndex < 0 || documentIndex >= clientData.documents.length) {
+        console.error("Invalid document index:", documentIndex, "Documents length:", clientData.documents.length);
+        throw new Error("Invalid document index");
+      }
+      
+      // Create the update object
+      // Keep the original URL in the documents array but add an htmlUrl field
+      const updateObj = {
         [`documents.${documentIndex}.htmlUrl`]: htmlUrl,
         [`documents.${documentIndex}.lastEdited`]: new Date().toISOString(),
-        [`documents.${documentIndex}.contentType`]: 'text/html' // Note the content change
-      });
+        // Don't change the contentType to keep it consistent with the original document
+        [`documents.${documentIndex}.hasEditedVersion`]: true
+      };
       
-      console.log("Firestore document updated");
+      console.log("Update object:", updateObj);
+      
+      // Perform the update
+      await updateDoc(clientRef, updateObj);
+      
+      console.log("Firestore document updated successfully");
       toast.success("Document saved successfully");
       onDocumentUpdated();
     } catch (error) {
       console.error("Error saving document:", error);
-      toast.error("Failed to save document");
+      toast.error("Failed to save document: " + (error as Error).message);
     } finally {
       setIsSaving(false);
     }
@@ -220,8 +318,11 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
             </div>
           ) : (
             <Editor
-              apiKey="your-actual-api-key"
-              onInit={(evt, editor) => editorRef.current = editor}
+              apiKey="fzici277yjsb1ctjun3npypc2mxzop65g5qrfz89xkcvhxaq"
+              onInit={(evt, editor) => {
+                console.log("TinyMCE Editor initialized");
+                editorRef.current = editor;
+              }}
               initialValue={content}
               disabled={false}
               init={{

@@ -78,6 +78,12 @@ interface Task {
   createdAt: any;
 }
 
+// Add this function before the component definition
+function getCurrentMonth(): string {
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return months[new Date().getMonth()];
+}
+
 export default function SalesDashboard() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -92,6 +98,9 @@ export default function SalesDashboard() {
   const [convertedLeads, setConvertedLeads] = useState(0);
   const [leadsChartData, setLeadsChartData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<{ name: string; value: number }[]>([]);
+
+  // Add state for tracking available months for filtering
+  const [availableMonths, setAvailableMonths] = useState<{month: string, year: number}[]>([]);
 
   // Create a mapping of status to color based on your application's color scheme
   const statusColors = useMemo(() => ({
@@ -118,28 +127,102 @@ export default function SalesDashboard() {
       setUserName(storedUserName);
       setUserEmail(storedUserEmail);
       
-      // Fetch target data for this specific user based on userName
-      fetchTargetDataByUserName(storedUserName);
-      
-      // Fetch lead data for this specific user
-      fetchLeadData(storedUserName);
-      
-      // Fetch tasks assigned to this user
-      fetchTaskData(storedUserName);
+      // Fetch all data for this user
+      fetchData(storedUserName);
     } else {
       setIsLoading(false);
     }
   }, []);
 
-  // Helper function to get current month in format "Jan", "Feb", etc.
-  function getCurrentMonth() {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return months[new Date().getMonth()];
-  }
+  // New effect to refetch data when month/year changes
+  useEffect(() => {
+    if (userName) {
+      fetchTargetDataByUserName(userName);
+      fetchLeadData(userName);
+    }
+  }, [currentMonth, currentYear, userName]);
+
+  // New function to fetch all data types
+  const fetchData = async (userName: string) => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch target data
+      await fetchTargetDataByUserName(userName);
+      
+      // Fetch lead data
+      await fetchLeadData(userName);
+      
+      // Fetch tasks assigned to this user
+      await fetchTaskData(userName);
+      
+      // Get available months for filtering
+      await fetchAvailableMonths(userName);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // New function to get available months with lead data
+  const fetchAvailableMonths = async (userName: string) => {
+    try {
+      // Query all leads assigned to the current user
+      const leadsQuery = query(
+        collection(db, "crm_leads"),
+        where("assignedTo", "==", userName)
+      );
+      
+      const querySnapshot = await getDocs(leadsQuery);
+      
+      // Track unique month/year combinations
+      const monthsSet = new Set<string>();
+      const monthsArray: {month: string, year: number}[] = [];
+      
+      querySnapshot.forEach(doc => {
+        const leadData = doc.data();
+        
+        // Get month from timestamp
+        let date;
+        if (leadData.timestamp) {
+          date = leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp);
+        } else {
+          date = new Date(); // Fallback
+        }
+        
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+        const key = `${month}_${year}`;
+        
+        if (!monthsSet.has(key)) {
+          monthsSet.add(key);
+          monthsArray.push({ month, year });
+        }
+      });
+      
+      // Sort by year and month
+      const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      monthsArray.sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
+      });
+      
+      // Add current month if not in list
+      const currentMonthKey = `${currentMonth}_${currentYear}`;
+      if (!monthsSet.has(currentMonthKey)) {
+        monthsArray.unshift({ month: currentMonth, year: currentYear });
+      }
+      
+      setAvailableMonths(monthsArray);
+    } catch (error) {
+      console.error("Error fetching available months:", error);
+    }
+  };
 
   const fetchTargetDataByUserName = async (userName: string) => {
     try {
-      console.log(`Fetching targets for user: ${userName}`);
+      console.log(`======= DEBUGGING: Fetching targets for ${userName} for ${currentMonth} ${currentYear} =======`);
       
       // Create the monthly document ID
       const monthDocId = `${currentMonth}_${currentYear}`;
@@ -247,7 +330,7 @@ export default function SalesDashboard() {
 
   const fetchLeadData = async (userName: string) => {
     try {
-      console.log(`Fetching leads for user: ${userName}`);
+      console.log(`======= DEBUGGING: Fetching leads for ${userName} for ${currentMonth} ${currentYear} =======`);
       
       // Query leads assigned to the current user
       const leadsQuery = query(
@@ -256,63 +339,97 @@ export default function SalesDashboard() {
       );
       
       const querySnapshot = await getDocs(leadsQuery);
-      console.log("Leads query snapshot size:", querySnapshot.size);
+      console.log(`Found ${querySnapshot.size} total leads for ${userName}`);
       
       if (!querySnapshot.empty) {
-        // Count total leads and converted leads
-        let totalCount = querySnapshot.size;
+        // Count total leads and converted leads for the selected month
+        let totalCount = 0;
         let convertedCount = 0;
-        
-        // For monthly breakdown
-        const monthlyData: { [key: string]: { total: number, converted: number } } = {};
         
         // For status breakdown
         const statusCounts: { [key: string]: number } = {};
         
-        querySnapshot.forEach(doc => {
+        // Monthly data for chart
+        const monthlyData: { [key: string]: { total: number, converted: number } } = {};
+        
+        // Process each lead document
+        let leadIndex = 0;
+        querySnapshot.forEach((doc) => {
           const leadData = doc.data();
+          console.log(`\nProcessing lead #${leadIndex+1} (ID: ${doc.id}):`);
           
-          // Check if lead is converted
-          if (leadData.convertedToClient === true || leadData.status === "Converted") {
-            convertedCount++;
-          }
-          
-          // Get month from timestamp
+          // Get date from timestamp
           let date;
           if (leadData.timestamp) {
             date = leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp);
+            console.log(`  Lead timestamp: ${date.toISOString()}`);
           } else {
             date = new Date(); // Fallback
+            console.log(`  Lead has no timestamp, using current date: ${date.toISOString()}`);
           }
           
-          const month = date.toLocaleString('default', { month: 'short' });
+          const leadMonth = date.toLocaleString('default', { month: 'short' });
+          const leadYear = date.getFullYear();
           
-          // Initialize month data if not exists
-          if (!monthlyData[month]) {
-            monthlyData[month] = { total: 0, converted: 0 };
+          console.log(`  Lead date: ${leadMonth} ${leadYear}`);
+          console.log(`  Current filter: ${currentMonth} ${currentYear}`);
+          console.log(`  Does this lead match current filter? ${leadMonth === currentMonth && leadYear === currentYear ? 'YES' : 'NO'}`);
+          
+          // Initialize month in monthly data if not exists
+          if (!monthlyData[leadMonth]) {
+            monthlyData[leadMonth] = { total: 0, converted: 0 };
+            console.log(`  Initialized monthly data for ${leadMonth}`);
           }
           
-          // Increment counts
-          monthlyData[month].total += 1;
+          // Always add to monthly chart data regardless of filter
+          monthlyData[leadMonth].total += 1;
           
-          if (leadData.convertedToClient === true || leadData.status === "Converted") {
-            monthlyData[month].converted += 1;
+          const isConverted = leadData.convertedToClient === true || leadData.status === "Converted";
+          console.log(`  Is lead converted? ${isConverted ? 'YES' : 'NO'} (status: ${leadData.status})`);
+          
+          if (isConverted) {
+            monthlyData[leadMonth].converted += 1;
           }
           
-          // Track status counts
-          const status = leadData.status || "Unknown";
-          if (!statusCounts[status]) {
-            statusCounts[status] = 0;
+          // ONLY count for current month metrics if matching filter
+          if (leadMonth === currentMonth && leadYear === currentYear) {
+            totalCount++;
+            console.log(`  Adding to current month total count: ${totalCount}`);
+            
+            if (isConverted) {
+              convertedCount++;
+              console.log(`  Adding to current month converted count: ${convertedCount}`);
+            }
+            
+            // Track status counts for current month
+            const status = leadData.status || "Unknown";
+            if (!statusCounts[status]) {
+              statusCounts[status] = 0;
+            }
+            statusCounts[status] += 1;
+            console.log(`  Updating status count for '${status}': ${statusCounts[status]}`);
+          } else {
+            console.log(`  Skipping metrics for current month (doesn't match filter)`);
           }
-          statusCounts[status] += 1;
+          leadIndex++;
         });
         
-        // Transform monthly data to chart format
+        console.log("\n===== Summary after processing leads: =====");
+        console.log(`Total leads for ${currentMonth} ${currentYear}: ${totalCount}`);
+        console.log(`Converted leads for ${currentMonth} ${currentYear}: ${convertedCount}`);
+        console.log("Status counts:", statusCounts);
+        console.log("Monthly data for chart:", monthlyData);
+        
+        // Transform monthly data to chart format and sort properly
+        const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const formattedChartData = Object.keys(monthlyData).map(month => ({
           name: month,
           total: monthlyData[month].total,
           converted: monthlyData[month].converted
         }));
+        
+        // Sort by month
+        formattedChartData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
         
         // Transform status data to pie chart format
         const formattedStatusData = Object.keys(statusCounts).map(status => ({
@@ -320,19 +437,24 @@ export default function SalesDashboard() {
           value: statusCounts[status]
         }));
         
-        // Sort by month (approximation, works for common use cases)
-        const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        formattedChartData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
+        console.log("===== Setting state with processed data =====");
         
+        // CRITICAL FIX: Force the same conversion value for all data pieces
+        // This ensures every widget uses the same number
         setTotalLeads(totalCount);
         setConvertedLeads(convertedCount);
         setLeadsChartData(formattedChartData);
         setStatusData(formattedStatusData);
         
-        console.log("Lead data processed:", { totalCount, convertedCount, monthlyData, statusCounts });
+        // Debug what we're actually setting
+        console.log(`Setting totalLeads to ${totalCount}`);
+        console.log(`Setting convertedLeads to ${convertedCount}`);
+        console.log("Setting leadsChartData to:", formattedChartData);
+        console.log("Setting statusData to:", formattedStatusData);
       } else {
-        console.log("No leads found for this user");
-        // Set empty chart data
+        console.log("No leads found for this user, setting empty data");
+        setTotalLeads(0);
+        setConvertedLeads(0);
         setLeadsChartData([]);
         setStatusData([]);
       }
@@ -402,6 +524,13 @@ export default function SalesDashboard() {
     }
   };
 
+  // Add a handler for month selection
+  const handleMonthYearChange = (monthYear: string) => {
+    const [month, year] = monthYear.split('_');
+    setCurrentMonth(month);
+    setCurrentYear(parseInt(year));
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
       <div className="animate-pulse flex flex-col items-center">
@@ -434,14 +563,35 @@ export default function SalesDashboard() {
   return (
     <div className="p-6 bg-gray-900 text-gray-100 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-          Sales Dashboard for {targetData.userName} - {currentMonth} {currentYear}
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+            Sales Dashboard for {targetData?.userName}
+          </h1>
+          
+          {/* Month selector */}
+          <div className="flex items-center space-x-2">
+            <label htmlFor="monthSelector" className="text-sm text-gray-400">
+              Select Month:
+            </label>
+            <select
+              id="monthSelector"
+              className="bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm"
+              value={`${currentMonth}_${currentYear}`}
+              onChange={(e) => handleMonthYearChange(e.target.value)}
+            >
+              {availableMonths.map(({ month, year }) => (
+                <option key={`${month}_${year}`} value={`${month}_${year}`}>
+                  {month} {year}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Collection Target</CardTitle>
+              <CardTitle className="text-gray-100">Collection Target ({currentMonth} {currentYear})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold mb-3 text-indigo-400">₹{amountCollected.toLocaleString()} 
@@ -459,7 +609,7 @@ export default function SalesDashboard() {
 
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Converted Leads Target</CardTitle>
+              <CardTitle className="text-gray-100">Converted Leads Target ({currentMonth} {currentYear})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold mb-3 text-emerald-400">{convertedLeads} 
@@ -531,7 +681,7 @@ export default function SalesDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Lead Status Distribution</CardTitle>
+              <CardTitle className="text-gray-100">Lead Status Distribution ({currentMonth} {currentYear})</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
               {statusData.length > 0 ? (
@@ -579,7 +729,7 @@ export default function SalesDashboard() {
 
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Lead Conversion</CardTitle>
+              <CardTitle className="text-gray-100">Lead Conversion ({currentMonth} {currentYear})</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
               <ResponsiveContainer width="100%" height="100%">

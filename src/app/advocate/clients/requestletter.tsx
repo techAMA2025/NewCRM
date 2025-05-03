@@ -447,7 +447,12 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
       // Get existing documents array or create new one
       const clientDoc = await getDoc(clientRef);
       const existingData = clientDoc.data() || {};
-      const documents = existingData.documents || [];
+      let documents = existingData.documents || [];
+      
+      // Ensure documents is an array
+      if (!Array.isArray(documents)) {
+        documents = [];
+      }
       
       try {
         // For document editing capability, we need to convert to HTML
@@ -481,7 +486,10 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
         console.log("Client record updated with document reference");
       } catch (uploadError) {
         console.error("Error preparing document for editing:", uploadError);
-        // Now documents is in scope
+        // Ensure documents is an array here too
+        if (!Array.isArray(documents)) {
+          documents = [];
+        }
         documents.push({
           type: "request_letter",
           name: filename,

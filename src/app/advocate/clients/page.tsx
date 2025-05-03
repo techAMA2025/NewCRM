@@ -154,7 +154,7 @@ function ClientViewModal({
   openLegalNoticeModal: (client: Client) => void,
   openDemandNoticeModal: (client: Client) => void,
   openHarassmentComplaintModal: (client: Client) => void,
-  openDocumentEditor: (url: string, name: string, index: number) => void
+  openDocumentEditor: (url: string, name: string, index: number, clientId: string) => void
 }) {
   if (!isOpen || !client) return null;
 
@@ -482,14 +482,21 @@ function ClientViewModal({
                             <button
                               onClick={() => {
                                 // Only open editor if both URL and name are defined
-                                if (doc.url && doc.name) {
-                                  openDocumentEditor(doc.url, doc.name, index);
+                                if (doc.url && doc.name && client) {
+                                  console.log("Calling openDocumentEditor with:", {
+                                    url: doc.url,
+                                    name: doc.name,
+                                    index,
+                                    clientId: client.id
+                                  });
+                                  openDocumentEditor(doc.url, doc.name, index, client.id);
                                 } else {
-                                  toast.error("Document URL or name is missing");
+                                  toast.error("Document URL, name, or client ID is missing");
+                                  console.error("Missing data:", { url: doc.url, name: doc.name, clientId: client?.id });
                                 }
                               }}
                               className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-gray-200 text-xs rounded flex items-center"
-                              disabled={!doc.url || !doc.name}
+                              disabled={!doc.url || !doc.name || !client}
                             >
                               <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -713,6 +720,7 @@ function ClientsList() {
     url: string;
     name: string;
     index: number;
+    clientId?: string; // Add clientId to the state
   } | null>(null);
 
   const searchParams = useSearchParams();
@@ -1280,8 +1288,9 @@ function ClientsList() {
   };
 
   // Add a function to open the document editor
-  const openDocumentEditor = (url: string, name: string, index: number) => {
-    setEditingDocument({ url, name, index });
+  const openDocumentEditor = (url: string, name: string, index: number, clientId: string) => {
+    console.log("Opening document editor with:", { url, name, index, clientId });
+    setEditingDocument({ url, name, index, clientId });
   };
 
   return (
@@ -1486,28 +1495,19 @@ function ClientsList() {
       )}
 
       {/* Document Editor Modal */}
-      {editingDocument && viewClient && (
+      {editingDocument && (
         <DocumentEditor
           documentUrl={editingDocument.url}
           documentName={editingDocument.name}
           documentIndex={editingDocument.index}
-          clientId={viewClient.id}
+          clientId={editingDocument.clientId || (viewClient?.id || "")}
           onClose={() => setEditingDocument(null)}
           onDocumentUpdated={() => {
-            // Refresh client data
-            // You might want to implement a more targeted refresh
-            const clientRef = doc(db, "clients", viewClient.id);
-            getDoc(clientRef).then((docSnap) => {
-              if (docSnap.exists()) {
-                const updatedClient = { id: docSnap.id, ...docSnap.data() } as Client;
-                setViewClient(updatedClient);
-                
-                // Also update in the main clients list
-                setClients(prevClients =>
-                  prevClients.map(c => c.id === viewClient.id ? updatedClient : c)
-                );
-              }
-            });
+            // Refresh client data after document update
+            if (viewClient) {
+              // Clone the viewClient to trigger a re-render
+              setViewClient({...viewClient});
+            }
           }}
         />
       )}
