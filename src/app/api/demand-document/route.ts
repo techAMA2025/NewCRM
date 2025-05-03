@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
-import { initAdmin } from '../../../firebase/firebase-admin';
+import { storage } from '../../../firebase/firebase-admin';
 
 export async function POST(request: Request) {
   try {
@@ -39,10 +39,7 @@ export async function POST(request: Request) {
       date
     };
 
-    // Initialize Firebase Admin and get Storage
-    const { storage } = initAdmin();
-    
-    // Get template from Firebase Storage
+    // Use storage directly
     const bucket = storage.bucket();
     const file = bucket.file('templates/demand_notice_template.docx');
     const [templateBuffer] = await file.download();
