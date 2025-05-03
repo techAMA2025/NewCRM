@@ -58,13 +58,10 @@ export default function PaymentApprovalPage() {
   }, []);
   
   useEffect(() => {
-    if (userRole === 'advocate') {
-      fetchAllPayments();
-    } else {
-      fetchUserPayments();
-    }
+    // Always fetch payments associated with the logged-in user
+    fetchUserPayments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole]);
+  }, [userRole, userName]);
   
   const fetchUserPayments = async () => {
     try {
@@ -72,7 +69,7 @@ export default function PaymentApprovalPage() {
       const salesPersonName = localStorage.getItem('userName');
       if (!salesPersonName) return;
       
-      // Only filter by salesperson on Firebase side
+      // Filter payments by the logged-in user's name
       const paymentsRef = collection(db, 'payments');
       const q = query(paymentsRef, where('salesPersonName', '==', salesPersonName));
       
@@ -271,11 +268,7 @@ export default function PaymentApprovalPage() {
       await updateSalesTargetAmountCollected(salesPersonName, Number(amount), false);
       
       // Refresh the payment list
-      if (userRole === 'advocate') {
-        fetchAllPayments();
-      } else {
-        fetchUserPayments();
-      }
+      fetchUserPayments();
       
       // Show success message
       alert('Payment request approved successfully!');
@@ -303,11 +296,7 @@ export default function PaymentApprovalPage() {
       await updateSalesTargetAmountCollected(salesPersonName, Number(newAmount), false);
       
       // Refresh the payment list
-      if (userRole === 'advocate') {
-        fetchAllPayments();
-      } else {
-        fetchUserPayments();
-      }
+      fetchUserPayments();
       
       // Show success message
       alert('Payment updated successfully!');
@@ -335,50 +324,13 @@ export default function PaymentApprovalPage() {
       }
       
       // Refresh the payment list
-      if (userRole === 'advocate') {
-        fetchAllPayments();
-      } else {
-        fetchUserPayments();
-      }
+      fetchUserPayments();
       
       // Show success message
       alert('Payment deleted successfully!');
     } catch (error) {
       console.error('Error deleting payment:', error);
       alert('Error deleting payment. Please try again.');
-    }
-  };
-  
-  const fetchAllPayments = async () => {
-    try {
-      setLoadingPayments(true);
-      
-      const paymentsRef = collection(db, 'payments');
-      let q;
-      
-      // If user is "Rahul Gour", only show his payments
-      if (userName === "Rahul Gour") {
-        q = query(paymentsRef, where('salesPersonName', '==', userName));
-      } else {
-        // For other advocates, show all payments
-        q = query(paymentsRef);
-      }
-      
-      const querySnapshot = await getDocs(q);
-      
-      let payments = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }) as Payment);
-      
-      // Sort by timestamp descending (newest first)
-      payments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
-      setUserPayments(payments);
-      setLoadingPayments(false);
-    } catch (error) {
-      console.error('Error fetching all payment requests:', error);
-      setLoadingPayments(false);
     }
   };
   
