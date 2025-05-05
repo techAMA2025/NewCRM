@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
-import { FaEnvelope, FaPaperPlane, FaFileAlt, FaUser, FaPaperclip, FaTimes, FaFile, FaPlus, FaUserPlus } from 'react-icons/fa';
+import { FaEnvelope, FaPaperPlane, FaFileAlt, FaUser, FaPaperclip, FaTimes, FaFile, FaPlus, FaUserPlus, FaEdit, FaCheck, FaEnvelopeOpen } from 'react-icons/fa';
 import { Toaster, toast } from 'react-hot-toast';
 
 // Define interfaces for types
@@ -20,7 +20,8 @@ interface Recipient {
   clientId?: string;
   name: string;
   email: string;
-  type: 'client' | 'bank'; // To distinguish between client and bank recipients
+  type: 'client' | 'bank' | 'manual'; // Added 'manual' for manually added recipients
+  editing?: boolean; // Flag to track editing state
 }
 
 export default function EmailComposePage() {
@@ -34,6 +35,10 @@ export default function EmailComposePage() {
   const [loading, setLoading] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // States for manual recipient addition
+  const [manualRecipientName, setManualRecipientName] = useState('');
+  const [manualRecipientEmail, setManualRecipientEmail] = useState('');
   
   // Sample data (in a real app, these would come from an API)
   const draftTemplates = [
@@ -68,20 +73,20 @@ export default function EmailComposePage() {
   // Sample bank data (similar to what's in requestletter.tsx)
   const banks = {
     "Axis Bank": {
-      address: "Mr. Sandeep Dam, Nodal officer Axis Bank Ltd, Axis House, Tower 3, 4th Floor, Sector128, Noida, UP- 201304. Landline No: 0120-6210005. Mr. Caesar Pinto, Nodal Officer, Axis Bank LTD. NPC1, 5th Floor \"Gigaplex\", Plot No .I.T 5, MIDC Airoli Knowledge Park, Airoli, Navi Mumbai – 400708. Mrs. Neeta Bhatt Principal Nodal Officer, Axis Bank LTD. 4th Floor, Axis House, Wadia International Center, P.B. Marg, Worli, Mumbai – 400 025. Axis Bank Limited, 'Axis House', C-2, Wadia International Centre, Pandurang Budhkar Marg, Worli, Mumbai - 400 025. Axis Bank Limited, 'Trishul', 3rd Floor, Opp. Samartheshwar Temple, Near Law Garden, Ellisbridge, Ahmedabad - 380 006",
+      address: "Mr. Sandeep Dam, Nodal officer Axis Bank Ltd, Axis House, Tower 3, 4th Floor, Sector128, Noida, UP- 201304.",
       email: "Circlenodalofficer.delhi1@axisbank.com, nodal.officer@axisbank.com, pno@axisbank.com"
     },
     "Ashv Finance Limited": {
-      address: "Ashv Finance Limited,12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062. Grievance Redressal Officer, Ms. Monika Thadeshwar, 12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062.",
+      address: "Ashv Finance Limited,12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062.",
       email: "monika.thadeshwar@ashvfinance.com, info@ashvfinance.com, customersupport@ashvfinance.com"
     },
     "Niro": {
-      address: "Corporate Office: No 313/1 Workden, Ground floor, 7th Cross Patel, Rama Reddy Road, Domlur Layout, Bangalore 560071. Registered Office: 17/1 Bharat Apartments, 44/1, Fair field Layout, Race course road, Bengaluru, Karnataka – 560 001",
+      address: "Corporate Office: No 313/1 Workden, Ground floor, 7th Cross Patel, Rama Reddy Road, Domlur Layout, Bangalore 560071.",
       email: "support@niro.money, grievance@niro.money, info@niro.money"
     },
     "Aditya Birla Fin": {
-      address: "Ms Rachana Padval, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063. Principal Nodal Officer Ms Smita Nadkarni, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063. Aditya Birla Finance Limited (A subsidiary of Aditya Birla Capital Ltd.) One World Center, Tower 1-C, 18th Floor, 841, Jupiter Mill Compound, Senapati Bapat Marg, Elphinstone Road, Mumbai 400 013. Mr Abhinav Chaudhry. Aditya Birla Housing Finance - Customer Service Cell, R Tech Park, 10th Floor, Niroln Complex, Off Western Express Highway Goregaon East, Mumbai - 400063. Aditya Birla Finance Limited (A subsidiary of Aditya Birla Capital Ltd.) Indian Rayon Compound, Veraval, Gujarat -362 266.",
-      email: "abfl.nodalofficerwest@adityabirlacapital.com, grievance.finance@adityabirlacapital.com, care.finance@adityabirlacapital.com, abhinav.c@adityabirlacapital.com, care.digitalfinance@adityabirlacapital.com, preethi.nair@adityabirlacapital.com"
+      address: "Ms Rachana Padval, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063.",
+      email: "abfl.nodalofficerwest@adityabirlacapital.com, grievance.finance@adityabirlacapital.com, care.finance@adityabirlacapital.com"
     },
     "Amex": {
       address: "Manager - Executive Correspondence Unit, American Express Banking Corp. Cyber City, Tower C, DLF Building No.8 Sector 25, DLF City Ph II, Gurgaon – 122002. Ms. Priyameet Kaur, Head of Customer Service American Express Banking Corp. Cyber City, Tower C, DLF Building No.8, Sector 25, DLF City Ph II, Gurgaon – 122002 (Haryana). Mr. Ashish Pandey, Nodal Officer, American Express Banking Corp. Cyber City, Tower C, DLF Building No.8, Sector 25, DLF City Ph II, Gurgaon – 122002 (Haryana).",
@@ -184,8 +189,8 @@ export default function EmailComposePage() {
       email: "grievance@creditsaison-in.com, preethi.nair@creditsaison-in.com, kosuke.mori@creditsaison-ap.com, support@creditsaison-in.com"
     },
     "Kotak Bank": {
-      address: "Nodal Officer, Mr. A. Sen Address: Kotak Infiniti, 4th Floor, Zone 4 Bulding No.21, Infinity Park, Off Western express Highway, General AK Vaidya Marg, Malad (E), Mumbai – 400097",
-      email: "consumerassets.legal@kotak.com, care@kotak.com, grievanceofficer@kotak.com, seniorgrievanceofficer@kotak.com, chiefgrievanceofficer@kotak.com"
+      address: "Nodal Officer, Mr. A. Sen Address: Kotak Infiniti, 4th Floor, Zone 4 Building No.21, Infinity Park, Off Western express Highway, Mumbai – 400097",
+      email: "consumerassets.legal@kotak.com, care@kotak.com, grievanceofficer@kotak.com"
     },
     "KreditBee": {
       address: "KreditBee, 16/3, Adarsh Yelavarthy Centre, opp to Frank Anthony School, Cambridge Layout, Jogupalya Bangalore Karnataka 560008",
@@ -445,6 +450,83 @@ export default function EmailComposePage() {
     }
   };
   
+  // Function to add a manual recipient
+  const handleAddManualRecipient = () => {
+    // Validate email format
+    if (!manualRecipientEmail || !/\S+@\S+\.\S+/.test(manualRecipientEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    // Check for duplicate
+    if (recipients.some(r => r.email === manualRecipientEmail)) {
+      toast.error('This email is already added as a recipient');
+      return;
+    }
+    
+    // Add the manual recipient
+    setRecipients([...recipients, {
+      id: `manual-${Date.now()}`,
+      name: manualRecipientName || 'Manual Recipient',
+      email: manualRecipientEmail,
+      type: 'manual'
+    }]);
+    
+    // Reset fields
+    setManualRecipientName('');
+    setManualRecipientEmail('');
+    toast.success('Recipient added successfully');
+  };
+  
+  // Toggle edit mode for a recipient
+  const toggleEditRecipient = (id: string) => {
+    setRecipients(recipients.map(recipient => 
+      recipient.id === id 
+        ? { ...recipient, editing: !recipient.editing } 
+        : recipient
+    ));
+  };
+  
+  // Update a recipient while editing
+  const updateRecipient = (id: string, field: keyof Recipient, value: string | boolean) => {
+    setRecipients(recipients.map(recipient => 
+      recipient.id === id 
+        ? { ...recipient, [field]: value } 
+        : recipient
+    ));
+  };
+  
+  // Save edited recipient
+  const saveEditedRecipient = (id: string) => {
+    const recipient = recipients.find(r => r.id === id);
+    
+    if (!recipient) {
+      toast.error('Recipient not found');
+      return;
+    }
+    
+    // Validate email format
+    if (!recipient.email || !/\S+@\S+\.\S+/.test(recipient.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    // Check for duplicates (excluding the current recipient)
+    const duplicateEmail = recipients.some(r => r.id !== id && r.email === recipient.email);
+    if (duplicateEmail) {
+      toast.error('This email is already used by another recipient');
+      return;
+    }
+    
+    setRecipients(recipients.map(r => 
+      r.id === id 
+        ? { ...r, editing: false } 
+        : r
+    ));
+    
+    toast.success('Recipient updated successfully');
+  };
+  
   // Remove a recipient
   const handleRemoveRecipient = (id: string) => {
     setRecipients(recipients.filter(r => r.id !== id));
@@ -607,29 +689,121 @@ export default function EmailComposePage() {
                   </div>
                 </div>
                 
+                {/* Manual recipient addition */}
+                <div className="mb-4 border-t border-gray-700 pt-4">
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Add Manual Recipient</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-1">
+                      <input
+                        type="text"
+                        value={manualRecipientName}
+                        onChange={(e) => setManualRecipientName(e.target.value)}
+                        placeholder="Name (optional)"
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-1">
+                      <input
+                        type="email"
+                        value={manualRecipientEmail}
+                        onChange={(e) => setManualRecipientEmail(e.target.value)}
+                        placeholder="Email address"
+                        required
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={handleAddManualRecipient}
+                        className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors duration-200 flex items-center justify-center"
+                      >
+                        <FaPlus className="mr-2" />
+                        <span>Add Manual</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
                 {/* Recipients list */}
                 {recipients.length > 0 && (
                   <div className="mt-4">
                     <h3 className="text-sm font-medium text-gray-300 mb-2">Recipients List ({recipients.length})</h3>
                     <ul className="bg-gray-900 rounded-md border border-gray-700 divide-y divide-gray-700 max-h-48 overflow-y-auto">
                       {recipients.map((recipient) => (
-                        <li key={recipient.id} className="flex items-center justify-between p-3">
-                          <div className="flex items-center">
-                            <div className={`mr-2 text-lg ${recipient.type === 'bank' ? 'text-green-400' : 'text-blue-400'}`}>
-                              {recipient.type === 'bank' ? <FaEnvelope /> : <FaUser />}
+                        <li key={recipient.id} className="px-3 py-2">
+                          {recipient.editing ? (
+                            // Edit mode
+                            <div className="flex items-center space-x-2">
+                              <div className="flex-1 grid grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  value={recipient.name}
+                                  onChange={(e) => updateRecipient(recipient.id, 'name', e.target.value)}
+                                  className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm w-full"
+                                  placeholder="Name"
+                                />
+                                <input
+                                  type="email"
+                                  value={recipient.email}
+                                  onChange={(e) => updateRecipient(recipient.id, 'email', e.target.value)}
+                                  className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm w-full"
+                                  placeholder="Email"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => saveEditedRecipient(recipient.id)}
+                                className="p-1 text-green-400 hover:text-green-300 transition-colors"
+                                title="Save changes"
+                              >
+                                <FaCheck />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveRecipient(recipient.id)}
+                                className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                                title="Remove recipient"
+                              >
+                                <FaTimes />
+                              </button>
                             </div>
-                            <div>
-                              <p className="text-white text-sm font-medium">{recipient.name}</p>
-                              <p className="text-gray-400 text-xs">{recipient.email}</p>
+                          ) : (
+                            // Display mode
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                {recipient.type === 'client' ? (
+                                  <FaUser className="text-blue-400 mr-2" />
+                                ) : recipient.type === 'bank' ? (
+                                  <FaEnvelope className="text-green-400 mr-2" />
+                                ) : (
+                                  <FaEnvelopeOpen className="text-purple-400 mr-2" />
+                                )}
+                                <div>
+                                  <p className="text-white text-sm font-medium">{recipient.name}</p>
+                                  <p className="text-gray-400 text-xs">{recipient.email}</p>
+                                </div>
+                              </div>
+                              <div className="flex space-x-1">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleEditRecipient(recipient.id)}
+                                  className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                                  title="Edit recipient"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveRecipient(recipient.id)}
+                                  className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                                  title="Remove recipient"
+                                >
+                                  <FaTimes />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRecipient(recipient.id)}
-                            className="text-gray-500 hover:text-red-400 transition-colors"
-                          >
-                            <FaTimes />
-                          </button>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -637,17 +811,37 @@ export default function EmailComposePage() {
                 )}
               </div>
               
-              {/* Email Content Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Select template */}
-                <div>
+              {/* Email Subject and Template */}
+              <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
+                <h2 className="text-lg font-medium text-white mb-4">Email Content</h2>
+                
+                {/* Subject selection */}
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Subject</label>
+                  <select
+                    value={selectedSubject}
+                    onChange={handleSubjectChange}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+                    required
+                  >
+                    <option value="">-- Select a Subject --</option>
+                    {subjectTemplates.map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Email template selection */}
+                <div className="mb-4">
                   <label className="block text-xs font-medium text-gray-400 mb-1">Email Template</label>
                   <select
                     value={selectedDraft}
                     onChange={handleDraftChange}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
                   >
-                    <option value="">-- Select a template --</option>
+                    <option value="">-- Select a Template --</option>
                     {draftTemplates.map(draft => (
                       <option key={draft.id} value={draft.id}>
                         {draft.name}
@@ -656,89 +850,71 @@ export default function EmailComposePage() {
                   </select>
                 </div>
                 
-                {/* Subject selection */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Email Subject</label>
-                  <select
-                    value={selectedSubject}
-                    onChange={handleSubjectChange}
-                    required
+                {/* Email content */}
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-400 mb-1">Email Content</label>
+                  <textarea
+                    value={emailContent}
+                    onChange={(e) => setEmailContent(e.target.value)}
+                    rows={10}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-                  >
-                    <option value="">-- Select a subject --</option>
-                    {subjectTemplates.map(subject => (
-                      <option key={subject.id} value={subject.text}>
-                        {subject.text}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Enter your email content here..."
+                    required
+                  ></textarea>
                 </div>
-              </div>
-              
-              {/* Email content */}
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Email Content</label>
-                <textarea
-                  value={emailContent}
-                  onChange={(e) => setEmailContent(e.target.value)}
-                  required
-                  rows={12}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-                  placeholder="Enter your email content here..."
-                ></textarea>
-              </div>
-              
-              {/* Attachments */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-gray-300">Attachments</label>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-                  >
-                    <FaPaperclip className="mr-1.5" />
-                    Attach Files
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileAttachment}
-                    multiple
-                    className="hidden"
-                  />
-                </div>
-                <span className="ml-3 text-gray-400 text-sm">Max 10MB per file</span>
-              
-                {/* Display attached files */}
-                {attachments.length > 0 && (
-                  <div className="bg-gray-700/50 rounded-md border border-gray-600 p-3 mt-2">
-                    <h3 className="text-white text-sm font-medium mb-2">
-                      {attachments.length} file(s) attached
-                    </h3>
-                    <ul className="space-y-2">
-                      {attachments.map(attachment => (
-                        <li key={attachment.id} className="flex items-center justify-between bg-gray-800 rounded px-3 py-2">
-                          <div className="flex items-center">
-                            <FaFile className="text-purple-400 mr-2" />
-                            <div>
-                              <p className="text-white text-sm truncate max-w-xs">{attachment.name}</p>
-                              <p className="text-gray-400 text-xs">{formatFileSize(attachment.size)}</p>
-                            </div>
-                          </div>
-                          <button 
-                            type="button" 
-                            onClick={() => handleRemoveAttachment(attachment.id)}
-                            className="text-gray-400 hover:text-red-400 transition-colors"
-                            aria-label="Remove attachment"
-                          >
-                            <FaTimes />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                
+                {/* Attachments */}
+                <div className="mt-4">
+                  <label className="block text-xs font-medium text-gray-400 mb-2">Attachments</label>
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 flex items-center"
+                    >
+                      <FaPaperclip className="mr-2" />
+                      Attach Files
+                    </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileAttachment}
+                      multiple
+                      className="hidden"
+                    />
                   </div>
-                )}
+                  <span className="ml-3 text-gray-400 text-sm">Max 10MB per file</span>
+                
+                  {/* Display attached files */}
+                  {attachments.length > 0 && (
+                    <div className="bg-gray-700/50 rounded-md border border-gray-600 p-3 mt-2">
+                      <h3 className="text-white text-sm font-medium mb-2">
+                        {attachments.length} file(s) attached
+                      </h3>
+                      <ul className="space-y-2">
+                        {attachments.map(attachment => (
+                          <li key={attachment.id} className="flex items-center justify-between bg-gray-800 rounded px-3 py-2">
+                            <div className="flex items-center">
+                              <FaFile className="text-purple-400 mr-2" />
+                              <div>
+                                <p className="text-white text-sm truncate max-w-xs">{attachment.name}</p>
+                                <p className="text-gray-400 text-xs">{formatFileSize(attachment.size)}</p>
+                              </div>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveAttachment(attachment.id)}
+                              className="text-gray-400 hover:text-red-400 transition-colors"
+                              aria-label="Remove attachment"
+                            >
+                              <FaTimes />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-between items-center">
