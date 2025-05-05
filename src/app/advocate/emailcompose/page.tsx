@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
-import { FaEnvelope, FaPaperPlane, FaFileAlt, FaUser, FaPaperclip, FaTimes, FaFile, FaPlus, FaUserPlus, FaEdit, FaCheck, FaEnvelopeOpen } from 'react-icons/fa';
+import { FaEnvelope, FaPaperPlane, FaFileAlt, FaUser, FaPaperclip, FaTimes, FaFile, FaPlus, FaUserPlus, FaEdit, FaCheck, FaEnvelopeOpen, FaPen } from 'react-icons/fa';
 import { Toaster, toast } from 'react-hot-toast';
 
 // Define interfaces for types
@@ -28,6 +28,9 @@ export default function EmailComposePage() {
   // States for form elements
   const [selectedDraft, setSelectedDraft] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [customSubject, setCustomSubject] = useState('');
+  const [isCustomSubject, setIsCustomSubject] = useState(false);
+  const [editingSubject, setEditingSubject] = useState(false);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [tempClientId, setTempClientId] = useState('');
   const [selectedBank, setSelectedBank] = useState('');
@@ -56,6 +59,7 @@ export default function EmailComposePage() {
     { id: 'subject4', text: 'Consultation Appointment Confirmation' },
     { id: 'subject5', text: 'Settlement Offer: [Case Reference]' },
     { id: 'subject6', text: 'Legal Update: [Case Number]' },
+    { id: 'custom', text: 'Custom Subject' },
   ];
   
   // Sample client data - in a real app, fetch from API
@@ -381,7 +385,68 @@ export default function EmailComposePage() {
   
   // Handle subject selection
   const handleSubjectChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedSubject(e.target.value);
+    const value = e.target.value;
+    setSelectedSubject(value);
+    
+    // If "Custom Subject" is selected, enable custom subject input
+    if (value === 'custom') {
+      setIsCustomSubject(true);
+      setCustomSubject('');
+    } else {
+      setIsCustomSubject(false);
+      // Set the customSubject to the selected template for editing purposes
+      const template = subjectTemplates.find(s => s.id === value);
+      if (template) {
+        setCustomSubject(template.text);
+      }
+    }
+  };
+  
+  // Toggle subject editing mode
+  const toggleSubjectEdit = () => {
+    if (!editingSubject) {
+      // When entering edit mode, initialize the custom subject field
+      const subjectText = selectedSubject && !isCustomSubject 
+        ? subjectTemplates.find(s => s.id === selectedSubject)?.text || ''
+        : customSubject;
+      
+      setCustomSubject(subjectText);
+    }
+    
+    setEditingSubject(!editingSubject);
+    // When entering edit mode, set to custom subject mode
+    if (!editingSubject) {
+      setIsCustomSubject(true);
+      setSelectedSubject('custom');
+    }
+  };
+  
+  // Save edited subject
+  const saveEditedSubject = () => {
+    if (!customSubject.trim()) {
+      toast.error('Subject cannot be empty');
+      return;
+    }
+    
+    setEditingSubject(false);
+  };
+  
+  // Function to get current subject text for display
+  const getCurrentSubjectText = () => {
+    if (isCustomSubject) {
+      return customSubject;
+    }
+    
+    if (selectedSubject) {
+      return subjectTemplates.find(s => s.id === selectedSubject)?.text || '';
+    }
+    
+    return '';
+  };
+  
+  // Handle client selection
+  const handleClientChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    setTempClientId(e.target.value);
   };
   
   // Function to add a client as recipient
@@ -586,8 +651,10 @@ export default function EmailComposePage() {
       return;
     }
     
-    if (!selectedSubject) {
-      toast.error('Please select a subject');
+    // Validate subject - either selected or custom
+    const currentSubject = isCustomSubject ? customSubject : getCurrentSubjectText();
+    if (!currentSubject.trim()) {
+      toast.error('Please enter a subject');
       return;
     }
     
@@ -611,6 +678,8 @@ export default function EmailComposePage() {
       setRecipients([]);
       setSelectedDraft('');
       setSelectedSubject('');
+      setCustomSubject('');
+      setIsCustomSubject(false);
       setEmailContent('');
       setAttachments([]);
       setSelectedBank('');
@@ -635,22 +704,106 @@ export default function EmailComposePage() {
           </h1>
           <p className="text-gray-400 mb-8">Create and send professional emails to clients and banks</p>
           
-          <form onSubmit={handleSubmit} className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 shadow-lg">
-            <div className="space-y-6">
-              {/* Recipients Section */}
-              <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
-                <h2 className="text-lg font-medium text-white mb-4">Recipients</h2>
+          <form onSubmit={handleSubmit} className="bg-gray-800/50 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Template Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Email Template
+                </label>
+                <select 
+                  value={selectedDraft}
+                  onChange={handleDraftChange}
+                  className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Select a template</option>
+                  {draftTemplates.map(template => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Subject Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Subject
+                </label>
                 
-                {/* Bank selection dropdown */}
-                <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Select Bank for Recipients</label>
-                  <div className="flex gap-3">
-                    <select
+                {!editingSubject ? (
+                  <div className="flex items-center">
+                    <select 
+                      value={selectedSubject}
+                      onChange={handleSubjectChange}
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      disabled={editingSubject}
+                    >
+                      <option value="">Select a subject</option>
+                      {subjectTemplates.slice(0, -1).map(subject => (
+                        <option key={subject.id} value={subject.id}>
+                          {subject.text}
+                        </option>
+                      ))}
+                      <option value="custom">Custom Subject...</option>
+                    </select>
+                    
+                    {(selectedSubject || isCustomSubject) && (
+                      <button
+                        type="button"
+                        onClick={toggleSubjectEdit}
+                        className="ml-2 p-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-md transition-colors"
+                        title="Edit subject"
+                      >
+                        <FaPen size={14} />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <input
+                      type="text"
+                      value={customSubject}
+                      onChange={(e) => setCustomSubject(e.target.value)}
+                      placeholder="Enter custom subject"
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveEditedSubject}
+                      className="ml-2 p-2 bg-green-700 hover:bg-green-600 text-white rounded-md transition-colors"
+                      title="Save subject"
+                    >
+                      <FaCheck size={14} />
+                    </button>
+                  </div>
+                )}
+                
+                {isCustomSubject && !editingSubject && customSubject && (
+                  <div className="mt-2 px-3 py-2 bg-indigo-900/30 border border-indigo-800/50 rounded-md">
+                    <p className="text-sm text-white break-words">{customSubject}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Recipients Section */}
+            <div className="mb-6">
+              <h2 className="text-lg font-medium text-white mb-3">Recipients</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Bank Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Add Bank Recipients
+                  </label>
+                  <div className="flex">
+                    <select 
                       value={selectedBank}
                       onChange={handleBankChange}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
-                      <option value="">-- Select a Bank --</option>
+                      <option value="">Select a bank</option>
                       {Object.keys(banks).map(bankName => (
                         <option key={bankName} value={bankName}>
                           {bankName}
@@ -658,214 +811,204 @@ export default function EmailComposePage() {
                       ))}
                     </select>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Selecting a bank will automatically add all its email addresses as recipients</p>
+                  {selectedBank && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      All emails from {selectedBank} will be added
+                    </p>
+                  )}
                 </div>
                 
-                {/* Client selection dropdown */}
-                <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Add Client Recipient</label>
-                  <div className="flex gap-3">
-                    <select
+                {/* Client Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Add Client Recipient
+                  </label>
+                  <div className="flex">
+                    <select 
                       value={tempClientId}
-                      onChange={(e) => setTempClientId(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+                      onChange={handleClientChange}
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
-                      <option value="">-- Select a Client --</option>
+                      <option value="">Select a client</option>
                       {clients.map(client => (
                         <option key={client.id} value={client.id}>
-                          {client.name} ({client.email})
+                          {client.name}
                         </option>
                       ))}
                     </select>
-                    
                     <button
                       type="button"
                       onClick={handleAddClientRecipient}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors duration-200 flex items-center"
+                      className="ml-2 px-3 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center"
                     >
-                      <FaUserPlus className="mr-2" />
-                      <span>Add</span>
+                      <FaPlus size={12} />
+                      <span className="ml-1 hidden md:inline">Add</span>
                     </button>
                   </div>
                 </div>
-                
-                {/* Manual recipient addition */}
-                <div className="mb-4 border-t border-gray-700 pt-4">
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Add Manual Recipient</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="md:col-span-1">
-                      <input
-                        type="text"
-                        value={manualRecipientName}
-                        onChange={(e) => setManualRecipientName(e.target.value)}
-                        placeholder="Name (optional)"
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-                      />
-                    </div>
-                    <div className="md:col-span-1">
-                      <input
-                        type="email"
-                        value={manualRecipientEmail}
-                        onChange={(e) => setManualRecipientEmail(e.target.value)}
-                        placeholder="Email address"
-                        required
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <button
-                        type="button"
-                        onClick={handleAddManualRecipient}
-                        className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors duration-200 flex items-center justify-center"
-                      >
-                        <FaPlus className="mr-2" />
-                        <span>Add Manual</span>
-                      </button>
-                    </div>
+              </div>
+              
+              {/* Manual Recipient Addition */}
+              <div className="bg-gray-700/40 rounded-md p-3 mb-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-2">Add Manual Recipient</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="md:col-span-1">
+                    <input
+                      type="text"
+                      value={manualRecipientName}
+                      onChange={(e) => setManualRecipientName(e.target.value)}
+                      placeholder="Name (optional)"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <input
+                      type="email"
+                      value={manualRecipientEmail}
+                      onChange={(e) => setManualRecipientEmail(e.target.value)}
+                      placeholder="Email address"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleAddManualRecipient}
+                      className="w-full px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors flex items-center justify-center"
+                    >
+                      <FaEnvelopeOpen size={14} className="mr-2" />
+                      Add Recipient
+                    </button>
                   </div>
                 </div>
-                
-                {/* Recipients list */}
-                {recipients.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-medium text-gray-300 mb-2">Recipients List ({recipients.length})</h3>
-                    <ul className="bg-gray-900 rounded-md border border-gray-700 divide-y divide-gray-700 max-h-48 overflow-y-auto">
-                      {recipients.map((recipient) => (
-                        <li key={recipient.id} className="px-3 py-2">
-                          {recipient.editing ? (
-                            // Edit mode
-                            <div className="flex items-center space-x-2">
-                              <div className="flex-1 grid grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  value={recipient.name}
-                                  onChange={(e) => updateRecipient(recipient.id, 'name', e.target.value)}
-                                  className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm w-full"
-                                  placeholder="Name"
-                                />
-                                <input
-                                  type="email"
-                                  value={recipient.email}
-                                  onChange={(e) => updateRecipient(recipient.id, 'email', e.target.value)}
-                                  className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-white text-sm w-full"
-                                  placeholder="Email"
-                                />
-                              </div>
+              </div>
+              
+              {/* Recipients List */}
+              {recipients.length > 0 && (
+                <div className="bg-gray-700/30 rounded-md border border-gray-600/50 p-3 mb-2">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">
+                    {recipients.length} Recipient{recipients.length !== 1 ? 's' : ''}
+                  </h3>
+                  <ul className="space-y-2 max-h-60 overflow-y-auto">
+                    {recipients.map(recipient => (
+                      <li 
+                        key={recipient.id} 
+                        className={`rounded-md border ${
+                          recipient.editing 
+                            ? 'bg-gray-700 border-indigo-600' 
+                            : recipient.type === 'client' 
+                              ? 'bg-blue-900/20 border-blue-800/30' 
+                              : recipient.type === 'bank' 
+                                ? 'bg-green-900/20 border-green-800/30'
+                                : 'bg-purple-900/20 border-purple-800/30'
+                        } p-2 flex items-center justify-between`}
+                      >
+                        {recipient.editing ? (
+                          // Edit mode
+                          <div className="flex-1 flex items-center">
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={recipient.name}
+                                onChange={(e) => updateRecipient(recipient.id, 'name', e.target.value)}
+                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                placeholder="Name"
+                              />
+                              <input
+                                type="email"
+                                value={recipient.email}
+                                onChange={(e) => updateRecipient(recipient.id, 'email', e.target.value)}
+                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                placeholder="Email"
+                              />
+                            </div>
+                            <div className="flex">
                               <button
                                 type="button"
                                 onClick={() => saveEditedRecipient(recipient.id)}
-                                className="p-1 text-green-400 hover:text-green-300 transition-colors"
-                                title="Save changes"
+                                className="p-1.5 bg-green-700 hover:bg-green-600 text-white rounded-md transition-colors ml-2"
+                                title="Save"
                               >
-                                <FaCheck />
+                                <FaCheck size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => toggleEditRecipient(recipient.id)}
+                                className="p-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-colors ml-1"
+                                title="Cancel"
+                              >
+                                <FaTimes size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // View mode
+                          <>
+                            <div className="flex items-center">
+                              {recipient.type === 'client' ? (
+                                <FaUser className="text-blue-400 mr-2" />
+                              ) : recipient.type === 'bank' ? (
+                                <FaEnvelope className="text-green-400 mr-2" />
+                              ) : (
+                                <FaEnvelopeOpen className="text-purple-400 mr-2" />
+                              )}
+                              <div>
+                                <p className="text-white text-sm font-medium">{recipient.name}</p>
+                                <p className="text-gray-400 text-xs">{recipient.email}</p>
+                              </div>
+                            </div>
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => toggleEditRecipient(recipient.id)}
+                                className="p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors ml-1"
+                                title="Edit"
+                              >
+                                <FaEdit size={12} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveRecipient(recipient.id)}
-                                className="p-1 text-red-400 hover:text-red-300 transition-colors"
-                                title="Remove recipient"
+                                className="p-1.5 bg-red-900/70 hover:bg-red-700 text-white rounded-md transition-colors ml-1"
+                                title="Remove"
                               >
-                                <FaTimes />
+                                <FaTimes size={12} />
                               </button>
                             </div>
-                          ) : (
-                            // Display mode
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                {recipient.type === 'client' ? (
-                                  <FaUser className="text-blue-400 mr-2" />
-                                ) : recipient.type === 'bank' ? (
-                                  <FaEnvelope className="text-green-400 mr-2" />
-                                ) : (
-                                  <FaEnvelopeOpen className="text-purple-400 mr-2" />
-                                )}
-                                <div>
-                                  <p className="text-white text-sm font-medium">{recipient.name}</p>
-                                  <p className="text-gray-400 text-xs">{recipient.email}</p>
-                                </div>
-                              </div>
-                              <div className="flex space-x-1">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleEditRecipient(recipient.id)}
-                                  className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                                  title="Edit recipient"
-                                >
-                                  <FaEdit />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveRecipient(recipient.id)}
-                                  className="p-1 text-red-400 hover:text-red-300 transition-colors"
-                                  title="Remove recipient"
-                                >
-                                  <FaTimes />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              
-              {/* Email Subject and Template */}
-              <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
-                <h2 className="text-lg font-medium text-white mb-4">Email Content</h2>
-                
-                {/* Subject selection */}
-                <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Subject</label>
-                  <select
-                    value={selectedSubject}
-                    onChange={handleSubjectChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-                    required
-                  >
-                    <option value="">-- Select a Subject --</option>
-                    {subjectTemplates.map(subject => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.text}
-                      </option>
+                          </>
+                        )}
+                      </li>
                     ))}
-                  </select>
+                  </ul>
                 </div>
-                
-                {/* Email template selection */}
-                <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Email Template</label>
-                  <select
-                    value={selectedDraft}
-                    onChange={handleDraftChange}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-                  >
-                    <option value="">-- Select a Template --</option>
-                    {draftTemplates.map(draft => (
-                      <option key={draft.id} value={draft.id}>
-                        {draft.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                {/* Email content */}
-                <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-400 mb-1">Email Content</label>
+              )}
+            </div>
+            
+            <div className="mb-6">
+              <div className="grid grid-cols-1 gap-6">
+                {/* Email Content */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Email Content
+                  </label>
                   <textarea
                     value={emailContent}
                     onChange={(e) => setEmailContent(e.target.value)}
-                    rows={10}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-                    placeholder="Enter your email content here..."
-                    required
+                    rows={12}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                    placeholder="Type your email content here..."
                   ></textarea>
                 </div>
                 
                 {/* Attachments */}
-                <div className="mt-4">
-                  <label className="block text-xs font-medium text-gray-400 mb-2">Attachments</label>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Attachments
+                    </label>
+                  </div>
+                  
                   <div className="flex items-center">
                     <button
                       type="button"
@@ -917,7 +1060,7 @@ export default function EmailComposePage() {
                 </div>
               </div>
               
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center mt-6">
                 <button
                   type="button"
                   className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
