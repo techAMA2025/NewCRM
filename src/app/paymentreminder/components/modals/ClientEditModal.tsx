@@ -88,21 +88,25 @@ export function ClientEditModal({ open, onOpenChange, client, onClientUpdate }: 
       // Calculate payment pending count
       const paymentsPending = (formData.tenure || client.tenure) - (client.paymentsCompleted || 0);
       
-      // Update the client document
-      const clientRef = doc(db, 'clients_payments', client.clientId);
-      await updateDoc(clientRef, {
+      // Create an update object with safely handled values
+      const updateData = {
         clientName: formData.clientName || client.clientName,
         clientEmail: formData.clientEmail || client.clientEmail,
         clientPhone: formData.clientPhone || client.clientPhone,
         monthlyFees: formData.monthlyFees || client.monthlyFees,
         weekOfMonth: formData.weekOfMonth || client.weekOfMonth,
-        advanceBalance: formData.advanceBalance || client.advanceBalance,
+        // Set advance balance to 0 if undefined to avoid Firestore errors
+        advanceBalance: (formData.advanceBalance !== undefined) ? formData.advanceBalance : (client.advanceBalance || 0),
         startDate: startDateTimestamp,
         tenure: formData.tenure || client.tenure,
         totalPaymentAmount: totalPaymentAmount,
         pendingAmount: pendingAmount,
         paymentsPending: paymentsPending
-      });
+      };
+      
+      // Update the client document
+      const clientRef = doc(db, 'clients_payments', client.clientId);
+      await updateDoc(clientRef, updateData);
       
       toast.success('Client information updated successfully');
       onOpenChange(false);
