@@ -1227,16 +1227,24 @@ export default function SuperAdminDashboard() {
 
         // Get current month's start and end dates
         const now = new Date();
-        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const currentMonthStart = new Date(currentYear, currentMonth, 1);
+        const currentMonthEnd = new Date(currentYear, currentMonth + 1, 0);
         
         // Track current month's payments
         let currentMonthCollected = 0;
         let currentMonthPending = 0;
         
+        // First, gather all client IDs to query payment history
+        const clientIds: string[] = [];
+        
         // Process each client payment document
         paymentsSnapshot.forEach((clientDoc) => {
           const clientPayment = clientDoc.data();
+          const clientId = clientDoc.id;
+          clientIds.push(clientId);
+          
           analytics.clientCount++;
           
           // Add to total analytics
@@ -1244,8 +1252,7 @@ export default function SuperAdminDashboard() {
           analytics.totalPaidAmount += clientPayment.paidAmount || 0;
           analytics.totalPendingAmount += clientPayment.pendingAmount || 0;
 
-          // Calculate current month's data
-          // Each client has a monthlyFees amount
+          // Calculate pending amount for current month
           const monthlyFees = clientPayment.monthlyFees || 0;
           
           // Check if this is a current client based on startDate
@@ -1257,13 +1264,6 @@ export default function SuperAdminDashboard() {
             if (startDate <= currentMonthEnd) {
               // Add to pending amount for current month
               currentMonthPending += monthlyFees;
-              
-              // If they've made payments, subtract from pending and add to collected
-              if (clientPayment.paymentsCompleted > 0) {
-                const thisMonthPaid = Math.min(monthlyFees, clientPayment.paidAmount || 0);
-                currentMonthCollected += thisMonthPaid;
-                currentMonthPending -= thisMonthPaid;
-              }
             }
           }
 
@@ -1276,6 +1276,87 @@ export default function SuperAdminDashboard() {
             }
           }
         });
+        
+        // Now query all payment history records for the current month
+        // This gives us more accurate collection data
+        for (const clientId of clientIds) {
+          // Get the payment history subcollection for this client
+          const paymentHistoryRef = collection(db, `clients_payments/${clientId}/payment_history`);
+          
+          // Use 'or' condition to catch both 'approved' and 'Approved' statuses
+          const paymentHistoryQuery = query(
+            paymentHistoryRef,
+            where('payment_status', 'in', ['approved', 'Approved'])
+          );
+          
+          try {
+            const paymentHistorySnapshot = await getDocs(paymentHistoryQuery);
+            
+            console.log(`Client ${clientId}: Found ${paymentHistorySnapshot.docs.length} approved payments`);
+            
+            // Process each payment record
+            paymentHistorySnapshot.forEach((paymentDoc) => {
+              const payment = paymentDoc.data();
+              console.log(`Processing payment: ${paymentDoc.id}`, payment);
+              
+              // Add payment amount regardless of date first to debug
+              currentMonthCollected += payment.requestedAmount || 0;
+              console.log(`Current total: ${currentMonthCollected}`);
+              
+              // Still perform the date checks for logging/debugging
+              let isCurrentMonth = false;
+              
+              // Check using paymentDate
+              if (payment.paymentDate) {
+                const paymentDate = payment.paymentDate.toDate ? 
+                  payment.paymentDate.toDate() : new Date(payment.paymentDate);
+                
+                if (paymentDate >= currentMonthStart && paymentDate <= currentMonthEnd) {
+                  isCurrentMonth = true;
+                  console.log(`Payment ${paymentDoc.id} matches current month by paymentDate`);
+                }
+              } 
+              // Check using dateApproved
+              else if (payment.dateApproved) {
+                const approvalDate = payment.dateApproved.toDate ? 
+                  payment.dateApproved.toDate() : new Date(payment.dateApproved);
+                
+                if (approvalDate >= currentMonthStart && approvalDate <= currentMonthEnd) {
+                  isCurrentMonth = true;
+                  console.log(`Payment ${paymentDoc.id} matches current month by dateApproved`);
+                }
+              }
+              // Check using requestDate as another fallback
+              else if (payment.requestDate) {
+                const requestDate = payment.requestDate.toDate ? 
+                  payment.requestDate.toDate() : new Date(payment.requestDate);
+                
+                if (requestDate >= currentMonthStart && requestDate <= currentMonthEnd) {
+                  isCurrentMonth = true;
+                  console.log(`Payment ${paymentDoc.id} matches current month by requestDate`);
+                }
+              }
+              // Check using monthNumber as last resort
+              else if (payment.monthNumber === currentMonth + 1) {
+                isCurrentMonth = true;
+                console.log(`Payment ${paymentDoc.id} matches current month by monthNumber`);
+              }
+              
+              // Log if payment is not identified as current month
+              if (!isCurrentMonth) {
+                console.log(`Payment ${paymentDoc.id} does NOT match current month criteria`);
+              }
+            });
+          } catch (error) {
+            console.error(`Error getting payment history for client ${clientId}:`, error);
+          }
+        }
+        
+        // Log final calculation
+        console.log("Final current month collections:", currentMonthCollected);
+        
+        // Update current month's pending amount by subtracting collected from total
+        currentMonthPending = Math.max(0, currentMonthPending - currentMonthCollected);
         
         // Calculate completion rate
         const completionRate = analytics.totalPaymentsAmount > 0 
