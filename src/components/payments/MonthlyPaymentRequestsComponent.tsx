@@ -220,7 +220,7 @@ export default function MonthlyPaymentRequestsComponent() {
       console.log("--- FETCH PAYMENT REQUESTS STARTED ---");
       
       // Limit the number of clients fetched and order them
-      const clientsQuery = query(collection(db, 'clients_payments'), limit(50));
+      const clientsQuery = query(collection(db, 'clients_payments'));
       const clientsSnapshot = await getDocs(clientsQuery);
       
       console.log(`Found ${clientsSnapshot.docs.length} clients`);
