@@ -679,7 +679,7 @@ export default function MonthlyPaymentRequestsComponent() {
                     request={request} 
                     onApprove={() => {}}
                     onDelete={() => handleDeleteRequest(request.id, request.clientId)}
-                    onEdit={() => {}}
+                    onEdit={() => handleEditRequest(request)}
                     formatDate={formatDate}
                   />
                 ))}
@@ -909,18 +909,53 @@ const RequestCard = ({ request, onApprove, onDelete, onEdit, formatDate }: Reque
 
         {(request.payment_status === 'approved' || request.payment_status === 'Approved') ? (
           <Box sx={{ 
-            p: 1.5,
-            bgcolor: 'rgba(0, 208, 151, 0.06)', 
-            borderRadius: 2,
-            border: '1px solid rgba(0, 208, 151, 0.1)',
             display: 'flex',
+            gap: 1.5,
             alignItems: 'center',
-            justifyContent: 'center'
           }}>
-            <CheckCircle sx={{ color: 'success.main', mr: 1 }} fontSize="small" />
-            <Typography color="success.main" fontWeight={600} variant="body2">
-              APPROVED
-            </Typography>
+            <Box sx={{ 
+              flex: 1,
+              p: 1.5,
+              bgcolor: 'rgba(0, 208, 151, 0.06)', 
+              borderRadius: 2,
+              border: '1px solid rgba(0, 208, 151, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <CheckCircle sx={{ color: 'success.main', mr: 1 }} fontSize="small" />
+              <Typography color="success.main" fontWeight={600} variant="body2">
+                APPROVED
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              sx={{ 
+                py: 0.75,
+                background: 'rgba(140, 92, 255, 0.05)', 
+                borderColor: 'rgba(140, 92, 255, 0.3)',
+                color: '#8C5CFF'
+              }}
+              onClick={onEdit}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              sx={{ 
+                py: 0.75,
+                background: 'rgba(255, 90, 101, 0.05)', 
+                borderColor: 'rgba(255, 90, 101, 0.3)',
+                color: '#FF5A65'
+              }}
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
           </Box>
         ) : (
           <Box sx={{ display: 'flex', gap: 1.5 }}>
