@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
 import { FaEnvelope, FaPaperPlane, FaFileAlt, FaUser, FaPaperclip, FaTimes, FaFile, FaPlus, FaUserPlus, FaEdit, FaCheck, FaEnvelopeOpen, FaPen } from 'react-icons/fa';
 import { Toaster, toast } from 'react-hot-toast';
+// Firebase imports
+import { httpsCallable } from 'firebase/functions';
+import { functions, auth } from '@/firebase/firebase';
 
 // Define interfaces for types
 interface Attachment {
@@ -644,10 +647,12 @@ export default function EmailComposePage() {
   // Handle form submission
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log("Starting email submission process...");
     
     // Validate form
     if (recipients.length === 0) {
       toast.error('Please add at least one recipient');
+      console.log("Validation failed: No recipients");
       return;
     }
     
@@ -655,11 +660,13 @@ export default function EmailComposePage() {
     const currentSubject = isCustomSubject ? customSubject : getCurrentSubjectText();
     if (!currentSubject.trim()) {
       toast.error('Please enter a subject');
+      console.log("Validation failed: No subject");
       return;
     }
     
     if (!emailContent.trim()) {
       toast.error('Please enter email content');
+      console.log("Validation failed: No email content");
       return;
     }
     
@@ -667,29 +674,125 @@ export default function EmailComposePage() {
     setLoading(true);
     
     try {
-      // In a real app, here you would send the email using an API
-      // For demonstration, we'll just simulate a delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log("Converting file attachments to base64...");
+      // Convert file attachments to base64
+      const processedAttachments = await Promise.all(
+        attachments.map(async (attachment) => {
+          const base64 = await convertFileToBase64(attachment.file);
+          return {
+            name: attachment.name,
+            type: attachment.type,
+            size: attachment.size,
+            data: base64
+          };
+        })
+      );
+      console.log(`Processed ${processedAttachments.length} attachments successfully`);
       
-      // Simulate success
-      toast.success('Email sent successfully!');
+      // Prepare email data for the cloud function
+      const emailData = {
+        subject: currentSubject,
+        content: emailContent,
+        recipients: recipients,
+        attachments: processedAttachments,
+        clientId: recipients.find(r => r.type === 'client')?.clientId, // Add client reference if exists
+        bankId: selectedBank || undefined // Add bank reference if selected
+      };
       
-      // Reset form
-      setRecipients([]);
-      setSelectedDraft('');
-      setSelectedSubject('');
-      setCustomSubject('');
-      setIsCustomSubject(false);
-      setEmailContent('');
-      setAttachments([]);
-      setSelectedBank('');
+      console.log("Email data prepared:", {
+        subject: currentSubject,
+        recipientCount: recipients.length,
+        recipientTypes: recipients.map(r => r.type),
+        attachmentCount: processedAttachments.length,
+        contentLength: emailContent.length,
+        clientId: recipients.find(r => r.type === 'client')?.clientId,
+        bankId: selectedBank || undefined
+      });
       
+      // Make sure user is authenticated
+      if (!auth.currentUser) {
+        toast.error('You must be logged in to send emails');
+        console.log("Authentication error: User not logged in");
+        setLoading(false);
+        return;
+      }
+      
+      console.log("User authenticated, preparing to call cloud function...");
+      // Call the sendEmail cloud function
+      const sendEmailFn = httpsCallable(functions, 'sendEmail');
+      console.log("Calling sendEmail cloud function...");
+      
+      try {
+        const result = await sendEmailFn(emailData);
+        console.log("Cloud function response received:", result);
+        
+        // Cast result to the expected return type
+        const response = result.data as { success: boolean; messageId?: string; emailId?: string };
+        
+        if (response.success) {
+          console.log("Email sent successfully with messageId:", response.messageId);
+          toast.success('Email sent successfully!');
+          
+          // Reset form
+          setRecipients([]);
+          setSelectedDraft('');
+          setSelectedSubject('');
+          setCustomSubject('');
+          setIsCustomSubject(false);
+          setEmailContent('');
+          setAttachments([]);
+          setSelectedBank('');
+          setTempClientId('');
+        } else {
+          console.error("Cloud function reported failure without throwing error");
+          throw new Error('Failed to send email: Cloud function returned success=false');
+        }
+      } catch (error: any) {
+        console.error("Firebase function error details:", error);
+        
+        // Check for different error types
+        if (error.code === 'functions/internal') {
+          console.error("Internal server error detected in email function");
+          toast.error(
+            "The email service is currently experiencing technical difficulties. " +
+            "Our team has been notified and is working to resolve this issue. " +
+            "Please try again later or contact support."
+          );
+          
+          // Log additional context for debugging
+          console.error("This could be due to invalid SMTP configuration, " +
+                       "missing Firebase config values, or other server-side issues.");
+        } else if (error.message && error.message.includes("Authentication Failed")) {
+          toast.error("Email server authentication failed. Please contact your administrator.");
+        } else {
+          toast.error(`Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
     } catch (error) {
-      toast.error('Failed to send email. Please try again.');
-      console.error('Error sending email:', error);
+      console.error('Error in handleSubmit:', error);
+      toast.error(`Something went wrong while preparing your email. Please try again.`);
     } finally {
+      console.log("Email submission process completed");
       setLoading(false);
     }
+  };
+  
+  // Helper function to convert File to base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+          const base64String = reader.result.split(',')[1];
+          resolve(base64String);
+        } else {
+          reject(new Error('FileReader did not return a string'));
+        }
+      };
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
   };
 
   return (
@@ -1060,26 +1163,29 @@ export default function EmailComposePage() {
                 </div>
               </div>
               
-              <div className="flex justify-between items-center mt-6">
+              <div className="mt-8">
                 <button
-                  type="button"
-                  className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                  onClick={() => setEmailContent('')}
-                >
-                  Clear
-                </button>
-                
-                <button 
-                  type="submit" 
-                  className={`px-6 py-3 rounded-md text-white font-medium flex items-center ${
-                    loading 
-                      ? 'bg-gray-600 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg hover:shadow-purple-500/20'
-                  } transition-all duration-200`}
+                  type="submit"
                   disabled={loading}
+                  className={`w-full py-3 rounded-lg shadow-lg flex items-center justify-center text-lg font-medium transition-all duration-300 ${
+                    loading
+                      ? "bg-gray-700 text-gray-300 cursor-not-allowed"
+                      : "bg-purple-600 hover:bg-purple-700 text-white"
+                  }`}
                 >
-                  <FaPaperPlane className="mr-2" />
-                  {loading ? 'Sending...' : 'Send Email'}
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Sending Email...
+                    </>
+                  ) : (
+                    <>
+                      <FaPaperPlane className="mr-2" /> Send Email
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1098,9 +1204,10 @@ export default function EmailComposePage() {
           </div>
         </div>
         
-        <Toaster 
-          position="top-right"
+        <Toaster
+          position="bottom-right"
           toastOptions={{
+            duration: 3000,
             style: {
               background: '#333',
               color: '#fff',
