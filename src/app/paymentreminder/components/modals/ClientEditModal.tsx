@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, Timestamp, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -78,27 +78,29 @@ export function ClientEditModal({ open, onOpenChange, client, onClientUpdate }: 
         Timestamp.fromDate(new Date(startDateStr)) : 
         client.startDate;
       
+      // Get the potentially updated monthly fees and tenure
+      const updatedMonthlyFees = formData.monthlyFees || client.monthlyFees;
+      const updatedTenure = formData.tenure || client.tenure;
+      
       // Calculate total payment amount based on monthly fees and tenure
-      const totalPaymentAmount = (formData.monthlyFees || client.monthlyFees) * 
-                                (formData.tenure || client.tenure);
+      const totalPaymentAmount = updatedMonthlyFees * updatedTenure;
       
       // Calculate pending amount
       const pendingAmount = totalPaymentAmount - (client.paidAmount || 0);
       
       // Calculate payment pending count
-      const paymentsPending = (formData.tenure || client.tenure) - (client.paymentsCompleted || 0);
+      const paymentsPending = updatedTenure - (client.paymentsCompleted || 0);
       
       // Create an update object with safely handled values
       const updateData = {
         clientName: formData.clientName || client.clientName,
         clientEmail: formData.clientEmail || client.clientEmail,
         clientPhone: formData.clientPhone || client.clientPhone,
-        monthlyFees: formData.monthlyFees || client.monthlyFees,
+        monthlyFees: updatedMonthlyFees,
         weekOfMonth: formData.weekOfMonth || client.weekOfMonth,
-        // Set advance balance to 0 if undefined to avoid Firestore errors
         advanceBalance: (formData.advanceBalance !== undefined) ? formData.advanceBalance : (client.advanceBalance || 0),
         startDate: startDateTimestamp,
-        tenure: formData.tenure || client.tenure,
+        tenure: updatedTenure,
         totalPaymentAmount: totalPaymentAmount,
         pendingAmount: pendingAmount,
         paymentsPending: paymentsPending
@@ -107,6 +109,63 @@ export function ClientEditModal({ open, onOpenChange, client, onClientUpdate }: 
       // Update the client document
       const clientRef = doc(db, 'clients_payments', client.clientId);
       await updateDoc(clientRef, updateData);
+      
+      // Update monthly payments if monthly fee has changed
+      if (updatedMonthlyFees !== client.monthlyFees) {
+        // Update each month's payment record in the subcollection
+        const updatePromises = [];
+        
+        for (let i = 1; i <= updatedTenure; i++) {
+          const monthRef = doc(db, `clients_payments/${client.clientId}/monthly_payments`, `month_${i}`);
+          
+          // First check if the document exists
+          const monthDoc = await getDoc(monthRef);
+          
+          if (monthDoc.exists()) {
+            // Get the existing data 
+            const monthData = monthDoc.data();
+            
+            // Calculate the new pending amount based on the new monthly fee
+            // and the amount already paid for this month
+            const paidAmount = monthData.paidAmount || 0;
+            const dueAmount = updatedMonthlyFees;
+            
+            // Determine the new status based on paid amount
+            let status = 'pending';
+            if (paidAmount >= dueAmount) {
+              status = 'paid';
+            } else if (paidAmount > 0) {
+              status = 'partial';
+            }
+            
+            // Update the month document
+            updatePromises.push(
+              updateDoc(monthRef, {
+                dueAmount: dueAmount,
+                status: status
+              })
+            );
+          } else {
+            // If the month document doesn't exist, create it
+            const newMonthData = {
+              monthNumber: i,
+              dueAmount: updatedMonthlyFees,
+              paidAmount: 0,
+              dueDate: Timestamp.fromDate(new Date()), // You might want to calculate this based on start date
+              status: 'pending',
+              reminderSent: false,
+              reminderDate: null
+            };
+            
+            updatePromises.push(
+              setDoc(monthRef, newMonthData)
+            );
+          }
+        }
+        
+        // Wait for all updates to complete
+        await Promise.all(updatePromises);
+      }
       
       toast.success('Client information updated successfully');
       onOpenChange(false);
