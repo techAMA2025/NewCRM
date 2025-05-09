@@ -245,18 +245,6 @@ export default function FilterBar({
             }} className={`hover:bg-gray-700 ${filterPaid === 'notpaid' ? 'bg-gray-700' : ''}`}>
               Not Paid
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setFilterPaid('currentpaid');
-              setCurrentPage(1);
-            }} className={`hover:bg-gray-700 ${filterPaid === 'currentpaid' ? 'bg-gray-700' : ''}`}>
-              Current Month Paid
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setFilterPaid('currentunpaid');
-              setCurrentPage(1);
-            }} className={`hover:bg-gray-700 ${filterPaid === 'currentunpaid' ? 'bg-gray-700' : ''}`}>
-              Current Month Unpaid
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         

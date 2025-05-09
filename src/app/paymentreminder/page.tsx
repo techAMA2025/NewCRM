@@ -128,40 +128,6 @@ type WeeklyFilter = {
   amount: string | null;
 };
 
-// Move this helper function ABOVE where it's being used
-// Add this helper function to determine the current month's payment status
-const isCurrentMonthPaid = (client: Client) => {
-  // Get the current date
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  
-  // If client has a start date, calculate which month number we're in
-  if (client.startDate) {
-    const startDate = new Date(client.startDate.seconds * 1000);
-    const startMonth = startDate.getMonth();
-    const startYear = startDate.getFullYear();
-    
-    // Calculate months difference
-    const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
-    
-    // The current month number in the payment schedule (1-based)
-    const currentMonthNumber = monthsDiff + 1;
-    
-    // Check if this month's payment is completed
-    // If monthNumber > tenure, all payments are completed
-    if (currentMonthNumber > client.tenure) {
-      return true;
-    }
-    
-    // If current month number is within the payment schedule and paymentsCompleted includes this month
-    return currentMonthNumber <= client.paymentsCompleted;
-  }
-  
-  // If no start date, default to using pendingAmount
-  return client.pendingAmount === 0;
-};
-
 export default function PaymentReminderPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -452,7 +418,7 @@ export default function PaymentReminderPage() {
     setEndDate(end);
   };
 
-  // Then use it in filteredClients below
+  // Enhanced filtering logic
   const filteredClients = clients.filter(client => {
     // Existing search filter
     const matchesSearch = 
@@ -463,14 +429,11 @@ export default function PaymentReminderPage() {
     // Existing week filter
     const matchesWeek = weekFilter === null || client.weekOfMonth === weekFilter;
     
-    // Updated payment status filter to include current month options
+    // New payment status filter
     const matchesPaymentStatus = !filterPaid || 
       (filterPaid === 'fullypaid' && client.paymentsCompleted === client.tenure) ||
       (filterPaid === 'partiallypaid' && client.paymentsCompleted > 0 && client.paymentsCompleted < client.tenure) ||
-      (filterPaid === 'notpaid' && client.paymentsCompleted === 0) ||
-      // New current month filter options
-      (filterPaid === 'currentpaid' && isCurrentMonthPaid(client)) ||
-      (filterPaid === 'currentunpaid' && !isCurrentMonthPaid(client));
+      (filterPaid === 'notpaid' && client.paymentsCompleted === 0);
     
     // New amount filter
     const matchesAmount = !amountFilter ||
@@ -944,11 +907,11 @@ export default function PaymentReminderPage() {
                                       <div className="flex items-center gap-2">
                                         <h4 className="font-medium text-gray-200">{client.clientName}</h4>
                                         
-                                        {/* Updated current month payment status indicator */}
+                                        {/* Current month payment status indicator */}
                                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium
-                                          ${isCurrentMonthPaid(client) ? 'bg-green-900/30 text-green-300 border border-green-700/50' : 
+                                          ${client.pendingAmount === 0 ? 'bg-green-900/30 text-green-300 border border-green-700/50' : 
                                             'bg-red-900/30 text-red-300 border border-red-700/50'}`}>
-                                          {isCurrentMonthPaid(client) ? 'Current Month Paid' : 'Current Month Unpaid'}
+                                          {client.pendingAmount === 0 ? 'Current Month Paid' : 'Current Month Unpaid'}
                                         </span>
                                         
                                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium
