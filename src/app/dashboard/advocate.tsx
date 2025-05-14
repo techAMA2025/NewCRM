@@ -492,7 +492,7 @@ const AdvocateDashboard = () => {
     // First check after 2 minutes, then every 30 minutes
     const initialTimerId = setTimeout(() => {
       checkPendingTasks()
-      intervalId = setInterval(checkPendingTasks, 1 * 60 * 1000)
+      intervalId = setInterval(checkPendingTasks, 20 * 60 * 1000)
     }, 2 * 60 * 1000)
     
     return () => {
