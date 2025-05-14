@@ -83,6 +83,7 @@ const AdvocateDashboard = () => {
   const [completionType, setCompletionType] = useState<"completed" | "partially-completed">("completed")
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [audioEnabled, setAudioEnabled] = useState(false)
+  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false)
 
   useEffect(() => {
     const fetchAdvocateData = async () => {
@@ -329,35 +330,48 @@ const AdvocateDashboard = () => {
   }, []);
 
   useEffect(() => {
-    // Create audio element for alarm
-    audioRef.current = new Audio('/alarm-beep.mp3')
-    audioRef.current.volume = 0.7
-    audioRef.current.loop = true
+    // Create audio element with preload
+    const audio = new Audio('/alarm-beep.mp3');
+    audio.preload = 'auto';
+    audio.volume = 0.7;
+    audio.loop = true;
+    audioRef.current = audio;
     
-    // Add a one-time user interaction handler to enable audio
+    // Show permission prompt after a short delay
+    const promptTimer = setTimeout(() => {
+      setShowPermissionPrompt(true);
+    }, 3000);
+    
+    // Function to enable audio on user interaction
     const enableAudio = () => {
-      setAudioEnabled(true)
-      // Try to play and immediately pause to get permission
       if (audioRef.current) {
+        // Try to play and immediately pause to get permission
         audioRef.current.play()
           .then(() => {
-            audioRef.current?.pause()
-            audioRef.current!.currentTime = 0
-            console.log("Audio enabled successfully")
+            audioRef.current?.pause();
+            audioRef.current!.currentTime = 0;
+            setAudioEnabled(true);
+            setShowPermissionPrompt(false);
+            toast.success("Audio notifications enabled successfully!");
+            console.log("Audio enabled successfully");
           })
-          .catch(e => console.log("Couldn't enable audio:", e))
+          .catch(e => {
+            console.log("Couldn't enable audio:", e);
+            setShowPermissionPrompt(true); // Show prompt again on failure
+          });
       }
-      // Remove the event listener after first interaction
-      document.removeEventListener('click', enableAudio)
-      document.removeEventListener('keydown', enableAudio)
-    }
+      
+      // Remove event listeners after attempt
+      document.removeEventListener('click', enableAudio);
+      document.removeEventListener('keydown', enableAudio);
+    };
     
-    // Add event listeners for first user interaction
-    document.addEventListener('click', enableAudio)
-    document.addEventListener('keydown', enableAudio)
+    // Add event listeners for user interaction
+    document.addEventListener('click', enableAudio);
+    document.addEventListener('keydown', enableAudio);
     
     // Set up task reminder notifications
-    let intervalId: NodeJS.Timeout
+    let intervalId: NodeJS.Timeout;
     
     const checkPendingTasks = () => {
       const pendingTasks = assignedTasks.filter(task => 
@@ -478,7 +492,7 @@ const AdvocateDashboard = () => {
     // First check after 2 minutes, then every 30 minutes
     const initialTimerId = setTimeout(() => {
       checkPendingTasks()
-      intervalId = setInterval(checkPendingTasks, 20 * 60 * 1000)
+      intervalId = setInterval(checkPendingTasks, 1 * 60 * 1000)
     }, 2 * 60 * 1000)
     
     return () => {
@@ -489,11 +503,12 @@ const AdvocateDashboard = () => {
         audioRef.current.pause()
         audioRef.current.currentTime = 0
       }
-      // Remove event listeners if component unmounts before interaction
+      // Remove event listeners
       document.removeEventListener('click', enableAudio)
       document.removeEventListener('keydown', enableAudio)
       // Restore document title when component unmounts
       document.title = "Advocate Dashboard - CRM"
+      clearTimeout(promptTimer)
     }
   }, [assignedTasks])
 
@@ -598,6 +613,37 @@ const AdvocateDashboard = () => {
     }
   }
 
+  // Explicitly request browser permission for audio
+  const requestBrowserAudioPermission = () => {
+    // Using navigator.mediaDevices to explicitly request audio permission
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        // Permission granted - now we can use audio
+        setAudioEnabled(true);
+        setShowPermissionPrompt(false);
+        
+        // Stop all audio tracks from the stream (we just needed the permission)
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Play a test sound to confirm audio works
+        if (audioRef.current) {
+          audioRef.current.play()
+            .then(() => {
+              setTimeout(() => {
+                audioRef.current?.pause();
+                audioRef.current!.currentTime = 0;
+              }, 500);
+              toast.success("Audio permissions granted successfully!");
+            });
+        }
+      })
+      .catch(err => {
+        console.error("Error requesting audio permission:", err);
+        toast.error("Audio permission denied. Notifications will be silent.");
+        setShowPermissionPrompt(false);
+      });
+  };
+
   if (loading) {
     return <div className="p-6 min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center">
       <div className="animate-pulse text-xl">Loading dashboard data...</div>
@@ -607,6 +653,40 @@ const AdvocateDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 text-gray-200">
       <Toaster position="top-right" />
+      
+      {/* Audio Permission Prompt */}
+      {showPermissionPrompt && !audioEnabled && (
+        <div className="fixed bottom-4 right-4 bg-blue-800 p-4 rounded-lg shadow-lg z-50 max-w-sm animate-fade-in">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                  d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-blue-100">Enable Audio Alerts?</h3>
+              <p className="mt-1 text-sm text-blue-200">
+                This will trigger the browser's permission dialog. Please click "Allow" when prompted.
+              </p>
+              <div className="mt-3 flex space-x-3">
+                <button
+                  onClick={requestBrowserAudioPermission}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded"
+                >
+                  Enable Audio
+                </button>
+                <button
+                  onClick={() => setShowPermissionPrompt(false)}
+                  className="px-3 py-1 bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm rounded"
+                >
+                  Not Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Advocate Dashboard</h1>
