@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { db } from '@/firebase/firebase'
 import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc } from 'firebase/firestore'
 import { format, isPast } from 'date-fns'
 import { useRouter } from 'next/navigation'
+import toast, { Toaster } from 'react-hot-toast'
 
 // Define interface for client data
 interface Client {
@@ -80,6 +81,8 @@ const AdvocateDashboard = () => {
   const [currentTaskId, setCurrentTaskId] = useState("")
   const [feedback, setFeedback] = useState("")
   const [completionType, setCompletionType] = useState<"completed" | "partially-completed">("completed")
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [audioEnabled, setAudioEnabled] = useState(false)
 
   useEffect(() => {
     const fetchAdvocateData = async () => {
@@ -325,6 +328,175 @@ const AdvocateDashboard = () => {
     fetchAdvocateData();
   }, []);
 
+  useEffect(() => {
+    // Create audio element for alarm
+    audioRef.current = new Audio('/alarm-beep.mp3')
+    audioRef.current.volume = 0.7
+    audioRef.current.loop = true
+    
+    // Add a one-time user interaction handler to enable audio
+    const enableAudio = () => {
+      setAudioEnabled(true)
+      // Try to play and immediately pause to get permission
+      if (audioRef.current) {
+        audioRef.current.play()
+          .then(() => {
+            audioRef.current?.pause()
+            audioRef.current!.currentTime = 0
+            console.log("Audio enabled successfully")
+          })
+          .catch(e => console.log("Couldn't enable audio:", e))
+      }
+      // Remove the event listener after first interaction
+      document.removeEventListener('click', enableAudio)
+      document.removeEventListener('keydown', enableAudio)
+    }
+    
+    // Add event listeners for first user interaction
+    document.addEventListener('click', enableAudio)
+    document.addEventListener('keydown', enableAudio)
+    
+    // Set up task reminder notifications
+    let intervalId: NodeJS.Timeout
+    
+    const checkPendingTasks = () => {
+      const pendingTasks = assignedTasks.filter(task => 
+        task.status !== 'completed' && task.status !== 'partially-completed'
+      )
+      
+      if (pendingTasks.length > 0) {
+        // Create a unique ID for this notification session
+        let audioTimeout: NodeJS.Timeout | null = null;
+        
+        // Helper function to clean up after notification is dismissed
+        const cleanupNotification = () => {
+          // Stop audio if it's playing
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          }
+          
+          // Clear timeout if it exists
+          if (audioTimeout) {
+            clearTimeout(audioTimeout);
+          }
+          
+          // Restore document title
+          document.title = "Advocate Dashboard - CRM";
+        };
+        
+        // Try to play alarm sound if enabled
+        if (audioRef.current && audioEnabled) {
+          // Make sure audio is reset before playing
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+          console.log('Attempting to play notification sound');
+          
+          // Force play attempt after a small delay to ensure DOM is ready
+          setTimeout(() => {
+            audioRef.current?.play()
+              .then(() => {
+                console.log('Successfully playing notification sound');
+                // Set timeout to stop audio after toast duration
+                audioTimeout = setTimeout(() => {
+                  cleanupNotification();
+                }, 10000);
+              })
+              .catch(e => {
+                console.error('Audio notification failed:', e);
+                document.title = "⚠️ URGENT: Pending Tasks - CRM";
+              });
+          }, 100);
+        } else {
+          // If audio not enabled, make visual cue more aggressive
+          document.title = "⚠️ URGENT: Pending Tasks - CRM";
+        }
+        
+        // Show critical toast notification
+        const toastId = toast.custom((t) => (
+          <div
+            className={`${
+              t.visible ? 'animate-enter' : 'animate-leave'
+            } max-w-md w-full bg-red-900 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+          >
+            <div className="flex-1 w-0 p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 pt-0.5">
+                  <svg className="h-10 w-10 text-red-200 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm font-medium text-red-100">
+                    URGENT: Pending Tasks
+                  </p>
+                  <p className="mt-1 text-sm text-red-200">
+                    You have {pendingTasks.length} pending task{pendingTasks.length > 1 ? 's' : ''} that need your attention!
+                  </p>
+                  <div className="mt-2">
+                    <button
+                      onClick={() => {
+                        setAudioEnabled(true);
+                        cleanupNotification();
+                        const tasksSection = document.getElementById('tasks-section');
+                        if (tasksSection) tasksSection.scrollIntoView({ behavior: 'smooth' });
+                        toast.dismiss(t.id);
+                      }}
+                      className="rounded bg-red-700 px-2 py-1 text-xs font-semibold text-red-100 shadow-sm hover:bg-red-600"
+                    >
+                      View Tasks
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex border-l border-red-700">
+              <button
+                onClick={() => {
+                  setAudioEnabled(true);
+                  cleanupNotification();
+                  toast.dismiss(t.id);
+                }}
+                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-200 hover:text-red-100 focus:outline-none"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ), { 
+          duration: 10000,
+        });
+
+        // Set up a timeout to run the cleanup when the toast duration expires
+        setTimeout(() => {
+          cleanupNotification();
+        }, 10000);
+      }
+    }
+    
+    // Start checking for tasks after the component mounts
+    // First check after 2 minutes, then every 30 minutes
+    const initialTimerId = setTimeout(() => {
+      checkPendingTasks()
+      intervalId = setInterval(checkPendingTasks, 1 * 60 * 1000)
+    }, 2 * 60 * 1000)
+    
+    return () => {
+      clearTimeout(initialTimerId)
+      clearInterval(intervalId)
+      // Stop any playing audio when component unmounts
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+      }
+      // Remove event listeners if component unmounts before interaction
+      document.removeEventListener('click', enableAudio)
+      document.removeEventListener('keydown', enableAudio)
+      // Restore document title when component unmounts
+      document.title = "Advocate Dashboard - CRM"
+    }
+  }, [assignedTasks])
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high": return "text-red-400";
@@ -383,6 +555,49 @@ const AdvocateDashboard = () => {
     router.push(`/advocate/clients?status=${statusFilter}`)
   }
 
+  // Function to check if audio file exists and is playable
+  const checkAudioFile = () => {
+    const audioPath = '/alarm-beep.mp3'
+    fetch(audioPath)
+      .then(response => {
+        if (!response.ok) {
+          console.error(`Audio file not found at ${audioPath}`)
+          toast.error("Audio notification file not found")
+        } else {
+          console.log("Audio file exists and should be playable")
+        }
+      })
+      .catch(error => {
+        console.error("Error checking audio file:", error)
+      })
+  }
+
+  // Add a debug button to the UI for testing audio
+  const testAudioPlayback = () => {
+    checkAudioFile()
+    
+    if (audioRef.current) {
+      setAudioEnabled(true)
+      audioRef.current.currentTime = 0
+      audioRef.current.play()
+        .then(() => {
+          console.log("Audio is playing")
+          setTimeout(() => {
+            if (audioRef.current) {
+              audioRef.current.pause()
+              audioRef.current.currentTime = 0
+            }
+          }, 3000)
+        })
+        .catch(e => {
+          console.error("Failed to play audio:", e)
+          toast.error("Couldn't play audio. Try clicking anywhere on the page first.")
+        })
+    } else {
+      toast.error("Audio element not initialized")
+    }
+  }
+
   if (loading) {
     return <div className="p-6 min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center">
       <div className="animate-pulse text-xl">Loading dashboard data...</div>
@@ -391,7 +606,19 @@ const AdvocateDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 text-gray-200">
-      <h1 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Advocate Dashboard</h1>
+      <Toaster position="top-right" />
+      
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Advocate Dashboard</h1>
+        
+        {/* Add debug button for audio testing */}
+        <button
+          onClick={testAudioPlayback}
+          className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-md transition-colors"
+        >
+          Test Audio
+        </button>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div 
@@ -418,89 +645,89 @@ const AdvocateDashboard = () => {
           <p className="text-4xl font-bold text-yellow-400">{clientStats.notRespondingClients}</p>
         </div>
       </div>
-      <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 mb-10">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-              {showHistory ? "Completed Tasks" : "Your Assigned Tasks"}
-            </h2>
-            <button 
-              onClick={() => setShowHistory(!showHistory)} 
-              className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
-              {showHistory ? "Show Pending Tasks" : "History"}
-            </button>
-          </div>
-          <div className="space-y-4">
-            {assignedTasks.length > 0 ? (
-              assignedTasks
-                .filter(task => showHistory ? task.status === 'completed' : task.status !== 'completed')
-                .map(task => (
-                <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-white">{task.title}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        task.status === 'completed' 
-                          ? 'bg-green-900 text-green-200' 
-                          : task.status === 'partially-completed'
-                            ? 'bg-yellow-900 text-yellow-200'
-                            : 'bg-yellow-900 text-yellow-200'
-                      }`}>
-                        {task.status}
-                      </span>
-                      {task.status !== 'completed' && (
-                        <div className="flex ml-2 space-x-2">
-                          {task.status === 'partially-completed' ? (
+      <div id="tasks-section" className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 mb-10">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+            {showHistory ? "Completed Tasks" : "Your Assigned Tasks"}
+          </h2>
+          <button 
+            onClick={() => setShowHistory(!showHistory)} 
+            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          >
+            {showHistory ? "Show Pending Tasks" : "History"}
+          </button>
+        </div>
+        <div className="space-y-4">
+          {assignedTasks.length > 0 ? (
+            assignedTasks
+              .filter(task => showHistory ? task.status === 'completed' : task.status !== 'completed')
+              .map(task => (
+              <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-white">{task.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      task.status === 'completed' 
+                        ? 'bg-green-900 text-green-200' 
+                        : task.status === 'partially-completed'
+                          ? 'bg-yellow-900 text-yellow-200'
+                          : 'bg-yellow-900 text-yellow-200'
+                    }`}>
+                      {task.status}
+                    </span>
+                    {task.status !== 'completed' && (
+                      <div className="flex ml-2 space-x-2">
+                        {task.status === 'partially-completed' ? (
+                          <button
+                            onClick={() => markTaskAs(task.id, "completed")}
+                            className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                          >
+                            Mark Complete
+                          </button>
+                        ) : (
+                          <>
                             <button
                               onClick={() => markTaskAs(task.id, "completed")}
                               className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
                             >
                               Mark Complete
                             </button>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => markTaskAs(task.id, "completed")}
-                                className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-                              >
-                                Mark Complete
-                              </button>
-                              <button
-                                onClick={() => markTaskAs(task.id, "partially-completed")}
-                                className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors"
-                              >
-                                Partially Completed
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
-                  {task.status === 'completed' && task.feedback && (
-                    <div className="mt-2 bg-gray-700/50 p-2 rounded border-l-2 border-green-500">
-                      <p className="text-xs text-green-400 font-medium mb-1">Completion Feedback:</p>
-                      <p className="text-sm text-gray-300">{task.feedback}</p>
-                    </div>
-                  )}
-                  <div className="mt-2 flex justify-between text-xs text-gray-500">
-                    <span>Assigned by: {task.assignedBy}</span>
-                    <span>{new Date(task.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}</span>
+                            <button
+                              onClick={() => markTaskAs(task.id, "partially-completed")}
+                              className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors"
+                            >
+                              Partially Completed
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>{showHistory ? "No completed tasks" : "No pending tasks assigned to you"}</p>
+                <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+                {task.status === 'completed' && task.feedback && (
+                  <div className="mt-2 bg-gray-700/50 p-2 rounded border-l-2 border-green-500">
+                    <p className="text-xs text-green-400 font-medium mb-1">Completion Feedback:</p>
+                    <p className="text-sm text-gray-300">{task.feedback}</p>
+                  </div>
+                )}
+                <div className="mt-2 flex justify-between text-xs text-gray-500">
+                  <span>Assigned by: {task.assignedBy}</span>
+                  <span>{new Date(task.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}</span>
+                </div>
               </div>
-            )}
-          </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>{showHistory ? "No completed tasks" : "No pending tasks assigned to you"}</p>
+            </div>
+          )}
         </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
           <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Today's Arbitrations</h2>
