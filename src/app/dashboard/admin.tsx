@@ -591,6 +591,65 @@ const AdminDashboard = () => {
         </div>
         
         {/* Charts */}
+        {/* Sales Target Table */}
+        <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-purple-500/10 transition-all duration-300 mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-gray-100">Sales Team Targets & Collections</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-700">
+                <thead className="bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Sales Person
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Target Amount
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Collected Amount
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Achievement %
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {targetData.map((target) => {
+                    const percentage = Math.round((target.amountCollected || 0) / (target.amountCollectedTarget || 1) * 100);
+                    return (
+                      <tr key={target.id} className="hover:bg-gray-750 transition-colors duration-150">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">
+                          {target.userName || 'Unknown'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-300">
+                          ₹{(target.amountCollectedTarget || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-300">
+                          ₹{(target.amountCollected || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                          <span 
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              percentage >= 100 ? 'bg-emerald-900 text-emerald-200' : 
+                              percentage >= 75 ? 'bg-indigo-900 text-indigo-200' :
+                              percentage >= 50 ? 'bg-amber-900 text-amber-200' : 
+                              'bg-rose-900 text-rose-200'
+                            }`}
+                          >
+                            {percentage}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
