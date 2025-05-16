@@ -56,6 +56,7 @@ const OverlordSidebar: React.FC = () => {
     { href: '/clientalloc', icon: <FiUserPlus />, label: 'Client Allocation' },
     { href: '/assigntasks', icon: <FiCheckSquare />, label: 'Assign Tasks' },
     { href: '/arbtracker', icon: <FaBalanceScale />, label: 'Arbitration' },
+    { href: '/pendingletters', icon: <FiClipboard/>, label: 'Pending Letters' },
   ];
 
   const handleLogout = async () => {
