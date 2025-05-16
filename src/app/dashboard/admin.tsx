@@ -99,6 +99,7 @@ interface Letter {
   bankName?: string;
   dueDate?: string;
   advocateName?: string; // Adding advocate information for admin view
+  source_database?: string;
 }
 
 const AdminDashboard = () => {
@@ -366,7 +367,8 @@ const AdminDashboard = () => {
             clientName: clientData.name,
             bankName: clientData.bank || 'Not specified',
             dueDate: clientData.nextFollowUp || clientData.lastFollowUp,
-            advocateName: clientData.alloc_adv || 'Unassigned' // Include advocate name for admin view
+            advocateName: clientData.alloc_adv || 'Unassigned', // Include advocate name for admin view
+            source_database: clientData.source_database || 'Not specified'
           });
         }
       });
@@ -771,6 +773,9 @@ const AdminDashboard = () => {
                         Bank
                       </th> */}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Source
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Assigned Advocate
                       </th>
                       {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -790,6 +795,9 @@ const AdminDashboard = () => {
                         {/* <td className="px-6 py-4 whitespace-nowrap">
                           {letter.bankName}
                         </td> */}
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                          {letter.source_database}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-400">
                           {letter.advocateName}
                         </td>
