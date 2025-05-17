@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt } from 'react-icons/fa'
+import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt, FaEnvelopeOpenText } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -109,7 +109,12 @@ const AdvocateSidebar = () => {
               </Link>
             </li>
           )}
-          
+           <li>
+            <Link href="/advocate/emailcompose" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/emailcompose')}`}>
+              <FaEnvelopeOpenText className="mr-3 text-indigo-400" />
+              <span>Compose Email</span>
+            </Link>
+          </li> 
         </ul>
       </nav>
        
