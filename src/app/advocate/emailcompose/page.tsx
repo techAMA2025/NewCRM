@@ -7,7 +7,8 @@ import { FaEnvelope, FaPaperPlane, FaFileAlt, FaUser, FaPaperclip, FaTimes, FaFi
 import { Toaster, toast } from 'react-hot-toast';
 // Firebase imports
 import { httpsCallable } from 'firebase/functions';
-import { functions, auth } from '@/firebase/firebase';
+import { functions, auth, db } from '@/firebase/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 // Define interfaces for types
 interface Attachment {
@@ -27,6 +28,52 @@ interface Recipient {
   editing?: boolean; // Flag to track editing state
 }
 
+// Client interface based on Firestore structure
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  leadId?: string;
+  aadharNumber?: string;
+  adv_status?: string;
+  alloc_adv?: string;
+  alloc_adv_secondary?: string;
+  assignedTo?: string;
+  banks?: any[];
+  city?: string;
+  convertedAt?: any;
+  convertedFromLead?: boolean;
+  creditCardDues?: string;
+  lastModified?: any;
+  monthlyFees?: string;
+  monthlyIncome?: string;
+  occupation?: string;
+  panNumber?: string;
+  personalLoanDues?: string;
+  remarks?: string;
+  source_database?: string;
+  status?: string;
+  tenure?: string;
+}
+
+// AMA standard email footer
+const standardFooter = `
+
+Thanks & Regards,
+AMA LEGAL SOLUTIONS
+Advocates & Legal Consultants
+Delhi High Court | Member – Bar Council of Delhi
+Association Member – IACC (Indo-American Chamber of Commerce)
+T: +91-8700343611
+M: Legal@amalegalsolutions.com
+W: www.amalegalsolutions.com
+
+Gurugram-Delhi-Noida-Bengaluru-Mumbai
+Strictly Confidential-Attorney-Client privileged communication.
+Unintended recipients of this email are prohibited from disseminating, distributing, copying or using its contents. They should immediately destroy
+the email and notify the sender at +91-8700343611. Recipients should run their own virus checks. We shall not be liable for any losses.`;
+
 export default function EmailComposePage() {
   // States for form elements
   const [selectedDraft, setSelectedDraft] = useState('');
@@ -42,20 +89,52 @@ export default function EmailComposePage() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // State for clients from Firestore
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  
   // States for manual recipient addition
   const [manualRecipientName, setManualRecipientName] = useState('');
   const [manualRecipientEmail, setManualRecipientEmail] = useState('');
   
   // Sample data (in a real app, these would come from an API)
   const draftTemplates = [
-    { id: 'draft1', name: 'Follow-up Meeting', content: 'Dear [Client],\n\nI hope this email finds you well. I wanted to follow up on our recent meeting...' },
-    { id: 'draft2', name: 'Case Update', content: 'Dear [Client],\n\nI am writing to provide you with an update on your case...' },
-    { id: 'draft3', name: 'Document Request', content: 'Dear [Client],\n\nIn order to proceed with your case, we require the following documents...' },
-    { id: 'draft4', name: 'Settlement Offer', content: 'Dear [Client],\n\nWe have received a settlement offer from the bank regarding your case...' },
-    { id: 'draft5', name: 'Legal Proceedings Update', content: 'Dear [Client],\n\nI am writing to update you on the legal proceedings related to your case...' },
+    { id: 'demand-notice', name: 'Demand Notice Reply', content: `Please find attached the reply to the notice sent by you to my client, [Client Name], at his registered email address. Should the bank require any further information, documentation, or clarification, my client is fully prepared to provide all necessary details to facilitate the process. Kindly acknowledge receipt of this communication.${standardFooter}` },
+    
+    { id: 'section-138', name: 'Section 138 Reply', content: `Dear Sir/Madam,
+Please find attached the detailed reply to the legal notice issued under Section 138 of the Negotiable Instruments Act, 1881, addressed to my client, [Client Name], at their registered email address.
+My client has duly noted the contents of the notice and, through this response, has addressed all allegations and factual clarifications. Should you or your client require any further information or supporting documents, we are open to providing the same to resolve the matter amicably.
+Kindly acknowledge receipt of this communication.${standardFooter}` },
+    
+    { id: 'section-25', name: 'Section 25 PASA Act Reply', content: `Dear Sir/Madam,
+Please find attached the reply to the legal notice issued under Section 25 of the Payment and Settlement Systems Act, 2007, addressed to my client, [Client Name], at their registered email address. My client has reviewed the contents of the notice and, through this response, has addressed the relevant factual and legal points raised therein. If the concerned authority or your office requires any further clarification, supporting documentation, or additional information, my client is fully prepared to provide the same to ensure a fair and transparent resolution. Kindly acknowledge receipt of this communication.${standardFooter}` },
+    
+    { id: 'harassment-notice', name: 'Extreme Harassment Notice', content: `Please find attached a legal notice addressed to you on behalf of my client, [Client Name], regarding the continued and extreme harassment faced by them at your instance.
+Despite multiple attempts to resolve the matter amicably, your conduct has persisted, causing severe mental, emotional, and reputational distress to my client. This notice is being served as a final opportunity to cease and desist from such unlawful behavior, failing which my client shall be constrained to initiate appropriate legal proceedings, both civil and criminal, at your risk, cost, and consequence.
+You are hereby advised to treat this matter with the seriousness it warrants. An acknowledgment of this communication and your response to the attached notice is expected within the stipulated time.${standardFooter}` },
+    
+    { id: 'excessive-call', name: 'Excessive Call & Follow-up Complaint', content: `Dear [Client's Name],
+Please find below the attached draft email template that you can fill and send to the concerned bank's customer care or grievance redressal officer regarding the unlawful and harassing recovery practices you've been subjected to. Kindly complete the missing details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
+    
+    { id: 'breather-period', name: 'Breather Period Request', content: `Dear [Client's Name],
+Please find below a ready-to-use email draft for requesting a temporary breather period from EMI and minimum due payments from the bank. Kindly fill in your name and the specific month you're requesting the extension until, then forward it to the concerned bank's customer care or grievance team. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
+    
+    { id: 'unauthorized-payment', name: 'Unauthorized Payment Report', content: `Dear [Client's Name],
+Below is a draft email you can send to your bank's credit card department to report an unauthorized payment. Please ensure that you fill in the details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it and attach any relevant screenshots or evidence before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
+    
+    { id: 'settlement-request', name: 'Bank Settlement Request', content: `Dear [Client's Name],
+Below is a draft email you can send to your bank or financial institution to initiate a loan settlement discussion due to ongoing financial difficulties. Please ensure you fill in your name, registered email, and loan or credit card number before sending it to the concerned department. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
   ];
   
   const subjectTemplates = [
+    { id: 'demand-notice-subject', text: 'Reply to Legal Notice' },
+    { id: 'section-138-subject', text: 'Reply to Legal Notice under Section 138 of the Negotiable Instruments Act' },
+    { id: 'section-25-subject', text: 'Reply to Legal Notice under Section 25 of the Payment and Settlement Systems Act, 2007' },
+    { id: 'harassment-notice-subject', text: 'Legal Notice for Extreme Harassment' },
+    { id: 'excessive-call-subject', text: 'Complaint Regarding Harassment by Recovery Agents – Violation of RBI Guidelines' },
+    { id: 'breather-period-subject', text: 'Request for Temporary Breather Period on EMI Payments Due to Financial Hardship' },
+    { id: 'unauthorized-payment-subject', text: 'Unauthorized Payment on My Credit Card Account – Request for Immediate Investigation' },
+    { id: 'settlement-request-subject', text: 'Request for Settlement of Outstanding Loan/Credit Card Dues' },
     { id: 'subject1', text: 'Follow-up: Our Meeting on [Date]' },
     { id: 'subject2', text: 'Update on Your Case [Case Number]' },
     { id: 'subject3', text: 'Important: Document Request' },
@@ -65,16 +144,58 @@ export default function EmailComposePage() {
     { id: 'custom', text: 'Custom Subject' },
   ];
   
-  // Sample client data - in a real app, fetch from API
-  const clients = [
-    { id: 'client1', name: 'John Doe', email: 'john.doe@example.com' },
-    { id: 'client2', name: 'Jane Smith', email: 'jane.smith@example.com' },
-    { id: 'client3', name: 'Robert Johnson', email: 'robert.j@example.com' },
-    { id: 'client4', name: 'Sarah Williams', email: 'sarah.w@example.com' },
-    { id: 'client5', name: 'Michael Brown', email: 'michael.b@example.com' },
-    { id: 'client6', name: 'Lisa Davis', email: 'lisa.d@example.com' },
-  ];
-
+  // Fetch clients from Firestore
+  useEffect(() => {
+    async function fetchClients() {
+      // if (!auth.currentUser) {
+      //   console.log("No authenticated user found");
+      //   return;
+      // }
+      
+      setLoadingClients(true);
+      try {
+        console.log("Fetching clients from Firestore...");
+        
+        // Get advocate name from current user (assuming email format 'name@domain.com')
+        const advocateEmail = auth.currentUser?.email;
+        console.log("Current user email:", advocateEmail);
+        
+        const clientsRef = collection(db, "clients");
+        // Query all clients without filtering to ensure we have data
+        const clientQuery = query(clientsRef);
+        
+        console.log("Executing Firestore query...");
+        const snapshot = await getDocs(clientQuery);
+        console.log(`Found ${snapshot.size} clients in Firestore`);
+        
+        const clientsList: Client[] = [];
+        
+        snapshot.forEach((doc) => {
+          const clientData = doc.data();
+          // Ensure we have at least a name and email
+          if (clientData.name && clientData.email) {
+            clientsList.push({ 
+              id: doc.id, 
+              name: clientData.name || '',
+              email: clientData.email || '',
+              ...clientData
+            } as Client);
+          }
+        });
+        
+        console.log(`Processed ${clientsList.length} valid clients with name and email`);
+        setClients(clientsList);
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+        toast.error("Failed to load clients");
+      } finally {
+        setLoadingClients(false);
+      }
+    }
+    
+    fetchClients();
+  }, []);
+  
   const router = useRouter();
   
   // Sample bank data (similar to what's in requestletter.tsx)
@@ -378,6 +499,33 @@ export default function EmailComposePage() {
     const draft = draftTemplates.find(d => d.id === selectedDraft);
     if (draft) {
       setEmailContent(draft.content);
+      
+      // Automatically select corresponding subject when a draft is selected
+      if (draft.id === 'demand-notice') {
+        setSelectedSubject('demand-notice-subject');
+        setIsCustomSubject(false);
+      } else if (draft.id === 'section-138') {
+        setSelectedSubject('section-138-subject');
+        setIsCustomSubject(false);
+      } else if (draft.id === 'section-25') {
+        setSelectedSubject('section-25-subject');
+        setIsCustomSubject(false);
+      } else if (draft.id === 'harassment-notice') {
+        setSelectedSubject('harassment-notice-subject');
+        setIsCustomSubject(false);
+      } else if (draft.id === 'excessive-call') {
+        setSelectedSubject('excessive-call-subject');
+        setIsCustomSubject(false);
+      } else if (draft.id === 'breather-period') {
+        setSelectedSubject('breather-period-subject');
+        setIsCustomSubject(false);
+      } else if (draft.id === 'unauthorized-payment') {
+        setSelectedSubject('unauthorized-payment-subject');
+        setIsCustomSubject(false);
+      } else if (draft.id === 'settlement-request') {
+        setSelectedSubject('settlement-request-subject');
+        setIsCustomSubject(false);
+      }
     }
   }, [selectedDraft]);
   
@@ -469,6 +617,12 @@ export default function EmailComposePage() {
     const alreadyAdded = recipients.some(r => r.email === client.email);
     if (alreadyAdded) {
       toast.error('This client is already added as a recipient');
+      return;
+    }
+    
+    // Check if client has a valid email
+    if (!client.email || !/\S+@\S+\.\S+/.test(client.email)) {
+      toast.error(`${client.name} does not have a valid email address`);
       return;
     }
     
@@ -803,7 +957,7 @@ export default function EmailComposePage() {
         <div className="max-w-5xl mx-auto">
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
             <FaEnvelope className="mr-3 text-purple-400" />
-            Compose Email
+            Compose Email (From: legal@amalegalsolutions.com)
           </h1>
           <p className="text-gray-400 mb-8">Create and send professional emails to clients and banks</p>
           
@@ -931,11 +1085,14 @@ export default function EmailComposePage() {
                       value={tempClientId}
                       onChange={handleClientChange}
                       className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      disabled={loadingClients}
                     >
-                      <option value="">Select a client</option>
+                      <option value="">
+                        {loadingClients ? "Loading clients..." : "Select a client"}
+                      </option>
                       {clients.map(client => (
                         <option key={client.id} value={client.id}>
-                          {client.name}
+                          {client.name} ({client.email})
                         </option>
                       ))}
                     </select>
@@ -943,11 +1100,15 @@ export default function EmailComposePage() {
                       type="button"
                       onClick={handleAddClientRecipient}
                       className="ml-2 px-3 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center"
+                      disabled={!tempClientId || loadingClients}
                     >
                       <FaPlus size={12} />
                       <span className="ml-1 hidden md:inline">Add</span>
                     </button>
                   </div>
+                  {loadingClients && (
+                    <p className="mt-1 text-xs text-gray-400">Loading client list...</p>
+                  )}
                 </div>
               </div>
               
