@@ -1116,7 +1116,6 @@ Below is a draft email you can send to your bank or financial institution to ini
                       onChange={(e) => setManualRecipientEmail(e.target.value)}
                       placeholder="Email address"
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                      required
                     />
                   </div>
                   <div>
