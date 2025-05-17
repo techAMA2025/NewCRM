@@ -57,22 +57,6 @@ interface Client {
   tenure?: string;
 }
 
-// AMA standard email footer
-const standardFooter = `
-
-Thanks & Regards,
-AMA LEGAL SOLUTIONS
-Advocates & Legal Consultants
-Delhi High Court | Member – Bar Council of Delhi
-Association Member – IACC (Indo-American Chamber of Commerce)
-T: +91-8700343611
-M: Legal@amalegalsolutions.com
-W: www.amalegalsolutions.com
-
-Gurugram-Delhi-Noida-Bengaluru-Mumbai
-Strictly Confidential-Attorney-Client privileged communication.
-Unintended recipients of this email are prohibited from disseminating, distributing, copying or using its contents. They should immediately destroy
-the email and notify the sender at +91-8700343611. Recipients should run their own virus checks. We shall not be liable for any losses.`;
 
 export default function EmailComposePage() {
   // States for form elements
@@ -99,31 +83,31 @@ export default function EmailComposePage() {
   
   // Sample data (in a real app, these would come from an API)
   const draftTemplates = [
-    { id: 'demand-notice', name: 'Demand Notice Reply', content: `Please find attached the reply to the notice sent by you to my client, [Client Name], at his registered email address. Should the bank require any further information, documentation, or clarification, my client is fully prepared to provide all necessary details to facilitate the process. Kindly acknowledge receipt of this communication.${standardFooter}` },
+    { id: 'demand-notice', name: 'Demand Notice Reply', content: `Please find attached the reply to the notice sent by you to my client, [Client Name], at his registered email address. Should the bank require any further information, documentation, or clarification, my client is fully prepared to provide all necessary details to facilitate the process. Kindly acknowledge receipt of this communication.` },
     
     { id: 'section-138', name: 'Section 138 Reply', content: `Dear Sir/Madam,
 Please find attached the detailed reply to the legal notice issued under Section 138 of the Negotiable Instruments Act, 1881, addressed to my client, [Client Name], at their registered email address.
 My client has duly noted the contents of the notice and, through this response, has addressed all allegations and factual clarifications. Should you or your client require any further information or supporting documents, we are open to providing the same to resolve the matter amicably.
-Kindly acknowledge receipt of this communication.${standardFooter}` },
+Kindly acknowledge receipt of this communication.` },
     
     { id: 'section-25', name: 'Section 25 PASA Act Reply', content: `Dear Sir/Madam,
-Please find attached the reply to the legal notice issued under Section 25 of the Payment and Settlement Systems Act, 2007, addressed to my client, [Client Name], at their registered email address. My client has reviewed the contents of the notice and, through this response, has addressed the relevant factual and legal points raised therein. If the concerned authority or your office requires any further clarification, supporting documentation, or additional information, my client is fully prepared to provide the same to ensure a fair and transparent resolution. Kindly acknowledge receipt of this communication.${standardFooter}` },
+Please find attached the reply to the legal notice issued under Section 25 of the Payment and Settlement Systems Act, 2007, addressed to my client, [Client Name], at their registered email address. My client has reviewed the contents of the notice and, through this response, has addressed the relevant factual and legal points raised therein. If the concerned authority or your office requires any further clarification, supporting documentation, or additional information, my client is fully prepared to provide the same to ensure a fair and transparent resolution. Kindly acknowledge receipt of this communication.` },
     
     { id: 'harassment-notice', name: 'Extreme Harassment Notice', content: `Please find attached a legal notice addressed to you on behalf of my client, [Client Name], regarding the continued and extreme harassment faced by them at your instance.
 Despite multiple attempts to resolve the matter amicably, your conduct has persisted, causing severe mental, emotional, and reputational distress to my client. This notice is being served as a final opportunity to cease and desist from such unlawful behavior, failing which my client shall be constrained to initiate appropriate legal proceedings, both civil and criminal, at your risk, cost, and consequence.
-You are hereby advised to treat this matter with the seriousness it warrants. An acknowledgment of this communication and your response to the attached notice is expected within the stipulated time.${standardFooter}` },
+You are hereby advised to treat this matter with the seriousness it warrants. An acknowledgment of this communication and your response to the attached notice is expected within the stipulated time.` },
     
     { id: 'excessive-call', name: 'Excessive Call & Follow-up Complaint', content: `Dear [Client's Name],
-Please find below the attached draft email template that you can fill and send to the concerned bank's customer care or grievance redressal officer regarding the unlawful and harassing recovery practices you've been subjected to. Kindly complete the missing details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
+Please find below the attached draft email template that you can fill and send to the concerned bank's customer care or grievance redressal officer regarding the unlawful and harassing recovery practices you've been subjected to. Kindly complete the missing details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.` },
     
     { id: 'breather-period', name: 'Breather Period Request', content: `Dear [Client's Name],
-Please find below a ready-to-use email draft for requesting a temporary breather period from EMI and minimum due payments from the bank. Kindly fill in your name and the specific month you're requesting the extension until, then forward it to the concerned bank's customer care or grievance team. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
+Please find below a ready-to-use email draft for requesting a temporary breather period from EMI and minimum due payments from the bank. Kindly fill in your name and the specific month you're requesting the extension until, then forward it to the concerned bank's customer care or grievance team. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.` },
     
     { id: 'unauthorized-payment', name: 'Unauthorized Payment Report', content: `Dear [Client's Name],
-Below is a draft email you can send to your bank's credit card department to report an unauthorized payment. Please ensure that you fill in the details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it and attach any relevant screenshots or evidence before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
+Below is a draft email you can send to your bank's credit card department to report an unauthorized payment. Please ensure that you fill in the details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it and attach any relevant screenshots or evidence before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.` },
     
     { id: 'settlement-request', name: 'Bank Settlement Request', content: `Dear [Client's Name],
-Below is a draft email you can send to your bank or financial institution to initiate a loan settlement discussion due to ongoing financial difficulties. Please ensure you fill in your name, registered email, and loan or credit card number before sending it to the concerned department. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.${standardFooter}` },
+Below is a draft email you can send to your bank or financial institution to initiate a loan settlement discussion due to ongoing financial difficulties. Please ensure you fill in your name, registered email, and loan or credit card number before sending it to the concerned department. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.` },
   ];
   
   const subjectTemplates = [
