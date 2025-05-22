@@ -810,34 +810,79 @@ Below is a draft email you can send to your bank or financial institution to ini
   const handleBankChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const bankName = e.target.value;
     setSelectedBank(bankName);
+  };
 
-    if (bankName && banks[bankName as keyof typeof banks]) {
-      const bankEmails =
-        banks[bankName as keyof typeof banks].email.split(", ");
+  // Add bank emails as recipients
+  const handleAddBankRecipient = () => {
+    if (!selectedBank || !banks[selectedBank as keyof typeof banks]) {
+      toast.error("Please select a bank");
+      return;
+    }
 
-      let newRecipients = [...recipients];
-      let addedCount = 0;
+    const bankEmails =
+      banks[selectedBank as keyof typeof banks].email.split(", ");
 
-      bankEmails.forEach((email) => {
-        const emailTrimmed = email.trim();
-        // Skip empty emails and check for duplicates
-        if (emailTrimmed && !recipients.some((r) => r.email === emailTrimmed)) {
-          newRecipients.push({
-            id: `bank-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: `${bankName} (${emailTrimmed})`,
-            email: emailTrimmed,
-            type: "bank",
-          });
-          addedCount++;
-        }
-      });
+    let newRecipients = [...recipients];
+    let addedCount = 0;
 
-      if (addedCount > 0) {
-        setRecipients(newRecipients);
-        toast.success(`Added ${addedCount} email(s) from ${bankName}`);
-      } else {
-        // toast.info('No new email addresses to add');
+    bankEmails.forEach((email) => {
+      const emailTrimmed = email.trim();
+      // Skip empty emails and check for duplicates
+      if (emailTrimmed && !recipients.some((r) => r.email === emailTrimmed)) {
+        newRecipients.push({
+          id: `bank-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: `${selectedBank} (${emailTrimmed})`,
+          email: emailTrimmed,
+          type: "bank",
+        });
+        addedCount++;
       }
+    });
+
+    if (addedCount > 0) {
+      setRecipients(newRecipients);
+      toast.success(`Added ${addedCount} email(s) from ${selectedBank} as recipient`);
+    } else {
+      toast.error('No new email addresses to add');
+    }
+  };
+
+  // Add bank emails as CC recipients
+  const handleAddBankCcRecipient = () => {
+    if (!selectedBank || !banks[selectedBank as keyof typeof banks]) {
+      toast.error("Please select a bank");
+      return;
+    }
+
+    const bankEmails =
+      banks[selectedBank as keyof typeof banks].email.split(", ");
+
+    let newCcRecipients = [...ccRecipients];
+    let addedCount = 0;
+
+    bankEmails.forEach((email) => {
+      const emailTrimmed = email.trim();
+      // Skip empty emails and check for duplicates in both recipients and CC recipients
+      if (
+        emailTrimmed && 
+        !ccRecipients.some((r) => r.email === emailTrimmed) &&
+        !recipients.some((r) => r.email === emailTrimmed)
+      ) {
+        newCcRecipients.push({
+          id: `bank-cc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: `${selectedBank} (${emailTrimmed})`,
+          email: emailTrimmed,
+          type: "bank",
+        });
+        addedCount++;
+      }
+    });
+
+    if (addedCount > 0) {
+      setCcRecipients(newCcRecipients);
+      toast.success(`Added ${addedCount} email(s) from ${selectedBank} as CC`);
+    } else {
+      toast.error('No new email addresses to add');
     }
   };
 
@@ -1251,6 +1296,49 @@ Below is a draft email you can send to your bank or financial institution to ini
     });
   };
 
+  // Function to add a client as CC recipient
+  const handleAddClientCcRecipient = () => {
+    if (!tempClientId) {
+      toast.error("Please select a client");
+      return;
+    }
+
+    const client = clients.find((c) => c.id === tempClientId);
+    if (!client) {
+      toast.error("Invalid client selected");
+      return;
+    }
+
+    // Check if client already exists in recipients or CC recipients
+    const alreadyAddedAsRecipient = recipients.some((r) => r.email === client.email);
+    const alreadyAddedAsCc = ccRecipients.some((r) => r.email === client.email);
+    
+    if (alreadyAddedAsRecipient || alreadyAddedAsCc) {
+      toast.error("This client is already added as a recipient or CC");
+      return;
+    }
+
+    // Check if client has a valid email
+    if (!client.email || !/\S+@\S+\.\S+/.test(client.email)) {
+      toast.error(`${client.name} does not have a valid email address`);
+      return;
+    }
+
+    setCcRecipients([
+      ...ccRecipients,
+      {
+        id: `client-cc-${Date.now()}`,
+        clientId: client.id,
+        name: client.name,
+        email: client.email,
+        type: "client",
+      },
+    ]);
+
+    setTempClientId(""); // Reset selection
+    toast.success(`${client.name} added as CC recipient`);
+  };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
       <AdvocateSidebar />
@@ -1366,7 +1454,7 @@ Below is a draft email you can send to your bank or financial institution to ini
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Add Bank Recipients
                   </label>
-                  <div className="flex">
+                  <div className="flex flex-col gap-2">
                     <select
                       value={selectedBank}
                       onChange={handleBankChange}
@@ -1379,6 +1467,26 @@ Below is a draft email you can send to your bank or financial institution to ini
                         </option>
                       ))}
                     </select>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddBankRecipient}
+                        className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        disabled={!selectedBank}
+                      >
+                        <FaPlus size={12} className="mr-1" />
+                        Add as Recipient
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddBankCcRecipient}
+                        className="flex-1 px-3 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        disabled={!selectedBank}
+                      >
+                        <FaPlus size={12} className="mr-1" />
+                        Add as CC
+                      </button>
+                    </div>
                   </div>
                   {selectedBank && (
                     <p className="mt-1 text-xs text-gray-400">
@@ -1392,7 +1500,7 @@ Below is a draft email you can send to your bank or financial institution to ini
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Add Client Recipient
                   </label>
-                  <div className="flex">
+                  <div className="flex flex-col gap-2">
                     <select
                       value={tempClientId}
                       onChange={handleClientChange}
@@ -1410,15 +1518,26 @@ Below is a draft email you can send to your bank or financial institution to ini
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="button"
-                      onClick={handleAddClientRecipient}
-                      className="ml-2 px-3 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center"
-                      disabled={!tempClientId || loadingClients}
-                    >
-                      <FaPlus size={12} />
-                      <span className="ml-1 hidden md:inline">Add</span>
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddClientRecipient}
+                        className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        disabled={!tempClientId || loadingClients}
+                      >
+                        <FaPlus size={12} className="mr-1" />
+                        Add as Recipient
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddClientCcRecipient}
+                        className="flex-1 px-3 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        disabled={!tempClientId || loadingClients}
+                      >
+                        <FaPlus size={12} className="mr-1" />
+                        Add as CC
+                      </button>
+                    </div>
                   </div>
                   {loadingClients && (
                     <p className="mt-1 text-xs text-gray-400">
