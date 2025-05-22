@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     // Create response with appropriate headers
     return new NextResponse(buffer, {
       headers: {
-        'Content-Disposition': `attachment; filename="${name2}_demand_letter.docx"`,
+        'Content-Disposition': `attachment; filename="${name2}_demandNoticeReply.docx"`,
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       }
     });
