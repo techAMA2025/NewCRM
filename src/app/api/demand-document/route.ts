@@ -28,6 +28,9 @@ export async function POST(request: Request) {
     // For addresses: split by comma and join with newlines
     const formattedBankAddresses = bankAddress.split(',').map((address: string) => address.trim()).join('\n');
     
+    // Format the date to dd/mm/yyyy
+    const formattedDate = formatDateToDDMMYYYY(date);
+    
     // Set up data for the template
     const requestData = {
       name2,
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
       bankEmail: formattedBankEmails,
       reference,
       email,
-      date
+      date: formattedDate
     };
 
     // Use storage directly
@@ -71,4 +74,22 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Format a date string to DD/MM/YYYY format
+ */
+function formatDateToDDMMYYYY(dateString: string): string {
+  const date = new Date(dateString);
+  
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return dateString; // Return original string if invalid
+  }
+  
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const year = date.getFullYear();
+  
+  return `${day}/${month}/${year}`;
 }
