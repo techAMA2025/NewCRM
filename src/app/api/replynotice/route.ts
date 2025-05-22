@@ -24,10 +24,9 @@ export async function POST(request: Request) {
     }
 
     // Format emails: split by comma and join with newlines for template
-    // const formattedBankEmails = bankEmail.split(',').map((email: string) => email.trim()).join('\n');
+    const formattedBankEmails = bankEmail.split(',').map((email: string) => email.trim()).join('\n');
     
-    // Format addresses: split by comma and join with newlines for template
-    const formattedBankAddresses = bankAddress.split(',').map((address: string) => address.trim()).join('\n');
+
     
     // Format the date if needed
     const formattedDate = formatDateIfNeeded(noticeDate);
@@ -36,9 +35,9 @@ export async function POST(request: Request) {
     const templateData = {
       clientName,
       bankName,
-      bankAddress: formattedBankAddresses,
+      bankAddress,
       lawyerEmail,
-      bankEmail,
+      bankEmail: formattedBankEmails,
       noticeDate: formattedDate,
       referenceNumber,
       clientMobile,
