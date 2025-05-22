@@ -217,8 +217,11 @@ const LeadsPage = () => {
     // Only set default dates if they haven't been set yet
     if (!fromDate && !toDate) {
       const today = new Date();
+      // Set today to end of current day to include all of today's leads
+      today.setHours(23, 59, 59, 999);
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(today.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0); // Start of day 7 days ago
       
       setFromDate(sevenDaysAgo.toISOString().split('T')[0]);
       setToDate(today.toISOString().split('T')[0]);
@@ -237,6 +240,8 @@ const LeadsPage = () => {
         
         // Calculate date range based on filter value
         const today = new Date();
+        // Set today to end of current day to include all of today's leads
+        today.setHours(23, 59, 59, 999);
         const startDate = new Date();
         
         // For 'all' option, fetch all leads without date filtering

@@ -148,6 +148,8 @@ const LeadsFilters = ({
     
     // Calculate new from date based on selected range
     const today = new Date();
+    // Set today to end of current day to include all of today's leads
+    today.setHours(23, 59, 59, 999);
     const fromDate = new Date();
     fromDate.setDate(today.getDate() - parseInt(days));
     
