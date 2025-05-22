@@ -53,13 +53,17 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
   const [selectedClientId, setSelectedClientId] = useState("");
   const [loading, setLoading] = useState(false);
   
+  // Format today's date as DD/MM/YYYY
+  const today = new Date();
+  const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+  
   const [formData, setFormData] = useState({
     clientName: "",
     bankName: "",
     bankAddress: "",
     lawyerEmail: "  ", // Default lawyer email
     bankEmail: "",
-    noticeDate: "",
+    noticeDate: formattedDate, // Initialize with today's date
     referenceNumber: "",
     clientMobile: "",
     selectedBank: "", // For bank selection dropdown
