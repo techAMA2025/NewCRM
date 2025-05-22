@@ -80,6 +80,7 @@ export default function EmailComposePage() {
   const [isCustomSubject, setIsCustomSubject] = useState(false);
   const [editingSubject, setEditingSubject] = useState(false);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [ccRecipients, setCcRecipients] = useState<Recipient[]>([]);
   const [tempClientId, setTempClientId] = useState("");
   const [selectedBank, setSelectedBank] = useState("");
   const [emailContent, setEmailContent] = useState("");
@@ -94,6 +95,8 @@ export default function EmailComposePage() {
   // States for manual recipient addition
   const [manualRecipientName, setManualRecipientName] = useState("");
   const [manualRecipientEmail, setManualRecipientEmail] = useState("");
+  const [manualCcRecipientName, setManualCcRecipientName] = useState("");
+  const [manualCcRecipientEmail, setManualCcRecipientEmail] = useState("");
 
   // Sample data (in a real app, these would come from an API)
   const draftTemplates = [
@@ -929,6 +932,99 @@ Below is a draft email you can send to your bank or financial institution to ini
     setRecipients(recipients.filter((r) => r.id !== id));
   };
 
+  // Function to add a manual CC recipient
+  const handleAddManualCcRecipient = () => {
+    // Validate email format
+    if (!manualCcRecipientEmail || !/\S+@\S+\.\S+/.test(manualCcRecipientEmail)) {
+      toast.error("Please enter a valid CC email address");
+      return;
+    }
+
+    // Check for duplicate
+    if (ccRecipients.some((r) => r.email === manualCcRecipientEmail) || 
+        recipients.some((r) => r.email === manualCcRecipientEmail)) {
+      toast.error("This email is already added as a recipient");
+      return;
+    }
+
+    // Add the manual CC recipient
+    setCcRecipients([
+      ...ccRecipients,
+      {
+        id: `manual-cc-${Date.now()}`,
+        name: manualCcRecipientName || "CC Recipient",
+        email: manualCcRecipientEmail,
+        type: "manual",
+      },
+    ]);
+
+    // Reset fields
+    setManualCcRecipientName("");
+    setManualCcRecipientEmail("");
+    toast.success("CC Recipient added successfully");
+  };
+
+  // Toggle edit mode for a CC recipient
+  const toggleEditCcRecipient = (id: string) => {
+    setCcRecipients(
+      ccRecipients.map((recipient) =>
+        recipient.id === id
+          ? { ...recipient, editing: !recipient.editing }
+          : recipient
+      )
+    );
+  };
+
+  // Update a CC recipient while editing
+  const updateCcRecipient = (
+    id: string,
+    field: keyof Recipient,
+    value: string | boolean
+  ) => {
+    setCcRecipients(
+      ccRecipients.map((recipient) =>
+        recipient.id === id ? { ...recipient, [field]: value } : recipient
+      )
+    );
+  };
+
+  // Save edited CC recipient
+  const saveEditedCcRecipient = (id: string) => {
+    const recipient = ccRecipients.find((r) => r.id === id);
+
+    if (!recipient) {
+      toast.error("CC Recipient not found");
+      return;
+    }
+
+    // Validate email format
+    if (!recipient.email || !/\S+@\S+\.\S+/.test(recipient.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    // Check for duplicates (excluding the current recipient)
+    const duplicateEmail = ccRecipients.some(
+      (r) => r.id !== id && r.email === recipient.email
+    ) || recipients.some((r) => r.email === recipient.email);
+    
+    if (duplicateEmail) {
+      toast.error("This email is already used by another recipient");
+      return;
+    }
+
+    setCcRecipients(
+      ccRecipients.map((r) => (r.id === id ? { ...r, editing: false } : r))
+    );
+
+    toast.success("CC Recipient updated successfully");
+  };
+
+  // Remove a CC recipient
+  const handleRemoveCcRecipient = (id: string) => {
+    setCcRecipients(ccRecipients.filter((r) => r.id !== id));
+  };
+
   // Handle attachment selection
   const handleFileAttachment = (e: ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -1027,6 +1123,7 @@ Below is a draft email you can send to your bank or financial institution to ini
         subject: currentSubject,
         content: emailContent,
         recipients: recipients,
+        ccRecipients: ccRecipients,
         attachments: processedAttachments,
         clientId: recipients.find((r) => r.type === "client")?.clientId, // Add client reference if exists
         bankId: selectedBank || undefined, // Add bank reference if selected
@@ -1035,6 +1132,7 @@ Below is a draft email you can send to your bank or financial institution to ini
       console.log("Email data prepared:", {
         subject: currentSubject,
         recipientCount: recipients.length,
+        ccRecipientCount: ccRecipients.length,
         recipientTypes: recipients.map((r) => r.type),
         attachmentCount: processedAttachments.length,
         contentLength: emailContent.length,
@@ -1075,6 +1173,7 @@ Below is a draft email you can send to your bank or financial institution to ini
 
           // Reset form
           setRecipients([]);
+          setCcRecipients([]);
           setSelectedDraft("");
           setSelectedSubject("");
           setCustomSubject("");
@@ -1258,7 +1357,7 @@ Below is a draft email you can send to your bank or financial institution to ini
             {/* Recipients Section */}
             <div className="mb-6">
               <h2 className="text-lg font-medium text-white mb-3">
-                Recipients
+                To (Recipients)
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1476,6 +1575,161 @@ Below is a draft email you can send to your bank or financial institution to ini
                                 type="button"
                                 onClick={() =>
                                   handleRemoveRecipient(recipient.id)
+                                }
+                                className="p-1.5 bg-red-900/70 hover:bg-red-700 text-white rounded-md transition-colors ml-1"
+                                title="Remove"
+                              >
+                                <FaTimes size={12} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* CC Recipients Section */}
+            <div className="mb-6">
+              <h2 className="text-lg font-medium text-white mb-3">
+                CC (Carbon Copy)
+              </h2>
+
+              {/* Manual CC Recipient Addition */}
+              <div className="bg-gray-700/40 rounded-md p-3 mb-4">
+                <h3 className="text-sm font-medium text-gray-300 mb-2">
+                  Add CC Recipient
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="md:col-span-1">
+                    <input
+                      type="text"
+                      value={manualCcRecipientName}
+                      onChange={(e) => setManualCcRecipientName(e.target.value)}
+                      placeholder="Name (optional)"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                    <input
+                      type="email"
+                      value={manualCcRecipientEmail}
+                      onChange={(e) => setManualCcRecipientEmail(e.target.value)}
+                      placeholder="CC Email address"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleAddManualCcRecipient}
+                      className="w-full px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors flex items-center justify-center"
+                    >
+                      <FaEnvelopeOpen size={14} className="mr-2" />
+                      Add CC
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* CC Recipients List */}
+              {ccRecipients.length > 0 && (
+                <div className="bg-gray-700/30 rounded-md border border-gray-600/50 p-3 mb-2">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">
+                    {ccRecipients.length} CC Recipient
+                    {ccRecipients.length !== 1 ? "s" : ""}
+                  </h3>
+                  <ul className="space-y-2 max-h-60 overflow-y-auto">
+                    {ccRecipients.map((recipient) => (
+                      <li
+                        key={recipient.id}
+                        className={`rounded-md border bg-amber-900/20 border-amber-800/30 p-2 flex items-center justify-between`}
+                      >
+                        {recipient.editing ? (
+                          // Edit mode for CC recipient
+                          <div className="flex-1 flex items-center">
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={recipient.name}
+                                onChange={(e) =>
+                                  updateCcRecipient(
+                                    recipient.id,
+                                    "name",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                placeholder="Name"
+                              />
+                              <input
+                                type="email"
+                                value={recipient.email}
+                                onChange={(e) =>
+                                  updateCcRecipient(
+                                    recipient.id,
+                                    "email",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                placeholder="Email"
+                              />
+                            </div>
+                            <div className="flex">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  saveEditedCcRecipient(recipient.id)
+                                }
+                                className="p-1.5 bg-green-700 hover:bg-green-600 text-white rounded-md transition-colors ml-2"
+                                title="Save"
+                              >
+                                <FaCheck size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleEditCcRecipient(recipient.id)
+                                }
+                                className="p-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-colors ml-1"
+                                title="Cancel"
+                              >
+                                <FaTimes size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // View mode for CC recipient
+                          <>
+                            <div className="flex items-center">
+                              <FaEnvelopeOpen className="text-amber-400 mr-2" />
+                              <div>
+                                <p className="text-white text-sm font-medium">
+                                  {recipient.name} (CC)
+                                </p>
+                                <p className="text-gray-400 text-xs">
+                                  {recipient.email}
+                                </p>
+                              </div>
+                            </div>
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleEditCcRecipient(recipient.id)
+                                }
+                                className="p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors ml-1"
+                                title="Edit"
+                              >
+                                <FaEdit size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRemoveCcRecipient(recipient.id)
                                 }
                                 className="p-1.5 bg-red-900/70 hover:bg-red-700 text-white rounded-md transition-colors ml-1"
                                 title="Remove"
