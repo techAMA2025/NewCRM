@@ -101,6 +101,23 @@ export default function EmailComposePage() {
   // Sample data (in a real app, these would come from an API)
   const draftTemplates = [
     {
+      id: "vakalatnama",
+      name: "Vakalatnama",
+      content: `
+
+Respected Arbitrator,
+
+This is with reference to the arbitration meeting scheduled for.
+ 
+We would like to inform you that AMA Legal Solutions is representing our client, Mr./Ms. XXXX, in this matter.
+
+Please find the signed Vakalatnama attached for your records.
+
+Regards,
+AMA Legal Solutions`,
+    },
+
+    {
       id: "demand-notice",
       name: "Demand Notice Reply",
       content: `Please find attached the reply to the notice sent by you to my client, [Client Name], at his registered email address. Should the bank require any further information, documentation, or clarification, my client is fully prepared to provide all necessary details to facilitate the process. Kindly acknowledge receipt of this communication.`,
@@ -160,6 +177,7 @@ Below is a draft email you can send to your bank or financial institution to ini
   ];
 
   const subjectTemplates = [
+    { id: "vakalatnama-subject", text: "Vakalatnama for Arbitration" },
     { id: "demand-notice-subject", text: "Reply to Legal Notice" },
     {
       id: "section-138-subject",
@@ -665,7 +683,10 @@ Below is a draft email you can send to your bank or financial institution to ini
       setEmailContent(draft.content);
 
       // Automatically select corresponding subject when a draft is selected
-      if (draft.id === "demand-notice") {
+      if (draft.id === "vakalatnama") {
+        setSelectedSubject("vakalatnama-subject");
+        setIsCustomSubject(false);
+      } else if (draft.id === "demand-notice") {
         setSelectedSubject("demand-notice-subject");
         setIsCustomSubject(false);
       } else if (draft.id === "section-138") {
