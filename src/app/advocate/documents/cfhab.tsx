@@ -1,7 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/firebase/firebase";
+
+interface Bank {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  loanType: string;
+  loanAmount: string;
+}
+
+interface FirestoreClient {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  alloc_adv: string;
+  status: string;
+  personalLoanDues: string;
+  creditCardDues: string;
+  banks: Bank[];
+  monthlyIncome?: string;
+  monthlyFees?: string;
+  occupation?: string;
+  startDate?: string;
+  tenure?: string;
+  remarks?: string;
+  salesNotes?: string;
+  queries?: string;
+  alloc_adv_at?: any;
+  convertedAt?: any;
+  adv_status?: string;
+  panNumber?: string;
+  aadharNumber?: string;
+  dob?: string;
+  documentUrl?: string;
+  documentName?: string;
+  documentUploadedAt?: any;
+}
 
 interface CFHABFormProps {
   onClose: () => void;
@@ -9,6 +49,8 @@ interface CFHABFormProps {
 
 export default function CFHABForm({ onClose }: CFHABFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<FirestoreClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
   const [formData, setFormData] = useState({
     bankName: "",
     agentName: "",
@@ -20,6 +62,55 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
     email: "",
     loanNumber: ""
   });
+
+  // Fetch clients when component mounts
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const clientsCollection = collection(db, "clients");
+        const clientSnapshot = await getDocs(clientsCollection);
+        const clientsList: FirestoreClient[] = [];
+        
+        clientSnapshot.forEach((doc) => {
+          const data = doc.data() as Omit<FirestoreClient, "id">;
+          clientsList.push({ id: doc.id, ...data });
+        });
+        
+        setClients(clientsList);
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+        toast.error("Failed to load clients");
+      }
+    };
+
+    fetchClients();
+  }, []);
+
+  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const clientId = e.target.value;
+    setSelectedClientId(clientId);
+    
+    if (!clientId) return;
+    
+    const selectedClient = clients.find(c => c.id === clientId);
+    
+    if (selectedClient) {
+      // Update form with selected client's data
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        clientName: selectedClient.name || "",
+        email: selectedClient.email || "",
+        // If the client has banks, try to get loan/account number from first bank
+        loanNumber: selectedClient.banks && selectedClient.banks.length > 0 
+          ? selectedClient.banks[0].accountNumber || "" 
+          : "",
+        // Set bankName if available
+        bankName: selectedClient.banks && selectedClient.banks.length > 0
+          ? selectedClient.banks[0].bankName || ""
+          : ""
+      }));
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -80,6 +171,25 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-4">
+        {/* Client Selector Dropdown */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-300">
+            Select Client
+          </label>
+          <select
+            value={selectedClientId}
+            onChange={handleClientChange}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
+          >
+            <option value="">Select a client...</option>
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name} - {client.phone}
+              </option>
+            ))}
+          </select>
+        </div>
+        
         {/* Bank Name */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-300">
@@ -94,6 +204,9 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
             placeholder="Enter bank name"
             required
           />
+          {selectedClientId && formData.bankName && (
+            <p className="text-xs text-gray-500 mt-0.5">Auto-filled from client data (editable)</p>
+          )}
         </div>
         
         {/* Agent Name and Agent Number as separate fields */}
@@ -193,6 +306,9 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
               placeholder="Client's full name"
               required
             />
+            {selectedClientId && (
+              <p className="text-xs text-gray-500 mt-0.5">Auto-filled from client data (editable)</p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -207,6 +323,9 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
               placeholder="client@example.com"
             />
+            {selectedClientId && formData.email && (
+              <p className="text-xs text-gray-500 mt-0.5">Auto-filled from client data (editable)</p>
+            )}
           </div>
         </div>
         
@@ -224,6 +343,9 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
             placeholder="Enter loan or credit card number"
             required
           />
+          {selectedClientId && formData.loanNumber && (
+            <p className="text-xs text-gray-500 mt-0.5">Auto-filled from client data (editable)</p>
+          )}
         </div>
         
         {/* Form buttons */}

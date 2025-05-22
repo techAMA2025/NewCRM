@@ -50,24 +50,16 @@ const DocumentsPage = () => {
   // 2. Fetch client details from an API or context
   const [dummyClient, setDummyClient] = useState<Client>({
     id: "placeholder",
-    name: "John Doe",
-    phone: "9876543210",
-    email: "john@example.com",
-    city: "Mumbai",
+    name: "",
+    phone: "",
+    email: "",
+    city: "",
     alloc_adv: "",
     status: "Active",
-    personalLoanDues: "250000",
-    creditCardDues: "100000",
-    banks: [
-      {
-        id: "bank1",
-        bankName: "HDFC Bank",
-        accountNumber: "XXXX1234",
-        loanType: "Personal Loan",
-        loanAmount: "250000"
-      }
-    ],
-    isPrimary: true,
+    personalLoanDues: "",
+    creditCardDues: "",
+    banks: [],
+    isPrimary: false,
     isSecondary: false
   });
 

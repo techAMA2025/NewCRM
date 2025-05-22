@@ -1,7 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/firebase/firebase";
+
+interface Bank {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  loanType: string;
+  loanAmount: string;
+}
+
+interface FirestoreClient {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  alloc_adv: string;
+  status: string;
+  personalLoanDues: string;
+  creditCardDues: string;
+  banks: Bank[];
+  monthlyIncome?: string;
+  monthlyFees?: string;
+  occupation?: string;
+  startDate?: string;
+  tenure?: string;
+  remarks?: string;
+  salesNotes?: string;
+  queries?: string;
+  alloc_adv_at?: any;
+  convertedAt?: any;
+  adv_status?: string;
+  panNumber?: string;
+  aadharNumber?: string;
+  dob?: string;
+  documentUrl?: string;
+  documentName?: string;
+  documentUploadedAt?: any;
+}
 
 interface DemandNoticeFormProps {
   onClose: () => void;
@@ -9,6 +49,8 @@ interface DemandNoticeFormProps {
 
 export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<FirestoreClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
   const [formData, setFormData] = useState({
     name2: "",
     email: "",
@@ -20,6 +62,29 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     selectedBank: "",
   });
   
+  // Fetch clients when component mounts
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const clientsCollection = collection(db, "clients");
+        const clientSnapshot = await getDocs(clientsCollection);
+        const clientsList: FirestoreClient[] = [];
+        
+        clientSnapshot.forEach((doc) => {
+          const data = doc.data() as Omit<FirestoreClient, "id">;
+          clientsList.push({ id: doc.id, ...data });
+        });
+        
+        setClients(clientsList);
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+        toast.error("Failed to load clients");
+      }
+    };
+
+    fetchClients();
+  }, []);
+
   // Complete bank data for dropdown and auto-filling
   const bankData = {
     "Axis Bank": {
@@ -316,6 +381,24 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     }
   };
 
+  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const clientId = e.target.value;
+    setSelectedClientId(clientId);
+    
+    if (!clientId) return;
+    
+    const selectedClient = clients.find(c => c.id === clientId);
+    
+    if (selectedClient) {
+      // Update form with selected client's data
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        name2: selectedClient.name || "",
+        email: selectedClient.email || "",
+      }));
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
@@ -403,6 +486,23 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Client Selector Dropdown - spans full width */}
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Select Client</label>
+          <select
+            value={selectedClientId}
+            onChange={handleClientChange}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+          >
+            <option value="">Select a client...</option>
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name} - {client.phone}
+              </option>
+            ))}
+          </select>
+        </div>
+      
         {/* Client Details */}
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Client Name</label>
@@ -415,6 +515,9 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Enter client's full name"
           />
+          {selectedClientId && (
+            <p className="text-xs text-gray-500 mt-0.5">Auto-filled from client data (editable)</p>
+          )}
         </div>
 
         {/* Client Email */}
@@ -429,6 +532,9 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Enter client's email"
           />
+          {selectedClientId && (
+            <p className="text-xs text-gray-500 mt-0.5">Auto-filled from client data (editable)</p>
+          )}
         </div>
 
         {/* Bank Selection Dropdown - spans full width */}
