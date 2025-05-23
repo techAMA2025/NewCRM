@@ -12,12 +12,13 @@ export async function POST(request: Request) {
       lawyerEmail,
       selectedBank,
       bankEmail,
+      bankAddress,
       date
     } = body;
 
     // Input validation
-    if (!name || !referenceNumber || !lawyerEmail || !selectedBank || !bankEmail || !date) {
-      console.log("Missing form data:", { name, referenceNumber, lawyerEmail, selectedBank, bankEmail, date });
+    if (!name || !referenceNumber || !lawyerEmail || !selectedBank || !bankEmail || !bankAddress || !date) {
+      console.log("Missing form data:", { name, referenceNumber, lawyerEmail, selectedBank, bankEmail, bankAddress, date });
       return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
 
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       clientName: name,
       bankName: selectedBank,
       bankEmail: formattedBankEmails,
+      bankAddress: bankAddress,
       lawyerEmail,
       referenceNumber,
       noticeDate: formattedDate,

@@ -73,6 +73,7 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
     lawyerEmail: "", // Default lawyer email
     selectedBank: "",
     bankEmail: "",
+    bankAddress: "", // Add bank address field
     date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
   });
 
@@ -546,6 +547,7 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
           ...formData,
           selectedBank: value,
           bankEmail: selectedBankData.email,
+          bankAddress: selectedBankData.address, // Add bank address
         });
       } else {
         setFormData({
@@ -720,6 +722,22 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
             rows={2}
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Bank email addresses will auto-fill when bank is selected"
+          />
+        </div>
+
+        {/* Bank Address */}
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-gray-400 mb-1">
+            Bank Address
+          </label>
+          <textarea
+            name="bankAddress"
+            value={formData.bankAddress}
+            onChange={handleChange}
+            required
+            rows={3}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            placeholder="Bank address will auto-fill when bank is selected"
           />
         </div>
 
