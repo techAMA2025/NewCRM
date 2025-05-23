@@ -24,6 +24,8 @@ type LeadsFiltersProps = {
   setFromDate: (date: string) => void;
   toDate: string;
   setToDate: (date: string) => void;
+  totalLeadsCount: number;
+  filteredTotalCount: number;
 };
 
 const LeadsFilters = ({
@@ -45,7 +47,9 @@ const LeadsFilters = ({
   fromDate,
   setFromDate,
   toDate,
-  setToDate
+  setToDate,
+  totalLeadsCount,
+  filteredTotalCount
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -176,7 +180,7 @@ const LeadsFilters = ({
           {/* Results counter moved to the right */}
           <div className="ml-auto">
             <p className="text-sm text-gray-400">
-              Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
+              Showing <span className="text-blue-400 font-medium">{filteredTotalCount}</span> of <span className="text-blue-400 font-medium">{totalLeadsCount}</span> leads
             </p>
           </div>
         </div>

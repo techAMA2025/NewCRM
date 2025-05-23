@@ -64,6 +64,8 @@ const LeadsPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const LEADS_PER_PAGE = 100;
+  const [totalLeadsCount, setTotalLeadsCount] = useState(0);
+  const [filteredTotalCount, setFilteredTotalCount] = useState(0);
 
   // Authentication effect
   useEffect(() => {
@@ -157,11 +159,74 @@ const LeadsPage = () => {
     fetchTeamMembers();
   }, []);
 
+  // Fetch total counts
+  const fetchTotalCounts = async () => {
+    try {
+      // Get total leads count
+      const totalCountSnapshot = await getDocs(query(collection(crmDb, 'crm_leads')));
+      setTotalLeadsCount(totalCountSnapshot.size);
+
+      // Get filtered count based on current filters
+      const queryConstraints = [];
+
+      if (fromDate) {
+        const fromDateTime = new Date(fromDate);
+        fromDateTime.setHours(0, 0, 0, 0);
+        queryConstraints.push(where('lastModified', '>=', fromDateTime));
+      }
+
+      if (toDate) {
+        const toDateTime = new Date(toDate);
+        toDateTime.setHours(23, 59, 59, 999);
+        queryConstraints.push(where('lastModified', '<=', toDateTime));
+      }
+
+      if (userRole === 'salesperson') {
+        const userName = localStorage.getItem('userName');
+        if (userName) {
+          queryConstraints.push(where('assignedTo', '==', userName));
+        }
+      }
+
+      if (sourceFilter !== 'all') {
+        queryConstraints.push(where('source_database', '==', sourceFilter));
+      }
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === '') {
+          queryConstraints.push(where('status', '==', null));
+        } else {
+          queryConstraints.push(where('status', '==', statusFilter));
+        }
+      }
+
+      if (convertedFilter !== null) {
+        queryConstraints.push(where('convertedToClient', '==', convertedFilter));
+      }
+
+      const filteredCountSnapshot = await getDocs(query(
+        collection(crmDb, 'crm_leads'),
+        ...queryConstraints
+      ));
+      setFilteredTotalCount(filteredCountSnapshot.size);
+    } catch (error) {
+      console.error("Error fetching counts:", error);
+    }
+  };
+
+  // Effect to fetch counts when filters change
+  useEffect(() => {
+    if (currentUser) {
+      fetchTotalCounts();
+    }
+  }, [currentUser, fromDate, toDate, sourceFilter, statusFilter, convertedFilter, userRole]);
+
   // Fetch leads with lazy loading
   const fetchLeads = async (isInitialLoad = false) => {
     try {
       if (isInitialLoad) {
         setIsLoading(true);
+        setLastDoc(null); // Reset pagination on initial load
       } else {
         setIsLoadingMore(true);
       }
@@ -188,6 +253,22 @@ const LeadsPage = () => {
         if (userName) {
           queryConstraints.push(where('assignedTo', '==', userName));
         }
+      }
+
+      if (sourceFilter !== 'all') {
+        queryConstraints.push(where('source_database', '==', sourceFilter));
+      }
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === '') {
+          queryConstraints.push(where('status', '==', null));
+        } else {
+          queryConstraints.push(where('status', '==', statusFilter));
+        }
+      }
+
+      if (convertedFilter !== null) {
+        queryConstraints.push(where('convertedToClient', '==', convertedFilter));
       }
 
       // Create the query
@@ -236,7 +317,7 @@ const LeadsPage = () => {
       setEditingLeads(prev => ({...prev, ...newEditingState}));
 
     } catch (error) {
-      console.error("Error fetching leads: ", error);
+      console.error("Error fetching leads:", error);
       toast.error("Failed to load leads");
     } finally {
       if (isInitialLoad) {
@@ -719,6 +800,8 @@ const LeadsPage = () => {
             setFromDate={setFromDate}
             toDate={toDate}
             setToDate={setToDate}
+            totalLeadsCount={totalLeadsCount}
+            filteredTotalCount={filteredTotalCount}
           />
           
           {/* Debug info - only show in development */}
