@@ -15,6 +15,35 @@ export const getStatusColor = (status: string) => {
   }
 }
 
+export const getSourceColor = (source: string) => {
+  switch(source.toLowerCase()) {
+    case 'ama':
+      return {
+        bg: 'bg-[var(--color-amber-900)]',
+        text: 'text-amber-200',
+        display: 'AMA'
+      };
+    case 'credsettlee':
+      return {
+        bg: 'bg-[var(--color-purple-900)]',
+        text: 'text-purple-200',
+        display: 'CredSettle'
+      };
+    case 'settleloans':
+      return {
+        bg: 'bg-[var(--color-teal-900)]',
+        text: 'text-teal-200',
+        display: 'SettleLoans'
+      };
+    default:
+      return {
+        bg: 'bg-gray-700',
+        text: 'text-gray-200',
+        display: source
+      };
+  }
+};
+
 export const getFinancialColor = (type: string) => {
   switch(type) {
     case 'pl': return 'text-yellow-400 font-medium';

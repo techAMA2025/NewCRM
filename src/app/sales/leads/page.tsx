@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc, orderBy, limit, startAfter } from 'firebase/firestore';
 import { toast, ToastContainer } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
 import 'react-toastify/dist/ReactToastify.css';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 // Import Components
 import LeadsHeader from './components/LeadsHeader';
@@ -58,14 +59,9 @@ const LeadsPage = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([]);
   const [debugInfo, setDebugInfo] = useState('');
-  
-  // Lazy loading states
-  const [lastDoc, setLastDoc] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const LEADS_PER_PAGE = 100;
   const [totalLeadsCount, setTotalLeadsCount] = useState(0);
   const [filteredTotalCount, setFilteredTotalCount] = useState(0);
+  const [unsubscribeAuth, setUnsubscribeAuth] = useState<(() => void) | null>(null);
 
   // Authentication effect
   useEffect(() => {
@@ -126,6 +122,7 @@ const LeadsPage = () => {
       }
     });
     
+    setUnsubscribeAuth(() => unsubscribe);
     return () => unsubscribe();
   }, []);
 
@@ -134,87 +131,49 @@ const LeadsPage = () => {
     const fetchTeamMembers = async () => {
       try {
         const usersCollectionRef = collection(crmDb, 'users');
-        const userSnapshot = await getDocs(usersCollectionRef);
-        const usersData = userSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as User))
-          .filter(user => user.role === 'salesperson' || user.role === 'admin');
+        // Query for users with role 'sales'
+        const salesQuery = query(usersCollectionRef, where('role', '==', 'sales'));
+        const userSnapshot = await getDocs(salesQuery);
+        
+        const usersData = userSnapshot.docs.map(doc => {
+          const data = doc.data();
+          const name = data.name || (data.firstName && data.lastName 
+            ? `${data.firstName} ${data.lastName}`
+            : data.firstName || data.lastName || 'Unknown');
+          
+          return {
+            id: doc.id,
+            name: name || 'Unknown',  // Ensure name is never undefined
+            role: data.role,
+            email: data.email
+          } as User;
+        });
         
         // Sort by name
-        usersData.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        usersData.sort((a, b) => a.name.localeCompare(b.name));
         
+        // Set all team members
         setTeamMembers(usersData);
         
-        // Set sales team members (only sales personnel for assignment dropdown)
-        const salesPersonnel = usersData.filter(user => user.role === 'salesperson');
-        setSalesTeamMembers(salesPersonnel);
+        // Set sales team members (all users since we're already filtering for sales role)
+        setSalesTeamMembers(usersData);
+        
+        console.log('Fetched sales team members:', usersData);
       } catch (error) {
-        console.error("Error fetching team members: ", error);
-        toast.error("Failed to load team members", {
-          position: "top-right",
-          autoClose: 3000
-        });
+        console.error("Error fetching team members:", error);
+        toast.error("Failed to load team members");
       }
     };
     
     fetchTeamMembers();
-  }, []);
+  }, [crmDb]);
 
-  // Fetch total counts
+  // Fetch total counts - only for total leads count
   const fetchTotalCounts = async () => {
     try {
       // Get total leads count
       const totalCountSnapshot = await getDocs(query(collection(crmDb, 'crm_leads')));
       setTotalLeadsCount(totalCountSnapshot.size);
-
-      // Get filtered count based on current filters
-      const queryConstraints = [];
-
-      if (fromDate) {
-        const fromDateTime = new Date(fromDate);
-        fromDateTime.setHours(0, 0, 0, 0);
-        queryConstraints.push(where('lastModified', '>=', fromDateTime));
-      }
-
-      if (toDate) {
-        const toDateTime = new Date(toDate);
-        toDateTime.setHours(23, 59, 59, 999);
-        queryConstraints.push(where('lastModified', '<=', toDateTime));
-      }
-
-      // Only apply salesperson filter if user is a salesperson viewing their own leads
-      if (userRole === 'salesperson' && salesPersonFilter === localStorage.getItem('userName')) {
-        queryConstraints.push(where('assignedTo', '==', salesPersonFilter));
-      } else if (salesPersonFilter !== 'all') {
-        // For admin/overlord, apply salesperson filter only if specifically selected
-        if (salesPersonFilter === '') {
-          // For unassigned leads - use null check in Firestore
-          queryConstraints.push(where('assignedTo', '==', null));
-        } else {
-          queryConstraints.push(where('assignedTo', '==', salesPersonFilter));
-        }
-      }
-
-      if (sourceFilter !== 'all') {
-        queryConstraints.push(where('source_database', '==', sourceFilter));
-      }
-
-      if (statusFilter !== 'all') {
-        if (statusFilter === '') {
-          queryConstraints.push(where('status', '==', null));
-        } else {
-          queryConstraints.push(where('status', '==', statusFilter));
-        }
-      }
-
-      if (convertedFilter !== null) {
-        queryConstraints.push(where('convertedToClient', '==', convertedFilter));
-      }
-
-      const filteredCountSnapshot = await getDocs(query(
-        collection(crmDb, 'crm_leads'),
-        ...queryConstraints
-      ));
-      setFilteredTotalCount(filteredCountSnapshot.size);
     } catch (error) {
       console.error("Error fetching counts:", error);
     }
@@ -225,36 +184,36 @@ const LeadsPage = () => {
     if (currentUser) {
       fetchTotalCounts();
     }
-  }, [currentUser, fromDate, toDate, sourceFilter, statusFilter, convertedFilter, userRole]);
+  }, [currentUser]);
 
-  // Fetch leads with lazy loading
-  const fetchLeads = async (isInitialLoad = false) => {
+  // Fetch leads without lazy loading
+  const fetchLeads = async () => {
     try {
-      if (isInitialLoad) {
-        setIsLoading(true);
-        setLastDoc(null); // Reset pagination on initial load
-      } else {
-        setIsLoadingMore(true);
+      setIsLoading(true);
+
+      // Create the base query without sorting
+      let leadsRef = collection(crmDb, 'crm_leads');
+      let queryConstraints: any[] = [];
+
+      // Add salesperson filter based on role and filter selection
+      if (userRole === 'salesperson') {
+        const salesPersonName = localStorage.getItem('userName');
+        if (salesPersonName) {
+          queryConstraints.push(where('assignedTo', '==', salesPersonName));
+        }
+      } else if (userRole === 'admin' || userRole === 'overlord') {
+        // For admin/overlord, only apply salesperson filter if specifically selected
+        if (salesPersonFilter !== 'all') {
+          if (salesPersonFilter === '') {
+            queryConstraints.push(where('assignedTo', '==', null));
+          } else {
+            queryConstraints.push(where('assignedTo', '==', salesPersonFilter));
+          }
+        }
       }
-
-      let leadsRef;
-
-      // Create the base query
-      leadsRef = query(
-        collection(crmDb, 'crm_leads'),
-        orderBy('synced_at', 'desc')
-      );
-
-      // Add pagination
-      if (!isInitialLoad && lastDoc) {
-        leadsRef = query(leadsRef, startAfter(lastDoc));
-      }
-
-      // Add limit
-      leadsRef = query(leadsRef, limit(LEADS_PER_PAGE));
 
       // Execute query
-      const leadsSnapshot = await getDocs(leadsRef);
+      const leadsSnapshot = await getDocs(query(leadsRef, ...queryConstraints));
       
       // Get all leads
       let leadsData = leadsSnapshot.docs.map(doc => ({
@@ -262,73 +221,17 @@ const LeadsPage = () => {
         ...doc.data()
       } as Lead));
 
-      // Apply filters in memory
-      if (salesPersonFilter !== 'all') {
-        if (salesPersonFilter === '') {
-          // Filter for unassigned leads
-          leadsData = leadsData.filter(lead => !lead.assignedTo);
-        } else {
-          // Filter for specific salesperson
-          leadsData = leadsData.filter(lead => lead.assignedTo === salesPersonFilter);
-        }
-      }
-
-      // Apply date filters in memory if they exist
-      if (fromDate) {
-        const fromDateTime = new Date(fromDate);
-        fromDateTime.setHours(0, 0, 0, 0);
-        leadsData = leadsData.filter(lead => {
-          const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
-          return leadDate >= fromDateTime;
-        });
-      }
-
-      if (toDate) {
-        const toDateTime = new Date(toDate);
-        toDateTime.setHours(23, 59, 59, 999);
-        leadsData = leadsData.filter(lead => {
-          const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
-          return leadDate <= toDateTime;
-        });
-      }
-
-      // Ensure unique leads by using a Map
-      const uniqueLeadsMap = new Map();
-      
-      if (!isInitialLoad) {
-        // Add existing leads to the map first
-        leads.forEach(lead => uniqueLeadsMap.set(lead.id, lead));
-      }
-      
-      // Add new leads to the map
-      leadsData.forEach(lead => uniqueLeadsMap.set(lead.id, lead));
-      
-      // Convert map back to array
-      const uniqueLeadsArray = Array.from(uniqueLeadsMap.values());
-      
-      // Sort by synced_at to maintain order
-      uniqueLeadsArray.sort((a, b) => {
-        const aDate = a.synced_at?.toDate?.() || new Date(a.synced_at);
-        const bDate = b.synced_at?.toDate?.() || new Date(b.synced_at);
-        return bDate.getTime() - aDate.getTime();
+      // Sort in memory
+      leadsData.sort((a, b) => {
+        const aDate = a.synced_at?.toDate?.() || new Date(a.synced_at || 0);
+        const bDate = b.synced_at?.toDate?.() || new Date(b.synced_at || 0);
+        return bDate.getTime() - aDate.getTime(); // Descending order
       });
 
-      // Update last document for pagination
-      const lastVisible = leadsSnapshot.docs[leadsSnapshot.docs.length - 1];
-      setLastDoc(lastVisible);
-      
-      // Check if we have more data to load based on filtered results
-      setHasMore(leadsSnapshot.docs.length === LEADS_PER_PAGE);
+      // Set total count
+      setTotalLeadsCount(leadsData.length);
 
-      if (isInitialLoad) {
-        setLeads(uniqueLeadsArray);
-        setFilteredLeads(uniqueLeadsArray);
-      } else {
-        setLeads(uniqueLeadsArray);
-        setFilteredLeads(uniqueLeadsArray);
-      }
-
-      // Initialize editing state for new leads
+      // Initialize editing state for leads
       const newEditingState: EditingLeadsState = {};
       leadsData.forEach(lead => {
         newEditingState[lead.id] = {
@@ -336,56 +239,48 @@ const LeadsPage = () => {
           salesNotes: lead.salesNotes || ''
         };
       });
-      setEditingLeads(prev => ({...prev, ...newEditingState}));
+      setEditingLeads(newEditingState);
+
+      setLeads(leadsData);
+      setFilteredLeads(leadsData);
 
     } catch (error) {
       console.error("Error fetching leads:", error);
       toast.error("Failed to load leads");
     } finally {
-      if (isInitialLoad) {
-        setIsLoading(false);
-      } else {
-        setIsLoadingMore(false);
-      }
-    }
-  };
-
-  // Load more leads
-  const loadMore = () => {
-    if (!isLoadingMore && hasMore) {
-      fetchLeads(false);
+      setIsLoading(false);
     }
   };
 
   // Effect to fetch initial leads
   useEffect(() => {
     if (currentUser) {
-      fetchLeads(true);
+      fetchLeads();
     }
-  }, [currentUser, fromDate, toDate]);
+  }, [currentUser, salesPersonFilter]); // Add salesPersonFilter dependency
 
-  // Apply filters on data change
-  useEffect(() => {
-    if (!leads) return;
+  // Memoize expensive computations
+  const filteredAndSortedLeads = useMemo(() => {
+    if (!leads) return [];
     
-    const filterLeads = () => {
-      let result = [...leads];
-      
-      // Source filter
-      if (sourceFilter !== 'all') {
-        result = result.filter(lead => lead.source_database === sourceFilter);
+    let result = [...leads];
+    
+    // Source filter
+    if (sourceFilter !== 'all') {
+      result = result.filter(lead => lead.source_database === sourceFilter);
+    }
+    
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === '') {
+        result = result.filter(lead => !lead.status);
+      } else {
+        result = result.filter(lead => lead.status === statusFilter);
       }
-      
-      // Status filter
-      if (statusFilter !== 'all') {
-        if (statusFilter === '') {
-          result = result.filter(lead => lead.status === undefined || lead.status === null);
-        } else {
-          result = result.filter(lead => lead.status === statusFilter);
-        }
-      }
-      
-      // Salesperson filter
+    }
+    
+    // Salesperson filter
+    if (userRole !== 'salesperson' && (userRole === 'admin' || userRole === 'overlord')) {
       if (salesPersonFilter !== 'all') {
         if (salesPersonFilter === '') {
           result = result.filter(lead => !lead.assignedTo);
@@ -393,99 +288,99 @@ const LeadsPage = () => {
           result = result.filter(lead => lead.assignedTo === salesPersonFilter);
         }
       }
-      
-      // Search query
-      if (searchQuery) {
-        const lowercasedQuery = searchQuery.toLowerCase().trim();
-        result = result.filter(lead => {
-          const nameFields = ['name', 'Name', 'fullName', 'customerName'];
-          const nameMatch = nameFields.some(field => 
-            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
-          );
-          
-          const emailFields = ['email', 'Email', 'emailAddress'];
-          const emailMatch = emailFields.some(field => 
-            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
-          );
-          
-          const phoneFields = ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number'];
-          const phoneMatch = phoneFields.some(field => 
-            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
-          );
-          
-          return nameMatch || emailMatch || phoneMatch;
-        });
-      }
-      
-      // Converted filter
-      if (convertedFilter !== null) {
-        result = result.filter(lead => lead.convertedToClient === convertedFilter);
-      }
-      
-      // Sort the filtered results
-      if (sortConfig) {
-        result.sort((a, b) => {
-          if (sortConfig.key === 'lastModified' || sortConfig.key === 'timestamp' || 
-              sortConfig.key === 'synced_at' || sortConfig.key === 'convertedAt' || 
-              sortConfig.key === 'created') {
-            
-            let aValue = a[sortConfig.key] || a.timestamp || a.created;
-            let bValue = b[sortConfig.key] || b.timestamp || b.created;
-            
-            if (!aValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-            if (!bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
-            
-            if (typeof aValue === 'number') aValue = new Date(aValue);
-            else if (aValue.toDate) aValue = aValue.toDate();
-            else if (!(aValue instanceof Date)) aValue = new Date(aValue);
-            
-            if (typeof bValue === 'number') bValue = new Date(bValue);
-            else if (bValue.toDate) bValue = bValue.toDate();
-            else if (!(bValue instanceof Date)) bValue = new Date(bValue);
-            
-            if (aValue < bValue) {
-              return sortConfig.direction === 'ascending' ? -1 : 1;
-            }
-            if (aValue > bValue) {
-              return sortConfig.direction === 'ascending' ? 1 : -1;
-            }
-            return 0;
-          }
-          
-          let aValue = a[sortConfig.key];
-          let bValue = b[sortConfig.key];
-          
-          if (aValue < bValue) {
-            return sortConfig.direction === 'ascending' ? -1 : 1;
-          }
-          if (aValue > bValue) {
-            return sortConfig.direction === 'ascending' ? 1 : -1;
-          }
-          return 0;
-        });
-      }
-      
-      return result;
-    };
-    
-    setFilteredLeads(filterLeads());
-  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig]);
-
-  // Request sort handler
-  const requestSort = (key: string) => {
-    let direction: SortDirection = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
     }
-    setSortConfig({ key, direction });
-  };
+    
+    // Search query
+    if (searchQuery) {
+      const lowercasedQuery = searchQuery.toLowerCase().trim();
+      result = result.filter(lead => {
+        const searchableFields = {
+          name: ['name', 'Name', 'fullName', 'customerName'],
+          email: ['email', 'Email', 'emailAddress'],
+          phone: ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number']
+        };
 
-  // Update lead handler
-  const updateLead = async (id: any, data: any) => {
+        return Object.values(searchableFields).some(fields =>
+          fields.some(field =>
+            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
+          )
+        );
+      });
+    }
+    
+    // Converted filter
+    if (convertedFilter !== null) {
+      result = result.filter(lead => lead.convertedToClient === convertedFilter);
+    }
+
+    // Date filters
+    if (fromDate) {
+      const fromDateTime = new Date(fromDate);
+      fromDateTime.setHours(0, 0, 0, 0);
+      result = result.filter(lead => {
+        const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
+        return leadDate >= fromDateTime;
+      });
+    }
+
+    if (toDate) {
+      const toDateTime = new Date(toDate);
+      toDateTime.setHours(23, 59, 59, 999);
+      result = result.filter(lead => {
+        const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
+        return leadDate <= toDateTime;
+      });
+    }
+    
+    // Sort
+    if (sortConfig) {
+      result.sort((a, b) => {
+        if (sortConfig.key === 'lastModified' || sortConfig.key === 'timestamp' || 
+            sortConfig.key === 'synced_at' || sortConfig.key === 'convertedAt' || 
+            sortConfig.key === 'created') {
+          
+          let aValue = a[sortConfig.key] || a.timestamp || a.created;
+          let bValue = b[sortConfig.key] || b.timestamp || b.created;
+          
+          if (!aValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+          if (!bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+          
+          if (typeof aValue === 'number') aValue = new Date(aValue);
+          else if (aValue.toDate) aValue = aValue.toDate();
+          else if (!(aValue instanceof Date)) aValue = new Date(aValue);
+          
+          if (typeof bValue === 'number') bValue = new Date(bValue);
+          else if (bValue.toDate) bValue = bValue.toDate();
+          else if (!(bValue instanceof Date)) bValue = new Date(bValue);
+          
+          return sortConfig.direction === 'ascending' 
+            ? aValue.getTime() - bValue.getTime()
+            : bValue.getTime() - aValue.getTime();
+        }
+        
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+        
+        return sortConfig.direction === 'ascending'
+          ? String(aValue).localeCompare(String(bValue))
+          : String(bValue).localeCompare(String(aValue));
+      });
+    }
+    
+    return result;
+  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, userRole, convertedFilter, fromDate, toDate, sortConfig]);
+
+  // Effect to update filtered count when leads are filtered
+  useEffect(() => {
+    // Update filtered count based on actual number of leads in the table
+    setFilteredTotalCount(filteredAndSortedLeads.length);
+  }, [filteredAndSortedLeads]);
+
+  // Memoize callbacks
+  const handleUpdateLead = useCallback(async (id: string, data: any) => {
     try {
       const leadRef = doc(crmDb, 'crm_leads', id);
       
-      // Add timestamp
       const updateData = {
         ...data,
         lastModified: serverTimestamp()
@@ -493,50 +388,28 @@ const LeadsPage = () => {
       
       await updateDoc(leadRef, updateData);
       
-      // Update UI state
       const updatedLeads = leads.map(lead => 
         lead.id === id ? { ...lead, ...data, lastModified: new Date() } : lead
       );
       
       setLeads(updatedLeads);
       
-      // Close edit modal if open
       if (editingLead && editingLead.id === id) {
         setEditingLead(null);
       }
       
-      // toast.success(
-      //   <div>
-      //     <p className="font-medium">Update Successful</p>
-      //     <p className="text-sm">Lead information has been updated</p>
-      //   </div>,
-      //   {
-      //     position: "top-right",
-      //     autoClose: 3000,
-      //     hideProgressBar: false,
-      //     closeOnClick: true,
-      //     pauseOnHover: true,
-      //     draggable: true
-      //   }
-      // );
-      
       return true;
     } catch (error) {
       console.error("Error updating lead: ", error);
-      toast.error("Failed to update lead", {
-        position: "top-right",
-        autoClose: 3000
-      });
+      toast.error("Failed to update lead");
       return false;
     }
-  };
+  }, [leads, editingLead, crmDb]);
 
-  // Assign lead to salesperson
-  const assignLeadToSalesperson = async (leadId: any, salesPersonName: any, salesPersonId: any) => {
+  const handleAssignLeadToSalesperson = useCallback(async (leadId: string, salesPersonName: string, salesPersonId: string) => {
     try {
       const leadRef = doc(crmDb, 'crm_leads', leadId);
       
-      // Create assignment history entry
       const historyRef = collection(crmDb, 'crm_leads', leadId, 'history');
       await addDoc(historyRef, {
         assignmentChange: true,
@@ -549,40 +422,45 @@ const LeadsPage = () => {
         }
       });
       
-      // Update the lead
       await updateDoc(leadRef, {
         assignedTo: salesPersonName,
         assignedToId: salesPersonId,
         lastModified: serverTimestamp()
       });
       
-      // Update UI state
       const updatedLeads = leads.map(lead => 
         lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } : lead
       );
       
       setLeads(updatedLeads);
       
-      toast.success(
-        <div>
-          <p className="font-medium">Lead Assigned</p>
-          <p className="text-sm">Lead assigned to {salesPersonName}</p>
-        </div>,
-        {
-          position: "top-right",
-          autoClose: 3000
-        }
-      );
+      toast.success(`Lead assigned to ${salesPersonName}`);
     } catch (error) {
       console.error("Error assigning lead: ", error);
-      toast.error("Failed to assign lead", {
-        position: "top-right",
-        autoClose: 3000
-      });
+      toast.error("Failed to assign lead");
     }
+  }, [leads, currentUser, crmDb]);
+
+  // Cleanup function for event listeners and subscriptions
+  useEffect(() => {
+    return () => {
+      // Cleanup any subscriptions
+      if (unsubscribeAuth) {
+        unsubscribeAuth();
+      }
+    };
+  }, [unsubscribeAuth]);
+
+  // Request sort handler
+  const requestSort = (key: string) => {
+    let direction: SortDirection = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
   };
 
-  // Fetch lead history for modal
+  // Update lead history
   const fetchNotesHistory = async (leadId: string) => {
     try {
       setShowHistoryModal(true);
@@ -841,24 +719,21 @@ const LeadsPage = () => {
             <>
               {/* Main Leads Table */}
               <LeadsTable 
-                filteredLeads={filteredLeads}
+                filteredLeads={filteredAndSortedLeads}
                 editingLeads={editingLeads}
                 setEditingLeads={setEditingLeads}
-                updateLead={updateLead}
+                updateLead={handleUpdateLead}
                 fetchNotesHistory={fetchNotesHistory}
                 requestSort={requestSort}
                 sortConfig={sortConfig}
                 statusOptions={statusOptions}
                 userRole={userRole}
                 salesTeamMembers={salesTeamMembers}
-                assignLeadToSalesperson={assignLeadToSalesperson}
+                assignLeadToSalesperson={handleAssignLeadToSalesperson}
                 updateLeadsState={updateLeadsState}
                 crmDb={crmDb}
                 user={currentUser}
                 deleteLead={deleteLead}
-                loadMore={loadMore}
-                hasMore={hasMore}
-                isLoadingMore={isLoadingMore}
               />
               
               {/* Empty state message */}
@@ -887,7 +762,7 @@ const LeadsPage = () => {
               <EditModal 
                 editingLead={editingLead}
                 setEditingLead={setEditingLead}
-                updateLead={updateLead}
+                updateLead={handleUpdateLead}
                 teamMembers={teamMembers}
                 statusOptions={statusOptions}
               />
