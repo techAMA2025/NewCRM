@@ -7,6 +7,7 @@ import RequestLetterForm from "./requestletter";
 import DemandNoticeForm from "./demandnotice";
 import CFHABForm from "./cfhab";
 import ReplyToNoticeForm from "./replytonotice";
+import Sec138Form from "./sec138";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 
 interface Bank {
@@ -151,6 +152,21 @@ const DocumentsPage = () => {
               {activeForm === 'replyToNotice' ? "Hide Form" : "Create Reply Notice"}
             </button>
           </div>
+          <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Section 138
+            </h2>
+            <p className="text-gray-300 mb-4">Generate formal replies to legal notices from banks.</p>
+            <button
+              onClick={() => handleFormToggle('sec138')}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-md transition-colors duration-200"
+            >
+              {activeForm === 'sec138' ? "Hide Form" : "Create Section 138"}
+            </button>
+          </div>
         </div>
         
         {activeForm === 'requestLetter' && (
@@ -180,6 +196,13 @@ const DocumentsPage = () => {
             <ReplyToNoticeForm onClose={() => setActiveForm(null)} />
           </div>
         )}
+        {activeForm === 'sec138' && (
+          <div className="mt-6 bg-gray-800/50 p-6 rounded-lg border border-gray-700 shadow-sm animate-fadeIn">
+            <h2 className="text-xl font-semibold text-white mb-6">Generate Section 138</h2>
+            <Sec138Form client={dummyClient} onClose={() => setActiveForm(null)} />
+          </div>
+        )}
+        
         
         <Toaster 
           position="top-right"
