@@ -239,76 +239,57 @@ const LeadsPage = () => {
 
       let leadsRef;
 
-      // Create the query
+      // Create the base query
       leadsRef = query(
-        collection(crmDb, 'crm_leads')
+        collection(crmDb, 'crm_leads'),
+        orderBy('synced_at', 'desc')
       );
-
-      // If filtering by salesperson
-      if (userRole === 'salesperson' && salesPersonFilter === localStorage.getItem('userName')) {
-        leadsRef = query(
-          leadsRef,
-          where('assignedTo', '==', salesPersonFilter),
-          orderBy('assignedTo'),
-          orderBy('synced_at', 'desc')
-        );
-      } else if (salesPersonFilter !== 'all') {
-        if (salesPersonFilter === '') {
-          // For unassigned leads - use basic query without assignedTo filter
-          leadsRef = query(
-            leadsRef,
-            orderBy('synced_at', 'desc')
-          );
-          // We'll filter unassigned leads in memory
-        } else {
-          leadsRef = query(
-            leadsRef,
-            where('assignedTo', '==', salesPersonFilter),
-            orderBy('assignedTo'),
-            orderBy('synced_at', 'desc')
-          );
-        }
-      } else {
-        // No salesperson filter
-        leadsRef = query(
-          leadsRef,
-          orderBy('synced_at', 'desc')
-        );
-      }
-
-      // Add date filters if they exist
-      if (fromDate) {
-        const fromDateTime = new Date(fromDate);
-        fromDateTime.setHours(0, 0, 0, 0);
-        leadsRef = query(leadsRef, where('synced_at', '>=', fromDateTime));
-      }
-
-      if (toDate) {
-        const toDateTime = new Date(toDate);
-        toDateTime.setHours(23, 59, 59, 999);
-        leadsRef = query(leadsRef, where('synced_at', '<=', toDateTime));
-      }
 
       // Add pagination
       if (!isInitialLoad && lastDoc) {
         leadsRef = query(leadsRef, startAfter(lastDoc));
       }
-      
-      // Add limit after all other constraints
+
+      // Add limit
       leadsRef = query(leadsRef, limit(LEADS_PER_PAGE));
 
       // Execute query
       const leadsSnapshot = await getDocs(leadsRef);
       
-      // Filter unassigned leads in memory if needed and ensure unique leads
+      // Get all leads
       let leadsData = leadsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Lead));
 
-      // If looking for unassigned leads, filter in memory
-      if (salesPersonFilter === '') {
-        leadsData = leadsData.filter(lead => !lead.assignedTo);
+      // Apply filters in memory
+      if (salesPersonFilter !== 'all') {
+        if (salesPersonFilter === '') {
+          // Filter for unassigned leads
+          leadsData = leadsData.filter(lead => !lead.assignedTo);
+        } else {
+          // Filter for specific salesperson
+          leadsData = leadsData.filter(lead => lead.assignedTo === salesPersonFilter);
+        }
+      }
+
+      // Apply date filters in memory if they exist
+      if (fromDate) {
+        const fromDateTime = new Date(fromDate);
+        fromDateTime.setHours(0, 0, 0, 0);
+        leadsData = leadsData.filter(lead => {
+          const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
+          return leadDate >= fromDateTime;
+        });
+      }
+
+      if (toDate) {
+        const toDateTime = new Date(toDate);
+        toDateTime.setHours(23, 59, 59, 999);
+        leadsData = leadsData.filter(lead => {
+          const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
+          return leadDate <= toDateTime;
+        });
       }
 
       // Ensure unique leads by using a Map
@@ -336,7 +317,7 @@ const LeadsPage = () => {
       const lastVisible = leadsSnapshot.docs[leadsSnapshot.docs.length - 1];
       setLastDoc(lastVisible);
       
-      // Check if we have more data to load
+      // Check if we have more data to load based on filtered results
       setHasMore(leadsSnapshot.docs.length === LEADS_PER_PAGE);
 
       if (isInitialLoad) {
