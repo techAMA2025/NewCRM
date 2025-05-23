@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
 import toast, { Toaster } from "react-hot-toast";
 import RequestLetterForm from "./requestletter";
@@ -67,11 +67,17 @@ const DocumentsPage = () => {
 
   // State to track which form is currently shown
   const [activeForm, setActiveForm] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>('');
+
+  useEffect(() => {
+    // Access localStorage only on client side
+    const role = localStorage.getItem('userRole');
+    setUserRole(role || '');
+  }, []);
 
   const handleFormToggle = (formType: string) => {
     setActiveForm(activeForm === formType ? null : formType);
   };
-  const userRole = localStorage.getItem('userRole');
 
   return (
     <div className="flex bg-gray-900 min-h-screen">
