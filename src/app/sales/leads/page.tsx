@@ -181,10 +181,16 @@ const LeadsPage = () => {
         queryConstraints.push(where('lastModified', '<=', toDateTime));
       }
 
-      if (userRole === 'salesperson') {
-        const userName = localStorage.getItem('userName');
-        if (userName) {
-          queryConstraints.push(where('assignedTo', '==', userName));
+      // Only apply salesperson filter if user is a salesperson viewing their own leads
+      if (userRole === 'salesperson' && salesPersonFilter === localStorage.getItem('userName')) {
+        queryConstraints.push(where('assignedTo', '==', salesPersonFilter));
+      } else if (salesPersonFilter !== 'all') {
+        // For admin/overlord, apply salesperson filter only if specifically selected
+        if (salesPersonFilter === '') {
+          // For unassigned leads - use null check in Firestore
+          queryConstraints.push(where('assignedTo', '==', null));
+        } else {
+          queryConstraints.push(where('assignedTo', '==', salesPersonFilter));
         }
       }
 
@@ -232,60 +238,100 @@ const LeadsPage = () => {
       }
 
       let leadsRef;
-      const queryConstraints = [];
+
+      // Create the query
+      leadsRef = query(
+        collection(crmDb, 'crm_leads')
+      );
+
+      // If filtering by salesperson
+      if (userRole === 'salesperson' && salesPersonFilter === localStorage.getItem('userName')) {
+        leadsRef = query(
+          leadsRef,
+          where('assignedTo', '==', salesPersonFilter),
+          orderBy('assignedTo'),
+          orderBy('synced_at', 'desc')
+        );
+      } else if (salesPersonFilter !== 'all') {
+        if (salesPersonFilter === '') {
+          // For unassigned leads - use basic query without assignedTo filter
+          leadsRef = query(
+            leadsRef,
+            orderBy('synced_at', 'desc')
+          );
+          // We'll filter unassigned leads in memory
+        } else {
+          leadsRef = query(
+            leadsRef,
+            where('assignedTo', '==', salesPersonFilter),
+            orderBy('assignedTo'),
+            orderBy('synced_at', 'desc')
+          );
+        }
+      } else {
+        // No salesperson filter
+        leadsRef = query(
+          leadsRef,
+          orderBy('synced_at', 'desc')
+        );
+      }
 
       // Add date filters if they exist
       if (fromDate) {
         const fromDateTime = new Date(fromDate);
         fromDateTime.setHours(0, 0, 0, 0);
-        queryConstraints.push(where('lastModified', '>=', fromDateTime));
+        leadsRef = query(leadsRef, where('synced_at', '>=', fromDateTime));
       }
 
       if (toDate) {
         const toDateTime = new Date(toDate);
         toDateTime.setHours(23, 59, 59, 999);
-        queryConstraints.push(where('lastModified', '<=', toDateTime));
+        leadsRef = query(leadsRef, where('synced_at', '<=', toDateTime));
       }
 
-      // Add user role specific filters
-      if (userRole === 'salesperson') {
-        const userName = localStorage.getItem('userName');
-        if (userName) {
-          queryConstraints.push(where('assignedTo', '==', userName));
-        }
-      }
-
-      if (sourceFilter !== 'all') {
-        queryConstraints.push(where('source_database', '==', sourceFilter));
-      }
-
-      if (statusFilter !== 'all') {
-        if (statusFilter === '') {
-          queryConstraints.push(where('status', '==', null));
-        } else {
-          queryConstraints.push(where('status', '==', statusFilter));
-        }
-      }
-
-      if (convertedFilter !== null) {
-        queryConstraints.push(where('convertedToClient', '==', convertedFilter));
-      }
-
-      // Create the query
-      leadsRef = query(
-        collection(crmDb, 'crm_leads'),
-        ...queryConstraints,
-        orderBy('lastModified', 'desc'),
-        limit(LEADS_PER_PAGE)
-      );
-
-      // If not initial load and we have a last document, start after it
+      // Add pagination
       if (!isInitialLoad && lastDoc) {
         leadsRef = query(leadsRef, startAfter(lastDoc));
       }
+      
+      // Add limit after all other constraints
+      leadsRef = query(leadsRef, limit(LEADS_PER_PAGE));
 
+      // Execute query
       const leadsSnapshot = await getDocs(leadsRef);
       
+      // Filter unassigned leads in memory if needed and ensure unique leads
+      let leadsData = leadsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Lead));
+
+      // If looking for unassigned leads, filter in memory
+      if (salesPersonFilter === '') {
+        leadsData = leadsData.filter(lead => !lead.assignedTo);
+      }
+
+      // Ensure unique leads by using a Map
+      const uniqueLeadsMap = new Map();
+      
+      if (!isInitialLoad) {
+        // Add existing leads to the map first
+        leads.forEach(lead => uniqueLeadsMap.set(lead.id, lead));
+      }
+      
+      // Add new leads to the map
+      leadsData.forEach(lead => uniqueLeadsMap.set(lead.id, lead));
+      
+      // Convert map back to array
+      const uniqueLeadsArray = Array.from(uniqueLeadsMap.values());
+      
+      // Sort by synced_at to maintain order
+      uniqueLeadsArray.sort((a, b) => {
+        const aDate = a.synced_at?.toDate?.() || new Date(a.synced_at);
+        const bDate = b.synced_at?.toDate?.() || new Date(b.synced_at);
+        return bDate.getTime() - aDate.getTime();
+      });
+
       // Update last document for pagination
       const lastVisible = leadsSnapshot.docs[leadsSnapshot.docs.length - 1];
       setLastDoc(lastVisible);
@@ -293,17 +339,12 @@ const LeadsPage = () => {
       // Check if we have more data to load
       setHasMore(leadsSnapshot.docs.length === LEADS_PER_PAGE);
 
-      const leadsData = leadsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Lead));
-
       if (isInitialLoad) {
-        setLeads(leadsData);
-        setFilteredLeads(leadsData);
+        setLeads(uniqueLeadsArray);
+        setFilteredLeads(uniqueLeadsArray);
       } else {
-        setLeads(prevLeads => [...prevLeads, ...leadsData]);
-        setFilteredLeads(prevLeads => [...prevLeads, ...leadsData]);
+        setLeads(uniqueLeadsArray);
+        setFilteredLeads(uniqueLeadsArray);
       }
 
       // Initialize editing state for new leads
