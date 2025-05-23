@@ -70,9 +70,11 @@ const DocumentsPage = () => {
   const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
-    // Access localStorage only on client side
-    const role = localStorage.getItem('userRole');
-    setUserRole(role || '');
+    // Check if window is defined (client-side)
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('userRole');
+      setUserRole(role || '');
+    }
   }, []);
 
   const handleFormToggle = (formType: string) => {
