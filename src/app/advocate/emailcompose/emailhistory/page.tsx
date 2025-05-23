@@ -6,6 +6,7 @@ import { db, auth } from '@/firebase/firebase';
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
 import { FaEnvelope, FaPaperclip, FaCheck, FaTimes, FaFile, FaDownload, FaSearch, FaEye, FaTimes as FaTimesCircle } from 'react-icons/fa';
 import { format } from 'date-fns';
+import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 
 interface Attachment {
   name: string;
@@ -41,7 +42,14 @@ export default function EmailHistoryPage() {
   const [selectedEmail, setSelectedEmail] = useState<EmailHistory | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [userRole, setUserRole] = useState<string>('');
   
+  useEffect(() => {
+    // Access localStorage only on client side
+    const role = localStorage.getItem('userRole');
+    setUserRole(role || '');
+  }, []);
+
   useEffect(() => {
     async function fetchEmailHistory() {
       try {
@@ -125,7 +133,7 @@ export default function EmailHistoryPage() {
   
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      <AdvocateSidebar />
+      {userRole === 'advocate' ? <AdvocateSidebar /> : <OverlordSidebar />}
       
       <div className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">

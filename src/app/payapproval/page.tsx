@@ -11,6 +11,7 @@ import SalesSidebar from '@/components/navigation/SalesSidebar';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
 import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, setDoc, increment, deleteDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
+import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 
 interface Payment {
   id: string;
@@ -145,7 +146,13 @@ export default function PaymentApprovalPage() {
   
   const renderSidebar = () => {
     // Check if the user role is 'advocate'
-    return userRole === 'advocate' ? <AdvocateSidebar /> : <SalesSidebar />;
+    if (userRole === 'advocate') {
+      return <AdvocateSidebar />;
+    } else if (userRole === 'overlord') {
+      return <OverlordSidebar />;
+    } else {
+      return <SalesSidebar />;
+    }
   };
   
   const updateSalesTargetAmountCollected = async (salesPersonName: string, amount: number, isDelete: boolean = false) => {

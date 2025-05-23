@@ -24,6 +24,7 @@ import { Toaster, toast } from "react-hot-toast";
 import { httpsCallable } from "firebase/functions";
 import { functions, auth, db } from "@/firebase/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 
 // Define interfaces for types
 interface Attachment {
@@ -1360,9 +1361,11 @@ Below is a draft email you can send to your bank or financial institution to ini
     toast.success(`${client.name} added as CC recipient`);
   };
 
+  const userRole = localStorage.getItem('userRole');
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      <AdvocateSidebar />
+      {userRole === 'advocate' ? <AdvocateSidebar /> : <OverlordSidebar />}
 
       <div className="flex-1 p-8">
         <div className="max-w-5xl mx-auto">

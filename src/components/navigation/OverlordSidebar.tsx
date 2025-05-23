@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut, FiUserPlus, FiShare2, FiBriefcase, FiCalendar, FiCheckSquare } from 'react-icons/fi';
-import { FaBalanceScale, FaMoneyBillWave } from 'react-icons/fa';
+import { FaBalanceScale, FaMoneyBillWave, FaUserFriends, FaFolder, FaFileAlt, FaEnvelopeOpenText, FaHandshake, FaClipboardList, FaMoneyCheckAlt } from 'react-icons/fa';
 import { getAuth, signOut } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 import { app } from '@/firebase/firebase';
@@ -57,6 +57,9 @@ const OverlordSidebar: React.FC = () => {
     { href: '/assigntasks', icon: <FiCheckSquare />, label: 'Assign Tasks' },
     { href: '/arbtracker', icon: <FaBalanceScale />, label: 'Arbitration' },
     { href: '/pendingletters', icon: <FiClipboard/>, label: 'Pending Letters' },
+    { href: '/payapproval', icon: <FaMoneyCheckAlt />, label: 'Payment Approvals' },
+    { href: '/advocate/documents', icon: <FaFileAlt />, label: 'Documents' },
+    { href: '/advocate/emailcompose', icon: <FaEnvelopeOpenText />, label: 'Compose Email' },
   ];
 
   const handleLogout = async () => {

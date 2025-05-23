@@ -7,6 +7,7 @@ import RequestLetterForm from "./requestletter";
 import DemandNoticeForm from "./demandnotice";
 import CFHABForm from "./cfhab";
 import ReplyToNoticeForm from "./replytonotice";
+import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 
 interface Bank {
   id: string;
@@ -70,10 +71,11 @@ const DocumentsPage = () => {
   const handleFormToggle = (formType: string) => {
     setActiveForm(activeForm === formType ? null : formType);
   };
+  const userRole = localStorage.getItem('userRole');
 
   return (
     <div className="flex bg-gray-900 min-h-screen">
-      <AdvocateSidebar />
+      {userRole === 'advocate' ? <AdvocateSidebar /> : <OverlordSidebar />}
       <div className="flex-1 p-6">
         <h1 className="text-2xl font-bold mb-6 text-white">Document Generation</h1>
         
