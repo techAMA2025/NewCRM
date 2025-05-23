@@ -1361,7 +1361,13 @@ Below is a draft email you can send to your bank or financial institution to ini
     toast.success(`${client.name} added as CC recipient`);
   };
 
-  const userRole = localStorage.getItem('userRole');
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Access localStorage only on the client side
+    const storedUserRole = localStorage.getItem('userRole');
+    setUserRole(storedUserRole);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
