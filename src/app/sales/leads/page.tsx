@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc, orderBy, limit, startAfter } from 'firebase/firestore';
 import { toast, ToastContainer } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
@@ -45,7 +45,6 @@ const LeadsPage = () => {
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [dateRangeFilter, setDateRangeFilter] = useState('7');
   const [sortConfig, setSortConfig] = useState({ 
     key: 'synced_at', 
     direction: 'descending' as 'ascending' | 'descending' 
@@ -59,6 +58,12 @@ const LeadsPage = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([]);
   const [debugInfo, setDebugInfo] = useState('');
+  
+  // Lazy loading states
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const LEADS_PER_PAGE = 100;
 
   // Authentication effect
   useEffect(() => {
@@ -152,230 +157,109 @@ const LeadsPage = () => {
     fetchTeamMembers();
   }, []);
 
-  // Fetch leads
-  useEffect(() => {
-    // Skip this effect since we now have a dedicated effect for fetching by date range
-    // The dateRangeFilter effect will handle the initial data loading with default 7 days
-    
-    // Just set the user role
-    const fetchUserRole = async () => {
-      if (!currentUser) return;
-      
-      try {
-        // First check localStorage for user role
-        const localStorageRole = localStorage.getItem('userRole');
-        if (localStorageRole) {
-          setUserRole(localStorageRole);
-          console.log('Role from localStorage:', localStorageRole);
-          
-          // If not admin, set the filter to their name
-          if (localStorageRole !== 'admin' && localStorageRole !== 'overlord') {
-            // Get user name from localStorage if available
-            const userName = localStorage.getItem('userName');
-            if (userName) {
-              setSalesPersonFilter(userName);
-            }
-          }
-          
-          return; // Exit early since we found the role
-        }
-        
-        // Fallback: Fetch user role and permissions from Firebase
-        const userRef = doc(crmDb, 'users', currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (userSnap.exists()) {
-          const userData = userSnap.data() as User;
-          setUserRole(userData.role || 'user');
-          console.log('Role from Firebase:', userData.role);
-          
-          // Store in localStorage for future use
-          if (userData.role) {
-            localStorage.setItem('userRole', userData.role);
-          }
-          
-          // If user has a name, store it too
-          if (userData.name) {
-            localStorage.setItem('userName', userData.name);
-          }
-          
-          // If not admin, set the filter to their name
-          if (userData.role !== 'admin' && userData.name) {
-            setSalesPersonFilter(userData.name);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user role: ", error);
+  // Fetch leads with lazy loading
+  const fetchLeads = async (isInitialLoad = false) => {
+    try {
+      if (isInitialLoad) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
       }
-    };
-    
-    fetchUserRole();
-  }, [currentUser, crmDb]);
 
-  // Set default date range (last 7 days) on initial load
-  useEffect(() => {
-    // Only set default dates if they haven't been set yet
-    if (!fromDate && !toDate) {
-      const today = new Date();
-      // Set today to end of current day to include all of today's leads
-      today.setHours(23, 59, 59, 999);
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(today.getDate() - 7);
-      sevenDaysAgo.setHours(0, 0, 0, 0); // Start of day 7 days ago
-      
-      setFromDate(sevenDaysAgo.toISOString().split('T')[0]);
-      setToDate(today.toISOString().split('T')[0]);
-    }
-  }, []);
+      let leadsRef;
+      const queryConstraints = [];
 
-  // Effect to refetch data when dateRangeFilter changes
-  useEffect(() => {
-    // Skip on initial render before user is loaded
-    if (!currentUser) return;
-    
-    const fetchLeadsByDateRange = async () => {
-      setIsLoading(true);
-      try {
-        let leadsRef;
-        
-        // Calculate date range based on filter value
-        const today = new Date();
-        // Set today to end of current day to include all of today's leads
-        today.setHours(23, 59, 59, 999);
-        const startDate = new Date();
-        
-        // For 'all' option, fetch all leads without date filtering
-        if (dateRangeFilter === 'all') {
-          if (userRole === 'salesperson') {
-            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-            const userData = userDoc.data() as User;
-            
-            if (userData && userData.name) {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('assignedTo', '==', userData.name)
-              );
-            } else {
-              leadsRef = collection(crmDb, 'crm_leads');
-            }
-          } else {
-            // For admins or overlords - fetch all leads
-            leadsRef = collection(crmDb, 'crm_leads');
-          }
-          
-          // Clear date filters
-          setFromDate('');
-          setToDate('');
-        } 
-        // If custom range is selected, use fromDate and toDate
-        else if (dateRangeFilter === 'custom') {
-          // For custom range, we need both fromDate and toDate
-          if (fromDate && toDate) {
-            const fromDateTime = new Date(fromDate);
-            fromDateTime.setHours(0, 0, 0, 0);
-            
-            const toDateTime = new Date(toDate);
-            toDateTime.setHours(23, 59, 59, 999);
-            
-            // Add query with custom date range
-            if (userRole === 'salesperson') {
-              const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-              const userData = userDoc.data() as User;
-              
-              if (userData && userData.name) {
-                leadsRef = query(
-                  collection(crmDb, 'crm_leads'),
-                  where('assignedTo', '==', userData.name),
-                  where('lastModified', '>=', fromDateTime),
-                  where('lastModified', '<=', toDateTime)
-                );
-              } else {
-                leadsRef = query(
-                  collection(crmDb, 'crm_leads'),
-                  where('lastModified', '>=', fromDateTime),
-                  where('lastModified', '<=', toDateTime)
-                );
-              }
-            } else {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('lastModified', '>=', fromDateTime),
-                where('lastModified', '<=', toDateTime)
-              );
-            }
-          } else {
-            // If custom is selected but dates aren't set yet, use default collection
-            leadsRef = collection(crmDb, 'crm_leads');
-          }
-        } else {
-          // Calculate start date based on selected range (7, 30, 60, or 90 days)
-          const days = parseInt(dateRangeFilter);
-          startDate.setDate(today.getDate() - days);
-          
-          // Add query to filter by date at the database level for performance
-          if (userRole === 'salesperson') {
-            // Get user name
-            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-            const userData = userDoc.data() as User;
-            
-            if (userData && userData.name) {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('assignedTo', '==', userData.name),
-                where('lastModified', '>=', startDate)
-              );
-            } else {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('lastModified', '>=', startDate)
-              );
-            }
-          } else {
-            // For admins or overlords
-            leadsRef = query(
-              collection(crmDb, 'crm_leads'),
-              where('lastModified', '>=', startDate)
-            );
-          }
-          
-          // Update the fromDate and toDate for UI consistency
-          setFromDate(startDate.toISOString().split('T')[0]);
-          setToDate(today.toISOString().split('T')[0]);
+      // Add date filters if they exist
+      if (fromDate) {
+        const fromDateTime = new Date(fromDate);
+        fromDateTime.setHours(0, 0, 0, 0);
+        queryConstraints.push(where('lastModified', '>=', fromDateTime));
+      }
+
+      if (toDate) {
+        const toDateTime = new Date(toDate);
+        toDateTime.setHours(23, 59, 59, 999);
+        queryConstraints.push(where('lastModified', '<=', toDateTime));
+      }
+
+      // Add user role specific filters
+      if (userRole === 'salesperson') {
+        const userName = localStorage.getItem('userName');
+        if (userName) {
+          queryConstraints.push(where('assignedTo', '==', userName));
         }
-        
-        // Fetch the data
-        const leadsSnapshot = await getDocs(leadsRef);
-        const leadsData = leadsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as Lead));
-        
+      }
+
+      // Create the query
+      leadsRef = query(
+        collection(crmDb, 'crm_leads'),
+        ...queryConstraints,
+        orderBy('lastModified', 'desc'),
+        limit(LEADS_PER_PAGE)
+      );
+
+      // If not initial load and we have a last document, start after it
+      if (!isInitialLoad && lastDoc) {
+        leadsRef = query(leadsRef, startAfter(lastDoc));
+      }
+
+      const leadsSnapshot = await getDocs(leadsRef);
+      
+      // Update last document for pagination
+      const lastVisible = leadsSnapshot.docs[leadsSnapshot.docs.length - 1];
+      setLastDoc(lastVisible);
+      
+      // Check if we have more data to load
+      setHasMore(leadsSnapshot.docs.length === LEADS_PER_PAGE);
+
+      const leadsData = leadsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Lead));
+
+      if (isInitialLoad) {
         setLeads(leadsData);
         setFilteredLeads(leadsData);
-        
-        // Initialize editing state
-        const initialEditingState: EditingLeadsState = {};
-        leadsData.forEach(lead => {
-          initialEditingState[lead.id] = {
-            ...lead,
-            salesNotes: lead.salesNotes || ''
-          };
-        });
-        setEditingLeads(initialEditingState);
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching leads by date range: ", error);
-        toast.error("Failed to load leads", {
-          position: "top-right",
-          autoClose: 3000
-        });
-        setIsLoading(false);
+      } else {
+        setLeads(prevLeads => [...prevLeads, ...leadsData]);
+        setFilteredLeads(prevLeads => [...prevLeads, ...leadsData]);
       }
-    };
-    
-    fetchLeadsByDateRange();
-  }, [currentUser, dateRangeFilter, userRole, crmDb, fromDate, toDate]);
+
+      // Initialize editing state for new leads
+      const newEditingState: EditingLeadsState = {};
+      leadsData.forEach(lead => {
+        newEditingState[lead.id] = {
+          ...lead,
+          salesNotes: lead.salesNotes || ''
+        };
+      });
+      setEditingLeads(prev => ({...prev, ...newEditingState}));
+
+    } catch (error) {
+      console.error("Error fetching leads: ", error);
+      toast.error("Failed to load leads");
+    } finally {
+      if (isInitialLoad) {
+        setIsLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
+    }
+  };
+
+  // Load more leads
+  const loadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchLeads(false);
+    }
+  };
+
+  // Effect to fetch initial leads
+  useEffect(() => {
+    if (currentUser) {
+      fetchLeads(true);
+    }
+  }, [currentUser, fromDate, toDate]);
 
   // Apply filters on data change
   useEffect(() => {
@@ -392,10 +276,8 @@ const LeadsPage = () => {
       // Status filter
       if (statusFilter !== 'all') {
         if (statusFilter === '') {
-          // Filter for leads where status field doesn't exist or is null/undefined
           result = result.filter(lead => lead.status === undefined || lead.status === null);
         } else {
-          // Normal status filtering
           result = result.filter(lead => lead.status === statusFilter);
         }
       }
@@ -403,37 +285,31 @@ const LeadsPage = () => {
       // Salesperson filter
       if (salesPersonFilter !== 'all') {
         if (salesPersonFilter === '') {
-          // Unassigned leads
           result = result.filter(lead => !lead.assignedTo);
         } else {
-          // Leads assigned to specific salesperson
           result = result.filter(lead => lead.assignedTo === salesPersonFilter);
         }
       }
       
-      // Search query - IMPROVED to handle different field names and case sensitivity
+      // Search query
       if (searchQuery) {
         const lowercasedQuery = searchQuery.toLowerCase().trim();
         result = result.filter(lead => {
-          // Check all possible name field variations
           const nameFields = ['name', 'Name', 'fullName', 'customerName'];
           const nameMatch = nameFields.some(field => 
             lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
           );
           
-          // Check all possible email field variations
           const emailFields = ['email', 'Email', 'emailAddress'];
           const emailMatch = emailFields.some(field => 
             lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
           );
           
-          // Check all possible phone field variations
           const phoneFields = ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number'];
           const phoneMatch = phoneFields.some(field => 
             lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
           );
           
-          // Return true if any field matches
           return nameMatch || emailMatch || phoneMatch;
         });
       }
@@ -443,68 +319,27 @@ const LeadsPage = () => {
         result = result.filter(lead => lead.convertedToClient === convertedFilter);
       }
       
-      // Date range filter - OPTIMIZED for performance
-      if (fromDate || toDate) {
-        // Create proper date boundaries for comparison
-        const fromDateTime = fromDate ? new Date(fromDate) : null;
-        if (fromDateTime) fromDateTime.setHours(0, 0, 0, 0);
-        
-        const toDateTime = toDate ? new Date(toDate) : null;
-        if (toDateTime) toDateTime.setHours(23, 59, 59, 999);
-        
-        result = result.filter(lead => {
-          // Get the date from various possible fields
-          let leadDate = lead.synced_at || lead.timestamp || lead.created || lead.lastModified || lead.createdAt;
-          
-          // Skip if no date is available
-          if (!leadDate) return false; // Changed to false to exclude leads without dates
-          
-          // Convert to Date object if it's a Firestore timestamp or string
-          if (leadDate.toDate) leadDate = leadDate.toDate(); // Firestore timestamp
-          else if (!(leadDate instanceof Date)) leadDate = new Date(leadDate); // String date
-          
-          // Skip invalid dates
-          if (isNaN(leadDate.getTime())) return false; // Changed to false to exclude invalid dates
-          
-          // Check date range
-          if (fromDateTime && toDateTime) {
-            return leadDate >= fromDateTime && leadDate <= toDateTime;
-          } else if (fromDateTime) {
-            return leadDate >= fromDateTime;
-          } else if (toDateTime) {
-            return leadDate <= toDateTime;
-          }
-          
-          return true;
-        });
-      }
-      
-      // Ensure proper date sorting by handling different date formats
+      // Sort the filtered results
       if (sortConfig) {
         result.sort((a, b) => {
-          // Handle date fields specially
           if (sortConfig.key === 'lastModified' || sortConfig.key === 'timestamp' || 
               sortConfig.key === 'synced_at' || sortConfig.key === 'convertedAt' || 
               sortConfig.key === 'created') {
             
-            // Get values, considering potential field name variations
             let aValue = a[sortConfig.key] || a.timestamp || a.created;
             let bValue = b[sortConfig.key] || b.timestamp || b.created;
             
-            // Handle missing values (put them at the end)
             if (!aValue) return sortConfig.direction === 'ascending' ? -1 : 1;
             if (!bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
             
-            // Convert to date objects for proper comparison
-            if (typeof aValue === 'number') aValue = new Date(aValue); // For timestamp values stored as numbers
-            else if (aValue.toDate) aValue = aValue.toDate(); // For Firestore timestamps
-            else if (!(aValue instanceof Date)) aValue = new Date(aValue); // For string dates
+            if (typeof aValue === 'number') aValue = new Date(aValue);
+            else if (aValue.toDate) aValue = aValue.toDate();
+            else if (!(aValue instanceof Date)) aValue = new Date(aValue);
             
             if (typeof bValue === 'number') bValue = new Date(bValue);
             else if (bValue.toDate) bValue = bValue.toDate();
             else if (!(bValue instanceof Date)) bValue = new Date(bValue);
             
-            // Compare dates
             if (aValue < bValue) {
               return sortConfig.direction === 'ascending' ? -1 : 1;
             }
@@ -514,7 +349,6 @@ const LeadsPage = () => {
             return 0;
           }
           
-          // Handle non-date fields (existing logic)
           let aValue = a[sortConfig.key];
           let bValue = b[sortConfig.key];
           
@@ -532,7 +366,7 @@ const LeadsPage = () => {
     };
     
     setFilteredLeads(filterLeads());
-  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig, fromDate, toDate]);
+  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig]);
 
   // Request sort handler
   const requestSort = (key: string) => {
@@ -885,8 +719,6 @@ const LeadsPage = () => {
             setFromDate={setFromDate}
             toDate={toDate}
             setToDate={setToDate}
-            dateRangeFilter={dateRangeFilter}
-            setDateRangeFilter={setDateRangeFilter}
           />
           
           {/* Debug info - only show in development */}
@@ -919,6 +751,9 @@ const LeadsPage = () => {
                 crmDb={crmDb}
                 user={currentUser}
                 deleteLead={deleteLead}
+                loadMore={loadMore}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
               />
               
               {/* Empty state message */}

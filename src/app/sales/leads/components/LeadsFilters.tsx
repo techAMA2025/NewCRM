@@ -1,5 +1,5 @@
 import { FaFilter, FaUserTie } from 'react-icons/fa';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { debounce } from 'lodash';
@@ -24,8 +24,6 @@ type LeadsFiltersProps = {
   setFromDate: (date: string) => void;
   toDate: string;
   setToDate: (date: string) => void;
-  dateRangeFilter: string;
-  setDateRangeFilter: (range: string) => void;
 };
 
 const LeadsFilters = ({
@@ -47,17 +45,13 @@ const LeadsFilters = ({
   fromDate,
   setFromDate,
   toDate,
-  setToDate,
-  dateRangeFilter,
-  setDateRangeFilter
+  setToDate
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // New search implementation
   const [searchInput, setSearchInput] = useState(searchQuery);
   
-  // Create a more efficient debounced search function
+  // Create a debounced search function
   const debouncedSearch = useCallback(
     debounce((value: string) => {
       setSearchQuery(value);
@@ -82,11 +76,6 @@ const LeadsFilters = ({
     setSearchInput('');
     setSearchQuery('');
   };
-
-  // Debug the search functionality
-  useEffect(() => {
-    console.log('Search query updated:', searchQuery);
-  }, [searchQuery]);
 
   // Fetch sales users
   useEffect(() => {
@@ -120,42 +109,12 @@ const LeadsFilters = ({
   }, []);
 
   // Format date for input max attribute
-  const today = useMemo(() => {
-    const date = new Date();
-    return date.toISOString().split('T')[0];
-  }, []);
+  const today = new Date().toISOString().split('T')[0];
 
   // Clear date filters
   const clearDateFilters = () => {
     setFromDate('');
     setToDate('');
-    setDateRangeFilter('7');
-  };
-  
-  // Handle date range changes
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const days = e.target.value;
-    setDateRangeFilter(days);
-    
-    if (days === 'custom' || days === 'all') {
-      // Keep custom date range if already set or clear for 'all'
-      if (days === 'all') {
-        setFromDate('');
-        setToDate('');
-      }
-      return;
-    }
-    
-    // Calculate new from date based on selected range
-    const today = new Date();
-    // Set today to end of current day to include all of today's leads
-    today.setHours(23, 59, 59, 999);
-    const fromDate = new Date();
-    fromDate.setDate(today.getDate() - parseInt(days));
-    
-    // Update from and to dates
-    setFromDate(fromDate.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
   };
 
   return (
@@ -222,7 +181,7 @@ const LeadsFilters = ({
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Source Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-gray-400">Source</label>
@@ -282,21 +241,29 @@ const LeadsFilters = ({
             </div>
           </div>
           
-          {/* Date Range Filter - NEW */}
+          {/* From Date Filter */}
           <div className="space-y-1">
-            <label className="block text-xs text-gray-400">Date Range</label>
-            <select
-              value={dateRangeFilter}
-              onChange={handleDateRangeChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-            >
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-              <option value="60">Last 60 Days</option>
-              <option value="90">Last 90 Days</option>
-              <option value="all">All Leads</option>
-              <option value="custom">Custom Range</option>
-            </select>
+            <label className="block text-xs text-gray-400">From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              max={toDate || today}
+              className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            />
+          </div>
+          
+          {/* To Date Filter */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-400">To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              min={fromDate}
+              max={today}
+              className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            />
           </div>
           
           {/* Conversion Status Filter */}
@@ -318,48 +285,19 @@ const LeadsFilters = ({
           </div>
         </div>
         
-        {/* Date Range Filters - only shown when "Custom Range" is selected */}
-        {dateRangeFilter === 'custom' && (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex space-x-4">
-              <div className="flex-1 space-y-1">
-                <label className="block text-xs text-gray-400">From Date</label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  max={toDate || today}
-                  className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                />
-              </div>
-              
-              <div className="flex-1 space-y-1">
-                <label className="block text-xs text-gray-400">To Date</label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  min={fromDate}
-                  max={today}
-                  className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-end">
-              {(fromDate || toDate) && (
-                <button 
-                  onClick={clearDateFilters}
-                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  type="button"
-                >
-                  <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Clear date filters
-                </button>
-              )}
-            </div>
+        {/* Clear date filters button */}
+        {(fromDate || toDate) && (
+          <div className="mt-4">
+            <button 
+              onClick={clearDateFilters}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              type="button"
+            >
+              <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear date filters
+            </button>
           </div>
         )}
       </div>

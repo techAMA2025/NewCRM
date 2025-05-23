@@ -1,5 +1,6 @@
 import { FaSort } from 'react-icons/fa';
 import LeadRow from './LeadRow';
+import { useEffect, useRef, useState } from 'react';
 
 type LeadsTableProps = {
   filteredLeads: any[];
@@ -17,6 +18,9 @@ type LeadsTableProps = {
   crmDb: any;
   user: any;
   deleteLead: (leadId: string) => Promise<void>;
+  loadMore: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
 };
 
 const LeadsTable = ({
@@ -34,8 +38,42 @@ const LeadsTable = ({
   updateLeadsState,
   crmDb,
   user,
-  deleteLead
+  deleteLead,
+  loadMore,
+  hasMore,
+  isLoadingMore
 }: LeadsTableProps) => {
+  const observer = useRef<IntersectionObserver | undefined>(undefined);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isLoadingMore) return;
+
+    if (observer.current) {
+      observer.current.disconnect();
+    }
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        loadMore();
+      }
+    }, {
+      root: null,
+      rootMargin: '20px',
+      threshold: 0.1
+    });
+
+    if (loadMoreRef.current) {
+      observer.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+    };
+  }, [isLoadingMore, hasMore, loadMore]);
+
   return (
     <div className="bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
       <div className="overflow-x-auto">
@@ -154,6 +192,20 @@ const LeadsTable = ({
             )}
           </tbody>
         </table>
+        
+        {/* Loader and Load More Trigger */}
+        {hasMore && (
+          <div 
+            ref={loadMoreRef}
+            className="flex justify-center items-center p-4"
+          >
+            {isLoadingMore ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            ) : (
+              <div className="text-gray-400 text-sm">Loading more leads...</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
