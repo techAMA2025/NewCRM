@@ -139,17 +139,17 @@ const DocumentsPage = () => {
           
           <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
-              <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-5 h-5 mr-2 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              Reply to Notice
+              Section 25
             </h2>
             <p className="text-gray-300 mb-4">Generate formal replies to legal notices from banks.</p>
             <button
               onClick={() => handleFormToggle('replyToNotice')}
-              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-md transition-colors duration-200"
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-md transition-colors duration-200"
             >
-              {activeForm === 'replyToNotice' ? "Hide Form" : "Create Reply Notice"}
+              {activeForm === 'Create Section 25' ? "Hide Form" : "Create Section 25"}
             </button>
           </div>
           <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm">
