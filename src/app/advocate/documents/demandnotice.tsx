@@ -328,8 +328,8 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     "Poonawala Fin": {
       address:
         "Poonawala Finance, S. No. 83 Ground Floor, AP81, Mundhwa PUNE 411036, Maharashtra",
-      email:
-        "head.customercare@poonawallahousing.com, customercare@poonawallahousing.com, nodalofficer@poonawallahousing.com, grievance_south@poonawallafincorp.com",
+        email:
+        "rati.mundra@poonawallafincorp.com, pno@poonawallafincorp.com, customercare@poonawallafincorp.com",
     },
     Prefr: {
       address:
