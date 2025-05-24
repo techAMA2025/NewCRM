@@ -21,8 +21,9 @@ const CalculatorPage = () => {
   const [settleBanks, setSettleBanks] = useState<Bank[]>([])
   const [billcutBanks, setBillcutBanks] = useState<Bank[]>([])
 
-  // State for tenure
+  // State for tenure and sign up fees
   const [tenure, setTenure] = useState('5')
+  const [settleSignUpFees, setSettleSignUpFees] = useState('3000')
 
   // Calculations for Settle Loans
   const calculateSettleLoans = () => {
@@ -30,7 +31,7 @@ const CalculatorPage = () => {
       return sum + (parseFloat(bank.loanAmount.replace(/,/g, '')) || 0)
     }, 0)
 
-    const signUpFees = 3000
+    const signUpFees = parseFloat(settleSignUpFees.replace(/,/g, '')) || 0
     const settlement = total * 0.5
     const netPayToBank = total * 0.4
     const ourFees = total * 0.1
@@ -52,10 +53,11 @@ const CalculatorPage = () => {
       return sum + (parseFloat(bank.loanAmount.replace(/,/g, '')) || 0)
     }, 0)
 
+    // Calculate sign up fees based on total amount
+    const signUpFees = total < 400000 ? 8000 : total * 0.02
     const settlement = total * 0.5
     const netPayToBank = total * 0.35
     const ourFees = total * 0.15
-    const signUpFees = total * 0.02
 
     return {
       total,
@@ -137,15 +139,28 @@ const CalculatorPage = () => {
               )}
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenure (Months)</label>
-              <input
-                type="number"
-                value={tenure}
-                onChange={(e) => setTenure(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                min="1"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenure (Months)</label>
+                <input
+                  type="number"
+                  value={tenure}
+                  onChange={(e) => setTenure(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  min="1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sign Up Fees</label>
+                <input
+                  type="text"
+                  value={settleSignUpFees}
+                  onChange={(e) => setSettleSignUpFees(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="₹"
+                />
+                <p className="mt-1 text-xs text-amber-400">Please enter numbers only (no commas)</p>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -232,7 +247,9 @@ const CalculatorPage = () => {
                 <span className="font-semibold text-gray-800 dark:text-white">₹{formatNumber(billcutResults.ourFees)}</span>
               </div>
               <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Sign Up Fees (2%)</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Sign Up Fees {billcutResults.total < 400000 ? '(₹8,000 flat)' : '(2%)'}
+                </span>
                 <span className="font-semibold text-gray-800 dark:text-white">₹{formatNumber(billcutResults.signUpFees)}</span>
               </div>
             </div>
