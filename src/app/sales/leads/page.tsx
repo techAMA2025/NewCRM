@@ -196,16 +196,18 @@ const LeadsPage = () => {
       let queryConstraints: any[] = [];
 
       // Add salesperson filter based on role and filter selection
-      if (userRole === 'salesperson') {
+      if (userRole === 'sales') {
         const salesPersonName = localStorage.getItem('userName');
         if (salesPersonName) {
+          // Sales users should only see their assigned leads
           queryConstraints.push(where('assignedTo', '==', salesPersonName));
         }
       } else if (userRole === 'admin' || userRole === 'overlord') {
         // For admin/overlord, only apply salesperson filter if specifically selected
         if (salesPersonFilter !== 'all') {
           if (salesPersonFilter === '') {
-            queryConstraints.push(where('assignedTo', '==', null));
+            // Handle unassigned leads - check for null, empty string, and non-existent field
+            queryConstraints.push(where('assignedTo', 'in', [null, '', undefined]));
           } else {
             queryConstraints.push(where('assignedTo', '==', salesPersonFilter));
           }
@@ -280,10 +282,11 @@ const LeadsPage = () => {
     }
     
     // Salesperson filter
-    if (userRole !== 'salesperson' && (userRole === 'admin' || userRole === 'overlord')) {
+    if (userRole !== 'sales' && (userRole === 'admin' || userRole === 'overlord')) {
       if (salesPersonFilter !== 'all') {
         if (salesPersonFilter === '') {
-          result = result.filter(lead => !lead.assignedTo);
+          // Match the Firestore query - check for null, empty string, and non-existent field
+          result = result.filter(lead => !lead.assignedTo || lead.assignedTo === '' || !('assignedTo' in lead));
         } else {
           result = result.filter(lead => lead.assignedTo === salesPersonFilter);
         }
