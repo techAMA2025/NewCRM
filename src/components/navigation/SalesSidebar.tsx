@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft, FaSignOutAlt, FaFileAlt } from 'react-icons/fa'
+import { FaChartPie, FaUserPlus, FaHandshake, FaClipboardList, FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaMoon, FaSun, FaBars, FaChevronLeft, FaSignOutAlt, FaFileAlt, FaCalculator } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -144,6 +144,15 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
             >
               <FaMoneyBillWave className={isCollapsed ? '' : 'mr-3'} />
               {!isCollapsed && <span>Payment Approvals</span>}
+            </Link>
+          </li>
+          <li>
+            <Link href="/calculator" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/calculator')}`}
+              title={isCollapsed ? "Calculator" : ""}
+            >
+              <FaCalculator className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Calculator</span>}
             </Link>
           </li>
           {/* <li>
