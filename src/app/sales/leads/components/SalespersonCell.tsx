@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getSalespersonBadge } from './utils/colorUtils';
-import { toast } from 'react-hot-toast';
 
 type SalespersonCellProps = {
   lead: any;
@@ -33,33 +32,26 @@ const SalespersonCell = ({
         
         const salesUsers = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          const fullName = data.name || (data.firstName && data.lastName 
-            ? `${data.firstName} ${data.lastName}`
-            : data.firstName || data.lastName || 'Unknown');
-          
           return {
             id: doc.id,
             uid: data.uid,
-            name: fullName,
+            name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
             email: data.email,
             phoneNumber: data.phoneNumber
           };
         });
-
-        // Sort users by name
-        salesUsers.sort((a, b) => a.name.localeCompare(b.name));
         
         setSalesTeamMembers(salesUsers);
+        console.log('Fetched sales team members:', salesUsers);
       } catch (error) {
         console.error('Error fetching sales team members:', error);
-        toast.error('Failed to load sales team members');
       } finally {
         setLoading(false);
       }
     };
 
     fetchSalesTeam();
-  }, [crmDb, salesTeamMembers.length]);
+  }, [crmDb]);
 
   return (
     <td className="px-4 py-3 text-sm">

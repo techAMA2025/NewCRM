@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc, orderBy, limit, startAfter } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
 import { toast, ToastContainer } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
 import 'react-toastify/dist/ReactToastify.css';
-import { useVirtualizer } from '@tanstack/react-virtual';
 
 // Import Components
 import LeadsHeader from './components/LeadsHeader';
@@ -46,6 +45,7 @@ const LeadsPage = () => {
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [dateRangeFilter, setDateRangeFilter] = useState('7');
   const [sortConfig, setSortConfig] = useState({ 
     key: 'synced_at', 
     direction: 'descending' as 'ascending' | 'descending' 
@@ -59,9 +59,6 @@ const LeadsPage = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([]);
   const [debugInfo, setDebugInfo] = useState('');
-  const [totalLeadsCount, setTotalLeadsCount] = useState(0);
-  const [filteredTotalCount, setFilteredTotalCount] = useState(0);
-  const [unsubscribeAuth, setUnsubscribeAuth] = useState<(() => void) | null>(null);
 
   // Authentication effect
   useEffect(() => {
@@ -122,7 +119,6 @@ const LeadsPage = () => {
       }
     });
     
-    setUnsubscribeAuth(() => unsubscribe);
     return () => unsubscribe();
   }, []);
 
@@ -131,259 +127,423 @@ const LeadsPage = () => {
     const fetchTeamMembers = async () => {
       try {
         const usersCollectionRef = collection(crmDb, 'users');
-        // Query for users with role 'sales'
-        const salesQuery = query(usersCollectionRef, where('role', '==', 'sales'));
-        const userSnapshot = await getDocs(salesQuery);
-        
-        const usersData = userSnapshot.docs.map(doc => {
-          const data = doc.data();
-          const name = data.name || (data.firstName && data.lastName 
-            ? `${data.firstName} ${data.lastName}`
-            : data.firstName || data.lastName || 'Unknown');
-          
-          return {
-            id: doc.id,
-            name: name || 'Unknown',  // Ensure name is never undefined
-            role: data.role,
-            email: data.email
-          } as User;
-        });
+        const userSnapshot = await getDocs(usersCollectionRef);
+        const usersData = userSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as User))
+          .filter(user => user.role === 'salesperson' || user.role === 'admin');
         
         // Sort by name
-        usersData.sort((a, b) => a.name.localeCompare(b.name));
+        usersData.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         
-        // Set all team members
         setTeamMembers(usersData);
         
-        // Set sales team members (all users since we're already filtering for sales role)
-        setSalesTeamMembers(usersData);
-        
-        console.log('Fetched sales team members:', usersData);
+        // Set sales team members (only sales personnel for assignment dropdown)
+        const salesPersonnel = usersData.filter(user => user.role === 'salesperson');
+        setSalesTeamMembers(salesPersonnel);
       } catch (error) {
-        console.error("Error fetching team members:", error);
-        toast.error("Failed to load team members");
+        console.error("Error fetching team members: ", error);
+        toast.error("Failed to load team members", {
+          position: "top-right",
+          autoClose: 3000
+        });
       }
     };
     
     fetchTeamMembers();
-  }, [crmDb]);
+  }, []);
 
-  // Fetch total counts - only for total leads count
-  const fetchTotalCounts = async () => {
-    try {
-      // Get total leads count
-      const totalCountSnapshot = await getDocs(query(collection(crmDb, 'crm_leads')));
-      setTotalLeadsCount(totalCountSnapshot.size);
-    } catch (error) {
-      console.error("Error fetching counts:", error);
-    }
-  };
-
-  // Effect to fetch counts when filters change
+  // Fetch leads
   useEffect(() => {
-    if (currentUser) {
-      fetchTotalCounts();
-    }
-  }, [currentUser]);
-
-  // Fetch leads without lazy loading
-  const fetchLeads = async () => {
-    try {
-      setIsLoading(true);
-
-      // Create the base query without sorting
-      let leadsRef = collection(crmDb, 'crm_leads');
-      let queryConstraints: any[] = [];
-
-      // Add salesperson filter based on role and filter selection
-      if (userRole === 'sales') {
-        const salesPersonName = localStorage.getItem('userName');
-        if (salesPersonName) {
-          // Sales users should only see their assigned leads
-          queryConstraints.push(where('assignedTo', '==', salesPersonName));
+    // Skip this effect since we now have a dedicated effect for fetching by date range
+    // The dateRangeFilter effect will handle the initial data loading with default 7 days
+    
+    // Just set the user role
+    const fetchUserRole = async () => {
+      if (!currentUser) return;
+      
+      try {
+        // First check localStorage for user role
+        const localStorageRole = localStorage.getItem('userRole');
+        if (localStorageRole) {
+          setUserRole(localStorageRole);
+          console.log('Role from localStorage:', localStorageRole);
+          
+          // If not admin, set the filter to their name
+          if (localStorageRole !== 'admin' && localStorageRole !== 'overlord') {
+            // Get user name from localStorage if available
+            const userName = localStorage.getItem('userName');
+            if (userName) {
+              setSalesPersonFilter(userName);
+            }
+          }
+          
+          return; // Exit early since we found the role
         }
-      } else if (userRole === 'admin' || userRole === 'overlord') {
-        // For admin/overlord, only apply salesperson filter if specifically selected
-        if (salesPersonFilter !== 'all') {
-          if (salesPersonFilter === '') {
-            // Handle unassigned leads - check for null, empty string, and non-existent field
-            queryConstraints.push(where('assignedTo', 'in', [null, '', undefined]));
-          } else {
-            queryConstraints.push(where('assignedTo', '==', salesPersonFilter));
+        
+        // Fallback: Fetch user role and permissions from Firebase
+        const userRef = doc(crmDb, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+          const userData = userSnap.data() as User;
+          setUserRole(userData.role || 'user');
+          console.log('Role from Firebase:', userData.role);
+          
+          // Store in localStorage for future use
+          if (userData.role) {
+            localStorage.setItem('userRole', userData.role);
+          }
+          
+          // If user has a name, store it too
+          if (userData.name) {
+            localStorage.setItem('userName', userData.name);
+          }
+          
+          // If not admin, set the filter to their name
+          if (userData.role !== 'admin' && userData.name) {
+            setSalesPersonFilter(userData.name);
           }
         }
+      } catch (error) {
+        console.error("Error fetching user role: ", error);
       }
+    };
+    
+    fetchUserRole();
+  }, [currentUser, crmDb]);
 
-      // Execute query
-      const leadsSnapshot = await getDocs(query(leadsRef, ...queryConstraints));
-      
-      // Get all leads
-      let leadsData = leadsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Lead));
-
-      // Sort in memory
-      leadsData.sort((a, b) => {
-        const aDate = a.synced_at?.toDate?.() || new Date(a.synced_at || 0);
-        const bDate = b.synced_at?.toDate?.() || new Date(b.synced_at || 0);
-        return bDate.getTime() - aDate.getTime(); // Descending order
-      });
-
-      // Set total count
-      setTotalLeadsCount(leadsData.length);
-
-      // Initialize editing state for leads
-      const newEditingState: EditingLeadsState = {};
-      leadsData.forEach(lead => {
-        newEditingState[lead.id] = {
-          ...lead,
-          salesNotes: lead.salesNotes || ''
-        };
-      });
-      setEditingLeads(newEditingState);
-
-      setLeads(leadsData);
-      setFilteredLeads(leadsData);
-
-    } catch (error) {
-      console.error("Error fetching leads:", error);
-      toast.error("Failed to load leads");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Effect to fetch initial leads
+  // Set default date range (last 7 days) on initial load
   useEffect(() => {
-    if (currentUser) {
-      fetchLeads();
+    // Only set default dates if they haven't been set yet
+    if (!fromDate && !toDate) {
+      const today = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(today.getDate() - 7);
+      
+      setFromDate(sevenDaysAgo.toISOString().split('T')[0]);
+      setToDate(today.toISOString().split('T')[0]);
     }
-  }, [currentUser, salesPersonFilter]); // Add salesPersonFilter dependency
+  }, []);
 
-  // Memoize expensive computations
-  const filteredAndSortedLeads = useMemo(() => {
-    if (!leads) return [];
+  // Effect to refetch data when dateRangeFilter changes
+  useEffect(() => {
+    // Skip on initial render before user is loaded
+    if (!currentUser) return;
     
-    let result = [...leads];
-    
-    // Source filter
-    if (sourceFilter !== 'all') {
-      result = result.filter(lead => lead.source_database === sourceFilter);
-    }
-    
-    // Status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === '') {
-        result = result.filter(lead => !lead.status);
-      } else {
-        result = result.filter(lead => lead.status === statusFilter);
+    const fetchLeadsByDateRange = async () => {
+      setIsLoading(true);
+      try {
+        let leadsRef;
+        
+        // Calculate date range based on filter value
+        const today = new Date();
+        const startDate = new Date();
+        
+        // For 'all' option, fetch all leads without date filtering
+        if (dateRangeFilter === 'all') {
+          if (userRole === 'salesperson') {
+            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
+            const userData = userDoc.data() as User;
+            
+            if (userData && userData.name) {
+              leadsRef = query(
+                collection(crmDb, 'crm_leads'),
+                where('assignedTo', '==', userData.name)
+              );
+            } else {
+              leadsRef = collection(crmDb, 'crm_leads');
+            }
+          } else {
+            // For admins or overlords - fetch all leads
+            leadsRef = collection(crmDb, 'crm_leads');
+          }
+          
+          // Clear date filters
+          setFromDate('');
+          setToDate('');
+        } 
+        // If custom range is selected, use fromDate and toDate
+        else if (dateRangeFilter === 'custom') {
+          // For custom range, we need both fromDate and toDate
+          if (fromDate && toDate) {
+            const fromDateTime = new Date(fromDate);
+            fromDateTime.setHours(0, 0, 0, 0);
+            
+            const toDateTime = new Date(toDate);
+            toDateTime.setHours(23, 59, 59, 999);
+            
+            // Add query with custom date range
+            if (userRole === 'salesperson') {
+              const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
+              const userData = userDoc.data() as User;
+              
+              if (userData && userData.name) {
+                leadsRef = query(
+                  collection(crmDb, 'crm_leads'),
+                  where('assignedTo', '==', userData.name),
+                  where('lastModified', '>=', fromDateTime),
+                  where('lastModified', '<=', toDateTime)
+                );
+              } else {
+                leadsRef = query(
+                  collection(crmDb, 'crm_leads'),
+                  where('lastModified', '>=', fromDateTime),
+                  where('lastModified', '<=', toDateTime)
+                );
+              }
+            } else {
+              leadsRef = query(
+                collection(crmDb, 'crm_leads'),
+                where('lastModified', '>=', fromDateTime),
+                where('lastModified', '<=', toDateTime)
+              );
+            }
+          } else {
+            // If custom is selected but dates aren't set yet, use default collection
+            leadsRef = collection(crmDb, 'crm_leads');
+          }
+        } else {
+          // Calculate start date based on selected range (7, 30, 60, or 90 days)
+          const days = parseInt(dateRangeFilter);
+          startDate.setDate(today.getDate() - days);
+          
+          // Add query to filter by date at the database level for performance
+          if (userRole === 'salesperson') {
+            // Get user name
+            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
+            const userData = userDoc.data() as User;
+            
+            if (userData && userData.name) {
+              leadsRef = query(
+                collection(crmDb, 'crm_leads'),
+                where('assignedTo', '==', userData.name),
+                where('lastModified', '>=', startDate)
+              );
+            } else {
+              leadsRef = query(
+                collection(crmDb, 'crm_leads'),
+                where('lastModified', '>=', startDate)
+              );
+            }
+          } else {
+            // For admins or overlords
+            leadsRef = query(
+              collection(crmDb, 'crm_leads'),
+              where('lastModified', '>=', startDate)
+            );
+          }
+          
+          // Update the fromDate and toDate for UI consistency
+          setFromDate(startDate.toISOString().split('T')[0]);
+          setToDate(today.toISOString().split('T')[0]);
+        }
+        
+        // Fetch the data
+        const leadsSnapshot = await getDocs(leadsRef);
+        const leadsData = leadsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Lead));
+        
+        setLeads(leadsData);
+        setFilteredLeads(leadsData);
+        
+        // Initialize editing state
+        const initialEditingState: EditingLeadsState = {};
+        leadsData.forEach(lead => {
+          initialEditingState[lead.id] = {
+            ...lead,
+            salesNotes: lead.salesNotes || ''
+          };
+        });
+        setEditingLeads(initialEditingState);
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching leads by date range: ", error);
+        toast.error("Failed to load leads", {
+          position: "top-right",
+          autoClose: 3000
+        });
+        setIsLoading(false);
       }
-    }
+    };
     
-    // Salesperson filter
-    if (userRole !== 'sales' && (userRole === 'admin' || userRole === 'overlord')) {
+    fetchLeadsByDateRange();
+  }, [currentUser, dateRangeFilter, userRole, crmDb, fromDate, toDate]);
+
+  // Apply filters on data change
+  useEffect(() => {
+    if (!leads) return;
+    
+    const filterLeads = () => {
+      let result = [...leads];
+      
+      // Source filter
+      if (sourceFilter !== 'all') {
+        result = result.filter(lead => lead.source_database === sourceFilter);
+      }
+      
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === '') {
+          // Filter for leads where status field doesn't exist or is null/undefined
+          result = result.filter(lead => lead.status === undefined || lead.status === null);
+        } else {
+          // Normal status filtering
+          result = result.filter(lead => lead.status === statusFilter);
+        }
+      }
+      
+      // Salesperson filter
       if (salesPersonFilter !== 'all') {
         if (salesPersonFilter === '') {
-          // Match the Firestore query - check for null, empty string, and non-existent field
-          result = result.filter(lead => !lead.assignedTo || lead.assignedTo === '' || !('assignedTo' in lead));
+          // Unassigned leads
+          result = result.filter(lead => !lead.assignedTo);
         } else {
+          // Leads assigned to specific salesperson
           result = result.filter(lead => lead.assignedTo === salesPersonFilter);
         }
       }
-    }
-    
-    // Search query
-    if (searchQuery) {
-      const lowercasedQuery = searchQuery.toLowerCase().trim();
-      result = result.filter(lead => {
-        const searchableFields = {
-          name: ['name', 'Name', 'fullName', 'customerName'],
-          email: ['email', 'Email', 'emailAddress'],
-          phone: ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number']
-        };
-
-        return Object.values(searchableFields).some(fields =>
-          fields.some(field =>
+      
+      // Search query - IMPROVED to handle different field names and case sensitivity
+      if (searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase().trim();
+        result = result.filter(lead => {
+          // Check all possible name field variations
+          const nameFields = ['name', 'Name', 'fullName', 'customerName'];
+          const nameMatch = nameFields.some(field => 
             lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
-          )
-        );
-      });
-    }
-    
-    // Converted filter
-    if (convertedFilter !== null) {
-      result = result.filter(lead => lead.convertedToClient === convertedFilter);
-    }
-
-    // Date filters
-    if (fromDate) {
-      const fromDateTime = new Date(fromDate);
-      fromDateTime.setHours(0, 0, 0, 0);
-      result = result.filter(lead => {
-        const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
-        return leadDate >= fromDateTime;
-      });
-    }
-
-    if (toDate) {
-      const toDateTime = new Date(toDate);
-      toDateTime.setHours(23, 59, 59, 999);
-      result = result.filter(lead => {
-        const leadDate = lead.synced_at?.toDate?.() || new Date(lead.synced_at);
-        return leadDate <= toDateTime;
-      });
-    }
-    
-    // Sort
-    if (sortConfig) {
-      result.sort((a, b) => {
-        if (sortConfig.key === 'lastModified' || sortConfig.key === 'timestamp' || 
-            sortConfig.key === 'synced_at' || sortConfig.key === 'convertedAt' || 
-            sortConfig.key === 'created') {
+          );
           
-          let aValue = a[sortConfig.key] || a.timestamp || a.created;
-          let bValue = b[sortConfig.key] || b.timestamp || b.created;
+          // Check all possible email field variations
+          const emailFields = ['email', 'Email', 'emailAddress'];
+          const emailMatch = emailFields.some(field => 
+            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
+          );
           
-          if (!aValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-          if (!bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+          // Check all possible phone field variations
+          const phoneFields = ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number'];
+          const phoneMatch = phoneFields.some(field => 
+            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
+          );
           
-          if (typeof aValue === 'number') aValue = new Date(aValue);
-          else if (aValue.toDate) aValue = aValue.toDate();
-          else if (!(aValue instanceof Date)) aValue = new Date(aValue);
-          
-          if (typeof bValue === 'number') bValue = new Date(bValue);
-          else if (bValue.toDate) bValue = bValue.toDate();
-          else if (!(bValue instanceof Date)) bValue = new Date(bValue);
-          
-          return sortConfig.direction === 'ascending' 
-            ? aValue.getTime() - bValue.getTime()
-            : bValue.getTime() - aValue.getTime();
-        }
+          // Return true if any field matches
+          return nameMatch || emailMatch || phoneMatch;
+        });
+      }
+      
+      // Converted filter
+      if (convertedFilter !== null) {
+        result = result.filter(lead => lead.convertedToClient === convertedFilter);
+      }
+      
+      // Date range filter - OPTIMIZED for performance
+      if (fromDate || toDate) {
+        // Create proper date boundaries for comparison
+        const fromDateTime = fromDate ? new Date(fromDate) : null;
+        if (fromDateTime) fromDateTime.setHours(0, 0, 0, 0);
         
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
+        const toDateTime = toDate ? new Date(toDate) : null;
+        if (toDateTime) toDateTime.setHours(23, 59, 59, 999);
         
-        return sortConfig.direction === 'ascending'
-          ? String(aValue).localeCompare(String(bValue))
-          : String(bValue).localeCompare(String(aValue));
-      });
-    }
+        result = result.filter(lead => {
+          // Get the date from various possible fields
+          let leadDate = lead.synced_at || lead.timestamp || lead.created || lead.lastModified || lead.createdAt;
+          
+          // Skip if no date is available
+          if (!leadDate) return false; // Changed to false to exclude leads without dates
+          
+          // Convert to Date object if it's a Firestore timestamp or string
+          if (leadDate.toDate) leadDate = leadDate.toDate(); // Firestore timestamp
+          else if (!(leadDate instanceof Date)) leadDate = new Date(leadDate); // String date
+          
+          // Skip invalid dates
+          if (isNaN(leadDate.getTime())) return false; // Changed to false to exclude invalid dates
+          
+          // Check date range
+          if (fromDateTime && toDateTime) {
+            return leadDate >= fromDateTime && leadDate <= toDateTime;
+          } else if (fromDateTime) {
+            return leadDate >= fromDateTime;
+          } else if (toDateTime) {
+            return leadDate <= toDateTime;
+          }
+          
+          return true;
+        });
+      }
+      
+      // Ensure proper date sorting by handling different date formats
+      if (sortConfig) {
+        result.sort((a, b) => {
+          // Handle date fields specially
+          if (sortConfig.key === 'lastModified' || sortConfig.key === 'timestamp' || 
+              sortConfig.key === 'synced_at' || sortConfig.key === 'convertedAt' || 
+              sortConfig.key === 'created') {
+            
+            // Get values, considering potential field name variations
+            let aValue = a[sortConfig.key] || a.timestamp || a.created;
+            let bValue = b[sortConfig.key] || b.timestamp || b.created;
+            
+            // Handle missing values (put them at the end)
+            if (!aValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+            if (!bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+            
+            // Convert to date objects for proper comparison
+            if (typeof aValue === 'number') aValue = new Date(aValue); // For timestamp values stored as numbers
+            else if (aValue.toDate) aValue = aValue.toDate(); // For Firestore timestamps
+            else if (!(aValue instanceof Date)) aValue = new Date(aValue); // For string dates
+            
+            if (typeof bValue === 'number') bValue = new Date(bValue);
+            else if (bValue.toDate) bValue = bValue.toDate();
+            else if (!(bValue instanceof Date)) bValue = new Date(bValue);
+            
+            // Compare dates
+            if (aValue < bValue) {
+              return sortConfig.direction === 'ascending' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+              return sortConfig.direction === 'ascending' ? 1 : -1;
+            }
+            return 0;
+          }
+          
+          // Handle non-date fields (existing logic)
+          let aValue = a[sortConfig.key];
+          let bValue = b[sortConfig.key];
+          
+          if (aValue < bValue) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (aValue > bValue) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+          return 0;
+        });
+      }
+      
+      return result;
+    };
     
-    return result;
-  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, userRole, convertedFilter, fromDate, toDate, sortConfig]);
+    setFilteredLeads(filterLeads());
+  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig, fromDate, toDate]);
 
-  // Effect to update filtered count when leads are filtered
-  useEffect(() => {
-    // Update filtered count based on actual number of leads in the table
-    setFilteredTotalCount(filteredAndSortedLeads.length);
-  }, [filteredAndSortedLeads]);
+  // Request sort handler
+  const requestSort = (key: string) => {
+    let direction: SortDirection = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
 
-  // Memoize callbacks
-  const handleUpdateLead = useCallback(async (id: string, data: any) => {
+  // Update lead handler
+  const updateLead = async (id: any, data: any) => {
     try {
       const leadRef = doc(crmDb, 'crm_leads', id);
       
+      // Add timestamp
       const updateData = {
         ...data,
         lastModified: serverTimestamp()
@@ -391,28 +551,50 @@ const LeadsPage = () => {
       
       await updateDoc(leadRef, updateData);
       
+      // Update UI state
       const updatedLeads = leads.map(lead => 
         lead.id === id ? { ...lead, ...data, lastModified: new Date() } : lead
       );
       
       setLeads(updatedLeads);
       
+      // Close edit modal if open
       if (editingLead && editingLead.id === id) {
         setEditingLead(null);
       }
       
+      // toast.success(
+      //   <div>
+      //     <p className="font-medium">Update Successful</p>
+      //     <p className="text-sm">Lead information has been updated</p>
+      //   </div>,
+      //   {
+      //     position: "top-right",
+      //     autoClose: 3000,
+      //     hideProgressBar: false,
+      //     closeOnClick: true,
+      //     pauseOnHover: true,
+      //     draggable: true
+      //   }
+      // );
+      
       return true;
     } catch (error) {
       console.error("Error updating lead: ", error);
-      toast.error("Failed to update lead");
+      toast.error("Failed to update lead", {
+        position: "top-right",
+        autoClose: 3000
+      });
       return false;
     }
-  }, [leads, editingLead, crmDb]);
+  };
 
-  const handleAssignLeadToSalesperson = useCallback(async (leadId: string, salesPersonName: string, salesPersonId: string) => {
+  // Assign lead to salesperson
+  const assignLeadToSalesperson = async (leadId: any, salesPersonName: any, salesPersonId: any) => {
     try {
       const leadRef = doc(crmDb, 'crm_leads', leadId);
       
+      // Create assignment history entry
       const historyRef = collection(crmDb, 'crm_leads', leadId, 'history');
       await addDoc(historyRef, {
         assignmentChange: true,
@@ -425,45 +607,40 @@ const LeadsPage = () => {
         }
       });
       
+      // Update the lead
       await updateDoc(leadRef, {
         assignedTo: salesPersonName,
         assignedToId: salesPersonId,
         lastModified: serverTimestamp()
       });
       
+      // Update UI state
       const updatedLeads = leads.map(lead => 
         lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } : lead
       );
       
       setLeads(updatedLeads);
       
-      toast.success(`Lead assigned to ${salesPersonName}`);
+      toast.success(
+        <div>
+          <p className="font-medium">Lead Assigned</p>
+          <p className="text-sm">Lead assigned to {salesPersonName}</p>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 3000
+        }
+      );
     } catch (error) {
       console.error("Error assigning lead: ", error);
-      toast.error("Failed to assign lead");
+      toast.error("Failed to assign lead", {
+        position: "top-right",
+        autoClose: 3000
+      });
     }
-  }, [leads, currentUser, crmDb]);
-
-  // Cleanup function for event listeners and subscriptions
-  useEffect(() => {
-    return () => {
-      // Cleanup any subscriptions
-      if (unsubscribeAuth) {
-        unsubscribeAuth();
-      }
-    };
-  }, [unsubscribeAuth]);
-
-  // Request sort handler
-  const requestSort = (key: string) => {
-    let direction: SortDirection = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
   };
 
-  // Update lead history
+  // Fetch lead history for modal
   const fetchNotesHistory = async (leadId: string) => {
     try {
       setShowHistoryModal(true);
@@ -703,8 +880,8 @@ const LeadsPage = () => {
             setFromDate={setFromDate}
             toDate={toDate}
             setToDate={setToDate}
-            totalLeadsCount={totalLeadsCount}
-            filteredTotalCount={filteredTotalCount}
+            dateRangeFilter={dateRangeFilter}
+            setDateRangeFilter={setDateRangeFilter}
           />
           
           {/* Debug info - only show in development */}
@@ -722,17 +899,17 @@ const LeadsPage = () => {
             <>
               {/* Main Leads Table */}
               <LeadsTable 
-                filteredLeads={filteredAndSortedLeads}
+                filteredLeads={filteredLeads}
                 editingLeads={editingLeads}
                 setEditingLeads={setEditingLeads}
-                updateLead={handleUpdateLead}
+                updateLead={updateLead}
                 fetchNotesHistory={fetchNotesHistory}
                 requestSort={requestSort}
                 sortConfig={sortConfig}
                 statusOptions={statusOptions}
                 userRole={userRole}
                 salesTeamMembers={salesTeamMembers}
-                assignLeadToSalesperson={handleAssignLeadToSalesperson}
+                assignLeadToSalesperson={assignLeadToSalesperson}
                 updateLeadsState={updateLeadsState}
                 crmDb={crmDb}
                 user={currentUser}
@@ -765,7 +942,7 @@ const LeadsPage = () => {
               <EditModal 
                 editingLead={editingLead}
                 setEditingLead={setEditingLead}
-                updateLead={handleUpdateLead}
+                updateLead={updateLead}
                 teamMembers={teamMembers}
                 statusOptions={statusOptions}
               />

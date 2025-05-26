@@ -1,7 +1,6 @@
 import { FaSort } from 'react-icons/fa';
 import LeadRow from './LeadRow';
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useRef, useState } from 'react';
 
 type LeadsTableProps = {
   filteredLeads: any[];
@@ -19,9 +18,6 @@ type LeadsTableProps = {
   crmDb: any;
   user: any;
   deleteLead: (leadId: string) => Promise<void>;
-  loadMore?: () => void;
-  hasMore?: boolean;
-  isLoadingMore?: boolean;
 };
 
 const LeadsTable = ({
@@ -40,9 +36,6 @@ const LeadsTable = ({
   crmDb,
   user,
   deleteLead,
-  loadMore,
-  hasMore,
-  isLoadingMore
 }: LeadsTableProps) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [tableHeight, setTableHeight] = useState(500); // Default height
@@ -63,63 +56,51 @@ const LeadsTable = ({
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
-  // Setup virtualizer
-  const rowVirtualizer = useVirtualizer({
-    count: filteredLeads.length,
-    getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 100, // Estimated row height
-    overscan: 5, // Number of items to render outside of the visible area
-  });
-
-  // Memoize table header
-  const TableHeader = useMemo(() => (
+  const renderTableHeader = () => (
     <thead className="bg-gray-800 text-xs uppercase font-medium sticky top-0 z-10">
       <tr>
         <th 
-          scope="col" 
-          className="px-4 py-3 text-left cursor-pointer"
-          onClick={() => requestSort('synced_at')}
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer"
+          onClick={() => requestSort('name')}
+          scope="col"
         >
           <div className="flex items-center">
-            <span>Date & Time</span>
-            {sortConfig?.key === 'synced_at' && (
-              <span className="ml-1">
-                {sortConfig?.direction === 'ascending' ? '↑' : '↓'}
-              </span>
+            <span className="text-blue-400">Name</span>
+            {sortConfig?.key === 'name' && (
+              <FaSort className="ml-1" />
             )}
           </div>
         </th>
         
-        <th
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
+          scope="col"
+        >
+          <span className="text-blue-400">Contact</span>
+        </th>
+        
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%] cursor-pointer"
+          onClick={() => requestSort('source_database')}
+          scope="col"
+        >
+          <div className="flex items-center">
+            <span className="text-blue-400">Source</span>
+            {sortConfig?.key === 'source_database' && (
+              <FaSort className="ml-1" />
+            )}
+          </div>
+        </th>
+        
+        <th 
           className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]"
           scope="col"
         >
-          <span className="text-blue-400">Contact Information</span>
-        </th>
-        
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]"
-          scope="col"
-        >
-          <span className="text-blue-400">Location</span>
-        </th>
-        
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]"
-          scope="col"
-        >
-          <span className="text-blue-400">Source</span>
+          <span className="text-blue-400">Financials</span>
         </th>
         
         <th 
           className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%]"
-          scope="col"
-        >
-          <span className="text-blue-400">Financial Details</span>
-        </th>
-        
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]"
           scope="col"
         >
           <span className="text-blue-400">Status</span>
@@ -156,7 +137,38 @@ const LeadsTable = ({
         )}
       </tr>
     </thead>
-  ), [sortConfig, userRole, requestSort]);
+  );
+
+  const renderTableBody = () => {
+    if (filteredLeads.length === 0) {
+      return (
+        <tr>
+          <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-400">
+            No leads found matching the current filters.
+          </td>
+        </tr>
+      );
+    }
+
+    return filteredLeads.map((lead) => (
+      <LeadRow
+        key={lead.id}
+        lead={lead}
+        editingLeads={editingLeads}
+        setEditingLeads={setEditingLeads}
+        updateLead={updateLead}
+        fetchNotesHistory={fetchNotesHistory}
+        statusOptions={statusOptions}
+        userRole={userRole}
+        salesTeamMembers={salesTeamMembers}
+        assignLeadToSalesperson={assignLeadToSalesperson}
+        updateLeadsState={updateLeadsState}
+        crmDb={crmDb}
+        user={user}
+        deleteLead={deleteLead}
+      />
+    ));
+  };
 
   return (
     <div className="bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
@@ -166,57 +178,9 @@ const LeadsTable = ({
         style={{ height: tableHeight }}
       >
         <table className="min-w-[1400px] divide-y divide-gray-700" role="table" aria-label="Leads table">
-          {TableHeader}
-          
+          {renderTableHeader()}
           <tbody className="bg-gray-900 divide-y divide-gray-800">
-            {filteredLeads.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-400">
-                  No leads found matching the current filters.
-                </td>
-              </tr>
-            ) : (
-              <>
-                {/* Spacer row to push content down */}
-                <tr>
-                  <td colSpan={10} style={{ height: rowVirtualizer.getVirtualItems()[0]?.start || 0 }} />
-                </tr>
-                
-                {/* Virtual rows */}
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const lead = filteredLeads[virtualRow.index];
-                  return (
-                    <LeadRow
-                      key={lead.id}
-                      lead={lead}
-                      editingLeads={editingLeads}
-                      setEditingLeads={setEditingLeads}
-                      updateLead={updateLead}
-                      fetchNotesHistory={fetchNotesHistory}
-                      statusOptions={statusOptions}
-                      userRole={userRole}
-                      salesTeamMembers={salesTeamMembers}
-                      assignLeadToSalesperson={assignLeadToSalesperson}
-                      updateLeadsState={updateLeadsState}
-                      crmDb={crmDb}
-                      user={user}
-                      deleteLead={deleteLead}
-                    />
-                  );
-                })}
-                
-                {/* Spacer row to push content up */}
-                <tr>
-                  <td 
-                    colSpan={10} 
-                    style={{ 
-                      height: rowVirtualizer.getTotalSize() - 
-                        (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end || 0) 
-                    }} 
-                  />
-                </tr>
-              </>
-            )}
+            {renderTableBody()}
           </tbody>
         </table>
       </div>
