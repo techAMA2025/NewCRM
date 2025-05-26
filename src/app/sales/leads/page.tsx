@@ -45,7 +45,6 @@ const LeadsPage = () => {
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [dateRangeFilter, setDateRangeFilter] = useState('7');
   const [sortConfig, setSortConfig] = useState({ 
     key: 'synced_at', 
     direction: 'descending' as 'ascending' | 'descending' 
@@ -212,20 +211,17 @@ const LeadsPage = () => {
     fetchUserRole();
   }, [currentUser, crmDb]);
 
-  // Set default date range (last 7 days) on initial load
+  // Set initial dates
   useEffect(() => {
-    // Only set default dates if they haven't been set yet
-    if (!fromDate && !toDate) {
-      const today = new Date();
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(today.getDate() - 7);
-      
-      setFromDate(sevenDaysAgo.toISOString().split('T')[0]);
-      setToDate(today.toISOString().split('T')[0]);
-    }
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 4);
+    
+    setFromDate(sevenDaysAgo.toISOString().split('T')[0]);
+    setToDate(today.toISOString().split('T')[0]);
   }, []);
 
-  // Effect to refetch data when dateRangeFilter changes
+  // Effect to fetch leads when dates change
   useEffect(() => {
     // Skip on initial render before user is loaded
     if (!currentUser) return;
@@ -235,12 +231,42 @@ const LeadsPage = () => {
       try {
         let leadsRef;
         
-        // Calculate date range based on filter value
-        const today = new Date();
-        const startDate = new Date();
-        
-        // For 'all' option, fetch all leads without date filtering
-        if (dateRangeFilter === 'all') {
+        // If both dates are set, use them for filtering
+        if (fromDate && toDate) {
+          const fromDateTime = new Date(fromDate);
+          fromDateTime.setHours(0, 0, 0, 0);
+          
+          const toDateTime = new Date(toDate);
+          toDateTime.setHours(23, 59, 59, 999);
+          
+          // Add query with date range
+          if (userRole === 'salesperson') {
+            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
+            const userData = userDoc.data() as User;
+            
+            if (userData && userData.name) {
+              leadsRef = query(
+                collection(crmDb, 'crm_leads'),
+                where('assignedTo', '==', userData.name),
+                where('lastModified', '>=', fromDateTime),
+                where('lastModified', '<=', toDateTime)
+              );
+            } else {
+              leadsRef = query(
+                collection(crmDb, 'crm_leads'),
+                where('lastModified', '>=', fromDateTime),
+                where('lastModified', '<=', toDateTime)
+              );
+            }
+          } else {
+            leadsRef = query(
+              collection(crmDb, 'crm_leads'),
+              where('lastModified', '>=', fromDateTime),
+              where('lastModified', '<=', toDateTime)
+            );
+          }
+        } else {
+          // If dates aren't set, fetch all leads with role-based filtering
           if (userRole === 'salesperson') {
             const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
             const userData = userDoc.data() as User;
@@ -254,88 +280,8 @@ const LeadsPage = () => {
               leadsRef = collection(crmDb, 'crm_leads');
             }
           } else {
-            // For admins or overlords - fetch all leads
             leadsRef = collection(crmDb, 'crm_leads');
           }
-          
-          // Clear date filters
-          setFromDate('');
-          setToDate('');
-        } 
-        // If custom range is selected, use fromDate and toDate
-        else if (dateRangeFilter === 'custom') {
-          // For custom range, we need both fromDate and toDate
-          if (fromDate && toDate) {
-            const fromDateTime = new Date(fromDate);
-            fromDateTime.setHours(0, 0, 0, 0);
-            
-            const toDateTime = new Date(toDate);
-            toDateTime.setHours(23, 59, 59, 999);
-            
-            // Add query with custom date range
-            if (userRole === 'salesperson') {
-              const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-              const userData = userDoc.data() as User;
-              
-              if (userData && userData.name) {
-                leadsRef = query(
-                  collection(crmDb, 'crm_leads'),
-                  where('assignedTo', '==', userData.name),
-                  where('lastModified', '>=', fromDateTime),
-                  where('lastModified', '<=', toDateTime)
-                );
-              } else {
-                leadsRef = query(
-                  collection(crmDb, 'crm_leads'),
-                  where('lastModified', '>=', fromDateTime),
-                  where('lastModified', '<=', toDateTime)
-                );
-              }
-            } else {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('lastModified', '>=', fromDateTime),
-                where('lastModified', '<=', toDateTime)
-              );
-            }
-          } else {
-            // If custom is selected but dates aren't set yet, use default collection
-            leadsRef = collection(crmDb, 'crm_leads');
-          }
-        } else {
-          // Calculate start date based on selected range (7, 30, 60, or 90 days)
-          const days = parseInt(dateRangeFilter);
-          startDate.setDate(today.getDate() - days);
-          
-          // Add query to filter by date at the database level for performance
-          if (userRole === 'salesperson') {
-            // Get user name
-            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-            const userData = userDoc.data() as User;
-            
-            if (userData && userData.name) {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('assignedTo', '==', userData.name),
-                where('lastModified', '>=', startDate)
-              );
-            } else {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('lastModified', '>=', startDate)
-              );
-            }
-          } else {
-            // For admins or overlords
-            leadsRef = query(
-              collection(crmDb, 'crm_leads'),
-              where('lastModified', '>=', startDate)
-            );
-          }
-          
-          // Update the fromDate and toDate for UI consistency
-          setFromDate(startDate.toISOString().split('T')[0]);
-          setToDate(today.toISOString().split('T')[0]);
         }
         
         // Fetch the data
@@ -370,7 +316,7 @@ const LeadsPage = () => {
     };
     
     fetchLeadsByDateRange();
-  }, [currentUser, dateRangeFilter, userRole, crmDb, fromDate, toDate]);
+  }, [currentUser, userRole, crmDb, fromDate, toDate]);
 
   // Apply filters on data change
   useEffect(() => {
@@ -880,8 +826,6 @@ const LeadsPage = () => {
             setFromDate={setFromDate}
             toDate={toDate}
             setToDate={setToDate}
-            dateRangeFilter={dateRangeFilter}
-            setDateRangeFilter={setDateRangeFilter}
           />
           
           {/* Debug info - only show in development */}

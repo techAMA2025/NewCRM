@@ -24,8 +24,6 @@ type LeadsFiltersProps = {
   setFromDate: (date: string) => void;
   toDate: string;
   setToDate: (date: string) => void;
-  dateRangeFilter: string;
-  setDateRangeFilter: (range: string) => void;
 };
 
 const LeadsFilters = ({
@@ -47,9 +45,7 @@ const LeadsFilters = ({
   fromDate,
   setFromDate,
   toDate,
-  setToDate,
-  dateRangeFilter,
-  setDateRangeFilter
+  setToDate
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,31 +125,6 @@ const LeadsFilters = ({
   const clearDateFilters = () => {
     setFromDate('');
     setToDate('');
-    setDateRangeFilter('7');
-  };
-  
-  // Handle date range changes
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const days = e.target.value;
-    setDateRangeFilter(days);
-    
-    if (days === 'custom' || days === 'all') {
-      // Keep custom date range if already set or clear for 'all'
-      if (days === 'all') {
-        setFromDate('');
-        setToDate('');
-      }
-      return;
-    }
-    
-    // Calculate new from date based on selected range
-    const today = new Date();
-    const fromDate = new Date();
-    fromDate.setDate(today.getDate() - parseInt(days));
-    
-    // Update from and to dates
-    setFromDate(fromDate.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
   };
 
   return (
@@ -280,45 +251,8 @@ const LeadsFilters = ({
             </div>
           </div>
           
-          {/* Date Range Filter - NEW */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-400">Date Range</label>
-            <select
-              value={dateRangeFilter}
-              onChange={handleDateRangeChange}
-              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-            >
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-              <option value="60">Last 60 Days</option>
-              <option value="90">Last 90 Days</option>
-              <option value="all">All Leads</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
-          
-          {/* Conversion Status Filter */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-400">Conversion Status</label>
-            <select
-              value={convertedFilter === null ? 'all' : convertedFilter ? 'converted' : 'not-converted'}
-              onChange={e => {
-                if (e.target.value === 'all') setConvertedFilter(null);
-                else if (e.target.value === 'converted') setConvertedFilter(true);
-                else setConvertedFilter(false);
-              }}
-              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-            >
-              <option value="all">All Leads</option>
-              <option value="converted">Converted</option>
-              <option value="not-converted">Not Converted</option>
-            </select>
-          </div>
-        </div>
-        
-        {/* Date Range Filters - only shown when "Custom Range" is selected */}
-        {dateRangeFilter === 'custom' && (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Date Range Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <div className="flex space-x-4">
               <div className="flex-1 space-y-1">
                 <label className="block text-xs text-gray-400">From Date</label>
@@ -359,7 +293,7 @@ const LeadsFilters = ({
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
