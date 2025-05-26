@@ -7,6 +7,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
+import BillcutSidebar from '@/components/navigation/BillcutSidebar'
 
 // Define user interface
 interface User {
@@ -221,7 +222,8 @@ const UserManagementPage = () => {
       admin: 0,
       advocate: 0,
       sales: 0,
-      overlord: 0
+      overlord: 0,
+      billcut: 0
     };
     
     users.forEach(user => {
@@ -235,7 +237,9 @@ const UserManagementPage = () => {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
-      {userRole === 'overlord' ? <OverlordSidebar /> : <AdminSidebar />}
+      {userRole === 'overlord' ? <OverlordSidebar /> : 
+       userRole === 'billcut' ? <BillcutSidebar /> :
+       <AdminSidebar />}
       <div className="flex-1 p-8 text-gray-200">
         <h1 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">
           User Management
@@ -321,6 +325,7 @@ const UserManagementPage = () => {
                   <option value="advocate">Advocate</option>
                   <option value="sales">Sales</option>
                   <option value="overlord">Overlord</option>
+                  <option value="billcut">Billcut</option>
                 </select>
               </div>
               <div>
@@ -389,6 +394,7 @@ const UserManagementPage = () => {
                     ${role === 'overlord' ? 'bg-purple-900/30 text-purple-300' :
                       role === 'admin' ? 'bg-red-900/30 text-red-300' :
                       role === 'advocate' ? 'bg-green-900/30 text-green-300' :
+                      role === 'billcut' ? 'bg-yellow-900/30 text-yellow-300' :
                       'bg-blue-900/30 text-blue-300'}
                   `}>
                     {count} {role}
@@ -453,6 +459,7 @@ const UserManagementPage = () => {
                           user.role === 'overlord' ? 'bg-purple-900 text-purple-200' :
                           user.role === 'admin' ? 'bg-red-900 text-red-200' :
                           user.role === 'advocate' ? 'bg-green-900 text-green-200' :
+                          user.role === 'billcut' ? 'bg-yellow-900 text-yellow-200' :
                           'bg-blue-900 text-blue-200'
                         }`}>
                           {user.role}
@@ -584,6 +591,7 @@ const UserManagementPage = () => {
                       <option value="advocate">Advocate</option>
                       <option value="sales">Sales</option>
                       <option value="overlord">Overlord</option>
+                      <option value="billcut">Billcut</option>
                     </select>
                   </div>
                   <div>

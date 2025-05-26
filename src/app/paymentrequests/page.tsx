@@ -7,6 +7,7 @@ import { collection, getDocs, doc, updateDoc, query, where, deleteDoc, getDoc, a
 import { db } from '@/firebase/firebase';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import BillcutSidebar from '@/components/navigation/BillcutSidebar';
 import { useRouter } from 'next/navigation';
 
 export default function PaymentRequestsPage() {
@@ -34,8 +35,13 @@ export default function PaymentRequestsPage() {
     setUserRole(role);
     setUserName(name);
 
-    // Redirect if user is not admin or overlord
-    if (role !== 'admin' && role !== 'overlord') {
+    // Set source filter to billcut if user is billcut role
+    if (role === 'billcut') {
+      setSourceFilter('billcut');
+    }
+
+    // Redirect if user is not admin, overlord, or billcut
+    if (role !== 'admin' && role !== 'overlord' && role !== 'billcut') {
       router.push('/dashboard');
       return;
     }
@@ -48,7 +54,16 @@ export default function PaymentRequestsPage() {
     try {
       setLoading(true);
       const paymentsRef = collection(db, 'payments');
-      const paymentsSnap = await getDocs(paymentsRef);
+      let paymentsQuery;
+
+      // If user is billcut, only fetch billcut payments
+      if (userRole === 'billcut') {
+        paymentsQuery = query(paymentsRef, where('source', '==', 'billcut'));
+      } else {
+        paymentsQuery = paymentsRef;
+      }
+
+      const paymentsSnap = await getDocs(paymentsQuery);
       
       const requests = paymentsSnap.docs.map(doc => ({
         id: doc.id,
@@ -498,13 +513,15 @@ export default function PaymentRequestsPage() {
     .filter(req => req.status === 'approved')
     .sort((a, b) => new Date(b.approvedAt).getTime() - new Date(a.approvedAt).getTime());
 
-  if (userRole !== 'admin' && userRole !== 'overlord') {
+  if (userRole !== 'admin' && userRole !== 'overlord' && userRole !== 'billcut') {
     return null; // Don't render anything while redirecting
   }
 
   return (
     <div className="flex h-screen bg-gray-900">
-      {userRole === 'overlord' ? <OverlordSidebar /> : <AdminSidebar />}
+      {userRole === 'overlord' ? <OverlordSidebar /> : 
+       userRole === 'admin' ? <AdminSidebar /> : 
+       userRole === 'billcut' ? <BillcutSidebar /> : null}
       <div className="flex-1 overflow-auto p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
@@ -547,17 +564,19 @@ export default function PaymentRequestsPage() {
                   <option value="advocate">Advocate Requests</option>
                 </select>
                 
-                <select
-                  value={sourceFilter}
-                  onChange={(e) => setSourceFilter(e.target.value)}
-                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Sources</option>
-                  <option value="credsettlee">Cred Settle</option>
-                  <option value="ama">AMA</option>
-                  <option value="settleloans">Settle Loans</option>
-                  <option value="billcut">Bill Cut</option>
-                </select>
+                {userRole !== 'billcut' && (
+                  <select
+                    value={sourceFilter}
+                    onChange={(e) => setSourceFilter(e.target.value)}
+                    className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Sources</option>
+                    <option value="credsettlee">Cred Settle</option>
+                    <option value="ama">AMA</option>
+                    <option value="settleloans">Settle Loans</option>
+                    <option value="billcut">Bill Cut</option>
+                  </select>
+                )}
 
                 <select
                   value={statusFilter}

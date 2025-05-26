@@ -11,6 +11,8 @@ import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import SalesSidebar from '@/components/navigation/SalesSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import SuperAdminDashboard from './superadmin'
+import BillcutSidebar from '@/components/navigation/BillcutSidebar'
+import BillcutDashboard from '@/app/dashboard/billcut'
 
 const DashboardPage = () => {
   const { user, userRole, userName, loading, logout } = useAuth()
@@ -46,6 +48,8 @@ const DashboardPage = () => {
         return <SalesSidebar />
       case 'overlord':
         return <OverlordSidebar />
+      case 'billcut':
+        return <BillcutSidebar />
       default:
         return null
     }
@@ -62,6 +66,8 @@ const DashboardPage = () => {
         return <SalesDashboard />
       case 'overlord':
         return <SuperAdminDashboard />
+      case 'billcut':
+        return <BillcutDashboard />
       default:
         return <div>Unknown role</div>
     }
