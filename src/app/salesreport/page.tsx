@@ -267,22 +267,38 @@ export default function SalesReport() {
       value: distribution.statusCounts[status] || 0
     }));
 
+    // Calculate conversion rate
+    const totalLeads = Object.values(distribution.statusCounts).reduce((a, b) => a + b, 0);
+    const convertedLeads = distribution.statusCounts['Converted'] || 0;
+    const conversionRate = totalLeads ? (convertedLeads / totalLeads) * 100 : 0;
+
     return (
-      <div className="h-[300px] w-full">
-        <ResponsiveContainer>
-          <RadarChart outerRadius="80%" data={data}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="status" />
-            <PolarRadiusAxis />
-            <Radar
-              name={distribution.userName}
-              dataKey="value"
-              stroke="#8884d8"
-              fill="#8884d8"
-              fillOpacity={0.6}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
+      <div className="flex flex-col items-center">
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer>
+            <RadarChart outerRadius="80%" data={data}>
+              <PolarGrid />
+              <PolarAngleAxis dataKey="status" />
+              <PolarRadiusAxis />
+              <Radar
+                name={distribution.userName}
+                dataKey="value"
+                stroke="#8884d8"
+                fill="#8884d8"
+                fillOpacity={0.6}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-4 text-center">
+          <div className="bg-indigo-50 rounded-xl px-6 py-3 shadow-sm">
+            <p className="text-sm text-gray-600">Conversion Rate</p>
+            <p className="text-2xl font-bold text-indigo-600">{conversionRate.toFixed(1)}%</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {convertedLeads} out of {totalLeads} leads converted
+            </p>
+          </div>
+        </div>
       </div>
     );
   };
