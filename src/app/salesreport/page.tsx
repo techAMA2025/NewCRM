@@ -277,31 +277,62 @@ export default function SalesReport() {
   // Add this new component for individual salesperson chart
   const SalesPersonRadarChart: React.FC<ChartProps> = ({ distribution }) => {
     const data = LEAD_STATUSES.map(status => ({
-      status,
+      name: status,
       value: distribution.statusCounts[status] || 0
-    }));
+    })).filter(item => item.value > 0); // Only show statuses with values
 
     // Calculate conversion rate
     const totalLeads = Object.values(distribution.statusCounts).reduce((a, b) => a + b, 0);
     const convertedLeads = distribution.statusCounts['Converted'] || 0;
     const conversionRate = totalLeads ? (convertedLeads / totalLeads) * 100 : 0;
 
+    // Custom label renderer function
+    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value }: any) => {
+      const RADIAN = Math.PI / 180;
+      // Increase the radius to push labels further out
+      const radius = outerRadius * 1.4;
+      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+      // Adjust text anchor based on position
+      const textAnchor = x > cx ? 'start' : 'end';
+
+      return (
+        <text 
+          x={x} 
+          y={y} 
+          fill="#374151" 
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          fontSize="12"
+        >
+          {`${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
+        </text>
+      );
+    };
+
     return (
       <div className="flex flex-col items-center">
         <div className="h-[300px] w-full">
           <ResponsiveContainer>
-            <RadarChart outerRadius="80%" data={data}>
-              <PolarGrid />
-              <PolarAngleAxis dataKey="status" />
-              <PolarRadiusAxis />
-              <Radar
-                name={distribution.userName}
+            <PieChart>
+              <Pie
+                data={data}
                 dataKey="value"
-                stroke="#8884d8"
-                fill="#8884d8"
-                fillOpacity={0.6}
-              />
-            </RadarChart>
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                labelLine={true}
+                label={renderCustomizedLabel}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value: number) => [value, 'Leads']} />
+              <Legend verticalAlign="bottom" height={36} />
+            </PieChart>
           </ResponsiveContainer>
         </div>
         <div className="mt-4 text-center">
