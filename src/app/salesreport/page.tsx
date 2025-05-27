@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import BillcutSidebar from '@/components/navigation/BillcutSidebar';
 import { CalendarDaysIcon, FunnelIcon, ChartBarIcon, UserGroupIcon, PhoneIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import {
   ResponsiveContainer,
@@ -73,7 +74,7 @@ const LEAD_STATUSES = [
   'Closed Lead'
 ];
 
-const LEAD_SOURCES = ['credsettlee', 'ama', 'settleloans'];
+const LEAD_SOURCES = ['credsettlee', 'ama', 'settleloans', 'billcut'];
 
 const DATE_RANGES = {
   all: 'All Time',
@@ -113,6 +114,7 @@ export default function SalesReport() {
     activeLeads: 0,
     totalSales: 0
   });
+  const [userRole, setUserRole] = useState<string>('');
 
   const getDateRange = (range: string): DateRange => {
     const today = new Date();
@@ -151,6 +153,18 @@ export default function SalesReport() {
         return { startDate: startOfToday, endDate: today };
     }
   };
+
+  useEffect(() => {
+    // Get user role from localStorage
+    const localStorageRole = localStorage.getItem('userRole');
+    if (localStorageRole) {
+      setUserRole(localStorageRole);
+      // Set source filter to billcut if user is billcut
+      if (localStorageRole === 'billcut') {
+        setSelectedSource('billcut');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -373,7 +387,7 @@ export default function SalesReport() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-      <OverlordSidebar />
+      {userRole === 'billcut' ? <BillcutSidebar /> : <OverlordSidebar />}
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8 relative">
@@ -537,18 +551,24 @@ export default function SalesReport() {
                   <FunnelIcon className="h-5 w-5 text-blue-500" />
                   <span className="text-base">Lead Source</span>
                 </label>
-                <select
-                  value={selectedSource}
-                  onChange={(e) => setSelectedSource(e.target.value)}
-                  className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-200 hover:border-blue-400 cursor-pointer"
-                >
-                  <option value="all">All Sources</option>
-                  {LEAD_SOURCES.map((source) => (
-                    <option key={source} value={source}>
-                      {source.charAt(0).toUpperCase() + source.slice(1)}
-                    </option>
-                  ))}
-                </select>
+                {userRole === 'billcut' ? (
+                  <div className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-200 hover:border-blue-400 cursor-not-allowed bg-gray-100 px-3 py-2">
+                    Billcut
+                  </div>
+                ) : (
+                  <select
+                    value={selectedSource}
+                    onChange={(e) => setSelectedSource(e.target.value)}
+                    className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-200 hover:border-blue-400 cursor-pointer"
+                  >
+                    <option value="all">All Sources</option>
+                    {LEAD_SOURCES.map((source) => (
+                      <option key={source} value={source}>
+                        {source.charAt(0).toUpperCase() + source.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
           </div>
