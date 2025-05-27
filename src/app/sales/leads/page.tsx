@@ -247,22 +247,21 @@ const LeadsPage = () => {
             if (userData && userData.name) {
               leadsRef = query(
                 collection(crmDb, 'crm_leads'),
-                where('assignedTo', '==', userData.name),
-                where('lastModified', '>=', fromDateTime),
-                where('lastModified', '<=', toDateTime)
+                where('synced_at', '>=', fromDateTime),
+                where('synced_at', '<=', toDateTime)
               );
             } else {
               leadsRef = query(
                 collection(crmDb, 'crm_leads'),
-                where('lastModified', '>=', fromDateTime),
-                where('lastModified', '<=', toDateTime)
+                where('synced_at', '>=', fromDateTime),
+                where('synced_at', '<=', toDateTime)
               );
             }
           } else {
             leadsRef = query(
               collection(crmDb, 'crm_leads'),
-              where('lastModified', '>=', fromDateTime),
-              where('lastModified', '<=', toDateTime)
+              where('synced_at', '>=', fromDateTime),
+              where('synced_at', '<=', toDateTime)
             );
           }
         } else {
