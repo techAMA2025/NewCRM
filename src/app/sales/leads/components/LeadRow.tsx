@@ -203,7 +203,7 @@ const LeadRow = ({
               {email}
             </a>
           </div>
-          <div className="flex items-center text-xs">
+          <div className="flex items-center text-lg">
             <FaPhone className="h-3 w-3 text-gray-500 mr-1" />
             <a href={`tel:${phone}`} className="text-red-400 hover:underline font-medium">
               {formatPhoneNumber(phone)}

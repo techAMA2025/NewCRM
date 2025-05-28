@@ -126,6 +126,12 @@ const LeadsTable = ({
         >
           <span className="text-blue-400">Notes & History</span>
         </th>
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
+          scope="col"
+        >
+          <span className="text-blue-400">Sales Notes</span>
+        </th>
         
         {(userRole === 'admin' || userRole === 'overlord') && (
           <th 
