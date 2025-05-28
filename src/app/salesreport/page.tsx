@@ -419,25 +419,25 @@ export default function SalesReport() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       {userRole === 'billcut' ? <BillcutSidebar /> : <OverlordSidebar />}
-      <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8 relative">
+      <div className="flex-1">
+        <div>
+          <div className="mb-4 p-4 relative">
             <div className="flex items-center gap-3 mb-2">
               <ChartBarIcon className="h-8 w-8 text-indigo-500" />
               <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
                 Sales Team Report
               </h1>
             </div>
-            <p className="mt-2 text-lg text-gray-600 max-w-2xl">
+            <p className="mt-2 text-lg text-gray-600">
               Track and analyze your team's performance across different lead sources and statuses
             </p>
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100 rounded-full filter blur-3xl opacity-20 -z-10"></div>
           </div>
 
           {/* Summary Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 px-2">
             {/* Total Leads Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
               <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
@@ -456,7 +456,7 @@ export default function SalesReport() {
             </div>
 
             {/* Conversion Rate Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
@@ -477,7 +477,7 @@ export default function SalesReport() {
             </div>
 
             {/* Active Leads Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
@@ -496,7 +496,7 @@ export default function SalesReport() {
             </div>
 
             {/* Total Sales Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
               <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
@@ -516,7 +516,7 @@ export default function SalesReport() {
           </div>
 
           {/* Filters Section */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 backdrop-blur-lg bg-opacity-90 border border-gray-100 relative overflow-hidden">
+          <div className="bg-white shadow-xl p-4 mb-4 backdrop-blur-lg bg-opacity-90 border border-gray-100 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full filter blur-3xl opacity-20 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
             
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center relative">
@@ -615,22 +615,22 @@ export default function SalesReport() {
           ) : (
             <>
               {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-4 px-2">
                 {/* Team Performance Chart */}
-                <div className="bg-white rounded-2xl shadow-xl p-6 col-span-2">
+                <div className="bg-white shadow-xl p-4 col-span-2">
                   <h3 className="text-xl font-semibold mb-4">Team Performance Overview</h3>
                   <TeamPerformanceChart leadStatusDistribution={leadStatusDistribution} />
                 </div>
 
                 {/* Conversion Rate Pie Chart */}
-                <div className="bg-white rounded-2xl shadow-xl p-6">
+                <div className="bg-white shadow-xl p-4">
                   <h3 className="text-xl font-semibold mb-4">Conversion Rates</h3>
                   <ConversionPieChart leadStatusDistribution={leadStatusDistribution} />
                 </div>
 
                 {/* Individual Performance Charts */}
                 {leadStatusDistribution.map((distribution) => (
-                  <div key={distribution.userId} className="bg-white rounded-2xl shadow-xl p-6">
+                  <div key={distribution.userId} className="bg-white shadow-xl p-4">
                     <h3 className="text-xl font-semibold mb-4">{distribution.userName}'s Lead Distribution</h3>
                     <SalesPersonRadarChart distribution={distribution} />
                   </div>
@@ -638,7 +638,7 @@ export default function SalesReport() {
               </div>
 
               {/* Original Table Section */}
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden backdrop-blur-lg bg-opacity-90 border border-gray-100 transition-all duration-300 hover:shadow-2xl">
+              <div className="bg-white shadow-xl overflow-hidden backdrop-blur-lg bg-opacity-90 border border-gray-100 transition-all duration-300 hover:shadow-2xl">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead>

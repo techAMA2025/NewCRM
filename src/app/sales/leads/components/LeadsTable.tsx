@@ -65,7 +65,7 @@ const LeadsTable = ({
           scope="col"
         >
           <div className="flex items-center">
-            <span className="text-blue-400">Name</span>
+            <span className="text-blue-400">Date & Time</span>
             {sortConfig?.key === 'name' && (
               <FaSort className="ml-1" />
             )}
@@ -76,7 +76,7 @@ const LeadsTable = ({
           className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
           scope="col"
         >
-          <span className="text-blue-400">Contact</span>
+          <span className="text-blue-400">Name</span>
         </th>
         
         <th 
@@ -85,7 +85,7 @@ const LeadsTable = ({
           scope="col"
         >
           <div className="flex items-center">
-            <span className="text-blue-400">Source</span>
+            <span className="text-blue-400">Location</span>
             {sortConfig?.key === 'source_database' && (
               <FaSort className="ml-1" />
             )}
@@ -96,18 +96,25 @@ const LeadsTable = ({
           className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]"
           scope="col"
         >
-          <span className="text-blue-400">Financials</span>
+          <span className="text-blue-400">Source</span>
         </th>
         
         <th 
           className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%]"
           scope="col"
         >
-          <span className="text-blue-400">Status</span>
+          <span className="text-blue-400">Financials</span>
         </th>
         
         <th 
           className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]"
+          scope="col"
+        >
+          <span className="text-blue-400">Status</span>
+        </th>
+        
+        <th 
+          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
           scope="col"
         >
           <span className="text-blue-400">Assigned To</span>
@@ -118,13 +125,6 @@ const LeadsTable = ({
           scope="col"
         >
           <span className="text-blue-400">Customer Query</span>
-        </th>
-        
-        <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
-          scope="col"
-        >
-          <span className="text-blue-400">Notes & History</span>
         </th>
         <th 
           className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
@@ -183,7 +183,7 @@ const LeadsTable = ({
         className="overflow-auto"
         style={{ height: tableHeight }}
       >
-        <table className="min-w-[1400px] divide-y divide-gray-700" role="table" aria-label="Leads table">
+        <table className="w-full divide-y divide-gray-700" role="table" aria-label="Leads table">
           {renderTableHeader()}
           <tbody className="bg-gray-900 divide-y divide-gray-800">
             {renderTableBody()}

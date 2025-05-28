@@ -189,7 +189,7 @@ const LeadRow = ({
       {/* Contact Information - Grouped */}
       <td className="px-4 py-3">  
         <div className="flex flex-col space-y-1">
-          <div className="font-medium text-white flex items-center">
+          <div className="font-medium text-white flex items-center text-lg">
             {name}
             {lead.convertedToClient && (
               <span className="ml-2 text-green-400" title="Converted to client">
@@ -199,7 +199,7 @@ const LeadRow = ({
           </div>
           <div className="flex items-center text-xs">
             <FaEnvelope className="h-3 w-3 text-gray-500 mr-1" />
-            <a href={`mailto:${email}`} className="text-blue-400 hover:underline">
+            <a href={`mailto:${email}`} className="text-blue-400 hover:underline text-lg">
               {email}
             </a>
           </div>
@@ -213,7 +213,7 @@ const LeadRow = ({
       </td>
       
       {/* Location */}
-      <td className="px-4 py-3 text-sm text-gray-300">
+      <td className="px-4 py-3 text-lg text-gray-300">
         <div className="flex items-center">
           <FaMapMarkerAlt className="h-3 w-3 text-gray-500 mr-1" />
           <span>{location}</span>
@@ -221,14 +221,14 @@ const LeadRow = ({
       </td>
       
       {/* Source */}
-      <td className="py-3 text-xs">
+      <td className="py-3 text-sm">
         <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${sourceColorClass}`}>
           {sourceDisplay}
         </span>
       </td>
       
       {/* Financial Details - Grouped */}
-      <td className="px-4 py-3 text-xs">
+      <td className="px-4 py-3 text-lg">
         <div className="space-y-1.5">
           <div>
             <span className="font-medium text-gray-400">PL:</span> 

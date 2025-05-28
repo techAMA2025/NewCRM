@@ -775,12 +775,12 @@ const LeadsPage = () => {
   }, [userRole]);
 
   return (
-    <div className="flex h-screen bg-gray-950 text-white">
+    <div className="flex h-screen bg-gray-950 text-white w-full">
       {/* Sidebar based on user role */}
       {SidebarComponent && <SidebarComponent />}
       
-      <div className="flex-1 overflow-auto p-6">
-        <div className="container mx-auto">
+      <div className="flex-1 overflow-auto px-5">
+        <div className="w-[95%] mx-auto">
           {/* Toast Container with improved visibility */}
           <ToastContainer
             position="top-right"
