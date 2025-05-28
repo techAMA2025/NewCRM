@@ -55,6 +55,7 @@ const OverlordSidebar: React.FC = () => {
     { href: '/clients', icon: <FiBriefcase />, label: 'Clients' },
     { href: '/clientalloc', icon: <FiUserPlus />, label: 'Client Allocation' },
     { href: '/salesreport', icon: <FiPieChart />, label: 'Sales Report' },
+    { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report' },
     { href: '/assigntasks', icon: <FiCheckSquare />, label: 'Assign Tasks' },
     { href: '/arbtracker', icon: <FaBalanceScale />, label: 'Arbitration' },
     { href: '/pendingletters', icon: <FiClipboard/>, label: 'Pending Letters' },
