@@ -614,7 +614,7 @@ Below is a draft email you can send to your bank or financial institution to ini
         "Mr. Ram Prasad Aryal Address: Fincfriends Private Limited, 7th Floor, Vatika Triangle, Mehrauli-Gurgaon Road, Block B, Sushant Lok Phase I, Gurugram, Haryana – 122002",
       email: "GRO@rupeeredee.com, GRO@fincfriends.in, info@fincfriends.in",
     },
-    "Shriram housing": {
+    "Shriram Finance": {
       address:
         "Mr. Sanjiv Gyani, Grievance Redressal Officer, Shriram Housing Finance Limited, Level 3, Wockhardt Towers, East Wing, Bandra Kurla Complex, Mumbai 400051 Ph : 022 – 4241 0400, GRO Address: Uma Maheswari VR, Grievance Redressal Officer, Shriram Finance Limited, 12 Ramasamy Street, T Nagar, Chennai 600 017",
       email: "customersupport@shriramfinance.in, grievance@shriramfinance.in",
