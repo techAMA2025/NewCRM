@@ -91,6 +91,106 @@ export default function OpsReport() {
   }, []);
 
   const processData = (clientsData: Client[]) => {
+    // Helper function to normalize bank names
+    const normalizeBankName = (bankName: string): string => {
+      if (!bankName) return 'Unknown';
+      
+      // Remove extra spaces and convert to uppercase for comparison
+      const normalized = bankName.trim().toUpperCase().replace(/\s+/g, ' ');
+      
+      // Comprehensive bank name mappings with more precise patterns
+      const bankMappings: { [key: string]: RegExp[] } = {
+        'ICICI BANK': [/ICICI?.*(?:BANK)?/i, /ICIC.*(?:BANK)?/i],
+        'AXIS BANK': [/AXIS.*(?:BANK)?/i],
+        'HDFC BANK': [/HDFC.*(?:BANK)?/i],
+        'STATE BANK OF INDIA': [/^(?:STATE.*BANK|SBI)/i],
+        'RBL BANK': [/^RBL(?:\s*\(?BAJAJ\)?)?/i, /RBL.*(?:BANK)?/i],
+        'IDFC FIRST BANK': [/IDFC.*(?:FIRST|FIRSTBANK)?/i],
+        'KOTAK MAHINDRA BANK': [/KOTAK.*(?:MAHINDRA)?.*(?:BANK)?/i, /KOTAKMAHINDRA(?:BANK)?/i],
+        'YES BANK': [/YES.*(?:BANK)?/i],
+        'BANK OF BARODA': [/^(?:BANK\s*OF\s*BARODA|BOB)(?:\s*(?:BANK|ONE\s*CARD|\(ONE\s*CARD\))?)?/i],
+        'INDUSIND BANK': [/INDUS(?:I|L)ND.*(?:BANK)?/i],
+        'DBS BANK': [/DBS.*(?:BANK)?/i],
+        'STANDARD CHARTERED BANK': [/STANDARD.*(?:CHARTERED).*(?:BANK)?/i],
+        'FEDERAL BANK': [/FEDERAL.*(?:BANK|\(ONECARD\))?/i],
+        'SOUTH INDIAN BANK': [/(?:THE\s*)?SOUTH.*INDIAN.*(?:BANK|LTD)?/i],
+        'AU SMALL FINANCE BANK': [/AU.*(?:SMALL|BANK|FINANCE)/i],
+        'CATHOLIC SYRIAN BANK': [/(?:THE\s*)?CATHOLIC.*SYRIAN.*(?:BANK)?/i],
+        'PUNJAB NATIONAL BANK': [/PUNJAB.*NATIONAL.*(?:BANK)?/i],
+        'UNION BANK': [/^UNION.*(?:BANK)?/i],
+        'NORTH EAST SMALL FINANCE BANK': [/NORTH.*EAST.*(?:SMALL|FINANCE|BANK)?/i],
+        'ADITYA BIRLA FINANCE': [/ADITYA.*(?:BIRLA|SHRIRAM).*(?:FINANCE|CAPITAL|NIRA|LTD|SMFG)?/i],
+        'BAJAJ FINANCE': [/BAJAJ.*(?:FINANCE|FINSERV|LIMITED)?/i],
+        'HERO FINCORP': [/HERO.*(?:FINCORP|FINCROP|LTD)?/i],
+        'POONAWALLA FINCORP': [/POONAWALLA.*(?:FINCORP)?/i],
+        'L&T FINANCE': [/L.*(?:&|AND).*T.*(?:FINANCE)?/i],
+        'CHOLAMANDALAM': [/CHOL(?:A|E)?MANDALAM/i],
+        'PIRAMAL FINANCE': [/PIRAMAL.*(?:FINANCE|HOUSING)?/i],
+        'TATA CAPITAL': [/TATA.*(?:CAPITAL)?/i],
+        'MUTHOOT FINANCE': [/MUTHOOT.*(?:FINANCE)?/i],
+        'NORTHERN ARC CAPITAL': [/NORTHERN.*(?:ARC|AMERICAN|EARLY|SMART\s*COIN).*(?:CAPITAL|LTD)?/i],
+        'KISETSU SAISON FINANCE': [/KIS[E]?TSU.*(?:SAISON|CRED|KREDITBEE|MONEY\s*VIEW)?/i],
+        'SMFG INDIA CREDIT': [/SMFG.*(?:INDIA|HSBC|CREDIT|COMPANY|MONEYVIEW|NBFC)?/i],
+        'ONE CARD': [/ONE\s*CARD.*(?:BOB)?/i],
+        'EARLY SALARY (FIBE)': [/(?:EARLY.*SALARY|FIBE).*(?:SERVICES|PVT|FIBE)?/i],
+        'MONEY VIEW': [/MONEY.*VIEW/i],
+        'PAYU FINANCE': [/PAY.*U.*(?:FINANCE|INDIA|IIFL|KREDITBE|MONEYVIEW)?/i],
+        'KRAZYBEE SERVICES': [/KRA[Z]?Y.*BEE.*(?:SERVICES|PRIVATE)?/i],
+        'CLIX CAPITAL': [/CLIX.*(?:CAPITAL|CAPTAIL)?/i],
+        'VIVRITI CAPITAL': [/VI[V|F](?:RITI|IFI).*(?:CAPITAL|INDIA|POONAWALLA|LIMITED)?/i],
+        'INCRED FINANCE': [/INCRED.*(?:FINANCE|FINALCAL|FINANCIALE)?/i],
+        'NDX P2P': [/NDX.*(?:P2P|PRIVATE)?/i],
+        'SI CREVA CAPITAL': [/SI.*CREVA.*(?:CAPITAL|VIVIFI)?/i],
+        'AKARA CAPITAL': [/AKARA.*(?:CAPITAL)?/i],
+        'CAPFLOAT': [/CAPFLOAT/i],
+        'ZYPE FINANCE': [/ZYPE.*(?:FINANCE)?/i],
+        'TRUE CREDITS': [/TRUE.*(?:CREDITS|BALANCE|PRIVATE)?/i],
+        'UNI FINANCE': [/UNI(?:CARD|FINZ)?/i],
+        'KREDITBEE': [/KREDIT.*BEE.*(?:KHATA)?/i],
+        'KISSHT': [/KISSHT/i],
+        'MOBIKWIK': [/MOBI(?:KWIK|QUICK)/i],
+        'JUPITER (CSB)': [/JUPITER.*(?:CSB)?/i],
+        'SMICC': [/SMICC/i],
+        'WHIZDM FINANCE': [/WHIZDM.*(?:FINANCE)?/i],
+        'BANDHAN BANK': [/BANDHAN.*(?:BANK)?/i],
+        'LENDING KARD': [/LENDING.*KARD/i],
+        'UPMOVE CAPITAL': [/UPMOVE.*(?:CAPITAL)?/i],
+        'STASHFIN': [/STASHFIN/i],
+        'NEW TAP': [/NEW.*TAP/i],
+        'CASHE': [/CASHE/i],
+        'GROWW': [/GROW[W]?/i],
+        'RK BANSAL': [/RK.*BANSAL/i],
+        'FINC FRIENDS': [/FINC.*FRIENDS.*(?:SAYYAM)?/i],
+        'PAYRUPKIR': [/PAYRUPKIR/i],
+        'RING': [/^RING$/i],
+        'FINNABLE': [/FINNABLE/i],
+        'PHOENIX ARC': [/PHOENIX.*(?:ARC|HDFC|PRIVATE)?/i],
+        'AXIOM FINANCE': [/AXIOM.*(?:FINANCE|SERVICES)?/i],
+        'WORTGAGE FINANCE': [/WORTGAGE.*(?:FINANCE)?/i],
+        'INDIFI': [/INDIFI/i],
+        'KISTUK': [/KISTUK/i],
+        'TRUEBALANCE': [/TRUEBALANCE/i],
+        'SNAPMINT FINANCIAL': [/SNAPMINT.*(?:FINANCIAL)?/i],
+        'AMICA FINANCE': [/AMICA.*(?:FINANCE)?/i],
+        'PREFR (HFC)': [/PREFR.*(?:HFC)?/i]
+      };
+
+      // Check each bank mapping against the normalized name
+      for (const [standardName, patterns] of Object.entries(bankMappings)) {
+        if (patterns.some(pattern => pattern.test(normalized))) {
+          return standardName;
+        }
+      }
+
+      // Special case for handling "Unknown" variations
+      if (normalized === '' || normalized === 'UNKNOWN') {
+        return 'Unknown';
+      }
+
+      // If no match found, return the trimmed original name
+      return bankName.trim();
+    };
+
     // Process advocate statistics
     const advocateMap = new Map<string, AdvocateStats>();
     clientsData.forEach(client => {
@@ -126,16 +226,16 @@ export default function OpsReport() {
     const bankMap = new Map<string, BankStats>();
     clientsData.forEach(client => {
       client.banks?.forEach(bank => {
-        const bankName = bank.bankName || 'Unknown';
-        if (!bankMap.has(bankName)) {
-          bankMap.set(bankName, {
-            bankName,
+        const normalizedBankName = normalizeBankName(bank.bankName || 'Unknown');
+        if (!bankMap.has(normalizedBankName)) {
+          bankMap.set(normalizedBankName, {
+            bankName: normalizedBankName,
             totalLoans: 0,
             totalAmount: 0,
             loanTypes: {}
           });
         }
-        const stats = bankMap.get(bankName)!;
+        const stats = bankMap.get(normalizedBankName)!;
         stats.totalLoans++;
         
         const amount = parseFloat(bank.loanAmount.replace(/[^0-9.-]+/g, ''));
@@ -333,76 +433,136 @@ export default function OpsReport() {
           <h2 className="text-2xl font-semibold mb-6 text-gray-100">Bank-wise Distribution</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Total Loans Bar Chart */}
-            <div className="h-[400px]">
+            <div className="h-[600px] relative">
               <h3 className="text-xl font-semibold mb-4 text-gray-200">Number of Loans by Bank</h3>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bankStats}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis 
-                    dataKey="bankName" 
-                    stroke="#9CA3AF"
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    interval={0}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                      color: '#F3F4F6'
-                    }}
-                    formatter={(value: number) => [`${value} loans`, 'Total Loans']}
-                  />
-                  <Bar dataKey="totalLoans" fill="#3B82F6" name="Total Loans">
-                    <LabelList dataKey="totalLoans" position="top" fill="#9CA3AF" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="absolute inset-0 top-12">
+                <div className="h-full overflow-y-auto custom-scrollbar pr-2">
+                  <div style={{ height: `${Math.max(600, bankStats.length * 40)}px` }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={bankStats}
+                        layout="vertical"
+                        margin={{ top: 5, right: 50, left: 120, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis 
+                          type="number" 
+                          stroke="#9CA3AF"
+                          tickFormatter={(value) => value.toLocaleString()}
+                        />
+                        <YAxis 
+                          dataKey="bankName" 
+                          type="category" 
+                          stroke="#9CA3AF"
+                          width={110}
+                          tick={{ fontSize: 12 }}
+                          interval={0}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1F2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                            color: '#F3F4F6'
+                          }}
+                          formatter={(value: number) => [`${value.toLocaleString()} loans`, 'Total Loans']}
+                          cursor={{ fill: '#374151', opacity: 0.2 }}
+                        />
+                        <Bar 
+                          dataKey="totalLoans" 
+                          fill="#3B82F6" 
+                          name="Total Loans"
+                          radius={[0, 4, 4, 0]}
+                        >
+                          <LabelList 
+                            dataKey="totalLoans" 
+                            position="right" 
+                            fill="#9CA3AF"
+                            formatter={(value: number) => value.toLocaleString()}
+                            style={{ fontSize: '11px' }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Total Amount Bar Chart */}
-            <div className="h-[400px]">
+            <div className="h-[600px] relative">
               <h3 className="text-xl font-semibold mb-4 text-gray-200">Total Loan Amount by Bank</h3>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bankStats}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis 
-                    dataKey="bankName" 
-                    stroke="#9CA3AF"
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    interval={0}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis 
-                    stroke="#9CA3AF"
-                    tickFormatter={(value) => `₹${(value / 1000000).toFixed(1)}M`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                      color: '#F3F4F6'
-                    }}
-                    formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Total Amount']}
-                  />
-                  <Bar dataKey="totalAmount" fill="#10B981" name="Total Amount">
-                    <LabelList 
-                      dataKey="totalAmount" 
-                      position="top" 
-                      fill="#9CA3AF"
-                      formatter={(value: number) => `₹${(value / 1000000).toFixed(1)}M`}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="absolute inset-0 top-12">
+                <div className="h-full overflow-y-auto custom-scrollbar pr-2">
+                  <div style={{ height: `${Math.max(600, bankStats.length * 40)}px` }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={bankStats}
+                        layout="vertical"
+                        margin={{ top: 5, right: 50, left: 120, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis 
+                          type="number" 
+                          stroke="#9CA3AF"
+                          tickFormatter={(value) => `₹${(value / 1000000).toFixed(1)}M`}
+                        />
+                        <YAxis 
+                          dataKey="bankName" 
+                          type="category" 
+                          stroke="#9CA3AF"
+                          width={110}
+                          tick={{ fontSize: 12 }}
+                          interval={0}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1F2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                            color: '#F3F4F6'
+                          }}
+                          formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Total Amount']}
+                          cursor={{ fill: '#374151', opacity: 0.2 }}
+                        />
+                        <Bar 
+                          dataKey="totalAmount" 
+                          fill="#10B981" 
+                          name="Total Amount"
+                          radius={[0, 4, 4, 0]}
+                        >
+                          <LabelList 
+                            dataKey="totalAmount" 
+                            position="right" 
+                            fill="#9CA3AF"
+                            formatter={(value: number) => `₹${(value / 1000000).toFixed(1)}M`}
+                            style={{ fontSize: '11px' }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Add custom scrollbar styles */}
+            <style jsx global>{`
+              .custom-scrollbar::-webkit-scrollbar {
+                width: 8px;
+              }
+              .custom-scrollbar::-webkit-scrollbar-track {
+                background: #1F2937;
+                border-radius: 4px;
+              }
+              .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: #4B5563;
+                border-radius: 4px;
+              }
+              .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: #6B7280;
+              }
+            `}</style>
 
             {/* Loan Types Distribution */}
             <div className="h-[400px] lg:col-span-2">
@@ -652,3 +812,5 @@ export default function OpsReport() {
     </div>
   );
 }
+
+
