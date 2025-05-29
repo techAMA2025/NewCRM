@@ -277,26 +277,26 @@ Below is a draft email you can send to your bank or financial institution to ini
   const banks = {
     "Axis Bank": {
       address:
-        "Mr. Sandeep Dam, Nodal officer Axis Bank Ltd, Axis House, Tower 3, 4th Floor, Sector128, Noida, UP- 201304.",
+        "Mr. Sandeep Dam, Nodal officer Axis Bank Ltd, Axis House, Tower 3, 4th Floor, Sector128, Noida, UP- 201304. Landline No: 0120-6210005. Mr. Caesar Pinto, Nodal Officer, Axis Bank LTD. NPC1, 5th Floor \"Gigaplex\", Plot No .I.T 5, MIDC Airoli Knowledge Park, Airoli, Navi Mumbai – 400708. Mrs. Neeta Bhatt Principal Nodal Officer, Axis Bank LTD. 4th Floor, Axis House, Wadia International Center, P.B. Marg, Worli, Mumbai – 400 025. Axis Bank Limited, 'Axis House', C-2, Wadia International Centre, Pandurang Budhkar Marg, Worli, Mumbai - 400 025. Axis Bank Limited, 'Trishul', 3rd Floor, Opp. Samartheshwar Temple, Near Law Garden, Ellisbridge, Ahmedabad - 380 006",
       email:
         "Circlenodalofficer.delhi1@axisbank.com, nodal.officer@axisbank.com, pno@axisbank.com",
     },
     "Ashv Finance Limited": {
       address:
-        "Ashv Finance Limited,12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062.",
+        "Ashv Finance Limited,12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062. Grievance Redressal Officer, Ms. Monika Thadeshwar, 12B 3rd Floor, Techniplex II, Off Veer Savarkar, Goregaon West, Mumbai, Maharashtra-400062.",
       email:
         "monika.thadeshwar@ashvfinance.com, info@ashvfinance.com, customersupport@ashvfinance.com",
     },
     Niro: {
       address:
-        "Corporate Office: No 313/1 Workden, Ground floor, 7th Cross Patel, Rama Reddy Road, Domlur Layout, Bangalore 560071.",
+        "Corporate Office: No 313/1 Workden, Ground floor, 7th Cross Patel, Rama Reddy Road, Domlur Layout, Bangalore 560071. Registered Office: 17/1 Bharat Apartments, 44/1, Fair field Layout, Race course road, Bengaluru, Karnataka – 560 001",
       email: "support@niro.money, grievance@niro.money, info@niro.money",
     },
     "Aditya Birla Fin": {
       address:
-        "Ms Rachana Padval, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063.",
+        "Ms Rachana Padval, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063. Principal Nodal Officer Ms Smita Nadkarni, Aditya Birla Finance Limited,10th Floor, R-Tech Park, Nirlon Complex, Goregaon, Mumbai – 400063. Aditya Birla Finance Limited (A subsidiary of Aditya Birla Capital Ltd.) One World Center, Tower 1-C, 18th Floor, 841, Jupiter Mill Compound, Senapati Bapat Marg, Elphinstone Road, Mumbai 400 013. Mr Abhinav Chaudhry. Aditya Birla Housing Finance - Customer Service Cell, R Tech Park, 10th Floor, Niroln Complex, Off Western Express Highway Goregaon East, Mumbai - 400063. Aditya Birla Finance Limited (A subsidiary of Aditya Birla Capital Ltd.) Indian Rayon Compound, Veraval, Gujarat -362 266.",
       email:
-        "abfl.nodalofficerwest@adityabirlacapital.com, grievance.finance@adityabirlacapital.com, care.finance@adityabirlacapital.com",
+        "abfl.nodalofficerwest@adityabirlacapital.com, grievance.finance@adityabirlacapital.com, care.finance@adityabirlacapital.com, abhinav.c@adityabirlacapital.com, care.digitalfinance@adityabirlacapital.com, preethi.nair@adityabirlacapital.com",
     },
     Amex: {
       address:
@@ -440,9 +440,9 @@ Below is a draft email you can send to your bank or financial institution to ini
     },
     "Kotak Bank": {
       address:
-        "Nodal Officer, Mr. A. Sen Address: Kotak Infiniti, 4th Floor, Zone 4 Building No.21, Infinity Park, Off Western express Highway, Mumbai – 400097",
+        "Nodal Officer, Mr. A. Sen Address: Kotak Infiniti, 4th Floor, Zone 4 Bulding No.21, Infinity Park, Off Western express Highway, General AK Vaidya Marg, Malad (E), Mumbai – 400097",
       email:
-        "consumerassets.legal@kotak.com, care@kotak.com, grievanceofficer@kotak.com",
+        "consumerassets.legal@kotak.com, care@kotak.com, grievanceofficer@kotak.com, seniorgrievanceofficer@kotak.com, chiefgrievanceofficer@kotak.com",
     },
     KreditBee: {
       address:
@@ -516,8 +516,8 @@ Below is a draft email you can send to your bank or financial institution to ini
     "Poonawala Fin": {
       address:
         "Poonawala Finance, S. No. 83 Ground Floor, AP81, Mundhwa PUNE 411036, Maharashtra",
-      email:
-        "head.customercare@poonawallahousing.com, customercare@poonawallahousing.com, nodalofficer@poonawallahousing.com, grievance_south@poonawallafincorp.com",
+        email:
+        "rati.mundra@poonawallafincorp.com, pno@poonawallafincorp.com, customercare@poonawallafincorp.com",
     },
     Prefr: {
       address:
@@ -616,8 +616,8 @@ Below is a draft email you can send to your bank or financial institution to ini
     },
     "Shriram housing": {
       address:
-        "Mr. Sanjiv Gyani, Grievance Redressal Officer, Shriram Housing Finance Limited, Level 3, Wockhardt Towers, East Wing, Bandra Kurla Complex, Mumbai 400051 Ph : 022 – 4241 0400",
-      email: "gs.agarwal@shriramhousing.in, contact@shriramhousing.in",
+        "Mr. Sanjiv Gyani, Grievance Redressal Officer, Shriram Housing Finance Limited, Level 3, Wockhardt Towers, East Wing, Bandra Kurla Complex, Mumbai 400051 Ph : 022 – 4241 0400, GRO Address: Uma Maheswari VR, Grievance Redressal Officer, Shriram Finance Limited, 12 Ramasamy Street, T Nagar, Chennai 600 017",
+      email: "customersupport@shriramfinance.in, grievance@shriramfinance.in",
     },
     Stashfin: {
       address:
@@ -674,6 +674,19 @@ Below is a draft email you can send to your bank or financial institution to ini
       address:
         "Zype, Grievance Redressal Officer, Mr. Swapnil Kinalekar, 2nd Floor, Dyna Buisness Park, Street No. 1, MIDC Andheri (East), Mumbai-400093",
       email: "support@getzype.com, recovery@getzype.com",
+    },
+    "Federal Bank": {
+      address:
+        "Ms. Shalini Warrier, Executive Director and Principal Nodal Officer  CEO's Secretariat, The Federal Bank Ltd. Federal Towers, Aluva, Kerala. FPL Technologies Pvt. Ltd., Disha Bldg., Survey No 127, Mahavir Park, Opposite Sarjaa, Aundh, Pune 411007",
+      email:
+        "creditcards@federalbank.co, contact@federalbank.co.in, support@federalbank.co.in",
+    },
+
+    "Northern Arc Bank": {
+      address:
+        "IndiQube Golf View Homes, 6th Floor, Tower B, 3rd Cross Road, S R Layout, Murgesh Pallya, Bengaluru – 560017 Mr. Madhan Mohan K, IndiQube Golf View Homes, 6th Floor, Tower B, 3rd Cross Road, S R Layout, Murgesh Pallya, Bengaluru-560017",
+      email:
+        "customersupport@northernarc.com, gro@northernarc.com, nodal.officer@northernarc.com",
     },
   };
 
