@@ -26,6 +26,8 @@ export default function PaymentRequestsPage() {
   const [dateFilter, setDateFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('current');
   const [requestTypeFilter, setRequestTypeFilter] = useState('all');
+  const [requestedByFilter, setRequestedByFilter] = useState('all');
+  const [uniqueRequesters, setUniqueRequesters] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -49,6 +51,12 @@ export default function PaymentRequestsPage() {
     // Fetch payment requests
     fetchPaymentRequests();
   }, [router]);
+
+  useEffect(() => {
+    // Extract unique requesters from payment requests
+    const requesters = [...new Set(paymentRequests.map(req => req.salesPersonName))].sort();
+    setUniqueRequesters(requesters);
+  }, [paymentRequests]);
 
   const fetchPaymentRequests = async () => {
     try {
@@ -460,6 +468,7 @@ export default function PaymentRequestsPage() {
 
       const matchesSource = sourceFilter === 'all' || request.source === sourceFilter;
       const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+      const matchesRequestedBy = requestedByFilter === 'all' || request.salesPersonName === requestedByFilter;
       
       // Add request type filter logic
       const isAdvocateRequest = !!request.reasonOfPayment;
@@ -501,9 +510,14 @@ export default function PaymentRequestsPage() {
         }
       }
 
-      return matchesSearch && matchesSource && matchesStatus && matchesDate && matchesMonth && matchesRequestType;
+      return matchesSearch && matchesSource && matchesStatus && matchesDate && matchesMonth && matchesRequestType && matchesRequestedBy;
     });
-  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter, requestTypeFilter]);
+  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter, requestTypeFilter, requestedByFilter]);
+
+  // Calculate total amount for filtered requests
+  const totalAmount = useMemo(() => {
+    return filteredRequests.reduce((total, request) => total + Number(request.amount), 0);
+  }, [filteredRequests]);
 
   const pendingRequests = filteredRequests
     .filter(req => req.status === 'pending')
@@ -529,7 +543,11 @@ export default function PaymentRequestsPage() {
             <div className="flex items-center space-x-4">
               <div className="bg-gray-800 rounded-lg px-4 py-2">
                 <span className="text-gray-400 text-sm">Total Requests: </span>
-                <span className="text-white font-semibold">{paymentRequests.length}</span>
+                <span className="text-white font-semibold">{filteredRequests.length}</span>
+              </div>
+              <div className="bg-gray-800 rounded-lg px-4 py-2">
+                <span className="text-gray-400 text-sm">Total Amount: </span>
+                <span className="text-white font-semibold">₹{totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
               </div>
               <div className="bg-gray-800 rounded-lg px-4 py-2">
                 <span className="text-gray-400 text-sm">Pending: </span>
@@ -554,6 +572,17 @@ export default function PaymentRequestsPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
+                <select
+                  value={requestedByFilter}
+                  onChange={(e) => setRequestedByFilter(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Requesters</option>
+                  {uniqueRequesters.map(requester => (
+                    <option key={requester} value={requester}>{requester}</option>
+                  ))}
+                </select>
+                
                 <select
                   value={requestTypeFilter}
                   onChange={(e) => setRequestTypeFilter(e.target.value)}
@@ -612,6 +641,11 @@ export default function PaymentRequestsPage() {
               {searchTerm && (
                 <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-3 py-1 rounded-full text-sm">
                   Search: {searchTerm}
+                </span>
+              )}
+              {requestedByFilter !== 'all' && (
+                <span className="bg-teal-900/50 text-teal-300 border border-teal-500 px-3 py-1 rounded-full text-sm">
+                  Requested by: {requestedByFilter}
                 </span>
               )}
               {requestTypeFilter !== 'all' && (
