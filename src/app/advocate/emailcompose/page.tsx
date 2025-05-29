@@ -105,12 +105,11 @@ export default function EmailComposePage() {
       id: "vakalatnama",
       name: "Vakalatnama",
       content: `
-
 Respected Arbitrator,
 
 This is with reference to the arbitration meeting scheduled for.
  
-We would like to inform you that AMA Legal Solutions is representing our client, Mr./Ms. XXXX, in this matter.
+We would like to inform you that AMA Legal Solutions is representing our client, [CLIENT_NAME], in this matter.
 
 Please find the signed Vakalatnama attached for your records.
 
@@ -121,14 +120,14 @@ AMA Legal Solutions`,
     {
       id: "demand-notice",
       name: "Demand Notice Reply",
-      content: `Please find attached the reply to the notice sent by you to my client, [Client Name], at his registered email address. Should the bank require any further information, documentation, or clarification, my client is fully prepared to provide all necessary details to facilitate the process. Kindly acknowledge receipt of this communication.`,
+      content: `Please find attached the reply to the notice sent by you to my client, [CLIENT_NAME], at their registered email address [CLIENT_EMAIL]. Should the bank require any further information, documentation, or clarification, my client is fully prepared to provide all necessary details to facilitate the process. Kindly acknowledge receipt of this communication.`,
     },
 
     {
       id: "section-138",
       name: "Section 138 Reply",
       content: `Dear Sir/Madam,
-Please find attached the detailed reply to the legal notice issued under Section 138 of the Negotiable Instruments Act, 1881, addressed to my client, [Client Name], at their registered email address.
+Please find attached the detailed reply to the legal notice issued under Section 138 of the Negotiable Instruments Act, 1881, addressed to my client, [CLIENT_NAME], at their registered email address [CLIENT_EMAIL].
 My client has duly noted the contents of the notice and, through this response, has addressed all allegations and factual clarifications. Should you or your client require any further information or supporting documents, we are open to providing the same to resolve the matter amicably.
 Kindly acknowledge receipt of this communication.`,
     },
@@ -137,13 +136,13 @@ Kindly acknowledge receipt of this communication.`,
       id: "section-25",
       name: "Section 25 PASA Act Reply",
       content: `Dear Sir/Madam,
-Please find attached the reply to the legal notice issued under Section 25 of the Payment and Settlement Systems Act, 2007, addressed to my client, [Client Name], at their registered email address. My client has reviewed the contents of the notice and, through this response, has addressed the relevant factual and legal points raised therein. If the concerned authority or your office requires any further clarification, supporting documentation, or additional information, my client is fully prepared to provide the same to ensure a fair and transparent resolution. Kindly acknowledge receipt of this communication.`,
+Please find attached the reply to the legal notice issued under Section 25 of the Payment and Settlement Systems Act, 2007, addressed to my client, [CLIENT_NAME], at their registered email address [CLIENT_EMAIL]. My client has reviewed the contents of the notice and, through this response, has addressed the relevant factual and legal points raised therein. If the concerned authority or your office requires any further clarification, supporting documentation, or additional information, my client is fully prepared to provide the same to ensure a fair and transparent resolution. Kindly acknowledge receipt of this communication.`,
     },
 
     {
       id: "harassment-notice",
       name: "Extreme Harassment Notice",
-      content: `Please find attached a legal notice addressed to you on behalf of my client, [Client Name], regarding the continued and extreme harassment faced by them at your instance.
+      content: `Please find attached a legal notice addressed to you on behalf of my client, [CLIENT_NAME], regarding the continued and extreme harassment faced by them at your instance.
 Despite multiple attempts to resolve the matter amicably, your conduct has persisted, causing severe mental, emotional, and reputational distress to my client. This notice is being served as a final opportunity to cease and desist from such unlawful behavior, failing which my client shall be constrained to initiate appropriate legal proceedings, both civil and criminal, at your risk, cost, and consequence.
 You are hereby advised to treat this matter with the seriousness it warrants. An acknowledgment of this communication and your response to the attached notice is expected within the stipulated time.`,
     },
@@ -151,29 +150,29 @@ You are hereby advised to treat this matter with the seriousness it warrants. An
     {
       id: "excessive-call",
       name: "Excessive Call & Follow-up Complaint",
-      content: `Dear [Client's Name],
+      content: `Dear [CLIENT_NAME],
 Please find below the attached draft email template that you can fill and send to the concerned bank's customer care or grievance redressal officer regarding the unlawful and harassing recovery practices you've been subjected to. Kindly complete the missing details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.`,
     },
 
     {
       id: "breather-period",
       name: "Breather Period Request",
-      content: `Dear [Client's Name],
+      content: `Dear [CLIENT_NAME],
 Please find below a ready-to-use email draft for requesting a temporary breather period from EMI and minimum due payments from the bank. Kindly fill in your name and the specific month you're requesting the extension until, then forward it to the concerned bank's customer care or grievance team. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.`,
     },
 
     {
       id: "unauthorized-payment",
       name: "Unauthorized Payment Report",
-      content: `Dear [Client's Name],
+      content: `Dear [CLIENT_NAME],
 Below is a draft email you can send to your bank's credit card department to report an unauthorized payment. Please ensure that you fill in the details marked with XXXX and ensure that you attach any relevant screenshots or call recordings before sending it and attach any relevant screenshots or evidence before sending it. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.`,
     },
 
     {
       id: "settlement-request",
       name: "Bank Settlement Request",
-      content: `Dear [Client's Name],
-Below is a draft email you can send to your bank or financial institution to initiate a loan settlement discussion due to ongoing financial difficulties. Please ensure you fill in your name, registered email, and loan or credit card number before sending it to the concerned department. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.`,
+      content: `Dear [CLIENT_NAME],
+Below is a draft email you can send to your bank or financial institution to initiate a loan settlement discussion due to ongoing financial difficulties. Please ensure you fill in your name ([CLIENT_NAME]), registered email ([CLIENT_EMAIL]), and loan or credit card number before sending it to the concerned department. Let us know once you've filled in the details or if you'd like us to review the draft before you send it to the bank.`,
     },
   ];
 
@@ -694,7 +693,18 @@ Below is a draft email you can send to your bank or financial institution to ini
   useEffect(() => {
     const draft = draftTemplates.find((d) => d.id === selectedDraft);
     if (draft) {
-      setEmailContent(draft.content);
+      // Get the selected client data
+      const selectedClient = clients.find(c => c.id === tempClientId);
+      
+      // Replace template with client data if available
+      let content = draft.content;
+      if (selectedClient) {
+        content = content
+          .replace(/\[CLIENT_NAME\]/g, selectedClient.name || '[Client Name]')
+          .replace(/\[CLIENT_EMAIL\]/g, selectedClient.email || '[Client Email]');
+      }
+      
+      setEmailContent(content);
 
       // Automatically select corresponding subject when a draft is selected
       if (draft.id === "vakalatnama") {
@@ -726,7 +736,7 @@ Below is a draft email you can send to your bank or financial institution to ini
         setIsCustomSubject(false);
       }
     }
-  }, [selectedDraft]);
+  }, [selectedDraft, tempClientId, clients]);
 
   // Handle draft selection
   const handleDraftChange = (e: ChangeEvent<HTMLSelectElement>) => {
