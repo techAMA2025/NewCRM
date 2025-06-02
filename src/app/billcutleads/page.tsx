@@ -8,18 +8,18 @@ import { db as crmDb, auth } from '@/firebase/firebase';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Import Components
-import LeadsHeader from '../sales/leads/components/LeadsHeader';
-import LeadsFilters from '../sales/leads/components/LeadsFilters';
-import LeadsTable from '../sales/leads/components/LeadsTable';
+import BillcutLeadsHeader from './components/BillcutLeadsHeader';
+import BillcutLeadsFilters from './components/BillcutLeadsFilters';
+import BillcutLeadsTable from './components/BillcutLeadsTable';
 import EditModal from '../sales/leads/components/EditModal';
 import HistoryModal from '../sales/leads/components/HistoryModal';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
-
-// Import types
-import { Lead, User, HistoryItem, EditingLeadsState, SortDirection } from '../sales/leads/types';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import BillcutSidebar from '@/components/navigation/BillcutSidebar';
+
+// Import types
+import { Lead, User, EditingLeadsState, SortDirection, HistoryItem } from './types';
 
 // Status options
 const statusOptions = [
@@ -164,6 +164,27 @@ const sampleLeads: Lead[] = [
   }
 ];
 
+// Function to extract state from address
+const extractStateFromAddress = (address: string): string => {
+  const states = [
+    'ANDHRA PRADESH', 'ARUNACHAL PRADESH', 'ASSAM', 'BIHAR', 'CHHATTISGARH',
+    'GOA', 'GUJARAT', 'HARYANA', 'HIMACHAL PRADESH', 'JHARKHAND',
+    'KARNATAKA', 'KERALA', 'MADHYA PRADESH', 'MAHARASHTRA', 'MANIPUR',
+    'MEGHALAYA', 'MIZORAM', 'NAGALAND', 'ODISHA', 'PUNJAB',
+    'RAJASTHAN', 'SIKKIM', 'TAMIL NADU', 'TELANGANA', 'TRIPURA',
+    'UTTAR PRADESH', 'UTTARAKHAND', 'WEST BENGAL',
+    'DELHI', 'JAMMU AND KASHMIR', 'LADAKH', 'PUDUCHERRY'
+  ];
+
+  const addressUpper = address.toUpperCase();
+  for (const state of states) {
+    if (addressUpper.includes(state)) {
+      return state;
+    }
+  }
+  return 'Unknown State';
+};
+
 const BillCutLeadsPage = () => {
   // State Management
   const [isLoading, setIsLoading] = useState(true);
@@ -208,19 +229,58 @@ const BillCutLeadsPage = () => {
 
   // Initialize with sample data immediately
   useEffect(() => {
-    setLeads(sampleLeads);
-    setFilteredLeads(sampleLeads);
-    setIsLoading(false);
-    
-    // Initialize editing state for sample leads
-    const initialEditingState: EditingLeadsState = {};
-    sampleLeads.forEach(lead => {
-      initialEditingState[lead.id] = {
-        ...lead,
-        salesNotes: lead.salesNotes || ''
-      };
-    });
-    setEditingLeads(initialEditingState);
+    const fetchBillcutLeads = async () => {
+      setIsLoading(true);
+      try {
+        const billcutLeadsRef = collection(crmDb, 'billcutLeads');
+        const querySnapshot = await getDocs(billcutLeadsRef);
+        
+        const fetchedLeads = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.mobile || '',
+            city: extractStateFromAddress(data.address || ''),
+            status: data.category || 'No Status',
+            source_database: 'Bill Cut Campaign',
+            assignedTo: data.assigned_to || '',
+            personalLoanDues: '',
+            creditCardDues: '',
+            monthlyIncome: data.income || '',
+            remarks: `Debt Range: ${data.debt_range || ''}`,
+            salesNotes: data.sales_notes || '',
+            lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+            convertedToClient: false,
+            bankNames: [],
+            totalEmi: '',
+            occupation: '',
+            loanTypes: []
+          } as Lead;
+        });
+
+        setLeads(fetchedLeads);
+        setFilteredLeads(fetchedLeads);
+        
+        // Initialize editing state for fetched leads
+        const initialEditingState: EditingLeadsState = {};
+        fetchedLeads.forEach(lead => {
+          initialEditingState[lead.id] = {
+            ...lead,
+            salesNotes: lead.salesNotes || ''
+          };
+        });
+        setEditingLeads(initialEditingState);
+      } catch (error) {
+        console.error("Error fetching billcut leads: ", error);
+        toast.error("Failed to load billcut leads");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBillcutLeads();
   }, []);
 
   // Fetch team members
@@ -382,10 +442,10 @@ const BillCutLeadsPage = () => {
   }, [userRole]);
 
   return (
-    <div className="flex h-screen bg-gray-950 text-white">
+    <div className="flex h-screen bg-gray-900 text-gray-100">
       {SidebarComponent && <SidebarComponent />}
       
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-6 bg-gradient-to-br from-gray-900 via-gray-850 to-gray-800">
         <div className="container mx-auto">
           <ToastContainer
             position="top-right"
@@ -398,89 +458,50 @@ const BillCutLeadsPage = () => {
             draggable
             pauseOnHover
             theme="dark"
-            toastClassName="bg-gray-800 text-white"
+            toastClassName="bg-gray-800/90 text-gray-100"
           />
           
-          <LeadsHeader 
+          <BillcutLeadsHeader 
             isLoading={isLoading} 
             userRole={userRole} 
             currentUser={currentUser} 
             exportToCSV={exportToCSV}
           />
           
-          <LeadsFilters 
+          <BillcutLeadsFilters 
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            sourceFilter={sourceFilter}
-            setSourceFilter={() => {}}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
-            salesPersonFilter="all"
-            setSalesPersonFilter={() => {}}
             statusOptions={statusOptions}
-            teamMembers={teamMembers}
-            userRole={userRole}
-            filteredLeads={filteredLeads}
-            leads={leads}
-            convertedFilter={convertedFilter}
-            setConvertedFilter={setConvertedFilter}
-            fromDate={fromDate}
-            setFromDate={setFromDate}
-            toDate={toDate}
-            setToDate={setToDate}
           />
           
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
             </div>
           ) : (
             <>
-              <LeadsTable 
-                filteredLeads={filteredLeads}
-                editingLeads={editingLeads}
-                setEditingLeads={setEditingLeads}
-                updateLead={updateLead}
-                fetchNotesHistory={async () => Promise.resolve()}
-                requestSort={requestSort}
-                sortConfig={sortConfig}
+              <BillcutLeadsTable 
+                leads={filteredLeads}
                 statusOptions={statusOptions}
-                userRole={userRole}
                 salesTeamMembers={salesTeamMembers}
-                assignLeadToSalesperson={assignLeadToSalesperson}
-                updateLeadsState={() => {}}
-                crmDb={crmDb}
-                user={currentUser}
-                deleteLead={deleteLead}
+                updateLead={updateLead}
               />
               
               {!isLoading && leads.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="mx-auto h-24 w-24 text-gray-400">
+                <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-700/50">
+                  <div className="mx-auto h-24 w-24 text-gray-500">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-300">No leads found</h3>
+                  <h3 className="mt-4 text-lg font-medium text-gray-200">No leads found</h3>
                   <p className="mt-2 text-sm text-gray-400">
                     There are no bill cut leads in the system yet.
                   </p>
                 </div>
               )}
-              
-              <HistoryModal 
-                showHistoryModal={showHistoryModal}
-                setShowHistoryModal={setShowHistoryModal}
-                currentHistory={currentHistory}
-              />
-              
-              <EditModal 
-                editingLead={editingLead}
-                setEditingLead={setEditingLead}
-                updateLead={updateLead}
-                teamMembers={teamMembers}
-                statusOptions={statusOptions}
-              />
             </>
           )}
         </div>

@@ -710,9 +710,9 @@ export default function ClientsPage() {
   }
 
   if (loading) return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen bg-gray-900">
       {renderSidebar()}
-      <div className="flex-1 flex justify-center items-center h-screen bg-gray-950 text-gray-100">
+      <div className="flex-1 flex justify-center items-center h-screen bg-gray-900 text-gray-200">
         <div className="flex flex-col items-center">
           <div className="h-12 w-12 border-4 border-t-blue-500 border-b-blue-500 border-l-transparent border-r-transparent rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-400">Loading clients...</p>
@@ -722,29 +722,29 @@ export default function ClientsPage() {
   )
   
   if (error) return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen bg-gray-900">
       {renderSidebar()}
-      <div className="flex-1 flex justify-center items-center h-screen bg-gray-950">
+      <div className="flex-1 flex justify-center items-center h-screen bg-gray-900">
         <div className="text-red-500 text-center">{error}</div>
       </div>
     </div>
   )
 
   return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen bg-gray-900">
       {renderSidebar()}
       
-      <div className="flex-1 p-8 bg-gray-950 text-gray-100">
+      <div className="flex-1 p-8 bg-gray-900 text-gray-200">
         {/* Header Section */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-300 to-purple-400 bg-clip-text text-transparent">
               Clients Management
             </h1>
             {selectedClients.size > 0 && (
               <Button
                 onClick={() => setIsBulkAssignModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-500/80 hover:bg-blue-600/80 text-white"
               >
                 Assign Advocate ({selectedClients.size} selected)
               </Button>
@@ -755,13 +755,13 @@ export default function ClientsPage() {
               placeholder="Search clients..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64 bg-gray-900 border-gray-700 text-white"
+              className="w-64 bg-gray-800/60 border-gray-600/50 text-gray-200 placeholder-gray-400"
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700 text-white">
+              <SelectTrigger className="w-[180px] bg-gray-800/60 border-gray-600/50 text-gray-200">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-900 text-white border-gray-700">
+              <SelectContent className="bg-gray-800 text-gray-200 border-gray-600/50">
                 <SelectItem value="all">All Statuses</SelectItem>
                 {allStatuses.map(status => (
                   <SelectItem key={status} value={status}>{status}</SelectItem>
@@ -769,10 +769,10 @@ export default function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={advocateFilter} onValueChange={setAdvocateFilter}>
-              <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700 text-white">
+              <SelectTrigger className="w-[180px] bg-gray-800/60 border-gray-600/50 text-gray-200">
                 <SelectValue placeholder="Filter by advocate" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-900 text-white border-gray-700">
+              <SelectContent className="bg-gray-800 text-gray-200 border-gray-600/50">
                 <SelectItem value="all">All Advocates</SelectItem>
                 {allAdvocates.map(advocate => (
                   <SelectItem key={advocate} value={advocate}>{advocate}</SelectItem>
@@ -780,10 +780,10 @@ export default function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="w-[180px] bg-gray-900 border-gray-700 text-white">
+              <SelectTrigger className="w-[180px] bg-gray-800/60 border-gray-600/50 text-gray-200">
                 <SelectValue placeholder="Filter by city" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-900 text-white border-gray-700">
+              <SelectContent className="bg-gray-800 text-gray-200 border-gray-600/50">
                 <SelectItem value="all">All Cities</SelectItem>
                 {allCities.map(city => (
                   <SelectItem key={city} value={city}>{city}</SelectItem>
@@ -793,7 +793,7 @@ export default function ClientsPage() {
             <Button 
               onClick={resetFilters}
               variant="outline" 
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="border-gray-600/50 text-gray-300 hover:bg-gray-800/40"
             >
               Reset Filters
             </Button>
@@ -801,14 +801,14 @@ export default function ClientsPage() {
         </div>
 
         {/* Clients Table */}
-        <div className="rounded-lg border border-gray-800 overflow-hidden">
+        <div className="rounded-lg border border-gray-700/50 overflow-hidden">
           <Table>
-            <TableHeader className="bg-gray-900">
-              <TableRow className="border-gray-800 hover:bg-gray-800/50">
+            <TableHeader className="bg-gray-800/60">
+              <TableRow className="border-gray-700/50 hover:bg-gray-700/30">
                 <TableHead className="text-gray-400 w-[50px]">
                   <input
                     type="checkbox"
-                    className="rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700"
+                    className="rounded border-gray-500 text-blue-400 focus:ring-blue-400 bg-gray-700/50"
                     checked={selectedClients.size === filteredClients.length && filteredClients.length > 0}
                     onChange={(e) => handleSelectAll(e.target.checked)}
                   />
@@ -824,23 +824,23 @@ export default function ClientsPage() {
             </TableHeader>
             <TableBody>
               {filteredClients.map(client => (
-                <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
+                <TableRow key={client.id} className="border-gray-700/50 hover:bg-gray-800/40">
                   <TableCell>
                     <input
                       type="checkbox"
-                      className="rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700"
+                      className="rounded border-gray-500 text-blue-400 focus:ring-blue-400 bg-gray-700/50"
                       checked={selectedClients.has(client.id)}
                       onChange={(e) => handleSelectClient(client.id, e.target.checked)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium text-white">
+                  <TableCell className="font-medium text-gray-200">
                     {client.name}
                   </TableCell>
                   <TableCell>{client.phone}</TableCell>
                   <TableCell>{client.city}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="text-blue-400">{client.alloc_adv || 'Unassigned'}</span>
+                      <span className="text-blue-300">{client.alloc_adv || 'Unassigned'}</span>
                       {client.alloc_adv_secondary && (
                         <span className="text-sm text-gray-400">
                           Secondary: {client.alloc_adv_secondary}
@@ -855,17 +855,17 @@ export default function ClientsPage() {
                     >
                       <SelectTrigger className={`w-[130px] h-8 px-2 py-0 text-sm border ${
                         client.adv_status === 'Active' 
-                          ? 'bg-green-500/20 text-green-500 border-green-500/50'
+                          ? 'bg-green-500/10 text-green-300 border-green-400/30'
                           : client.adv_status === 'Dropped'
-                          ? 'bg-red-500/20 text-red-500 border-red-500/50'
-                          : 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50'
+                          ? 'bg-red-500/10 text-red-300 border-red-400/30'
+                          : 'bg-yellow-500/10 text-yellow-300 border-yellow-400/30'
                       }`}>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-900 text-white border-gray-700">
-                        <SelectItem value="Active" className="text-green-500">Active</SelectItem>
-                        <SelectItem value="Dropped" className="text-red-500">Dropped</SelectItem>
-                        <SelectItem value="Not Responding" className="text-yellow-500">Not Responding</SelectItem>
+                      <SelectContent className="bg-gray-800 text-gray-200 border-gray-600/50">
+                        <SelectItem value="Active" className="text-green-300">Active</SelectItem>
+                        <SelectItem value="Dropped" className="text-red-300">Dropped</SelectItem>
+                        <SelectItem value="Not Responding" className="text-yellow-300">Not Responding</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -879,21 +879,21 @@ export default function ClientsPage() {
                       <Button
                         onClick={() => handleViewDetails(client)}
                         size="sm"
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-blue-500/80 hover:bg-blue-600/80"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button
                         onClick={() => handleEditClient(client)}
                         size="sm"
-                        className="bg-amber-600 hover:bg-amber-700"
+                        className="bg-amber-500/80 hover:bg-amber-600/80"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                       </Button>
                       <Button
                         onClick={() => handleDeleteInitiate(client)}
                         size="sm"
-                        className="bg-red-600 hover:bg-red-700"
+                        className="bg-red-500/80 hover:bg-red-600/80"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                       </Button>
@@ -942,10 +942,10 @@ export default function ClientsPage() {
 
         {/* Document Viewer Modal */}
         {isDocViewerOpen && viewingDocumentUrl && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 w-[95vw] max-w-6xl h-[90vh] animate-fade-in shadow-2xl flex flex-col">
-              <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-800">
-                <h3 className="text-xl font-semibold text-white flex items-center">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-gray-800/90 rounded-xl border border-gray-600/50 p-4 w-[95vw] max-w-6xl h-[90vh] animate-fade-in shadow-2xl flex flex-col">
+              <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-600/50">
+                <h3 className="text-xl font-semibold text-gray-200 flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -956,7 +956,7 @@ export default function ClientsPage() {
                   <Button
                     onClick={() => window.open(viewingDocumentUrl, '_blank')}
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-500/80 hover:bg-blue-600/80"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -967,7 +967,7 @@ export default function ClientsPage() {
                   </Button>
                   <button 
                     onClick={() => setIsDocViewerOpen(false)}
-                    className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                    className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-700/60 hover:bg-gray-600/60 text-gray-300 hover:text-white transition-colors"
                   >
                     ✕
                   </button>
@@ -987,15 +987,15 @@ export default function ClientsPage() {
 
         {/* Delete Confirmation Modal */}
         {isDeleteModalOpen && clientToDelete && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-md w-full animate-fade-in shadow-2xl">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800/90 rounded-xl border border-gray-600/50 p-6 max-w-md w-full animate-fade-in shadow-2xl">
               <div className="flex flex-col items-center text-center">
-                <div className="h-12 w-12 rounded-full bg-red-900/50 flex items-center justify-center mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                <div className="h-12 w-12 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-300"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                 </div>
-                <h3 className="text-xl font-bold text-red-500 mb-2">Delete Client</h3>
-                <p className="text-gray-400 mb-6">
-                  This action cannot be undone. Please type <span className="font-semibold text-white">{clientToDelete.name}</span> to confirm deletion.
+                <h3 className="text-xl font-bold text-red-300 mb-2">Delete Client</h3>
+                <p className="text-gray-300 mb-6">
+                  This action cannot be undone. Please type <span className="font-semibold text-gray-200">{clientToDelete.name}</span> to confirm deletion.
                 </p>
                 
                 <Input
@@ -1003,21 +1003,21 @@ export default function ClientsPage() {
                   value={deleteConfirmationName}
                   onChange={(e) => setDeleteConfirmationName(e.target.value)}
                   placeholder={clientToDelete.name}
-                  className="bg-gray-950 border-gray-700 text-white mb-4"
+                  className="bg-gray-900/60 border-gray-600/50 text-gray-200 mb-4"
                 />
                 
                 <div className="flex gap-3 w-full">
                   <Button
                     onClick={() => setIsDeleteModalOpen(false)}
                     variant="outline"
-                    className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+                    className="flex-1 border-gray-600/50 text-gray-300 hover:bg-gray-700/40"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleDeleteConfirm}
                     disabled={deleteConfirmationName !== clientToDelete.name || isDeleting}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                    className="flex-1 bg-red-500/80 hover:bg-red-600/80 text-white disabled:opacity-50"
                   >
                     {isDeleting ? (
                       <div className="flex items-center justify-center">
@@ -1036,19 +1036,19 @@ export default function ClientsPage() {
 
         {/* Bulk Assign Modal */}
         {isBulkAssignModalOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-md w-full animate-fade-in shadow-2xl">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800/90 rounded-xl border border-gray-600/50 p-6 max-w-md w-full animate-fade-in shadow-2xl">
               <div className="flex flex-col">
-                <h3 className="text-xl font-bold text-white mb-4">Bulk Assign Advocate</h3>
-                <p className="text-gray-400 mb-4">
+                <h3 className="text-xl font-bold text-gray-200 mb-4">Bulk Assign Advocate</h3>
+                <p className="text-gray-300 mb-4">
                   Assign an advocate to {selectedClients.size} selected clients
                 </p>
                 
                 <Select value={selectedAdvocateForBulk} onValueChange={setSelectedAdvocateForBulk}>
-                  <SelectTrigger className="w-full bg-gray-900 border-gray-700 text-white mb-6">
+                  <SelectTrigger className="w-full bg-gray-800/60 border-gray-600/50 text-gray-200 mb-6">
                     <SelectValue placeholder="Select an advocate" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-900 text-white border-gray-700">
+                  <SelectContent className="bg-gray-800 text-gray-200 border-gray-600/50">
                     {advocates.map(advocate => (
                       <SelectItem 
                         key={advocate.uid} 
@@ -1064,14 +1064,14 @@ export default function ClientsPage() {
                   <Button
                     onClick={() => setIsBulkAssignModalOpen(false)}
                     variant="outline"
-                    className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+                    className="flex-1 border-gray-600/50 text-gray-300 hover:bg-gray-700/40"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleBulkAdvocateAssignment}
                     disabled={!selectedAdvocateForBulk || isSaving}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                    className="flex-1 bg-blue-500/80 hover:bg-blue-600/80 text-white disabled:opacity-50"
                   >
                     {isSaving ? (
                       <div className="flex items-center justify-center">
@@ -1095,10 +1095,10 @@ export default function ClientsPage() {
               key={toast.id} 
               className={`animate-slide-up rounded-lg border p-4 shadow-md max-w-md ${
                 toast.type === 'success' 
-                  ? 'bg-green-900/90 border-green-600 text-green-100' 
+                  ? 'bg-green-500/10 border-green-400/30 text-green-300' 
                   : toast.type === 'error'
-                  ? 'bg-red-900/90 border-red-600 text-red-100'
-                  : 'bg-gray-800/90 border-gray-700 text-gray-100'
+                  ? 'bg-red-500/10 border-red-400/30 text-red-300'
+                  : 'bg-gray-800/80 border-gray-600/50 text-gray-200'
               }`}
             >
               <div className="flex justify-between items-start">
