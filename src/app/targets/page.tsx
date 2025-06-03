@@ -511,16 +511,16 @@ export default function TargetsPage() {
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-700">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-lg font-medium text-gray-300 uppercase tracking-wider">
                       Sales Person
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-lg font-medium text-gray-300 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-lg font-medium text-gray-300 uppercase tracking-wider">
                       {viewMetric === 'convertedLeads' ? 'Converted Leads Target' : 'Amount Collected Target (₹)'}
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-lg font-medium text-gray-300 uppercase tracking-wider">
                       Progress
                     </th>
                   </tr>
@@ -557,13 +557,13 @@ export default function TargetsPage() {
                       return (
                         <tr key={salesUser.id}>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="text-xs font-medium text-gray-200">{salesUser.firstName} {" "} {salesUser.lastName}</div>
+                            <div className="text-md font-medium text-gray-200">{salesUser.firstName} {" "} {salesUser.lastName}</div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-400">{salesUser.email}</div>
+                            <div className="text-md text-gray-400">{salesUser.email}</div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="text-xs text-gray-200">
+                            <div className="text-md text-gray-200">
                               {viewMetric === 'convertedLeads' 
                                 ? targets[salesUser.id]?.convertedLeads || 0
                                 : `₹${targets[salesUser.id]?.amountCollected || 0}`}
@@ -577,14 +577,14 @@ export default function TargetsPage() {
                                   style={{ width: `${percentage}%` }}
                                 ></div>
                               </div>
-                              <span className="ml-2 text-xs text-gray-300 w-12">
+                              <span className="ml-2 text-md text-gray-300 w-12">
                                 {viewMetric === 'convertedLeads' 
                                   ? `${progressValue}/${targetValue}`
                                   : `${Math.round(percentage)}%`}
                               </span>
                             </div>
                             {viewMetric === 'amountCollected' && (
-                              <div className="text-xs text-gray-400 mt-1">
+                              <div className="text-md text-gray-400 mt-1">
                                 ₹{progressValue} of ₹{targetValue}
                               </div>
                             )}

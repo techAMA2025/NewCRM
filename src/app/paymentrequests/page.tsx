@@ -537,9 +537,9 @@ export default function PaymentRequestsPage() {
        userRole === 'admin' ? <AdminSidebar /> : 
        userRole === 'billcut' ? <BillcutSidebar /> : null}
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full mx-auto">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-white">Payment Approval Requests</h1>
+            <h1 className="text-xl font-bold text-white">Payment Approval Requests</h1>
             <div className="flex items-center space-x-3">
               <div className="bg-gray-800 rounded-lg px-3 py-1.5">
                 <span className="text-gray-400 text-xs">Total Requests: </span>
@@ -704,7 +704,7 @@ export default function PaymentRequestsPage() {
           ) : (
             <div className="space-y-8">
               <div>
-                <h2 className="text-xl font-bold text-white mb-3 flex items-center">
+                <h2 className="text-lg font-bold text-white mb-3 flex items-center">
                   <span className="bg-yellow-900/50 text-yellow-300 border border-yellow-500 px-2 py-0.5 rounded-full text-xs font-medium mr-2">
                     Pending
                   </span>
@@ -712,7 +712,7 @@ export default function PaymentRequestsPage() {
                 </h2>
                 
                 {pendingRequests.length === 0 ? (
-                  <div className="bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+                  <div className="bg-gray-800 rounded-lg shadow-lg p-8 text-center text-sm">
                     <p className="text-gray-400">No pending requests</p>
                   </div>
                 ) : (
@@ -731,21 +731,21 @@ export default function PaymentRequestsPage() {
                             <div className="flex-1">
                               <div className="flex items-center space-x-2 mb-2">
                                 <h3 className="text-lg font-semibold text-white">{request.clientName}</h3>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                <span className={`px-1 py-0.5 rounded-full text-xs font-medium ${
                                   request.status === 'approved' 
                                     ? 'bg-green-900/50 text-green-300 border border-green-500'
                                     : 'bg-yellow-900/50 text-yellow-300 border border-yellow-500'
                                 }`}>
                                   {request.status === 'approved' ? 'Approved' : 'Pending'}
                                 </span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                <span className={`px-1 py-0.5 rounded-full text-xs font-medium ${
                                   request.reasonOfPayment 
                                     ? 'bg-purple-900/50 text-purple-300 border border-purple-500'
                                     : 'bg-blue-900/50 text-blue-300 border border-blue-500'
                                 }`}>
                                   {request.reasonOfPayment ? 'Advocate' : 'Salesperson'}
                                 </span>
-                                <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-2 py-0.5 rounded-full text-xs font-medium capitalize">
+                                <span className="bg-blue-900/50 text-blue-300 border border-blue-500 px-1 py-0.5 rounded-full text-xs font-medium capitalize">
                                   {request.source === 'credsettlee' ? 'Cred Settle' :
                                    request.source === 'ama' ? 'AMA' :
                                    request.source === 'settleloans' ? 'Settle Loans' :
@@ -757,17 +757,17 @@ export default function PaymentRequestsPage() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                                 <div className="space-y-1">
                                   <p className="text-gray-300 flex items-center">
-                                    <FiMail className="mr-2" />
+                                    <FiMail className="mr-1 text-sm" />
                                     {request.clientEmail}
                                   </p>
                                   <p className="text-gray-300 flex items-center">
-                                    <FiPhone className="mr-2" />
+                                    <FiPhone className="mr-1 text-sm" />
                                     {request.clientPhone}
                                   </p>
                                 </div>
                                 <div className="space-y-1">
                                   <p className="text-gray-400 flex items-center">
-                                    <FiUser className="mr-2" />
+                                    <FiUser className="mr-1 text-sm" />
                                     Requested by: {request.salesPersonName}
                                   </p>
                                   <p className="text-gray-400 flex items-center">
