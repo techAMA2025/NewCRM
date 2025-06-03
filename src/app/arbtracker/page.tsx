@@ -55,7 +55,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   }
   
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(status)}`}>
       {status}
     </span>
   )
@@ -64,8 +64,8 @@ const StatusBadge = ({ status }: { status: string }) => {
 // Boolean indicator component
 const BooleanIndicator = ({ value }: { value: boolean }) => {
   return value ? 
-    <FaCheck className="text-green-500" /> : 
-    <FaTimes className="text-red-500" />
+    <FaCheck className="text-green-500 text-xs" /> : 
+    <FaTimes className="text-red-500 text-xs" />
 }
 
 // Boolean indicator component with label
@@ -73,9 +73,9 @@ const BooleanIndicatorWithLabel = ({ value, label }: { value: boolean, label: st
   return (
     <div className="flex items-center">
       {value ? 
-        <FaCheck className="text-green-500 mr-1" /> : 
-        <FaTimes className="text-red-500 mr-1" />}
-      <span className="text-xs text-gray-500">{label}</span>
+        <FaCheck className="text-green-500 mr-0.5 text-xs" /> : 
+        <FaTimes className="text-red-500 mr-0.5 text-xs" />}
+      <span className="text-[10px] text-gray-500">{label}</span>
     </div>
   );
 }
@@ -415,30 +415,30 @@ export default function ArbitrationTracker() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-white">
       {userRole === 'overlord' ? <OverlordSidebar /> : <AdvocateSidebar />}
       
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4">
         <Toaster position="top-right" />
         
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Arbitration Tracker</h1>
-          <p className="text-gray-600 mt-2">Monitor and manage all your arbitration cases</p>
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-800">Arbitration Tracker</h1>
+          <p className="text-gray-600 mt-1 text-sm">Monitor and manage all your arbitration cases</p>
         </div>
         
         {/* Action Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div className="flex items-center space-x-2">
             <button 
               onClick={handleOpenModal}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg flex items-center hover:bg-indigo-700 transition-colors"
+              className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg flex items-center hover:bg-indigo-700 transition-colors text-sm"
             >
-              <FaPlus className="mr-2" />
+              <FaPlus className="mr-1.5 text-xs" />
               New Case
             </button>
             
             <select 
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700"
+              className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -451,113 +451,107 @@ export default function ArbitrationTracker() {
           </div>
           
           <div className="relative">
-            <FaSearch className="absolute left-3 top-3 text-gray-400" />
+            <FaSearch className="absolute left-2.5 top-2.5 text-gray-400 text-xs" />
             <input
               type="text"
               placeholder="Search cases..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-64"
+              className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg w-48 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
          {/* Summary Cards */}
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <p className="text-sm text-gray-500 font-medium">Total Cases</p>
-            <p className="text-3xl font-bold text-gray-800 mt-2">{cases.length}</p>
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <p className="text-xs text-gray-500 font-medium">Total Cases</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">{cases.length}</p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <p className="text-sm text-gray-500 font-medium">In Progress</p>
-            <p className="text-3xl font-bold text-gray-800 mt-2">
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <p className="text-xs text-gray-500 font-medium">In Progress</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">
               {cases.filter(c => c.status?.toLowerCase() === 'in progress').length}
             </p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <p className="text-sm text-gray-500 font-medium">Upcoming (7 days)</p>
-            <p className="text-3xl font-bold text-gray-800 mt-2">
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <p className="text-xs text-gray-500 font-medium">Upcoming (7 days)</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">
               {cases.filter(c => {
-                // Calculate upcoming cases based on startDate
                 if (!c.startDate) return false;
-                
                 const caseDate = new Date(c.startDate);
                 const today = new Date();
                 const nextWeek = new Date();
                 nextWeek.setDate(today.getDate() + 7);
-                
                 return caseDate >= today && caseDate <= nextWeek;
               }).length}
             </p>
           </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <p className="text-sm text-gray-500 font-medium">Missing Documents</p>
-            <p className="text-3xl font-bold text-gray-800 mt-2">
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <p className="text-xs text-gray-500 font-medium">Missing Documents</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">
               {cases.filter(c => !c.vakalatnama || !c.onlineLinkLetter).length}
             </p>
           </div>
         </div>
         {/* Loading State */}
         {loading && (
-          <div className="flex justify-center items-center h-64 mt-5">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          <div className="flex justify-center items-center h-48 mt-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
         )}
         
         {/* Cases Table */}
         {!loading && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden mt-5">
+          <div className="bg-white rounded-xl shadow-md overflow-hidden mt-4">
             {filteredCases.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-gray-500">No arbitration cases found. Click "New Case" to add one.</p>
+              <div className="p-6 text-center">
+                <p className="text-gray-500 text-sm">No arbitration cases found. Click "New Case" to add one.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                          Name
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Advocate
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                          Date
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Time
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Bank 
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Meet 
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Vakalatnama
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Online Link Letter
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Team
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Email Sent
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Last Edited By
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Remarks
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -565,28 +559,28 @@ export default function ArbitrationTracker() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredCases.map((arbitrationCase, index) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                           {arbitrationCase.clientName}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {arbitrationCase.adv_name || 'Not assigned'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {arbitrationCase.type}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {arbitrationCase.startDate}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {arbitrationCase.time}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td className="px-3 py-2 whitespace-nowrap">
                           <StatusBadge status={arbitrationCase.status} />
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {arbitrationCase.bankName}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {arbitrationCase.meetLink ? (
                             <a 
                               href={arbitrationCase.meetLink} 
@@ -594,76 +588,66 @@ export default function ArbitrationTracker() {
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:text-blue-800 flex items-center"
                             >
-                              <FaLink className="mr-1" /> Join
+                              <FaLink className="mr-1 text-xs" /> Join
                             </a>
                           ) : (
                             "Not available"
                           )}
                         </td>
-                        <td className="px-20 py-4 whitespace-nowrap text-sm text-center">
+                        <td className="px-12 py-2 whitespace-nowrap text-xs text-center">
                           <BooleanIndicator value={arbitrationCase.vakalatnama} />
                         </td>
-                        <td className="px-20 py-4 whitespace-nowrap text-sm text-center">
+                        <td className="px-12 py-2 whitespace-nowrap text-xs text-center">
                           <BooleanIndicator value={arbitrationCase.onlineLinkLetter} />
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          <button
-                            className="flex items-center text-gray-600 hover:text-indigo-600"
-                            title={Array.isArray(arbitrationCase.teamEmails) 
-                              ? arbitrationCase.teamEmails.join(', ')
-                              : String(arbitrationCase.teamEmails)}
-                          >
-                            <FaEnvelope className="mr-1" /> Team
-                          </button>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs">
                           {arbitrationCase.emailSent ? (
                             <div className="text-green-600" title={`Sent by ${arbitrationCase.emailSentBy || 'Unknown'}`}>
-                              <FaCheck className="inline mr-1" /> Sent
+                              <FaCheck className="inline mr-1 text-xs" /> Sent
                             </div>
                           ) : (
                             <div className="text-gray-500">
-                              <FaTimes className="inline mr-1" /> Not sent
+                              <FaTimes className="inline mr-1 text-xs" /> Not sent
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {arbitrationCase.lastedit_by || 'Not edited yet'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex flex-col space-y-2">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex flex-col space-y-1">
                             <textarea
                               value={remarks[arbitrationCase.id] || ""}
                               onChange={(e) => handleRemarkChange(arbitrationCase.id, e.target.value)}
                               placeholder="Enter remark..."
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none"
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs resize-none"
                               rows={2}
                             />
-                            <div className="flex space-x-2">
+                            <div className="flex space-x-1">
                               <button
                                 onClick={() => handleSaveRemark(arbitrationCase.id)}
-                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors duration-200"
+                                className="px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors duration-200"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => handleViewHistory(arbitrationCase.id)}
-                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors duration-200"
+                                className="px-2 py-0.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors duration-200"
                               >
                                 History
                               </button>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <td className="px-3 py-2 whitespace-nowrap text-xs">
                           <button 
-                            className="text-indigo-600 hover:text-indigo-900 mr-3"
+                            className="text-indigo-600 hover:text-indigo-900 mr-2"
                             onClick={() => handleOpenEditModal(arbitrationCase)}
                           >
                             Edit
                           </button>
                           <button 
-                            className={`text-white px-2 py-1 rounded ${
+                            className={`text-white px-2 py-0.5 rounded text-xs ${
                               arbitrationCase.emailSent 
                                 ? 'bg-gray-400 cursor-not-allowed' 
                                 : sendingEmailFor === arbitrationCase.id
@@ -689,7 +673,7 @@ export default function ArbitrationTracker() {
                           </button>
                           {userRole === 'overlord' && (
                             <button 
-                              className="text-red-600 hover:text-red-900 ml-3"
+                              className="text-red-600 hover:text-red-900 ml-2 text-xs"
                               onClick={() => handleDeleteCase(arbitrationCase.id)}
                             >
                               Delete
@@ -724,33 +708,33 @@ export default function ArbitrationTracker() {
       />
 
       {isHistoryModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl animate-fadeIn shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Remark History</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+          <div className="bg-white rounded-xl p-4 w-full max-w-xl animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Remark History</h2>
               <button 
                 onClick={() => setIsHistoryModalOpen(false)}
-                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
+                className="rounded-full h-6 w-6 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800"
               >
                 ✕
               </button>
             </div>
             
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
               {selectedCaseHistory.map((history, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-purple-600 font-medium">{history.advocateName}</span>
-                    <span className="text-gray-500 text-sm">
+                <div key={index} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="text-purple-600 font-medium text-xs">{history.advocateName}</span>
+                    <span className="text-gray-500 text-[10px]">
                       {history.timestamp?.toDate?.()?.toLocaleString('en-IN') || 'Unknown date'}
                     </span>
                   </div>
-                  <p className="text-gray-700">{history.remark}</p>
+                  <p className="text-gray-700 text-xs">{history.remark}</p>
                 </div>
               ))}
               
               {selectedCaseHistory.length === 0 && (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-500 py-6 text-sm">
                   No remarks history available
                 </div>
               )}
