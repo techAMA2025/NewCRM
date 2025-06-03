@@ -59,6 +59,24 @@ const EditClientModal = ({
   // Handle field changes
   const handleFieldChange = (field: keyof Lead, value: any) => {
     console.log(`Updating field: ${field} with value:`, value); // Debug logging
+    
+    // Special handling for name field - capitalize first letter of each word
+    if (field === 'name') {
+      value = value
+        .toLowerCase()
+        .split(' ')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    
+    // Special handling for phone field - only allow numbers and max 10 digits
+    if (field === 'phone') {
+      // Remove any non-numeric characters
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Take only first 10 digits
+      value = numericValue.slice(0, 10);
+    }
+
     setLead(prevLead => ({
       ...prevLead,
       [field]: value
@@ -718,11 +736,24 @@ const InputField = ({ id, label, value, onChange, type = 'text', required = fals
                          id.includes('Fees') || 
                          id.includes('Amount');
   
+  // Special handling for phone input
+  const inputProps = id === 'phone' ? {
+    maxLength: 10,
+    pattern: '[0-9]*',
+    inputMode: 'numeric' as const,
+    onKeyPress: (e: React.KeyboardEvent) => {
+      // Allow only numeric input for phone
+      if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+      }
+    }
+  } : {};
+  
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-gray-400">{label}</label>
       <input
-        type={type}
+        type={id === 'phone' ? 'tel' : type}
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -730,9 +761,13 @@ const InputField = ({ id, label, value, onChange, type = 'text', required = fals
         required={required}
         placeholder={placeholder}
         disabled={disabled}
+        {...inputProps}
       />
       {isNumericField && (
         <p className="mt-1 text-xs text-amber-400">Please enter numbers only (no commas)</p>
+      )}
+      {id === 'phone' && (
+        <p className="mt-1 text-xs text-amber-400">Enter exactly 10 digits</p>
       )}
     </div>
   )

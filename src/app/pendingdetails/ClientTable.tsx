@@ -19,28 +19,22 @@ const ClientTable = ({ leads, clientRecordExists, onViewLead, onEditLead }: Clie
   return (
     <div className="mt-6 bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
       <div className="overflow-x-auto">
-        <table className="min-w-[1400px] divide-y divide-gray-700" role="table" aria-label="Qualified leads table">
+        <table className="w-full divide-y divide-gray-700" role="table" aria-label="Qualified leads table">
           <thead className="bg-gray-800">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]" scope="col">
-                <span className="text-blue-400">Status</span>
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%]" scope="col">
+              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%]" scope="col">
                 <span className="text-blue-400">Date</span>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]" scope="col">
+              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]" scope="col">
                 <span className="text-blue-400">Contact Information</span>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]" scope="col">
-                <span className="text-blue-400">Location</span>
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[6%]" scope="col">
+              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[6%]" scope="col">
                 <span className="text-blue-400">Source</span>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]" scope="col">
+              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]" scope="col">
                 <span className="text-blue-400">Financial Details</span>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]" scope="col">
+              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]" scope="col">
                 <span className="text-blue-400">Action</span>
               </th>
             </tr>

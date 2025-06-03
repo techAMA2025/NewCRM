@@ -116,27 +116,6 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
       role="row"
     >
       {/* Status Column */}
-      <td className="px-4 py-3 text-sm">
-        {hasClientRecord ? (
-          <div className="flex items-center">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              <svg className="-ml-0.5 mr-1.5 h-2 w-2 text-green-400" fill="currentColor" viewBox="0 0 8 8">
-                <circle cx="4" cy="4" r="3" />
-              </svg>
-              Complete
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-              <svg className="-ml-0.5 mr-1.5 h-2 w-2 text-gray-400" fill="currentColor" viewBox="0 0 8 8">
-                <circle cx="4" cy="4" r="3" />
-              </svg>
-              Pending
-            </span>
-          </div>
-        )}
-      </td>
       
       {/* Date */}
       <td className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap">
@@ -162,14 +141,6 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
         </div>
       </td>
       
-      {/* Location */}
-      <td className="px-4 py-3 text-sm text-gray-300">
-        <div className="flex items-center">
-          <FaMapMarkerAlt className="h-3 w-3 text-gray-500 mr-1" />
-          <span>{lead.city || lead.City || 'N/A'}</span>
-        </div>
-      </td>
-      
       {/* Source */}
       <td className="py-3 text-xs">
         <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium
@@ -178,8 +149,8 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
               lead.source_database === 'ama' ? 'bg-amber-900 text-amber-100 border border-amber-700' : 
                 'bg-gray-800 text-gray-200 border border-gray-700'}`}
           >
-          {lead.source_database === 'credsettlee' ? 'Cred Settle' : 
-            lead.source_database === 'settleloans' ? 'Settle Loans' : 
+          {lead.source_database === 'credsettlee' ? 'CS' : 
+            lead.source_database === 'settleloans' ? 'SL' : 
               lead.source_database === 'ama' ? 'AMA' : 'N/A'}
         </span>
       </td>
