@@ -66,7 +66,7 @@ export default function PendingLettersPage() {
               Clients Pending Letters
             </h1>
             <div className="px-4 py-1 rounded-full bg-indigo-900/30 border border-indigo-700/50 text-indigo-300">
-              {clients.length} Pending Requests
+              {clients.length} Pending Letters
             </div>
           </div>
           
@@ -113,7 +113,6 @@ export default function PendingLettersPage() {
                 <thead>
                   <tr className="bg-gray-800/70">
                     <th scope="col" className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-400 uppercase">Client</th>
-                    <th scope="col" className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-400 uppercase">Lead ID</th>
                     <th scope="col" className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-400 uppercase">Advocate</th>
                     <th scope="col" className="px-6 py-4 text-xs font-medium tracking-wider text-left text-gray-400 uppercase">Dues</th>
                   </tr>
@@ -124,7 +123,7 @@ export default function PendingLettersPage() {
                       key={client.id} 
                       className={`hover:bg-gray-700/30 transition-colors duration-200 ${index % 2 === 0 ? 'bg-gray-800/20' : 'bg-gray-800/40'}`}
                     >
-                      <td className="px-6 py-5 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center">
                             <span className="text-white font-bold">{client.name.charAt(0)}</span>
@@ -142,12 +141,6 @@ export default function PendingLettersPage() {
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-900/40 text-blue-300 border border-blue-700/30">
-                          <FiTag className="mr-1 text-blue-400" />
-                          {client.leadId}
                         </div>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap">
