@@ -9,19 +9,18 @@ type LeadsHeaderProps = {
 
 const LeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV }: LeadsHeaderProps) => {
   return (
-    <div className="bg-gray-900 px-6 py-4 rounded-xl border border-gray-700 shadow-lg mb-6">
+    <div className="bg-gray-900 px-6 py-2 rounded-xl border border-gray-700 shadow-lg mb-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Here are all the leads</h1>
+          <h1 className="text-xl font-bold text-white">Here are all the leads</h1>
 
         </div>
-        <div className="mt-4 md:mt-0 flex items-center space-x-3">
+        <div className="mt-2 md:mt-0 flex items-center space-x-3">
           {userRole === 'admin' || userRole === 'overlord' && (
             <button
               onClick={exportToCSV}
               className="inline-flex items-center px-4 py-2 border border-gray-700 rounded-md shadow-sm text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <FaFileExport className="mr-2 h-4 w-4" />
               Export CSV
             </button>
           )}
@@ -43,7 +42,7 @@ const LeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV }: LeadsHea
         </div>
       )}
       {!isLoading && currentUser && (
-        <div className="mt-4 bg-gray-800 px-4 py-2 rounded-lg border border-gray-700">
+        <div className="mt-2 bg-gray-800 px-4 py-2 rounded-lg border border-gray-700">
           <div className="flex items-center text-xs text-gray-400">
             <div className="font-medium">
               <span className="text-gray-300">Logged in as:</span>{' '}

@@ -128,9 +128,9 @@ const LeadsFilters = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2s">
       {/* Search bar implementation */}
-      <div className="mb-2">
+      <div className="">
         <div className="relative rounded-md shadow-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -139,7 +139,7 @@ const LeadsFilters = ({
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-10 py-3 border border-gray-700 bg-gray-800 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="block w-full pl-10 pr-10 py-2 border border-gray-700 bg-gray-800 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-xs"
             placeholder="Search by name, email, or phone number..."
             value={searchInput}
             onChange={handleSearchInputChange}
@@ -178,7 +178,7 @@ const LeadsFilters = ({
       </div>
       
       {/* Filters section with improved layout */}
-      <div className="bg-gray-850 rounded-lg p-4">
+      <div className="bg-gray-850 rounded-lg p-2">
         <div className="flex items-center mb-3">
           <FaFilter className="text-gray-400 mr-2" />
           <span className="text-sm font-medium text-gray-300">Filters</span>

@@ -54,11 +54,11 @@ const SalespersonCell = ({
   }, [crmDb]);
 
   return (
-    <td className="px-4 py-3 text-sm">
+    <td className="px-2 py-1 text-xs">
       <div className="flex flex-col space-y-2">
         {lead.assignedTo ? (
           <div className="flex items-center">
-            <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full border shadow-sm font-medium text-xs text-center ${getSalespersonBadge(lead.assignedTo).color}`}>
+            <div className={`inline-flex items-center justify-center h-4 w-4 rounded-full border shadow-sm font-medium text-xs text-center ${getSalespersonBadge(lead.assignedTo).color}`}>
               {getSalespersonBadge(lead.assignedTo).initials}
             </div>
             <span className="ml-2 text-xs text-gray-300 truncate">{lead.assignedTo}</span>
@@ -86,7 +86,7 @@ const SalespersonCell = ({
               }}
             >
               <option value="">
-                {loading ? 'Loading sales team...' : `Assign to... (${salesTeamMembers?.length || 0})`}
+                {loading ? 'Loading sales team...' : `Unassigned`}
               </option>
               {salesTeamMembers && salesTeamMembers.length > 0 ? (
                 salesTeamMembers.map(member => (

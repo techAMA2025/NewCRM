@@ -113,8 +113,8 @@ const LeadRow = ({
 
   // Source display name mapping
   const sourceDisplay = {
-    'credsettlee': 'CredSettle',
-    'settleloans': 'SettleLoans',
+    'credsettlee': 'CS',
+    'settleloans': 'SL',
     'ama': 'AMA'
   }[source.toLowerCase() as 'credsettlee' | 'settleloans' | 'ama'] || source;
 
@@ -178,34 +178,33 @@ const LeadRow = ({
 
   return (
     <tr className="hover:bg-gray-800 transition-colors duration-150" role="row">
-      {/* Date & Time - two lines */}
-      <td className="px-4 py-3 whitespace-nowrap">
+      {/* Date & Time - more compact */}
+      <td className="px-1 py-0.5 whitespace-nowrap">
         <div className="flex flex-col">
-          <span className="text-sm font-medium text-white">{date}</span>
-          <span className="text-xs text-gray-400">{time}</span>
+          <span className="text-[11px] font-medium text-white">{date}</span>
+          <span className="text-[10px] text-gray-400">{time}</span>
         </div>
       </td>
       
-      {/* Contact Information - Grouped */}
-      <td className="px-4 py-3">  
-        <div className="flex flex-col space-y-1">
-          <div className="font-medium text-white flex items-center text-lg">
+      {/* Contact Information - More Compact */}
+      <td className="px-1 max-w-[200px]">  
+        <div className="flex flex-col gap-0.5">
+          <div className="font-medium text-white flex items-center text-[16px]">
             {name}
             {lead.convertedToClient && (
-              <span className="ml-2 text-green-400" title="Converted to client">
-                <BsCheckCircleFill />
+              <span className="ml-1 text-green-400" title="Converted to client">
+                <BsCheckCircleFill size={10} />
               </span>
             )}
           </div>
-          <div className="flex items-center text-xs">
-            <FaEnvelope className="h-3 w-3 text-gray-500 mr-1" />
-            <a href={`mailto:${email}`} className="text-blue-400 hover:underline text-lg">
+          <div className="flex items-center text-[10px]">
+            <a href={`mailto:${email}`} className="text-blue-400 hover:underline truncate max-w-[180px]">
               {email}
             </a>
           </div>
-          <div className="flex items-center text-lg">
-            <FaPhone className="h-3 w-3 text-gray-500 mr-1" />
-            <a href={`tel:${phone}`} className="text-red-400 hover:underline font-medium">
+          <div className="flex items-center">
+            <FaPhone className="h-2.5 w-2.5 text-gray-500 mr-1" />
+            <a href={`tel:${phone}`} className="text-red-400 hover:underline font-medium text-[16px]">
               {formatPhoneNumber(phone)}
             </a>
           </div>
@@ -213,23 +212,22 @@ const LeadRow = ({
       </td>
       
       {/* Location */}
-      <td className="px-4 py-3 text-lg text-gray-300">
-        <div className="flex items-center">
-          <FaMapMarkerAlt className="h-3 w-3 text-gray-500 mr-1" />
+      <td className="px-1 py-0.5 text-[11px] text-gray-300 max-w-[100px]">
+        <div className="flex items-center truncate">
           <span>{location}</span>
         </div>
       </td>
       
       {/* Source */}
-      <td className="py-3 text-sm">
-        <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${sourceColorClass}`}>
+      <td className="py-0.5 text-[10px]">
+        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${sourceColorClass}`}>
           {sourceDisplay}
         </span>
       </td>
       
-      {/* Financial Details - Grouped */}
-      <td className="px-4 py-3 text-lg">
-        <div className="space-y-1.5">
+      {/* Financial Details - More Compact */}
+      <td className="px-1 py-0.5 text-[11px]">
+        <div className="space-y-1">
           <div>
             <span className="font-medium text-gray-400">PL:</span> 
             <span className={getFinancialColor('pl')}>
@@ -243,7 +241,7 @@ const LeadRow = ({
             </span>
           </div>
           <div>
-            <span className="font-medium text-gray-400">Income:</span> 
+            <span className="font-medium text-gray-400">Inc:</span> 
             <span className={getFinancialColor('income')}>
               {formattedIncome}
             </span>
@@ -263,9 +261,9 @@ const LeadRow = ({
         crmDb={crmDb} 
       />
       
-      {/* Customer Query */}
-      <td className="px-4 py-3 text-sm text-gray-400">
-        <div className="break-words whitespace-pre-wrap">
+      {/* Customer Query - More Compact */}
+      <td className="px-1 py-0.5 text-[11px] text-gray-400 max-w-[200px]">
+        <div className="break-words whitespace-pre-wrap line-clamp-2">
           {customerQuery}
         </div>
       </td>
@@ -278,9 +276,9 @@ const LeadRow = ({
         user={user}
       />
       
-      {/* Add Delete Button Cell - only visible for admin/overlord */}
+      {/* Delete Button Cell - Compact */}
       {(userRole === 'admin' || userRole === 'overlord') && (
-        <td className="px-4 py-3 text-sm">
+        <td className="px-1 py-0.5 text-[11px]">
           <button
             onClick={() => {
               if (window.confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
@@ -290,7 +288,7 @@ const LeadRow = ({
             className="text-red-500 hover:text-red-400 transition-colors duration-150"
             title="Delete Lead"
           >
-            <FaTrash />
+            <FaTrash size={12} />
           </button>
         </td>
       )}

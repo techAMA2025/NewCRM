@@ -775,12 +775,12 @@ const LeadsPage = () => {
   }, [userRole]);
 
   return (
-    <div className="flex h-screen bg-gray-950 text-white w-full">
+    <div className="flex h-screen bg-gray-950 text-white w-full text-sm">
       {/* Sidebar based on user role */}
       {SidebarComponent && <SidebarComponent />}
       
-      <div className="flex-1 overflow-auto px-5">
-        <div className="w-[95%] mx-auto">
+      <div className="flex-1 overflow-auto px-3">
+        <div className="w-[98%] mx-auto">
           {/* Toast Container with improved visibility */}
           <ToastContainer
             position="top-right"
@@ -793,7 +793,7 @@ const LeadsPage = () => {
             draggable
             pauseOnHover
             theme="dark"
-            toastClassName="bg-gray-800 text-white"
+            toastClassName="bg-gray-800 text-white text-sm"
           />
           
           {/* Header with title and actions */}
@@ -829,14 +829,14 @@ const LeadsPage = () => {
           
           {/* Debug info - only show in development */}
           {process.env.NODE_ENV === 'development' && debugInfo && (
-            <div className="bg-gray-800 text-gray-300 p-2 mb-4 text-xs rounded-md border border-gray-700">
+            <div className="bg-gray-800 text-gray-300 p-1.5 mb-3 text-xs rounded-md border border-gray-700">
               <strong>Debug:</strong> {debugInfo}
             </div>
           )}
           
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="flex justify-center items-center h-48">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           ) : (
             <>
@@ -861,14 +861,14 @@ const LeadsPage = () => {
               
               {/* Empty state message */}
               {!isLoading && leads.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="mx-auto h-24 w-24 text-gray-400">
+                <div className="text-center py-8">
+                  <div className="mx-auto h-16 w-16 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-300">No leads found</h3>
-                  <p className="mt-2 text-sm text-gray-400">
+                  <h3 className="mt-3 text-base font-medium text-gray-300">No leads found</h3>
+                  <p className="mt-1.5 text-xs text-gray-400">
                     There are no leads in the system yet. Start by adding leads or syncing with external sources.
                   </p>
                 </div>

@@ -1,6 +1,6 @@
 import { FaSort } from 'react-icons/fa';
 import LeadRow from './LeadRow';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 type LeadsTableProps = {
   filteredLeads: any[];
@@ -37,35 +37,16 @@ const LeadsTable = ({
   user,
   deleteLead,
 }: LeadsTableProps) => {
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [tableHeight, setTableHeight] = useState(500); // Default height
-
-  // Update table height based on viewport
-  useEffect(() => {
-    const updateHeight = () => {
-      if (tableContainerRef.current) {
-        const viewportHeight = window.innerHeight;
-        const tableTop = tableContainerRef.current.getBoundingClientRect().top;
-        const newHeight = viewportHeight - tableTop - 40; // 40px padding
-        setTableHeight(Math.max(400, newHeight)); // Min height of 400px
-      }
-    };
-
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
-
   const renderTableHeader = () => (
     <thead className="bg-gray-800 text-xs uppercase font-medium sticky top-0 z-10">
       <tr>
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%] cursor-pointer"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%] cursor-pointer"
           onClick={() => requestSort('name')}
           scope="col"
         >
           <div className="flex items-center">
-            <span className="text-blue-400">Date & Time</span>
+            <span className="text-blue-400">Date</span>
             {sortConfig?.key === 'name' && (
               <FaSort className="ml-1" />
             )}
@@ -73,14 +54,14 @@ const LeadsTable = ({
         </th>
         
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
         >
           <span className="text-blue-400">Name</span>
         </th>
         
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%] cursor-pointer"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%] cursor-pointer"
           onClick={() => requestSort('source_database')}
           scope="col"
         >
@@ -93,41 +74,41 @@ const LeadsTable = ({
         </th>
         
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]"
+          className="px-1 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
         >
           <span className="text-blue-400">Source</span>
         </th>
         
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[10%]"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
         >
           <span className="text-blue-400">Financials</span>
         </th>
         
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
         >
           <span className="text-blue-400">Status</span>
         </th>
         
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
         >
           <span className="text-blue-400">Assigned To</span>
         </th>
         
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
         >
           <span className="text-blue-400">Customer Query</span>
         </th>
         <th 
-          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]"
+          className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
         >
           <span className="text-blue-400">Sales Notes</span>
@@ -135,7 +116,7 @@ const LeadsTable = ({
         
         {(userRole === 'admin' || userRole === 'overlord') && (
           <th 
-            className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[5%]"
+            className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
             scope="col"
           >
             <span className="text-red-400">Delete</span>
@@ -178,18 +159,12 @@ const LeadsTable = ({
 
   return (
     <div className="bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
-      <div 
-        ref={tableContainerRef} 
-        className="overflow-auto"
-        style={{ height: tableHeight }}
-      >
-        <table className="w-full divide-y divide-gray-700" role="table" aria-label="Leads table">
-          {renderTableHeader()}
-          <tbody className="bg-gray-900 divide-y divide-gray-800">
-            {renderTableBody()}
-          </tbody>
-        </table>
-      </div>
+      <table className="w-full divide-y divide-gray-700" role="table" aria-label="Leads table">
+        {renderTableHeader()}
+        <tbody className="bg-gray-900 divide-y divide-gray-800">
+          {renderTableBody()}
+        </tbody>
+      </table>
     </div>
   );
 };
