@@ -54,11 +54,11 @@ const SalespersonCell = ({
   }, [crmDb]);
 
   return (
-    <td className="px-2 py-1 text-xs">
+    <td className="px-4 py-3 text-sm">
       <div className="flex flex-col space-y-2">
         {lead.assignedTo ? (
           <div className="flex items-center">
-            <div className={`inline-flex items-center justify-center h-4 w-4 rounded-full border shadow-sm font-medium text-xs text-center ${getSalespersonBadge(lead.assignedTo).color}`}>
+            <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full border shadow-sm font-medium text-xs text-center ${getSalespersonBadge(lead.assignedTo).color}`}>
               {getSalespersonBadge(lead.assignedTo).initials}
             </div>
             <span className="ml-2 text-xs text-gray-300 truncate">{lead.assignedTo}</span>
@@ -74,14 +74,19 @@ const SalespersonCell = ({
           <div className="mt-1">
             <select
               className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              value=""
+              value={salesTeamMembers.find(member => 
+                member.name === lead.assignedTo || 
+                member.email === lead.assignedTo
+              ) ? `${salesTeamMembers.find(member => 
+                member.name === lead.assignedTo || 
+                member.email === lead.assignedTo
+              ).id}|${lead.assignedTo}` : ""}
               onChange={(e) => {
                 if (e.target.value) {
                   const selected = e.target.value.split('|');
                   const salesPersonId = selected[0];
                   const salesPersonName = selected[1];
                   assignLeadToSalesperson(lead.id, salesPersonName, salesPersonId);
-                  e.target.value = ''; // Reset after selection
                 }
               }}
             >
