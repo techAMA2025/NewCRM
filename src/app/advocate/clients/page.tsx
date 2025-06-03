@@ -985,6 +985,27 @@ function LegalNoticeForm({ client, onClose }: { client: Client; onClose: () => v
   )
 }
 
+function isNewClient(startDate: any): boolean {
+  if (!startDate) return false
+
+  let dateObj: Date
+  if (startDate.toDate && typeof startDate.toDate === "function") {
+    dateObj = startDate.toDate()
+  } else if (typeof startDate === "string") {
+    dateObj = new Date(startDate)
+  } else if (startDate instanceof Date) {
+    dateObj = startDate
+  } else {
+    return false
+  }
+
+  if (isNaN(dateObj.getTime())) return false
+
+  const now = new Date()
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  return dateObj >= oneWeekAgo
+}
+
 // Create a client component for the filtered list
 function ClientsList() {
   const [clients, setClients] = useState<Client[]>([])
@@ -1604,7 +1625,14 @@ function ClientsList() {
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-gray-200">
-                        {client.name}
+                        <div className="flex items-center">
+                          {client.name}
+                          {isNewClient(client.startDate) && (
+                            <span className="ml-2 px-2 py-0.5 bg-green-900/60 text-green-300 rounded-full text-xs font-medium animate-pulse">
+                              New
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm mb-2">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
