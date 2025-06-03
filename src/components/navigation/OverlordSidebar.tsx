@@ -18,11 +18,14 @@ const NavItem: React.FC<NavItemProps> = ({ href, icon, label, isActive }) => {
   return (
     <Link
       href={href}
-      className={`flex items-center px-4 py-3 mb-2 rounded-lg transition-all duration-200 group hover:bg-indigo-700 ${
+      className={`flex items-center px-2 py-2 mb-2 rounded-lg transition-all duration-200 group hover:bg-indigo-700 ${
         isActive ? 'bg-indigo-700 text-white' : 'text-gray-300 hover:text-white'
       }`}
+      style={{
+        fontSize: '12px',
+      }}
     >
-      <div className={`mr-3 text-xl transition-all duration-200 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
+      <div className={`mr-3 text-md transition-all duration-200 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
         {icon}
       </div>
       <span className="font-medium">{label}</span>
@@ -80,12 +83,12 @@ const OverlordSidebar: React.FC = () => {
   return (
     <div className="relative min-h-screen flex flex-col transition-all duration-300 bg-gray-900 shadow-xl"
          style={{ 
-           width: expanded ? '260px' : '80px',
+           width: expanded ? '250px' : '80px',
            transform: 'scale(1)',
            transformOrigin: 'left top'
          }}>
       <div className="sticky top-0 z-10 bg-gray-900">
-        <div className="flex items-center justify-between px-4 py-5">
+        <div className="flex items-center justify-between px-2 py-5">
           {expanded ? (
             <div className="flex items-center">
               <div className="p-2 mr-2 bg-indigo-600 rounded-lg">
@@ -125,7 +128,7 @@ const OverlordSidebar: React.FC = () => {
         <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
       </div>
       
-      <div className="flex-1 overflow-y-auto px-3 py-4">
+      <div className="flex-1 overflow-y-auto px-2 py-4">
         <nav>
           {navItems.map((item) => (
             <NavItem
@@ -145,7 +148,7 @@ const OverlordSidebar: React.FC = () => {
           onClick={handleLogout}
           className="flex items-center w-full px-4 py-3 text-gray-300 transition-all duration-200 rounded-lg hover:bg-red-700 hover:text-white"
         >
-          <FiLogOut className="mr-3 text-xl" />
+          <FiLogOut className="mr-3 text-md" />
           {expanded && <span className="font-medium">Logout</span>}
         </button>
       </div>
