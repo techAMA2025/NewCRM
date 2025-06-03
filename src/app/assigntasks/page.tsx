@@ -236,31 +236,31 @@ export default function AssignTasks() {
     <div className="flex bg-gray-900 min-h-screen">
       {userRole === "overlord" ? <OverlordSidebar /> : <AdvocateSidebar />}
       
-      <div className="flex-1 flex flex-col md:flex-row p-4 gap-8">
+      <div className="flex-1 flex flex-col md:flex-row p-3 gap-6">
         {/* Task Form - Left Side */}
         <div className="md:w-1/3">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h1 className="text-2xl font-bold mb-6 text-white">Assign New Task</h1>
+          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+            <h1 className="text-xl font-bold mb-5 text-white">Assign New Task</h1>
             
             {error && (
-              <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-4">
+              <div className="bg-red-900 border border-red-700 text-red-100 px-3 py-2 rounded mb-3 text-sm">
                 {error}
               </div>
             )}
             
             {!isOverlord && (
-              <div className="bg-yellow-900 border border-yellow-700 text-yellow-100 px-4 py-3 rounded mb-4">
+              <div className="bg-yellow-900 border border-yellow-700 text-yellow-100 px-3 py-2 rounded mb-3 text-sm">
                 Only Overlords can create tasks.
               </div>
             )}
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block mb-2 text-gray-300">Assign To:</label>
+                <label className="block mb-1.5 text-gray-300 text-sm">Assign To:</label>
                 <select
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
-                  className={`w-full p-2 border rounded bg-gray-700 border-gray-600 text-white ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
                   disabled={!isOverlord}
                 >
                   <option value="">Select a user</option>
@@ -273,23 +273,23 @@ export default function AssignTasks() {
               </div>
               
               <div>
-                <label className="block mb-2 text-gray-300">Task Title:</label>
+                <label className="block mb-1.5 text-gray-300 text-sm">Task Title:</label>
                 <input
                   type="text"
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
-                  className={`w-full p-2 border rounded bg-gray-700 border-gray-600 text-white ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
                   placeholder="Enter task title"
                   disabled={!isOverlord}
                 />
               </div>
               
               <div>
-                <label className="block mb-2 text-gray-300">Task Description:</label>
+                <label className="block mb-1.5 text-gray-300 text-sm">Task Description:</label>
                 <textarea
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
-                  className={`w-full p-2 border rounded h-32 bg-gray-700 border-gray-600 text-white ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`w-full p-1.5 border rounded h-28 bg-gray-700 border-gray-600 text-white text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
                   placeholder="Enter task details"
                   disabled={!isOverlord}
                 />
@@ -297,7 +297,7 @@ export default function AssignTasks() {
               
               <button
                 type="submit"
-                className={`bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 w-full ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`bg-indigo-600 text-white py-1.5 px-3 rounded hover:bg-indigo-700 w-full text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
                 disabled={!isOverlord}
               >
                 Assign Task
@@ -308,31 +308,31 @@ export default function AssignTasks() {
         
         {/* Task List - Right Side */}
         <div className="md:w-2/3">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h1 className="text-2xl font-bold mb-6 text-white">Assigned Tasks</h1>
+          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+            <h1 className="text-xl font-bold mb-5 text-white">Assigned Tasks</h1>
             
             {/* Add search and filter section */}
-            <div className="mb-6 space-y-4">
+            <div className="mb-5 space-y-3">
               {/* Search bar */}
               <div>
-                <label className="block mb-2 text-sm text-gray-300">Search Tasks</label>
+                <label className="block mb-1.5 text-sm text-gray-300">Search Tasks</label>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by title or description"
-                  className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                  className="w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm"
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Status filter */}
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300">Status</label>
+                  <label className="block mb-1.5 text-sm text-gray-300">Status</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                    className="w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm"
                   >
                     <option value="all">All Statuses</option>
                     <option value="not completed">Not Completed</option>
@@ -343,11 +343,11 @@ export default function AssignTasks() {
                 
                 {/* Assignee filter */}
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300">Assigned To</label>
+                  <label className="block mb-1.5 text-sm text-gray-300">Assigned To</label>
                   <select
                     value={assigneeFilter}
                     onChange={(e) => setAssigneeFilter(e.target.value)}
-                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                    className="w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm"
                   >
                     <option value="">All Users</option>
                     {users.map((user) => (
@@ -360,23 +360,23 @@ export default function AssignTasks() {
                 
                 {/* Date filter - start */}
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300">From Date</label>
+                  <label className="block mb-1.5 text-sm text-gray-300">From Date</label>
                   <input
                     type="date"
                     value={dateFilterStart}
                     onChange={(e) => setDateFilterStart(e.target.value)}
-                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                    className="w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm"
                   />
                 </div>
                 
                 {/* Date filter - end */}
                 <div>
-                  <label className="block mb-2 text-sm text-gray-300">To Date</label>
+                  <label className="block mb-1.5 text-sm text-gray-300">To Date</label>
                   <input
                     type="date"
                     value={dateFilterEnd}
                     onChange={(e) => setDateFilterEnd(e.target.value)}
-                    className="w-full p-2 border rounded bg-gray-700 border-gray-600 text-white"
+                    className="w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm"
                   />
                 </div>
               </div>
@@ -385,7 +385,7 @@ export default function AssignTasks() {
               <div className="flex justify-end">
                 <button 
                   onClick={resetFilters}
-                  className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
+                  className="px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm"
                 >
                   Reset Filters
                 </button>
@@ -393,24 +393,24 @@ export default function AssignTasks() {
             </div>
             
             {/* Results count */}
-            <div className="mb-4 text-gray-400 text-sm">
+            <div className="mb-3 text-gray-400 text-xs">
               Showing {filteredTasks.length} of {tasks.length} tasks
             </div>
             
             {filteredTasks.length === 0 ? (
-              <div className="text-gray-400 text-center py-8">
+              <div className="text-gray-400 text-center py-6 text-sm">
                 {tasks.length > 0 
                   ? "No tasks match your search criteria."
                   : "No tasks have been assigned yet."}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {filteredTasks.map((task) => (
-                  <div key={task.id} className="border border-gray-700 rounded-lg p-4 bg-gray-750">
+                  <div key={task.id} className="border border-gray-700 rounded-lg p-3 bg-gray-750">
                     <div className="flex justify-between items-start">
-                      <h3 className="text-lg font-semibold text-white">{task.title}</h3>
+                      <h3 className="text-base font-semibold text-white">{task.title}</h3>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${
                           task.status === 'completed' 
                             ? 'bg-green-900 text-green-200' 
                             : task.status === 'partially-completed'
@@ -425,7 +425,7 @@ export default function AssignTasks() {
                             className="text-red-400 hover:text-red-300 transition-colors"
                             title="Delete Task"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M3 6h18"></path>
                               <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                               <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -435,23 +435,23 @@ export default function AssignTasks() {
                       </div>
                     </div>
                     
-                    <p className="mt-2 text-gray-300 whitespace-pre-wrap">{task.description}</p>
+                    <p className="mt-2 text-gray-300 whitespace-pre-wrap text-sm">{task.description}</p>
                     
                     {/* Display feedback if task is completed or partially completed and has feedback */}
                     {(task.status === 'completed' || task.status === 'partially-completed') && task.feedback && (
-                      <div className={`mt-3 bg-gray-700 p-3 rounded border-l-2 ${
+                      <div className={`mt-2 bg-gray-700 p-2 rounded border-l-2 ${
                         task.status === 'completed' ? 'border-green-500' : 'border-yellow-500'
                       }`}>
-                        <h4 className={`text-sm ${
+                        <h4 className={`text-xs ${
                           task.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
                         } font-medium mb-1`}>
                           {task.status === 'completed' ? 'Completion Feedback:' : 'Partial Completion Feedback:'}
                         </h4>
-                        <p className="text-sm text-gray-300">{task.feedback}</p>
+                        <p className="text-xs text-gray-300">{task.feedback}</p>
                       </div>
                     )}
                     
-                    <div className="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400">
+                    <div className="mt-3 pt-3 border-t border-gray-700 text-xs text-gray-400">
                       <div className="flex justify-between">
                         <span>Assigned to: <span className="text-indigo-400">{task.assigneeName}</span></span>
                         <span>By: {task.assignedBy}</span>
@@ -459,7 +459,7 @@ export default function AssignTasks() {
                       <div className="mt-1">
                         Created: {formatDate(task.createdAt)}
                         {task.completedAt && (
-                          <span className="ml-3">
+                          <span className="ml-2">
                             {task.status === 'completed' ? 'Completed' : 'Partially Completed'}: 
                             {formatDate(task.completedAt)}
                           </span>
@@ -476,25 +476,25 @@ export default function AssignTasks() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && taskToDelete && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-white mb-4">Delete Task</h3>
-            <p className="text-gray-300 mb-6">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+          <div className="bg-gray-800 rounded-lg p-5 max-w-md w-full">
+            <h3 className="text-lg font-bold text-white mb-3">Delete Task</h3>
+            <p className="text-gray-300 mb-5 text-sm">
               Are you sure you want to delete the task "<span className="font-semibold">{taskToDelete.title}</span>"? 
               This action cannot be undone.
             </p>
             
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600"
+                className="flex-1 px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
               >
                 {isDeleting ? 'Deleting...' : 'Delete Task'}
               </button>

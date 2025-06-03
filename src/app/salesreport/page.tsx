@@ -421,34 +421,34 @@ export default function SalesReport() {
       {userRole === 'billcut' ? <BillcutSidebar /> : <OverlordSidebar />}
       <div className="flex-1">
         <div>
-          <div className="mb-4 p-4 relative">
-            <div className="flex items-center gap-3 mb-2">
-              <ChartBarIcon className="h-8 w-8 text-indigo-500" />
-              <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
+          <div className="mb-3 p-3 relative">
+            <div className="flex items-center gap-2 mb-2">
+              <ChartBarIcon className="h-7 w-7 text-indigo-500" />
+              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
                 Sales Team Report
               </h1>
             </div>
-            <p className="mt-2 text-lg text-gray-600">
+            <p className="mt-1.5 text-base text-gray-600">
               Track and analyze your team's performance across different lead sources and statuses
             </p>
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100 rounded-full filter blur-3xl opacity-20 -z-10"></div>
+            <div className="absolute top-0 right-0 w-56 h-56 bg-blue-100 rounded-full filter blur-3xl opacity-20 -z-10"></div>
           </div>
 
           {/* Summary Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 px-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1.5 mb-3 px-1.5">
             {/* Total Leads Card */}
-            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+              <div className="absolute top-0 right-0 w-28 h-28 bg-teal-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Total Leads</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{summaryMetrics.totalLeads}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">{summaryMetrics.totalLeads}</h3>
                 </div>
-                <div className="bg-teal-100 p-3 rounded-2xl">
-                  <UserGroupIcon className="h-6 w-6 text-teal-600" />
+                <div className="bg-teal-100 p-2.5 rounded-xl">
+                  <UserGroupIcon className="h-5 w-5 text-teal-600" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm">
+              <div className="mt-3 flex items-center text-sm">
                 <span className="flex items-center text-teal-600">
                   <span className="font-medium">Active Pipeline</span>
                 </span>
@@ -456,20 +456,20 @@ export default function SalesReport() {
             </div>
 
             {/* Conversion Rate Card */}
-            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+              <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Conversion Rate</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">
+                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">
                     {summaryMetrics.conversionRate.toFixed(1)}%
                   </h3>
                 </div>
-                <div className="bg-emerald-100 p-3 rounded-2xl">
-                  <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
+                <div className="bg-emerald-100 p-2.5 rounded-xl">
+                  <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm">
+              <div className="mt-3 flex items-center text-sm">
                 <span className="flex items-center text-emerald-600">
                   <span className="font-medium">Success Rate</span>
                 </span>
@@ -477,18 +477,18 @@ export default function SalesReport() {
             </div>
 
             {/* Active Leads Card */}
-            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+              <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Active Leads</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{summaryMetrics.activeLeads}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">{summaryMetrics.activeLeads}</h3>
                 </div>
-                <div className="bg-blue-100 p-3 rounded-2xl">
-                  <PhoneIcon className="h-6 w-6 text-black" />
+                <div className="bg-blue-100 p-2.5 rounded-xl">
+                  <PhoneIcon className="h-5 w-5 text-black" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm">
+              <div className="mt-3 flex items-center text-sm">
                 <span className="flex items-center text-amber-600">
                   <span className="font-medium text-black">In Progress</span>
                 </span>
@@ -496,18 +496,18 @@ export default function SalesReport() {
             </div>
 
             {/* Total Sales Card */}
-            <div className="bg-white rounded-xl shadow-xl p-4 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
+              <div className="absolute top-0 right-0 w-28 h-28 bg-fuchsia-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Total Sales</p>
-                  <h3 className="text-3xl font-bold text-gray-900 mt-2">{summaryMetrics.totalSales}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">{summaryMetrics.totalSales}</h3>
                 </div>
-                <div className="bg-fuchsia-100 p-3 rounded-2xl">
-                  <ChartBarIcon className="h-6 w-6 text-fuchsia-600" />
+                <div className="bg-fuchsia-100 p-2.5 rounded-xl">
+                  <ChartBarIcon className="h-5 w-5 text-fuchsia-600" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm">
+              <div className="mt-3 flex items-center text-sm">
                 <span className="flex items-center text-fuchsia-600">
                   <span className="font-medium">Converted Leads</span>
                 </span>
@@ -516,17 +516,17 @@ export default function SalesReport() {
           </div>
 
           {/* Filters Section */}
-          <div className="bg-white shadow-xl p-4 mb-4 backdrop-blur-lg bg-opacity-90 border border-gray-100 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full filter blur-3xl opacity-20 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
+          <div className="bg-white shadow-xl p-3 mb-3 backdrop-blur-lg bg-opacity-90 border border-gray-100 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full filter blur-3xl opacity-20 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
             
-            <div className="flex flex-col md:flex-row gap-8 items-start md:items-center relative">
+            <div className="flex flex-col md:flex-row gap-6 items-start md:items-center relative">
               {/* Date Range Filter */}
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                  <CalendarDaysIcon className="h-5 w-5 text-blue-500" />
-                  <span className="text-base">Date Range</span>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                  <CalendarDaysIcon className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm">Date Range</span>
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {Object.entries(DATE_RANGES).map(([key, label]) => (
                     <button
                       key={key}
@@ -534,7 +534,7 @@ export default function SalesReport() {
                         setSelectedRange(key);
                         setShowCustomRange(key === 'custom');
                       }}
-                      className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
+                      className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
                         selectedRange === key
                           ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
                           : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:shadow-md'
@@ -615,23 +615,23 @@ export default function SalesReport() {
           ) : (
             <>
               {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-4 px-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-3 px-1.5">
                 {/* Team Performance Chart */}
-                <div className="bg-white shadow-xl p-4 col-span-2">
-                  <h3 className="text-xl font-semibold mb-4">Team Performance Overview</h3>
+                <div className="bg-white shadow-xl p-3 col-span-2">
+                  <h3 className="text-lg font-semibold mb-3">Team Performance Overview</h3>
                   <TeamPerformanceChart leadStatusDistribution={leadStatusDistribution} />
                 </div>
 
                 {/* Conversion Rate Pie Chart */}
-                <div className="bg-white shadow-xl p-4">
-                  <h3 className="text-xl font-semibold mb-4">Conversion Rates</h3>
+                <div className="bg-white shadow-xl p-3">
+                  <h3 className="text-lg font-semibold mb-3">Conversion Rates</h3>
                   <ConversionPieChart leadStatusDistribution={leadStatusDistribution} />
                 </div>
 
                 {/* Individual Performance Charts */}
                 {leadStatusDistribution.map((distribution) => (
-                  <div key={distribution.userId} className="bg-white shadow-xl p-4">
-                    <h3 className="text-xl font-semibold mb-4">{distribution.userName}'s Lead Distribution</h3>
+                  <div key={distribution.userId} className="bg-white shadow-xl p-3">
+                    <h3 className="text-lg font-semibold mb-3">{distribution.userName}'s Lead Distribution</h3>
                     <SalesPersonRadarChart distribution={distribution} />
                   </div>
                 ))}
@@ -643,20 +643,20 @@ export default function SalesReport() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead>
                       <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
-                        <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Sales Person
                         </th>
                         {LEAD_STATUSES.map((status) => (
-                          <th key={status} scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <th key={status} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             <div className="flex flex-col">
                               <span>{status}</span>
-                              <span className="text-[10px] text-gray-400 font-normal normal-case">
+                              <span className="text-[9px] text-gray-400 font-normal normal-case">
                                 {leadStatusDistribution.reduce((sum, dist) => sum + (dist.statusCounts[status] || 0), 0)} leads
                               </span>
                             </div>
                           </th>
                         ))}
-                        <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Total Leads
                         </th>
                       </tr>
@@ -669,25 +669,25 @@ export default function SalesReport() {
                             key={index} 
                             className="transition-colors duration-200 hover:bg-blue-50/50"
                           >
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-5 py-3 whitespace-nowrap">
                               <div className="text-sm font-semibold text-gray-900">{distribution.userName}</div>
                               <div className="text-xs text-gray-500 mt-1">
                                 {((distribution.statusCounts['Converted'] || 0) / total * 100).toFixed(1)}% conversion
                               </div>
                             </td>
                             {LEAD_STATUSES.map((status) => (
-                              <td key={status} className="px-6 py-4 whitespace-nowrap">
+                              <td key={status} className="px-5 py-3 whitespace-nowrap">
                                 <div className="flex flex-col items-center">
                                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} transition-all duration-200 hover:scale-110`}>
                                     {distribution.statusCounts[status] || 0}
                                   </span>
-                                  <div className="text-[10px] text-gray-400 mt-1">
+                                  <div className="text-[9px] text-gray-400 mt-1">
                                     {((distribution.statusCounts[status] || 0) / total * 100).toFixed(1)}%
                                   </div>
                                 </div>
                               </td>
                             ))}
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-5 py-3 whitespace-nowrap">
                               <div className="flex flex-col items-center">
                                 <span className="text-sm font-bold text-gray-900 bg-blue-50 px-4 py-1 rounded-full">
                                   {total}
@@ -702,23 +702,23 @@ export default function SalesReport() {
                       })}
                       {/* Total Row */}
                       <tr className="bg-gradient-to-r from-gray-50 to-gray-100 font-semibold">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                        <td className="px-5 py-3 whitespace-nowrap text-sm text-gray-900">Total</td>
                         {LEAD_STATUSES.map((status) => {
                           const statusTotal = leadStatusDistribution.reduce((sum, dist) => sum + (dist.statusCounts[status] || 0), 0);
                           return (
-                            <td key={status} className="px-6 py-4 whitespace-nowrap">
+                            <td key={status} className="px-5 py-3 whitespace-nowrap">
                               <div className="flex flex-col items-center">
                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} transition-all duration-200 hover:scale-110`}>
                                   {statusTotal}
                                 </span>
-                                <div className="text-[10px] text-gray-400 mt-1">
+                                <div className="text-[9px] text-gray-400 mt-1">
                                   {((statusTotal / summaryMetrics.totalLeads) * 100).toFixed(1)}%
                                 </div>
                               </div>
                             </td>
                           );
                         })}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-5 py-3 whitespace-nowrap">
                           <span className="text-sm font-bold text-gray-900 bg-blue-100 px-4 py-1 rounded-full">
                             {summaryMetrics.totalLeads}
                           </span>

@@ -397,15 +397,15 @@ export default function OpsReport() {
   return (
     <div className="flex">
       <OverlordSidebar />
-      <div className="flex-1 p-6 bg-gray-900 min-h-screen">
-        <h1 className="text-3xl font-bold text-gray-100 mb-8 border-b border-gray-700 pb-4">
+      <div className="flex-1 p-5 bg-gray-900 min-h-screen">
+        <h1 className="text-2xl font-bold text-gray-100 mb-6 border-b border-gray-700 pb-3">
           Operations Analytics Dashboard
         </h1>
 
         {/* Advocate Performance Section */}
-        <div className="bg-gray-800 rounded-xl shadow-2xl p-6 mb-8 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-100">Advocate Performance</h2>
-          <div className="h-[400px]">
+        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+          <h2 className="text-xl font-semibold mb-5 text-gray-100">Advocate Performance</h2>
+          <div className="h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={advocateStats}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -429,15 +429,15 @@ export default function OpsReport() {
         </div>
 
         {/* Bank Analytics Section */}
-        <div className="bg-gray-800 rounded-xl shadow-2xl p-6 mb-8 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-100">Bank-wise Distribution</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+          <h2 className="text-xl font-semibold mb-5 text-gray-100">Bank-wise Distribution</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Total Loans Bar Chart */}
-            <div className="h-[600px] relative">
-              <h3 className="text-xl font-semibold mb-4 text-gray-200">Number of Loans by Bank</h3>
+            <div className="h-[540px] relative">
+              <h3 className="text-lg font-semibold mb-3 text-gray-200">Number of Loans by Bank</h3>
               <div className="absolute inset-0 top-12">
                 <div className="h-full overflow-y-auto custom-scrollbar pr-2">
-                  <div style={{ height: `${Math.max(600, bankStats.length * 40)}px` }}>
+                  <div style={{ height: `${Math.max(540, bankStats.length * 36)}px` }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={bankStats}
@@ -455,7 +455,7 @@ export default function OpsReport() {
                           type="category" 
                           stroke="#9CA3AF"
                           width={110}
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 11 }}
                           interval={0}
                         />
                         <Tooltip
@@ -490,11 +490,11 @@ export default function OpsReport() {
             </div>
 
             {/* Total Amount Bar Chart */}
-            <div className="h-[600px] relative">
-              <h3 className="text-xl font-semibold mb-4 text-gray-200">Total Loan Amount by Bank</h3>
+            <div className="h-[540px] relative">
+              <h3 className="text-lg font-semibold mb-3 text-gray-200">Total Loan Amount by Bank</h3>
               <div className="absolute inset-0 top-12">
                 <div className="h-full overflow-y-auto custom-scrollbar pr-2">
-                  <div style={{ height: `${Math.max(600, bankStats.length * 40)}px` }}>
+                  <div style={{ height: `${Math.max(540, bankStats.length * 36)}px` }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={bankStats}
@@ -512,7 +512,7 @@ export default function OpsReport() {
                           type="category" 
                           stroke="#9CA3AF"
                           width={110}
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 11 }}
                           interval={0}
                         />
                         <Tooltip
@@ -565,8 +565,8 @@ export default function OpsReport() {
             `}</style>
 
             {/* Loan Types Distribution */}
-            <div className="h-[400px] lg:col-span-2">
-              <h3 className="text-xl font-semibold mb-4 text-gray-200">Loan Types Distribution by Bank</h3>
+            <div className="h-[360px] lg:col-span-2">
+              <h3 className="text-lg font-semibold mb-3 text-gray-200">Loan Types Distribution by Bank</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={bankStats.map(bank => ({
@@ -583,7 +583,7 @@ export default function OpsReport() {
                     textAnchor="end"
                     height={80}
                     interval={0}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 11 }}
                   />
                   <YAxis stroke="#9CA3AF" />
                   <Tooltip
@@ -611,11 +611,11 @@ export default function OpsReport() {
         </div>
 
         {/* City and Source Distribution Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* City Distribution - Changed to Horizontal Bar Chart */}
-          <div className="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-6 text-gray-100">City Distribution</h2>
-            <div className="h-[400px]">
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">City Distribution</h2>
+            <div className="h-[360px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={cityStats}
@@ -629,7 +629,7 @@ export default function OpsReport() {
                     type="category" 
                     stroke="#9CA3AF"
                     width={100}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 11 }}
                   />
                   <Tooltip
                     contentStyle={{
@@ -646,9 +646,9 @@ export default function OpsReport() {
           </div>
 
           {/* Source Database Distribution */}
-          <div className="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-6 text-gray-100">Source Database Distribution</h2>
-            <div className="h-[300px]">
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">Source Database Distribution</h2>
+            <div className="h-[270px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -657,7 +657,7 @@ export default function OpsReport() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius={72}
                     label
                   >
                     {sourceStats.map((entry, index) => (
@@ -680,9 +680,9 @@ export default function OpsReport() {
         </div>
 
         {/* Status Overview */}
-        <div className="bg-gray-800 rounded-xl shadow-2xl p-6 mb-8 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-100">Client Status Overview</h2>
-          <div className="h-[300px]">
+        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+          <h2 className="text-xl font-semibold mb-5 text-gray-100">Client Status Overview</h2>
+          <div className="h-[270px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={statusStats}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -704,30 +704,30 @@ export default function OpsReport() {
         </div>
 
         {/* Total Debt Overview */}
-        <div className="bg-gray-800 rounded-xl shadow-2xl p-6 mb-8 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-100">Total Debt Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gray-700/50 rounded-lg p-6 border border-gray-600">
-              <h3 className="text-lg font-medium text-gray-200 mb-2">Credit Card Dues</h3>
-              <p className="text-2xl font-bold text-red-400">₹{totalDebtStats.totalCreditCardDues.toLocaleString()}</p>
+        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+          <h2 className="text-xl font-semibold mb-5 text-gray-100">Total Debt Overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+              <h3 className="text-base font-medium text-gray-200 mb-2">Credit Card Dues</h3>
+              <p className="text-xl font-bold text-red-400">₹{totalDebtStats.totalCreditCardDues.toLocaleString()}</p>
             </div>
-            <div className="bg-gray-700/50 rounded-lg p-6 border border-gray-600">
-              <h3 className="text-lg font-medium text-gray-200 mb-2">Personal Loan Dues</h3>
-              <p className="text-2xl font-bold text-orange-400">₹{totalDebtStats.totalPersonalLoanDues.toLocaleString()}</p>
+            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+              <h3 className="text-base font-medium text-gray-200 mb-2">Personal Loan Dues</h3>
+              <p className="text-xl font-bold text-orange-400">₹{totalDebtStats.totalPersonalLoanDues.toLocaleString()}</p>
             </div>
-            <div className="bg-gray-700/50 rounded-lg p-6 border border-gray-600">
-              <h3 className="text-lg font-medium text-gray-200 mb-2">Total Bank Loans</h3>
-              <p className="text-2xl font-bold text-yellow-400">₹{totalDebtStats.totalBankLoans.toLocaleString()}</p>
+            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+              <h3 className="text-base font-medium text-gray-200 mb-2">Total Bank Loans</h3>
+              <p className="text-xl font-bold text-yellow-400">₹{totalDebtStats.totalBankLoans.toLocaleString()}</p>
             </div>
           </div>
         </div>
 
         {/* Monthly Income and Occupation Distribution */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Monthly Income Distribution */}
-          <div className="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-6 text-gray-100">Monthly Income Distribution</h2>
-            <div className="h-[400px]">
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">Monthly Income Distribution</h2>
+            <div className="h-[360px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyIncomeStats}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -748,9 +748,9 @@ export default function OpsReport() {
           </div>
 
           {/* Occupation Distribution */}
-          <div className="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-6 text-gray-100">Occupation Distribution</h2>
-            <div className="h-[400px]">
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">Occupation Distribution</h2>
+            <div className="h-[360px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -759,7 +759,7 @@ export default function OpsReport() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={120}
+                    outerRadius={108}
                     label
                   >
                     {occupationStats.map((entry, index) => (
@@ -784,23 +784,23 @@ export default function OpsReport() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {advocateStats.map((advocate) => (
-            <div key={advocate.id} className="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-indigo-500">
-              <h3 className="text-lg font-semibold mb-2 text-gray-100">{advocate.name}</h3>
-              <div className="space-y-3">
-                <p className="text-sm text-gray-300">
+            <div key={advocate.id} className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-indigo-500">
+              <h3 className="text-base font-semibold mb-2 text-gray-100">{advocate.name}</h3>
+              <div className="space-y-2">
+                <p className="text-xs text-gray-300">
                   Total Clients: <span className="font-medium text-indigo-400">{advocate.totalClients}</span>
                 </p>
-                <p className="text-sm text-gray-300">
+                <p className="text-xs text-gray-300">
                   Total Loan Amount: <span className="font-medium text-green-400">₹{advocate.totalLoanAmount.toLocaleString()}</span>
                 </p>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="px-3 py-1 bg-green-900/50 text-green-300 rounded-full border border-green-700">
+                <div className="flex flex-wrap gap-2 text-[10px]">
+                  <span className="px-2 py-0.5 bg-green-900/50 text-green-300 rounded-full border border-green-700">
                     Active: {advocate.active}
                   </span>
-                  <span className="px-3 py-1 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-700">
+                  <span className="px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-700">
                     Not Responding: {advocate.notResponding}
                   </span>
-                  <span className="px-3 py-1 bg-red-900/50 text-red-300 rounded-full border border-red-700">
+                  <span className="px-2 py-0.5 bg-red-900/50 text-red-300 rounded-full border border-red-700">
                     Dropped: {advocate.dropped}
                   </span>
                 </div>
