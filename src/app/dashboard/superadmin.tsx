@@ -1455,15 +1455,15 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="p-6 min-h-screen bg-gray-900 text-white">
-      <h1 className="text-3xl font-bold mb-6">Super Admin Dashboard</h1>
+    <div className="p-4 min-h-screen bg-gray-900 text-white" style={{ transform: 'scale(0.8)', transformOrigin: 'top left', width: '125%', height: '125%' }}>
+      <h1 className="text-2xl font-bold mb-4">Super Admin Dashboard</h1>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {/* Sales Analytics Section */}
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-white">
+              <CardTitle className="text-white text-lg">
                 {selectedSalesperson && individualSalesData
                   ? `${individualSalesData.name}'s Sales Performance`
                   : 'Overall Sales Analytics'
@@ -1665,9 +1665,9 @@ export default function SuperAdminDashboard() {
               </div>
 
               {/* CRM Leads Analytics Section with Table and Pie Chart */}
-              <div className="mt-8 flex flex-col md:flex-row gap-6">
+              <div className="mt-6 flex flex-col md:flex-row gap-4">
                 {/* Left side: Table with filters */}
-                <div className="md:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 shadow-xl">
+                <div className="md:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-xl">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-blue-100">CRM Leads Analytics</h3>
                     
@@ -1691,24 +1691,24 @@ export default function SuperAdminDashboard() {
                   </div>
                   
                   {/* Date range filter */}
-                  <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800/70 rounded-lg border border-gray-700">
+                  <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-800/70 rounded-lg border border-gray-700">
                     <div>
-                      <label htmlFor="start-date" className="block text-sm text-blue-200 mb-1">From Date</label>
+                      <label htmlFor="start-date" className="block text-xs text-blue-200 mb-1">From Date</label>
                       <input
                         id="start-date"
                         type="date"
-                        className="bg-gray-700 text-white px-3 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        className="bg-gray-700 text-white px-2 py-1.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                       />
                     </div>
                     
                     <div>
-                      <label htmlFor="end-date" className="block text-sm text-blue-200 mb-1">To Date</label>
+                      <label htmlFor="end-date" className="block text-xs text-blue-200 mb-1">To Date</label>
                       <input
                         id="end-date"
                         type="date"
-                        className="bg-gray-700 text-white px-3 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        className="bg-gray-700 text-white px-2 py-1.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                       />
@@ -1717,7 +1717,7 @@ export default function SuperAdminDashboard() {
                     <div className="flex gap-2 self-end mb-0.5">
                       <button
                         onClick={applyDateFilter}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors text-sm"
                         disabled={isLoading}
                       >
                         Apply Filter
@@ -1725,7 +1725,7 @@ export default function SuperAdminDashboard() {
                       
                       <button
                         onClick={clearDateFilter}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors"
+                        className="px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors text-sm"
                         disabled={isLoading || (!startDate && !endDate)}
                       >
                         Clear Filter
@@ -1972,22 +1972,22 @@ export default function SuperAdminDashboard() {
                   </div>
                   
                   {/* Client stats cards */}
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-4 rounded-lg border border-blue-700/30 shadow-md">
-                      <p className="text-blue-300 text-sm font-medium">Total Clients</p>
-                      <p className="text-2xl font-bold text-white">{clientAnalytics.totalClients}</p>
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-3 rounded-lg border border-blue-700/30 shadow-md">
+                      <p className="text-blue-300 text-xs font-medium">Total Clients</p>
+                      <p className="text-xl font-bold text-white">{clientAnalytics.totalClients}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-4 rounded-lg border border-green-700/30 shadow-md">
-                      <p className="text-green-300 text-sm font-medium">Active Clients</p>
-                      <p className="text-2xl font-bold text-white">{clientAnalytics.statusDistribution.Active || 0}</p>
+                    <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-3 rounded-lg border border-green-700/30 shadow-md">
+                      <p className="text-green-300 text-xs font-medium">Active Clients</p>
+                      <p className="text-xl font-bold text-white">{clientAnalytics.statusDistribution.Active || 0}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-4 rounded-lg border border-purple-700/30 shadow-md">
-                      <p className="text-purple-300 text-sm font-medium">Avg. Loan Amount</p>
-                      <p className="text-2xl font-bold text-white">₹{clientAnalytics.avgLoanAmount.toLocaleString('en-IN')}</p>
+                    <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-3 rounded-lg border border-purple-700/30 shadow-md">
+                      <p className="text-purple-300 text-xs font-medium">Avg. Loan Amount</p>
+                      <p className="text-xl font-bold text-white">₹{clientAnalytics.avgLoanAmount.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-4 rounded-lg border border-amber-700/30 shadow-md">
-                      <p className="text-amber-300 text-sm font-medium">Total Loan Amount</p>
-                      <p className="text-2xl font-bold text-white">₹{clientAnalytics.totalLoanAmount.toLocaleString('en-IN')}</p>
+                    <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-3 rounded-lg border border-amber-700/30 shadow-md">
+                      <p className="text-amber-300 text-xs font-medium">Total Loan Amount</p>
+                      <p className="text-xl font-bold text-white">₹{clientAnalytics.totalLoanAmount.toLocaleString('en-IN')}</p>
                     </div>
                   </div>
                 </div>
@@ -2045,30 +2045,30 @@ export default function SuperAdminDashboard() {
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-white">Payment Analytics</CardTitle>
+              <CardTitle className="text-white text-lg">Payment Analytics</CardTitle>
             </CardHeader>
             <CardContent>
               {/* Payment metrics row */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-4 rounded-lg border border-blue-700/30 shadow-md">
-                  <p className="text-blue-300 text-sm font-medium">Total Clients</p>
-                  <p className="text-2xl font-bold text-white">{paymentAnalytics.clientCount}</p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-3 rounded-lg border border-blue-700/30 shadow-md">
+                  <p className="text-blue-300 text-xs font-medium">Total Clients</p>
+                  <p className="text-xl font-bold text-white">{paymentAnalytics.clientCount}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-4 rounded-lg border border-green-700/30 shadow-md">
-                  <p className="text-green-300 text-sm font-medium">This Month's Collection</p>
-                  <p className="text-2xl font-bold text-white">₹{currentMonthPayments.collected.toLocaleString('en-IN')}</p>
-                  <p className="text-xs text-green-300 mt-1">Total: ₹{paymentAnalytics.totalPaidAmount.toLocaleString('en-IN')}</p>
+                <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-3 rounded-lg border border-green-700/30 shadow-md">
+                  <p className="text-green-300 text-xs font-medium">This Month's Collection</p>
+                  <p className="text-xl font-bold text-white">₹{currentMonthPayments.collected.toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-green-300 mt-0.5">Total: ₹{paymentAnalytics.totalPaidAmount.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-4 rounded-lg border border-amber-700/30 shadow-md">
-                  <p className="text-amber-300 text-sm font-medium">This Month's Pending</p>
-                  <p className="text-2xl font-bold text-white">₹{currentMonthPayments.pending.toLocaleString('en-IN')}</p>
-                  <p className="text-xs text-amber-300 mt-1">Total: ₹{paymentAnalytics.totalPendingAmount.toLocaleString('en-IN')}</p>
+                <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-3 rounded-lg border border-amber-700/30 shadow-md">
+                  <p className="text-amber-300 text-xs font-medium">This Month's Pending</p>
+                  <p className="text-xl font-bold text-white">₹{currentMonthPayments.pending.toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-amber-300 mt-0.5">Total: ₹{paymentAnalytics.totalPendingAmount.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-4 rounded-lg border border-purple-700/30 shadow-md">
-                  <p className="text-purple-300 text-sm font-medium">Collection Rate</p>
+                <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-3 rounded-lg border border-purple-700/30 shadow-md">
+                  <p className="text-purple-300 text-xs font-medium">Collection Rate</p>
                   <div className="flex items-center">
-                    <p className="text-2xl font-bold text-white">{paymentAnalytics.completionRate}%</p>
-                    <div className="ml-2 h-1.5 w-16 bg-gray-700 rounded-full overflow-hidden">
+                    <p className="text-xl font-bold text-white">{paymentAnalytics.completionRate}%</p>
+                    <div className="ml-2 h-1 w-12 bg-gray-700 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full" 
                         style={{ width: `${paymentAnalytics.completionRate}%` }}
@@ -2078,11 +2078,11 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex flex-col md:flex-row gap-4">
                 {/* Monthly payment trends */}
-                <div className="md:w-1/2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl">
-                  <h3 className="text-lg font-semibold text-blue-200 mb-3">Monthly Collection Trends</h3>
-                  <div className="h-64">
+                <div className="md:w-1/2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl">
+                  <h3 className="text-lg font-semibold text-blue-200 mb-2">Monthly Collection Trends</h3>
+                  <div className="h-56">
                     <Line 
                       data={monthlyPaymentData} 
                       options={{
@@ -2093,6 +2093,9 @@ export default function SuperAdminDashboard() {
                             display: true,
                             text: 'Payment Collections (Last 6 Months)',
                             color: 'rgba(255, 255, 255, 0.8)',
+                            font: {
+                              size: 12
+                            }
                           },
                         },
                       }} 
@@ -2101,10 +2104,10 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Payment methods and types */}
-                <div className="md:w-1/2 flex flex-col gap-6">
-                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex-1">
-                    <h3 className="text-lg font-semibold text-blue-200 mb-3">Payment Methods</h3>
-                    <div className="h-48">
+                <div className="md:w-1/2 flex flex-col gap-4">
+                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl flex-1">
+                    <h3 className="text-lg font-semibold text-blue-200 mb-2">Payment Methods</h3>
+                    <div className="h-40">
                       <Pie 
                         data={paymentMethodData} 
                         options={{
@@ -2115,6 +2118,9 @@ export default function SuperAdminDashboard() {
                               display: true,
                               text: 'Payment Methods Distribution',
                               color: 'rgba(255, 255, 255, 0.8)',
+                              font: {
+                                size: 12
+                              }
                             },
                           },
                         }} 
@@ -2122,15 +2128,15 @@ export default function SuperAdminDashboard() {
                     </div>
                   </div>
                   
-                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex-1">
-                    <h3 className="text-lg font-semibold text-blue-200 mb-3">Payment Types</h3>
+                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl flex-1">
+                    <h3 className="text-lg font-semibold text-blue-200 mb-2">Payment Types</h3>
                     <div className="flex">
-                      <div className="h-40 w-40">
+                      <div className="h-32 w-32">
                         <Pie 
                           data={paymentTypesData} 
                           options={{
                             ...pieOptions,
-                            cutout: '50%', // Make it a doughnut chart
+                            cutout: '50%',
                             plugins: {
                               ...pieOptions.plugins,
                               title: {
@@ -2143,16 +2149,16 @@ export default function SuperAdminDashboard() {
                       <div className="flex-1 flex items-center justify-center">
                         <div className="grid grid-cols-1 gap-2 w-full">
                           <div className="flex items-center justify-between bg-blue-900/30 p-2 rounded-lg">
-                            <span className="text-blue-300">Full Payments:</span>
-                            <span className="font-semibold text-white">{paymentAnalytics.paymentTypeDistribution.full}</span>
+                            <span className="text-blue-300 text-xs">Full Payments:</span>
+                            <span className="font-semibold text-white text-sm">{paymentAnalytics.paymentTypeDistribution.full}</span>
                           </div>
                           <div className="flex items-center justify-between bg-yellow-900/30 p-2 rounded-lg">
-                            <span className="text-yellow-300">Partial Payments:</span>
-                            <span className="font-semibold text-white">{paymentAnalytics.paymentTypeDistribution.partial}</span>
+                            <span className="text-yellow-300 text-xs">Partial Payments:</span>
+                            <span className="font-semibold text-white text-sm">{paymentAnalytics.paymentTypeDistribution.partial}</span>
                           </div>
                           <div className="flex items-center justify-between bg-gray-700/50 p-2 rounded-lg">
-                            <span className="text-gray-300">Total Transactions:</span>
-                            <span className="font-semibold text-white">
+                            <span className="text-gray-300 text-xs">Total Transactions:</span>
+                            <span className="font-semibold text-white text-sm">
                               {paymentAnalytics.paymentTypeDistribution.full + paymentAnalytics.paymentTypeDistribution.partial}
                             </span>
                           </div>

@@ -79,7 +79,11 @@ const OverlordSidebar: React.FC = () => {
 
   return (
     <div className="relative min-h-screen flex flex-col transition-all duration-300 bg-gray-900 shadow-xl"
-         style={{ width: expanded ? '260px' : '80px' }}>
+         style={{ 
+           width: expanded ? '260px' : '80px',
+           transform: 'scale(1)',
+           transformOrigin: 'left top'
+         }}>
       <div className="sticky top-0 z-10 bg-gray-900">
         <div className="flex items-center justify-between px-4 py-5">
           {expanded ? (

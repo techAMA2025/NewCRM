@@ -410,7 +410,7 @@ export default function TargetsPage() {
   if (loading && authChecked) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-900">
-        <p className="text-white">loading...</p>
+        <p className="text-white text-sm">loading...</p>
       </div>
     );
   }
@@ -419,37 +419,37 @@ export default function TargetsPage() {
   if (!authChecked && (authLoading || loading)) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-900">
-        <p className="text-white">Verifying access...</p>
+        <p className="text-white text-sm">Verifying access...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-900">
+    <div className="flex h-screen bg-gray-900" style={{ transform: 'scale(0.9)', transformOrigin: 'top left', width: '111.11%', height: '111.11%' }}>
       <OverlordSidebar />
-      <div className="flex-1 overflow-auto p-8">
+      <div className="flex-1 overflow-auto p-7">
         <div className="container mx-auto">
-          <h1 className="text-2xl font-bold mb-6 text-white">Sales Targets</h1>
+          <h1 className="text-xl font-bold mb-5 text-white">Sales Targets</h1>
           
           {error && (
-            <div className="bg-red-900 border border-red-600 text-red-200 px-4 py-3 rounded mb-4">
+            <div className="bg-red-900 border border-red-600 text-red-200 px-3 py-2 rounded mb-3 text-sm">
               {error}
             </div>
           )}
           
           {success && (
-            <div className="bg-green-900 border border-green-600 text-green-200 px-4 py-3 rounded mb-4">
+            <div className="bg-green-900 border border-green-600 text-green-200 px-3 py-2 rounded mb-3 text-sm">
               {success}
             </div>
           )}
           
           {/* Month Selector */}
-          <div className="mb-6 flex items-center">
-            <label className="text-white mr-3">Month/Year:</label>
+          <div className="mb-5 flex items-center">
+            <label className="text-white mr-2 text-sm">Month/Year:</label>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             >
               {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((month) => (
                 <option key={month} value={month}>{month}</option>
@@ -459,7 +459,7 @@ export default function TargetsPage() {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             >
               {[2023, 2024, 2025, 2026, 2027].map((year) => (
                 <option key={year} value={year}>{year}</option>
@@ -468,32 +468,32 @@ export default function TargetsPage() {
           </div>
           
           {/* Current Targets Table */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
+          <div className="mb-7">
+            <div className="flex justify-between items-center mb-3">
               <div className="flex items-center">
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="text-lg font-semibold text-white">
                   Current Targets - {selectedMonth} {selectedYear}
                 </h2>
-                <div className="ml-4 flex rounded-md shadow-sm">
+                <div className="ml-3 flex rounded-md shadow-sm">
                   <button
                     type="button"
                     onClick={() => setViewMetric('convertedLeads')}
-                    className={`relative inline-flex items-center px-4 py-2 rounded-l-md border ${
+                    className={`relative inline-flex items-center px-3 py-1 rounded-l-md border ${
                       viewMetric === 'convertedLeads' 
                         ? 'bg-blue-600 text-white border-blue-700' 
                         : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
-                    } text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                    } text-xs font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
                   >
                     Converted Leads
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewMetric('amountCollected')}
-                    className={`relative inline-flex items-center px-4 py-2 rounded-r-md border ${
+                    className={`relative inline-flex items-center px-3 py-1 rounded-r-md border ${
                       viewMetric === 'amountCollected' 
                         ? 'bg-blue-600 text-white border-blue-700' 
                         : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
-                    } text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                    } text-xs font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
                   >
                     Amount Collected
                   </button>
@@ -501,7 +501,7 @@ export default function TargetsPage() {
               </div>
               <button
                 onClick={() => setShowForm(!showForm)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded shadow focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 {showForm ? 'Hide Form' : 'Update Targets'}
               </button>
@@ -511,16 +511,16 @@ export default function TargetsPage() {
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Sales Person
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       {viewMetric === 'convertedLeads' ? 'Converted Leads Target' : 'Amount Collected Target (₹)'}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Progress
                     </th>
                   </tr>
@@ -528,7 +528,7 @@ export default function TargetsPage() {
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
                   {salesUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                      <td colSpan={4} className="px-4 py-3 text-center text-gray-400 text-sm">
                         No sales personnel found
                       </td>
                     </tr>
@@ -556,28 +556,28 @@ export default function TargetsPage() {
                       
                       return (
                         <tr key={salesUser.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-200">{salesUser.firstName} {" "} {salesUser.lastName}</div>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="text-xs font-medium text-gray-200">{salesUser.firstName} {" "} {salesUser.lastName}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-400">{salesUser.email}</div>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="text-xs text-gray-400">{salesUser.email}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-200">
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="text-xs text-gray-200">
                               {viewMetric === 'convertedLeads' 
                                 ? targets[salesUser.id]?.convertedLeads || 0
                                 : `₹${targets[salesUser.id]?.amountCollected || 0}`}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                              <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
                                 <div 
-                                  className={`h-2 ${progressColor} rounded-full`} 
+                                  className={`h-1 ${progressColor} rounded-full`} 
                                   style={{ width: `${percentage}%` }}
                                 ></div>
                               </div>
-                              <span className="ml-3 text-sm text-gray-300 w-16">
+                              <span className="ml-2 text-xs text-gray-300 w-12">
                                 {viewMetric === 'convertedLeads' 
                                   ? `${progressValue}/${targetValue}`
                                   : `${Math.round(percentage)}%`}
@@ -600,24 +600,24 @@ export default function TargetsPage() {
           
           {/* Target Update Form - Only show when showForm is true */}
           {showForm && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-white mb-4">Update Targets</h2>
+            <div className="mb-7">
+              <h2 className="text-lg font-semibold text-white mb-3">Update Targets</h2>
               <form onSubmit={handleSubmit}>
                 <div className="bg-gray-800 shadow-md rounded-lg overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-700">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Sales Person
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Email
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           <div>Converted Leads Target</div>
                           <div className="text-xs font-light normal-case mt-1 text-gray-400">Number of leads to convert</div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           <div>Amount Collected Target (₹)</div>
                           <div className="text-xs font-light normal-case mt-1 text-gray-400">Target revenue in rupees</div>
                         </th>
@@ -626,40 +626,40 @@ export default function TargetsPage() {
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
                       {salesUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                          <td colSpan={4} className="px-4 py-3 text-center text-gray-400 text-sm">
                             No sales personnel found
                           </td>
                         </tr>
                       ) : (
                         salesUsers.map((salesUser) => (
                           <tr key={salesUser.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-200">{salesUser.firstName}</div>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="text-xs font-medium text-gray-200">{salesUser.firstName}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-400">{salesUser.email}</div>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="text-xs text-gray-400">{salesUser.email}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <div className="relative">
                                 <input
                                   type="number"
                                   min="0"
-                                  className="bg-gray-700 border border-gray-600 text-gray-200 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="bg-gray-700 border border-gray-600 text-gray-200 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
                                   value={targets[salesUser.id]?.convertedLeads || 0}
                                   onChange={(e) => handleInputChange(salesUser.id, 'convertedLeads', e.target.value)}
                                   aria-label="Converted leads target"
                                 />
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                  <span className="text-gray-400">₹</span>
+                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                  <span className="text-gray-400 text-xs">₹</span>
                                 </div>
                                 <input
                                   type="number"
                                   min="0"
-                                  className="bg-gray-700 border border-gray-600 text-gray-200 rounded pl-8 pr-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="bg-gray-700 border border-gray-600 text-gray-200 rounded pl-6 pr-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
                                   value={targets[salesUser.id]?.amountCollected || 0}
                                   onChange={(e) => handleInputChange(salesUser.id, 'amountCollected', e.target.value)}
                                   aria-label="Amount collected target in rupees"
@@ -673,18 +673,18 @@ export default function TargetsPage() {
                   </table>
                 </div>
                 
-                <div className="mt-6">
+                <div className="mt-5">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded shadow disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
                     {submitting ? 'Saving...' : 'Set Targets'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="ml-4 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded shadow focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    className="ml-3 bg-gray-600 hover:bg-gray-700 text-white font-medium py-1 px-3 rounded shadow focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm"
                   >
                     Cancel
                   </button>
@@ -697,5 +697,3 @@ export default function TargetsPage() {
     </div>
   );
 }
-
-
