@@ -78,9 +78,9 @@ const OverlordSidebar: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen transition-all duration-300 bg-gray-900 shadow-xl"
+    <div className="relative min-h-screen flex flex-col transition-all duration-300 bg-gray-900 shadow-xl"
          style={{ width: expanded ? '260px' : '80px' }}>
-      <div className="sticky top-0 z-10">
+      <div className="sticky top-0 z-10 bg-gray-900">
         <div className="flex items-center justify-between px-4 py-5">
           {expanded ? (
             <div className="flex items-center">
@@ -118,11 +118,10 @@ const OverlordSidebar: React.FC = () => {
             </svg>
           </button>
         </div>
-        
         <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
       </div>
       
-      <div className="px-3 py-4">
+      <div className="flex-1 overflow-y-auto px-3 py-4">
         <nav>
           {navItems.map((item) => (
             <NavItem
@@ -136,7 +135,7 @@ const OverlordSidebar: React.FC = () => {
         </nav>
       </div>
       
-      <div className="absolute bottom-0 w-full px-3 py-4">
+      <div className="sticky bottom-0 w-full px-3 py-4 bg-gray-900 mt-auto">
         <div className="h-px mb-4 bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
         <button
           onClick={handleLogout}
