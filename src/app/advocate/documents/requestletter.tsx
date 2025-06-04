@@ -199,7 +199,7 @@ export default function RequestLetterForm({
     Fibe: {
       address:
         "EarlySalary Office no. 404, The Chambers, (Samrat Chowk), Clover Park, Near Ganpati Chowk, Viman Nagar, Pune, Maharashtra 411014",
-      email: "care@fibe.com, grievance@fibe.in",
+      email: "care@fibe.com, grievance@fibe.in, care@fibe.in",
     },
     Finable: {
       address:
@@ -771,7 +771,7 @@ export default function RequestLetterForm({
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
           >
             <option value="Loan Account">Loan Account</option>
-            <option value="Credit Card Account">Credit Card Account</option>
+            <option value="Credit Card Number">Credit Card Number</option>
           </select>
         </div>
 
@@ -789,6 +789,7 @@ export default function RequestLetterForm({
           >
             <option value="Job Loss">Job Loss</option>
             <option value="Business Loss">Business Loss</option>
+            <option value="Financial Loss">Financial Loss</option>
           </select>
         </div>
 
