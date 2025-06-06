@@ -32,7 +32,6 @@ export interface Lead {
 }
 
 export interface HistoryItem {
-  id: string;
   content: string;
   createdAt: string | Date;
   createdBy: string;

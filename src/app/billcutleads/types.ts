@@ -1,12 +1,11 @@
 export type HistoryItem = {
-  id: string;
-  leadId: string;
   content: string;
-  createdAt: any; // Firestore Timestamp
+  createdAt: string | Date;
   createdBy: string;
   createdById: string;
   displayDate?: string;
-  assignedById?: string; // Made optional to match both formats
+  leadId: string;
+  assignedById: string;
 };
 
 export type Lead = {
