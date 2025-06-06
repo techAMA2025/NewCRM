@@ -52,6 +52,7 @@ const OverlordSidebar: React.FC = () => {
     { href: '/dashboard', icon: <FiHome />, label: 'Dashboard' },
     { href: '/admin/users', icon: <FiUsers />, label: 'User Management' },
     { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads' },
+    { href: '/billcutleads', icon: <FiBarChart2 />, label: 'Billcut Leads' },
     { href: '/targets', icon: <FiClipboard />, label: 'Targets' },
     { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'Payment Requests' },
     { href: '/monthlypayreq', icon: <FiCalendar />, label: 'Monthly Payment Requests' },

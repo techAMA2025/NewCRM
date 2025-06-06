@@ -1,4 +1,4 @@
-import { FiSearch, FiFilter } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiUser } from 'react-icons/fi';
 
 interface BillcutLeadsFiltersProps {
   searchQuery: string;
@@ -6,6 +6,8 @@ interface BillcutLeadsFiltersProps {
   statusFilter: string;
   setStatusFilter: (status: string) => void;
   statusOptions: string[];
+  showMyLeads: boolean;
+  setShowMyLeads: (show: boolean) => void;
 }
 
 const BillcutLeadsFilters = ({
@@ -14,6 +16,8 @@ const BillcutLeadsFilters = ({
   statusFilter,
   setStatusFilter,
   statusOptions,
+  showMyLeads,
+  setShowMyLeads,
 }: BillcutLeadsFiltersProps) => {
   return (
     <div className="mb-8">
@@ -54,6 +58,19 @@ const BillcutLeadsFilters = ({
               ))}
             </select>
           </div>
+
+          {/* My Leads Toggle Button */}
+          <button
+            onClick={() => setShowMyLeads(!showMyLeads)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+              showMyLeads
+                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            <FiUser className="w-5 h-5" />
+            <span className="text-sm font-medium">My Leads</span>
+          </button>
         </div>
       </div>
     </div>

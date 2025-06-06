@@ -1,19 +1,10 @@
 import { FaHistory } from 'react-icons/fa';
-
-type HistoryEntry = {
-  content: string;
-  createdAt: string | Date;
-  createdBy: string;
-  createdById: string;
-  displayDate?: string;
-  leadId: string;
-  assignedById: string;
-};
+import { HistoryItem } from '../../../billcutleads/types';
 
 type HistoryModalProps = {
   showHistoryModal: boolean;
   setShowHistoryModal: (show: boolean) => void;
-  currentHistory: HistoryEntry[];
+  currentHistory: HistoryItem[];
 };
 
 const HistoryModal = ({ 
