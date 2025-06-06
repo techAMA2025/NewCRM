@@ -452,8 +452,21 @@ const BillCutLeadsPage = () => {
 
       // Sort by date
       historyData.sort((a, b) => {
-        const dateA = a.createdAt?.seconds || 0;
-        const dateB = b.createdAt?.seconds || 0;
+        const getTimestamp = (date: any): number => {
+          if (date?.seconds) {
+            return date.seconds * 1000; // Convert Firestore seconds to milliseconds
+          }
+          if (date instanceof Date) {
+            return date.getTime();
+          }
+          if (typeof date === 'string') {
+            return new Date(date).getTime();
+          }
+          return 0;
+        };
+
+        const dateA = getTimestamp(a.createdAt);
+        const dateB = getTimestamp(b.createdAt);
         return dateB - dateA;
       });
 
