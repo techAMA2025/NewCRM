@@ -44,5 +44,5 @@ export interface HistoryItem {
 export type SortDirection = 'ascending' | 'descending';
 
 export interface EditingLeadsState {
-  [key: string]: Lead;
+  [key: string]: Lead; 
 } 
