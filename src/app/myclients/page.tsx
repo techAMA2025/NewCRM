@@ -23,6 +23,7 @@ interface Client {
   name: string;
   email: string;
   phone: string;
+  altPhone: string;
   status: string;
   city: string;
   lastModified: any; // Timestamp from Firebase
@@ -195,6 +196,12 @@ export default function MyClientsPage() {
                       <FaPhone className="mr-2 text-gray-400" />
                       <span className="text-sm">{client.phone}</span>
                     </div>
+                    {client.altPhone && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-300">
+                        <FaPhone className="mr-2 text-gray-400" />
+                        <span className="text-sm">{client.altPhone}</span>
+                      </div>
+                    )}
                     <div className="flex items-center text-gray-600 dark:text-gray-300">
                       <FaMapMarkerAlt className="mr-2 text-gray-400" />
                       <span className="text-sm">{client.city}</span>

@@ -20,6 +20,7 @@ interface Client {
   name: string;
   email: string;
   phone: string;
+  altPhone: string;
   status: string;
   city: string;
   lastModified: any; // Timestamp from Firebase
@@ -67,6 +68,7 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
         name: client.name,
         email: client.email,
         phone: client.phone,
+        altPhone: client.altPhone || '',
         status: client.status,
         city: client.city,
         creditCardDues: client.creditCardDues,
@@ -223,6 +225,13 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
                     onChange={(value) => handleChange({ name: 'phone', value })}
                     type="tel"
                     required
+                  />
+                  <InputField
+                    id="altPhone"
+                    label="Alternate Phone"
+                    value={formData.altPhone || ''}
+                    onChange={(value) => handleChange({ name: 'altPhone', value })}
+                    type="tel"
                   />
                   <InputField
                     id="city"
