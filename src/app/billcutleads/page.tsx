@@ -125,6 +125,7 @@ const BillCutLeadsPage = () => {
             remarks: `Debt Range: ${data.debt_range || ''}`,
             salesNotes: data.sales_notes || '',
             lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+            date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
             convertedToClient: false,
             bankNames: [],
             totalEmi: '',

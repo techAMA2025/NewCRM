@@ -92,7 +92,7 @@ export const bankData: Record<string, BankData> = {
   Fibe: {
     address:
       "EarlySalary Office no. 404, The Chambers, (Samrat Chowk), Clover Park, Near Ganpati Chowk, Viman Nagar, Pune, Maharashtra 411014",
-    email: "care@fibe.com, grievance@fibe.in",
+    email: "care@fibe.in, grievance@fibe.in",
   },
   Finable: {
     address:
@@ -285,7 +285,7 @@ export const bankData: Record<string, BankData> = {
   "Early Salary": {
     address:
       "EarlySalary Office no. 404, The Chambers, (Samrat Chowk), Clover Park, Near Ganpati Chowk, Viman Nagar, Pune, Maharashtra 411014",
-    email: "care@fibe.com, grievance@fibe.in",
+    email: "care@fibe.in, grievance@fibe.in",
   },
   "L&T": {
     address:
