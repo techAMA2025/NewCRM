@@ -47,6 +47,7 @@ const EditClientModal = ({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   
   // Add state for agreement generation checkbox
   const [shouldGenerateAgreement, setShouldGenerateAgreement] = useState(false);
@@ -56,6 +57,61 @@ const EditClientModal = ({
     setLead({...initialLead});
   }, [initialLead]);
   
+  // Calculate total dues from banks
+  const calculateTotalDues = (leadData: Lead): Lead => {
+    let personalLoanTotal = 0;
+    let creditCardTotal = 0;
+    
+    if (leadData.banks && leadData.banks.length > 0) {
+      leadData.banks.forEach(bank => {
+        const amount = parseFloat(bank.loanAmount) || 0;
+        
+        if (bank.loanType === 'Personal Loan' || bank.loanType === 'Business Loan') {
+          // Add both Personal Loan and Business Loan to personalLoanTotal
+          personalLoanTotal += amount;
+        } else if (bank.loanType === 'Credit Card') {
+          creditCardTotal += amount;
+        }
+      });
+    }
+    
+    return {
+      ...leadData,
+      personalLoanDues: personalLoanTotal.toString(),
+      creditCardDues: creditCardTotal.toString()
+    };
+  };
+
+  // Calculate monthly fees
+  const calculateMonthlyFees = (leadData: Lead): Lead => {
+    const personalLoanTotal = parseFloat(leadData.personalLoanDues || '0');
+    const creditCardTotal = parseFloat(leadData.creditCardDues || '0');
+    const tenure = parseInt(leadData.tenure?.toString() || '0');
+    
+    if (tenure > 0) {
+      const totalDues = personalLoanTotal + creditCardTotal;
+      const feeAmount = totalDues * 0.10; // 10% of total dues
+      const monthlyFee = Math.round(feeAmount / tenure);
+      
+      return {
+        ...leadData,
+        monthlyFees: monthlyFee.toString()
+      };
+    }
+    
+    return leadData;
+  };
+
+  // Effect to calculate totals when banks change
+  useEffect(() => {
+    if (lead.banks && lead.banks.length > 0) {
+      setLead(prevLead => {
+        const withTotals = calculateTotalDues(prevLead);
+        return calculateMonthlyFees(withTotals);
+      });
+    }
+  }, [lead.banks, lead.tenure]);
+
   // Handle field changes
   const handleFieldChange = (field: keyof Lead, value: any) => {
     console.log(`Updating field: ${field} with value:`, value); // Debug logging
@@ -77,10 +133,19 @@ const EditClientModal = ({
       value = numericValue.slice(0, 10);
     }
 
-    setLead(prevLead => ({
-      ...prevLead,
-      [field]: value
-    }));
+    setLead(prevLead => {
+      const updatedLead = {
+        ...prevLead,
+        [field]: value
+      };
+      
+      // Recalculate monthly fees if tenure or loan amounts change
+      if (field === 'tenure' || field === 'personalLoanDues' || field === 'creditCardDues') {
+        return calculateMonthlyFees(updatedLead);
+      }
+      
+      return updatedLead;
+    });
   };
 
   // Handle adding a bank locally
@@ -135,38 +200,6 @@ const EditClientModal = ({
     });
   };
   
-  // Calculate total dues from banks
-  const calculateTotalDues = (leadData: Lead): Lead => {
-    let personalLoanTotal = 0;
-    let creditCardTotal = 0;
-    
-    if (leadData.banks && leadData.banks.length > 0) {
-      leadData.banks.forEach(bank => {
-        const amount = parseFloat(bank.loanAmount) || 0;
-        
-        if (bank.loanType === 'Personal Loan' || bank.loanType === 'Business Loan') {
-          // Add both Personal Loan and Business Loan to personalLoanTotal
-          personalLoanTotal += amount;
-        } else if (bank.loanType === 'Credit Card') {
-          creditCardTotal += amount;
-        }
-      });
-    }
-    
-    return {
-      ...leadData,
-      personalLoanDues: personalLoanTotal.toString(),
-      creditCardDues: creditCardTotal.toString()
-    };
-  };
-
-  // Effect to calculate totals when banks change
-  useEffect(() => {
-    if (lead.banks && lead.banks.length > 0) {
-      setLead(prevLead => calculateTotalDues(prevLead));
-    }
-  }, []);
-
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
@@ -230,6 +263,15 @@ const EditClientModal = ({
     
     // Prevent submission if already saving
     if (saving) return;
+    
+    // Validate required fields
+    if (!lead.panNumber || !lead.phone || !lead.altPhone || !lead.email || !lead.city) {
+      setLocalSaveError('Please fill in all required fields (marked with *)');
+      return;
+    }
+    
+    // Clear any previous errors
+    setLocalSaveError(null);
     
     // Log the lead object to see what's being sent
     console.log('Submitting lead with source:', lead.source_database);
@@ -348,9 +390,9 @@ const EditClientModal = ({
             </div>
           )}
           
-          {saveError && (
+          {localSaveError && (
             <div className="mb-4 p-3 bg-red-800 text-red-100 rounded-md">
-              {saveError}
+              {localSaveError}
             </div>
           )}
           
@@ -367,16 +409,24 @@ const EditClientModal = ({
                   />
                   <InputField
                     id="email"
-                    label="Email"
+                    label="Email*"
                     type="email"
                     value={lead.email || ''}
                     onChange={(value) => handleFieldChange('email', value)}
+                    required
                   />
                   <InputField
                     id="phone"
                     label="Phone*"
                     value={lead.phone || ''}
                     onChange={(value) => handleFieldChange('phone', value)}
+                    required
+                  />
+                  <InputField
+                    id="altPhone"
+                    label="Alternate Phone*"
+                    value={lead.altPhone || ''}
+                    onChange={(value) => handleFieldChange('altPhone', value)}
                     required
                   />
                   <InputField
@@ -388,21 +438,23 @@ const EditClientModal = ({
                   />
                   <InputField
                     id="panNumber"
-                    label="PAN Number"
+                    label="PAN Number*"
                     value={lead.panNumber || ''}
                     onChange={(value) => handleFieldChange('panNumber', value)}
+                    required
                   />
                   <div>
                     <label htmlFor="city" className="block text-sm font-medium text-gray-400 mb-1">
-                      State
+                      City*
                     </label>
                     <select
                       id="city"
                       value={lead.city || ''}
                       onChange={(e) => handleFieldChange('city', e.target.value)}
+                      required
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
                     >
-                      <option value="">Select state</option>
+                      <option value="Salesperson did not provide">Select city</option>
                       {indianStates.map((state) => (
                         <option key={state} value={state}>
                           {state}
@@ -475,6 +527,7 @@ const EditClientModal = ({
                     label="Tenure (months)"
                     value={lead.tenure?.toString() || ''}
                     onChange={(value) => handleFieldChange('tenure', value)}
+                    required
                   />
                   <InputField
                     id="monthlyFees"
