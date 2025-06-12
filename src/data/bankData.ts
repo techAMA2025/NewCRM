@@ -422,4 +422,10 @@ export const bankData: Record<string, BankData> = {
     email:
       "customersupport@northernarc.com, gro@northernarc.com, nodal.officer@northernarc.com",
   },
+  "SI Creva": {
+    address:
+      "10th Floor, Tower 4, Equinox Park, LBS Marg, Kurla West, Mumbai, Maharashtra 400070. Der Deutsche ParkZ, 2nd floor, Subhash Nagar Rd, Near Nahur West Railway Station, Nahur (West), Mumbai – 400078",
+    email:
+      "care@kissht.com, info@sicrevacapital.com, care@paywithring.com, escalation@paywithring.com",
+  },
 }; 
