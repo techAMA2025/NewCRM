@@ -199,7 +199,7 @@ export default function RequestLetterForm({
     Fibe: {
       address:
         "EarlySalary Office no. 404, The Chambers, (Samrat Chowk), Clover Park, Near Ganpati Chowk, Viman Nagar, Pune, Maharashtra 411014",
-      email: "care@fibe.com, grievance@fibe.in, care@fibe.in",
+      email: "grievance@fibe.in, care@fibe.in",
     },
     Finable: {
       address:
