@@ -23,6 +23,7 @@ export type Lead = {
   remarks: string;
   salesNotes: string;
   lastModified: Date;
+  date: number;
   convertedToClient: boolean;
   bankNames: string[];
   totalEmi: string;

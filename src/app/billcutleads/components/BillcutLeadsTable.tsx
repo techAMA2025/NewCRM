@@ -41,6 +41,7 @@ interface Lead {
   remarks: string;
   salesNotes: string;
   lastModified: Date;
+  date: number;
 }
 
 interface SalesPerson {
@@ -326,7 +327,7 @@ const BillcutLeadsTable = ({
       <table className="min-w-full divide-y divide-gray-700/50">
         <thead className="bg-gray-800/50">
           <tr>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Date</th>
+            <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-32">Date</th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Contact Info</th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Location</th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Financials</th>
@@ -345,9 +346,22 @@ const BillcutLeadsTable = ({
                 key={lead.id} 
                 className="hover:bg-gray-700/20 transition-colors duration-150 ease-in-out"
               >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-blue-300">
-                    {lead.lastModified.toLocaleDateString()}
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <div className="flex flex-col gap-1">
+                    <div className="text-sm text-blue-300">
+                      {new Date(lead.date).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </div>
+                    <div className="text-xs text-blue-300/70">
+                      {new Date(lead.date).toLocaleString('en-US', {
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true
+                      })}
+                    </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
