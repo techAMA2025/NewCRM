@@ -37,9 +37,11 @@ interface Client {
   id: string
   name: string
   phone: string
+  altPhone: string
   email: string
   city: string
   alloc_adv: string
+  assignedTo: string
   status: string
   personalLoanDues: string
   creditCardDues: string
@@ -348,18 +350,12 @@ function ClientViewModal({
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <span className="text-gray-300 text-sm font-medium">Assigned:</span>
+                <span className="text-gray-300 text-sm font-medium">Assigned At:</span>
                 <span className="text-white">{formatIndianDate(client.alloc_adv_at)}</span>
               </div>
-              {client.convertedAt && (
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-300 text-sm font-medium">Converted:</span>
-                  <span className="text-white">{formatIndianDate(client.convertedAt)}</span>
-                </div>
-              )}
               {client.startDate && (
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-300 text-sm font-medium">Start Date:</span>
+                  <span className="text-gray-300 text-sm font-medium">Joining Date:</span>
                   <span className="text-white">{formatIndianDate(client.startDate)}</span>
                 </div>
               )}
@@ -425,6 +421,10 @@ function ClientViewModal({
                   <span className="text-white w-2/3">{formatIndianPhoneNumber(client.phone)}</span>
                 </div>
                 <div className="flex border-b border-gray-700 pb-2">
+                  <span className="text-gray-400 w-1/3">Alternate Phone</span>
+                  <span className="text-white w-2/3">{(client.altPhone) || "Not specified"}</span>
+                </div>
+                <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Email</span>
                   <span className="text-white w-2/3">{client.email}</span>
                 </div>
@@ -439,6 +439,10 @@ function ClientViewModal({
                 <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Source</span>
                   <span className="text-white w-2/3">{client.source_database || "Not specified"}</span>
+                </div>
+                <div className="flex border-b border-gray-700 pb-2">
+                  <span className="text-gray-400 w-1/3">Salesperson</span>
+                  <span className="text-white w-2/3">{client.assignedTo}</span>
                 </div>
                 <div className="flex">
                   <span className="text-gray-400 w-1/3">Tenure</span>
