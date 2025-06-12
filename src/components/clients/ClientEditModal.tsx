@@ -20,6 +20,8 @@ interface Client {
   id: string;
   name: string;
   phone: string;
+  altPhone: string;
+  assignedTo: string;
   email: string;
   city: string;
   alloc_adv: string;
@@ -283,6 +285,17 @@ export default function ClientEditModal({
                     className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-1">Alternate Phone</label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.altPhone}
+                    onChange={handleInputChange}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
                 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email</label>
@@ -384,71 +397,6 @@ export default function ClientEditModal({
                     value={formData.tenure || ""}
                     onChange={handleInputChange}
                     className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Status Information */}
-            <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-4">Status Information</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">Status</label>
-                  <select
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="Assigned">Assigned</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Converted">Converted</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={formData.startDate || ""}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Notes & Remarks */}
-            <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-4">Notes & Remarks</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="remarks" className="block text-sm font-medium text-gray-300 mb-1">Remarks</label>
-                  <textarea
-                    id="remarks"
-                    name="remarks"
-                    value={formData.remarks || ""}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="queries" className="block text-sm font-medium text-gray-300 mb-1">Queries</label>
-                  <textarea
-                    id="queries"
-                    name="queries"
-                    value={formData.queries || ""}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                   />
                 </div>
               </div>
