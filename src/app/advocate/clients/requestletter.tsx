@@ -156,7 +156,13 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
       email:
         "gro@finnable.com, makeiteasy@finnable.com, customercare@finnable.com",
     },
-    "Fullerton (SMFG)": {
+    "SMFG": {
+      address:
+        "Mr. Ritesh Saxena, Grievance Redressal Officer, B wing, 6th Floor, Supreme Business Park, Hiranandani, Powai, Mumbai – 400072",
+      email:
+        "namaste@smfgindia.com, GRO@smfgindia.com, PNO@smfgindia.com, CCRC@smfgindia.com",
+    },
+    "Fullerton": {
       address:
         "Mr. Ritesh Saxena, Grievance Redressal Officer, B wing, 6th Floor, Supreme Business Park, Hiranandani, Powai, Mumbai – 400072",
       email:
@@ -262,7 +268,7 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
         "Lending Plate, Chawla House 3rd Floor, 19 Nehru Place, New Delhi-110019",
       email: "care@lendingplate.com, legal@lendingplate.com",
     },
-    "Lenditt (Chimnay Finlease Ltd)": {
+    "Chimnay Finlease Ltd (Lenditt)": {
       address:
         "CHINMAY FINLEASE LTD, MAHESH BHUVAN AZAD CHOWK AT & PO BHABHAR DIST BANASKANTHA GJ 385320",
       email: "support@lenditt.com, info@lenditt.com, satvinder@lenditt.com",
