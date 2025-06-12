@@ -543,6 +543,7 @@ const EditClientModal = ({
                     type="date"
                     value={lead.startDate || ''}
                     onChange={(value) => handleFieldChange('startDate', value)}
+                    required
                   />
                 </div>
               </FormSection>
