@@ -416,6 +416,18 @@ export const bankData: Record<string, BankData> = {
     email:
       "creditcards@federalbank.co, contact@federalbank.co.in, support@federalbank.co.in",
   },
+  Mintifi: {
+    address:
+      "Times Square Building, Andheri - Kurla Rd, Marol, Andheri East, Mumbai, Maharashtra 400059",
+    email:
+      "neelam.verma@mintifi.com, madhavi@mintifi.com, customercare@mintifi.com, gro@mintifi.com",
+  },
+  Tyger: {
+    address:
+      "Mr. Anurag Pandey, Adani Capital Pvt. Ltd., 1004/5, C-Wing, One BKC, C-66, G Block, Bandra Kurla Complex, Mumbai 400051. Mr. Viral Shah, Adani Capital Pvt. Ltd., 1004/5, C-Wing, One BKC, C-66, G Block, Bandra Kurla Complex, Mumbai-400051",
+    email:
+      "Viral.Shah@adani.com, escalations.acpl@adani.com, customercare.thfpl@tyger.in",
+  },
   "Northern Arc Bank": {
     address:
       "IndiQube Golf View Homes, 6th Floor, Tower B, 3rd Cross Road, S R Layout, Murgesh Pallya, Bengaluru – 560017 Mr. Madhan Mohan K, IndiQube Golf View Homes, 6th Floor, Tower B, 3rd Cross Road, S R Layout, Murgesh Pallya, Bengaluru-560017",
