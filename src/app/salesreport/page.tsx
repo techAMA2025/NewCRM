@@ -62,6 +62,17 @@ interface TeamChartProps {
   leadStatusDistribution: LeadStatusCount[];
 }
 
+interface CityData {
+  city: string;
+  totalLeads: number;
+  statusCounts: { [key: string]: number };
+  conversionRate: number;
+}
+
+interface CityChartProps {
+  cityData: CityData[];
+}
+
 const LEAD_STATUSES = [
   'No Status',
   'Interested',
@@ -115,6 +126,9 @@ export default function SalesReport() {
     totalSales: 0
   });
   const [userRole, setUserRole] = useState<string>('');
+  const [cityData, setCityData] = useState<CityData[]>([]);
+  const [selectedCity, setSelectedCity] = useState<string>('all');
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
 
   const getDateRange = (range: string): DateRange => {
     const today = new Date();
@@ -222,6 +236,48 @@ export default function SalesReport() {
         }
 
         setLeadStatusDistribution(leadsDistribution);
+        
+        // Aggregate city data
+        const cityDataMap: { [key: string]: CityData } = {};
+        const citiesSet = new Set<string>();
+
+        leadsSnapshot.docs.forEach(doc => {
+          const leadData = doc.data();
+          if (
+            (selectedSource === 'all' || leadData.source_database === selectedSource) &&
+            (selectedCity === 'all' || leadData.city === selectedCity)
+          ) {
+            const city = leadData.city || 'Unknown';
+            citiesSet.add(city);
+            
+            if (!cityDataMap[city]) {
+              cityDataMap[city] = {
+                city,
+                totalLeads: 0,
+                statusCounts: {},
+                conversionRate: 0
+              };
+              LEAD_STATUSES.forEach(status => {
+                cityDataMap[city].statusCounts[status] = 0;
+              });
+            }
+            
+            const status = leadData.status || 'No Status';
+            cityDataMap[city].statusCounts[status] = (cityDataMap[city].statusCounts[status] || 0) + 1;
+            cityDataMap[city].totalLeads += 1;
+          }
+        });
+
+        // Calculate conversion rates for each city
+        const cityDataArray = Object.values(cityDataMap).map(cityData => ({
+          ...cityData,
+          conversionRate: cityData.totalLeads > 0 
+            ? (cityData.statusCounts['Converted'] || 0) / cityData.totalLeads * 100 
+            : 0
+        }));
+
+        setCityData(cityDataArray);
+        setAvailableCities(['all', ...Array.from(citiesSet).sort()]);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -230,7 +286,7 @@ export default function SalesReport() {
     };
 
     fetchData();
-  }, [selectedRange, selectedSource, customDateRange]);
+  }, [selectedRange, selectedSource, customDateRange, selectedCity]);
 
   useEffect(() => {
     const calculateSummaryMetrics = (distribution: LeadStatusCount[]) => {
@@ -411,6 +467,117 @@ export default function SalesReport() {
             <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
             <Legend />
           </PieChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // City-wise Bar Chart
+  const CityWiseBarChart: React.FC<CityChartProps> = ({ cityData }) => {
+    const data = cityData.map(city => ({
+      city: city.city,
+      totalLeads: city.totalLeads,
+      converted: city.statusCounts['Converted'] || 0,
+      interested: city.statusCounts['Interested'] || 0,
+      notInterested: city.statusCounts['Not Interested'] || 0,
+      notAnswering: city.statusCounts['Not Answering'] || 0,
+      callback: city.statusCounts['Callback'] || 0
+    }));
+
+    return (
+      <div className="h-[400px] w-full">
+        <ResponsiveContainer>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="city" angle={-45} textAnchor="end" height={100} />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="totalLeads" fill="#8884d8" name="Total Leads" />
+            <Bar dataKey="converted" fill="#00C49F" name="Converted" />
+            <Bar dataKey="interested" fill="#0088FE" name="Interested" />
+            <Bar dataKey="notInterested" fill="#FF8042" name="Not Interested" />
+            <Bar dataKey="notAnswering" fill="#FFBB28" name="Not Answering" />
+            <Bar dataKey="callback" fill="#8884D8" name="Callback" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // City-wise Pie Chart
+  const CityWisePieChart: React.FC<CityChartProps> = ({ cityData }) => {
+    const data = cityData.map((city, index) => ({
+      name: city.city,
+      value: city.totalLeads,
+      conversionRate: city.conversionRate
+    }));
+
+    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value }: any) => {
+      const RADIAN = Math.PI / 180;
+      const radius = outerRadius * 1.2;
+      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+      const textAnchor = x > cx ? 'start' : 'end';
+
+      return (
+        <text 
+          x={x} 
+          y={y} 
+          fill="#374151" 
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          fontSize="12"
+        >
+          {`${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
+        </text>
+      );
+    };
+
+    return (
+      <div className="h-[350px] w-full">
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={100}
+              label={renderCustomizedLabel}
+            >
+              {data.map((entry, index) => (
+                <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(value: number) => [value, 'Leads']} />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // City Conversion Rate Chart
+  const CityConversionChart: React.FC<CityChartProps> = ({ cityData }) => {
+    const data = cityData.map(city => ({
+      city: city.city,
+      conversionRate: city.conversionRate,
+      totalLeads: city.totalLeads
+    }));
+
+    return (
+      <div className="h-[350px] w-full">
+        <ResponsiveContainer>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="city" angle={-45} textAnchor="end" height={100} />
+            <YAxis />
+            <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`, 'Conversion Rate']} />
+            <Legend />
+            <Bar dataKey="conversionRate" fill="#00C49F" name="Conversion Rate %" />
+          </BarChart>
         </ResponsiveContainer>
       </div>
     );
@@ -601,6 +768,26 @@ export default function SalesReport() {
                   </select>
                 )}
               </div>
+
+              {/* City Filter */}
+              <div className="min-w-[240px]">
+                <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <FunnelIcon className="h-5 w-5 text-purple-500" />
+                  <span className="text-base">City</span>
+                </label>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm transition-all duration-200 hover:border-purple-400 cursor-pointer"
+                >
+                  <option value="all">All Cities</option>
+                  {availableCities.filter(city => city !== 'all').map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -614,7 +801,108 @@ export default function SalesReport() {
             </div>
           ) : (
             <>
-              {/* Charts Section */}
+              {/* City-wise Charts Section */}
+              {cityData.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-3 px-1.5">
+                  {/* City-wise Distribution Chart */}
+                  <div className="bg-white shadow-xl p-3 col-span-2">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <FunnelIcon className="h-5 w-5 text-purple-500" />
+                      City-wise Lead Distribution
+                    </h3>
+                    <CityWiseBarChart cityData={cityData} />
+                  </div>
+                </div>
+              )}
+
+              {/* City-wise Table Section */}
+              {cityData.length > 0 && (
+                <div className="bg-white shadow-xl overflow-hidden backdrop-blur-lg bg-opacity-90 border border-gray-100 transition-all duration-300 hover:shadow-2xl mb-3">
+                  <div className="px-5 py-3 bg-gradient-to-r from-purple-50 to-purple-100">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <FunnelIcon className="h-5 w-5 text-purple-500" />
+                      City-wise Lead Analysis
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+                          <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            City
+                          </th>
+                          <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Total Leads
+                          </th>
+                          {LEAD_STATUSES.map((status) => (
+                            <th key={status} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              <div className="flex flex-col">
+                                <span>{status}</span>
+                                <span className="text-[9px] text-gray-400 font-normal normal-case">
+                                  {cityData.reduce((sum, city) => sum + (city.statusCounts[status] || 0), 0)} leads
+                                </span>
+                              </div>
+                            </th>
+                          ))}
+                          <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Conversion Rate
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {cityData.map((city, index) => (
+                          <tr 
+                            key={index} 
+                            className="transition-colors duration-200 hover:bg-purple-50/50"
+                          >
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-gray-900">{city.city}</div>
+                            </td>
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              <span className="text-sm font-bold text-gray-900 bg-purple-50 px-3 py-1 rounded-full">
+                                {city.totalLeads}
+                              </span>
+                            </td>
+                            {LEAD_STATUSES.map((status) => (
+                              <td key={status} className="px-5 py-3 whitespace-nowrap">
+                                <div className="flex flex-col items-center">
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} transition-all duration-200 hover:scale-110`}>
+                                    {city.statusCounts[status] || 0}
+                                  </span>
+                                  <div className="text-[9px] text-gray-400 mt-1">
+                                    {((city.statusCounts[status] || 0) / city.totalLeads * 100).toFixed(1)}%
+                                  </div>
+                                </div>
+                              </td>
+                            ))}
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="text-sm font-bold text-purple-600">
+                                  {city.conversionRate.toFixed(1)}%
+                                </div>
+                                <div className={`ml-2 h-2 w-16 rounded-full ${
+                                  city.conversionRate > 10 ? 'bg-emerald-200' : 
+                                  city.conversionRate > 5 ? 'bg-yellow-200' : 'bg-red-200'
+                                }`}>
+                                  <div 
+                                    className={`h-2 rounded-full ${
+                                      city.conversionRate > 10 ? 'bg-emerald-500' : 
+                                      city.conversionRate > 5 ? 'bg-yellow-500' : 'bg-red-500'
+                                    }`}
+                                    style={{ width: `${Math.min(city.conversionRate * 2, 100)}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Sales Team Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-3 px-1.5">
                 {/* Team Performance Chart */}
                 <div className="bg-white shadow-xl p-3 col-span-2">
@@ -624,7 +912,7 @@ export default function SalesReport() {
 
                 {/* Conversion Rate Pie Chart */}
                 <div className="bg-white shadow-xl p-3">
-                  <h3 className="text-lg font-semibold mb-3">Conversion Rates</h3>
+                  <h3 className="text-lg font-semibold mb-3">Team Conversion Rates</h3>
                   <ConversionPieChart leadStatusDistribution={leadStatusDistribution} />
                 </div>
 
@@ -637,8 +925,14 @@ export default function SalesReport() {
                 ))}
               </div>
 
-              {/* Original Table Section */}
+              {/* Original Sales Table Section */}
               <div className="bg-white shadow-xl overflow-hidden backdrop-blur-lg bg-opacity-90 border border-gray-100 transition-all duration-300 hover:shadow-2xl">
+                <div className="px-5 py-3 bg-gradient-to-r from-blue-50 to-blue-100">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <UserGroupIcon className="h-5 w-5 text-blue-500" />
+                    Sales Team Performance Analysis
+                  </h3>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead>
