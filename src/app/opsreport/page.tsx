@@ -28,6 +28,18 @@ interface BankStats {
   loanTypes: { [key: string]: number };
 }
 
+interface StateWiseBankData {
+  state: string;
+  bankName: string;
+  clientCount: number;
+  totalLoanAmount: number;
+}
+
+interface AgeGroupData {
+  ageGroup: string;
+  count: number;
+}
+
 interface Client {
   alloc_adv: string;
   alloc_adv_secondary: string;
@@ -38,6 +50,7 @@ interface Client {
   occupation: string;
   creditCardDues: string;
   personalLoanDues: string;
+  dob: string;
   banks: Array<{
     loanAmount: string;
     bankName: string;
@@ -67,6 +80,8 @@ export default function OpsReport() {
   const [bankStats, setBankStats] = useState<BankStats[]>([]);
   const [monthlyIncomeStats, setMonthlyIncomeStats] = useState<any[]>([]);
   const [occupationStats, setOccupationStats] = useState<any[]>([]);
+  const [stateWiseBankStats, setStateWiseBankStats] = useState<StateWiseBankData[]>([]);
+  const [ageGroupStats, setAgeGroupStats] = useState<AgeGroupData[]>([]);
   const [totalDebtStats, setTotalDebtStats] = useState({
     totalCreditCardDues: 0,
     totalPersonalLoanDues: 0,
@@ -191,6 +206,32 @@ export default function OpsReport() {
       return bankName.trim();
     };
 
+    // Helper function to calculate age from DOB
+    const calculateAge = (dob: string): number => {
+      if (!dob) return 0;
+      const today = new Date();
+      const birthDate = new Date(dob);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age;
+    };
+
+    // Helper function to get age group
+    const getAgeGroup = (age: number): string => {
+      if (age < 18) return 'Under 18';
+      if (age <= 25) return '18-25';
+      if (age <= 35) return '26-35';
+      if (age <= 45) return '36-45';
+      if (age <= 55) return '46-55';
+      if (age <= 65) return '56-65';
+      return 'Above 65';
+    };
+
     // Process advocate statistics
     const advocateMap = new Map<string, AdvocateStats>();
     clientsData.forEach(client => {
@@ -248,6 +289,53 @@ export default function OpsReport() {
       });
     });
     setBankStats(Array.from(bankMap.values()).sort((a, b) => b.totalLoans - a.totalLoans));
+
+    // Process state-wise bank distribution
+    const stateWiseBankMap = new Map<string, StateWiseBankData>();
+    clientsData.forEach(client => {
+      const state = client.city || 'Unknown';
+      client.banks?.forEach(bank => {
+        const normalizedBankName = normalizeBankName(bank.bankName || 'Unknown');
+        const key = `${state}-${normalizedBankName}`;
+        
+        if (!stateWiseBankMap.has(key)) {
+          stateWiseBankMap.set(key, {
+            state,
+            bankName: normalizedBankName,
+            clientCount: 0,
+            totalLoanAmount: 0
+          });
+        }
+        
+        const stats = stateWiseBankMap.get(key)!;
+        stats.clientCount++;
+        
+        const amount = parseFloat(bank.loanAmount.replace(/[^0-9.-]+/g, ''));
+        if (!isNaN(amount)) {
+          stats.totalLoanAmount += amount;
+        }
+      });
+    });
+    setStateWiseBankStats(Array.from(stateWiseBankMap.values()));
+
+    // Process age group statistics
+    const ageGroupMap = new Map<string, number>();
+    clientsData.forEach(client => {
+      const age = calculateAge(client.dob);
+      const ageGroup = getAgeGroup(age);
+      
+      ageGroupMap.set(ageGroup, (ageGroupMap.get(ageGroup) || 0) + 1);
+    });
+    
+    // Convert to array and sort by age group order
+    const ageGroupOrder = ['Under 18', '18-25', '26-35', '36-45', '46-55', '56-65', 'Above 65'];
+    const ageGroupData = ageGroupOrder
+      .map(group => ({
+        ageGroup: group,
+        count: ageGroupMap.get(group) || 0
+      }))
+      .filter(item => item.count > 0);
+    setAgeGroupStats(ageGroupData);
 
     // Process city statistics
     const cityMap = new Map();
@@ -777,6 +865,58 @@ export default function OpsReport() {
                   <Legend wrapperStyle={{ color: '#F3F4F6' }} />
                 </PieChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Age Group Distribution and State-wise Bank Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Age Group Distribution */}
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">Age Group Distribution</h2>
+            <div className="h-[360px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={ageGroupStats}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="ageGroup" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#F3F4F6'
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#8B5CF6" name="Number of Clients" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* State-wise Bank Distribution */}
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">State-wise Bank Distribution</h2>
+            <div className="h-[360px] overflow-y-auto custom-scrollbar">
+              <div className="space-y-3">
+                {stateWiseBankStats
+                  .sort((a, b) => b.clientCount - a.clientCount)
+                  .slice(0, 20)
+                  .map((item, index) => (
+                    <div key={`${item.state}-${item.bankName}-${index}`} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-gray-200">{item.bankName}</h4>
+                          <p className="text-xs text-gray-400">{item.state}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-blue-400">{item.clientCount} clients</p>
+                          <p className="text-xs text-gray-400">₹{item.totalLoanAmount.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
           </div>
         </div>
