@@ -94,6 +94,11 @@ export const bankData: Record<string, BankData> = {
       "EarlySalary Office no. 404, The Chambers, (Samrat Chowk), Clover Park, Near Ganpati Chowk, Viman Nagar, Pune, Maharashtra 411014",
     email: "care@fibe.in, grievance@fibe.in",
   },
+  FlexSalary: {
+    address:
+      "Unit A, 9th Floor, MJR Magnifique, Survey No 75 & 76, Khajaguda X Roads, Raidurgam, Hyderabad, Telangana - 500008",
+    email: "support@flexsalary.com, coo@vivifi.com",
+  },
   Finable: {
     address:
       "Finnable, Grievance Redressal Officer, Miss: Suman Kumari, IndiQube Lakeside, 4th Floor Municipal No. 80/2 Wing A, Bellaandur Village, Varthur Hobli, Bengaluru, KA 560103 IN",
