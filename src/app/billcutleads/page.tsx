@@ -65,12 +65,13 @@ const BillCutLeadsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter] = useState('Bill Cut Campaign');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [salesPersonFilter, setSalesPersonFilter] = useState('all');
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [showMyLeads, setShowMyLeads] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [sortConfig, setSortConfig] = useState({ 
-    key: 'synced_at', 
+    key: 'date',
     direction: 'descending' as 'ascending' | 'descending' 
   });
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
@@ -134,12 +135,17 @@ const BillCutLeadsPage = () => {
           } as Lead;
         });
 
-        setLeads(fetchedLeads);
-        setFilteredLeads(fetchedLeads);
+        const sortedLeads = fetchedLeads.sort((a, b) => {
+          const dateA = a.lastModified?.getTime() || 0;
+          const dateB = b.lastModified?.getTime() || 0;
+          return dateB - dateA;
+        });
+
+        setLeads(sortedLeads);
+        setFilteredLeads(sortedLeads);
         
-        // Initialize editing state for fetched leads
         const initialEditingState: EditingLeadsState = {};
-        fetchedLeads.forEach(lead => {
+        sortedLeads.forEach(lead => {
           initialEditingState[lead.id] = {
             ...lead,
             salesNotes: lead.salesNotes || ''
@@ -172,7 +178,7 @@ const BillCutLeadsPage = () => {
               lastName: data.lastName || '',
               email: data.email || '',
               role: data.role || '',
-              name: `${data.firstName || ''} ${data.lastName || ''}`.trim() // Combine first and last name
+              name: `${data.firstName || ''} ${data.lastName || ''}`.trim()
             } as User;
           })
           .filter(user => user.role === 'salesperson' || user.role === 'admin');
@@ -189,7 +195,7 @@ const BillCutLeadsPage = () => {
     fetchTeamMembers();
   }, []);
 
-  // Apply filters without salesperson filter
+  // Apply filters
   useEffect(() => {
     if (!leads) return;
     
@@ -212,15 +218,37 @@ const BillCutLeadsPage = () => {
       result = result.filter(lead => lead.convertedToClient === convertedFilter);
     }
 
-    // Apply My Leads filter
+    if (salesPersonFilter !== 'all') {
+      if (salesPersonFilter === '') {
+        result = result.filter(lead => !lead.assignedTo || lead.assignedTo === '');
+      } else {
+        result = result.filter(lead => lead.assignedTo === salesPersonFilter);
+      }
+    }
+
+    if (fromDate || toDate) {
+      result = result.filter(lead => {
+        const leadDate = lead.lastModified || new Date(lead.date);
+        const leadDateString = leadDate.toISOString().split('T')[0];
+        
+        if (fromDate && toDate) {
+          return leadDateString >= fromDate && leadDateString <= toDate;
+        } else if (fromDate) {
+          return leadDateString >= fromDate;
+        } else if (toDate) {
+          return leadDateString <= toDate;
+        }
+        return true;
+      });
+    }
+
     if (showMyLeads) {
       const currentUserName = localStorage.getItem('userName');
-      console.log('Current User Name from localStorage:', currentUserName); // Debug log
-      console.log('Before My Leads filter:', result.length); // Debug log
+      console.log('Current User Name from localStorage:', currentUserName);
+      console.log('Before My Leads filter:', result.length);
       
       if (currentUserName) {
         result = result.filter(lead => {
-          // Compare with assigned_to field from database
           const assignedTo = lead.assignedTo || '';
           const isMatch = assignedTo === currentUserName;
           console.log('Comparing:', {
@@ -231,11 +259,11 @@ const BillCutLeadsPage = () => {
           return isMatch;
         });
       }
-      console.log('After My Leads filter:', result.length); // Debug log
+      console.log('After My Leads filter:', result.length);
     }
     
     setFilteredLeads(result);
-  }, [leads, searchQuery, statusFilter, convertedFilter, showMyLeads]);
+  }, [leads, searchQuery, statusFilter, salesPersonFilter, convertedFilter, showMyLeads, fromDate, toDate]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
@@ -258,13 +286,11 @@ const BillCutLeadsPage = () => {
     try {
       const leadRef = doc(crmDb, 'billcutLeads', id);
       
-      // Create the update object with timestamp
       const updateData: any = {
         ...data,
         lastModified: serverTimestamp()
       };
 
-      // Map fields to their database names
       if ('status' in data) {
         updateData.category = data.status;
       }
@@ -277,10 +303,8 @@ const BillCutLeadsPage = () => {
         updateData.sales_notes = data.sales_notes;
       }
 
-      // Update the document in Firestore
       await updateDoc(leadRef, updateData);
       
-      // Update UI state
       const updatedLeads = leads.map(lead => 
         lead.id === id ? { ...lead, ...data, lastModified: new Date() } : lead
       );
@@ -288,7 +312,6 @@ const BillCutLeadsPage = () => {
       setLeads(updatedLeads);
       setFilteredLeads(updatedLeads);
       
-      // Close edit modal if open
       if (editingLead && editingLead.id === id) {
         setEditingLead(null);
       }
@@ -309,7 +332,6 @@ const BillCutLeadsPage = () => {
     try {
       const leadRef = doc(crmDb, 'billcutLeads', leadId);
       
-      // Create assignment history entry
       const historyRef = collection(crmDb, 'billcutLeads', leadId, 'history');
       await addDoc(historyRef, {
         assignmentChange: true,
@@ -322,14 +344,12 @@ const BillCutLeadsPage = () => {
         }
       });
       
-      // Update the lead
       await updateDoc(leadRef, {
         assigned_to: salesPersonName,
         assignedToId: salesPersonId,
         lastModified: serverTimestamp()
       });
       
-      // Update UI state
       const updatedLeads = leads.map(lead => 
         lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } : lead
       );
@@ -358,18 +378,14 @@ const BillCutLeadsPage = () => {
   // Delete lead function
   const deleteLead = async (leadId: string) => {
     try {
-      // Delete the lead document
       await deleteDoc(doc(crmDb, 'billcutLeads', leadId));
       
-      // Update local state
       const updatedLeads = leads.filter(lead => lead.id !== leadId);
       setLeads(updatedLeads);
       
-      // Update filtered leads
       const updatedFilteredLeads = filteredLeads.filter(lead => lead.id !== leadId);
       setFilteredLeads(updatedFilteredLeads);
       
-      // Show success message
       toast.success('Lead deleted successfully', {
         position: "top-right",
         autoClose: 3000
@@ -447,15 +463,14 @@ const BillCutLeadsPage = () => {
           createdBy: data.createdBy,
           createdById: data.createdById,
           displayDate: data.displayDate,
-          assignedById: data.assignedById || data.createdById // Fallback to createdById if not present
+          assignedById: data.assignedById || data.createdById
         };
       });
 
-      // Sort by date
       historyData.sort((a, b) => {
         const getTimestamp = (date: any): number => {
           if (date?.seconds) {
-            return date.seconds * 1000; // Convert Firestore seconds to milliseconds
+            return date.seconds * 1000;
           }
           if (date instanceof Date) {
             return date.getTime();
@@ -526,6 +541,18 @@ const BillCutLeadsPage = () => {
             statusOptions={statusOptions}
             showMyLeads={showMyLeads}
             setShowMyLeads={setShowMyLeads}
+            convertedFilter={convertedFilter}
+            setConvertedFilter={setConvertedFilter}
+            fromDate={fromDate}
+            setFromDate={setFromDate}
+            toDate={toDate}
+            setToDate={setToDate}
+            filteredLeads={filteredLeads}
+            leads={leads}
+            userRole={userRole}
+            salesPersonFilter={salesPersonFilter}
+            setSalesPersonFilter={setSalesPersonFilter}
+            salesTeamMembers={salesTeamMembers}
           />
           
           {isLoading ? (
