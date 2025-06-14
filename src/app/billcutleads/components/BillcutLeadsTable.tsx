@@ -220,7 +220,7 @@ const BillcutLeadsTable = ({
     
     // For status changes, immediately save to database
     if (field === 'status') {
-      const dbData = { category: value };
+      const dbData = { status: value };
       console.log('Saving status change:', { id, dbData });
       updateLead(id, dbData).then(success => {
         if (success) {
@@ -471,7 +471,6 @@ const BillcutLeadsTable = ({
                   lead={lead}
                   fetchNotesHistory={fetchNotesHistory}
                   crmDb={crmDb}
-                  user={user}
                   updateLead={updateLead}
                 />
               </tr>

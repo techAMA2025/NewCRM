@@ -53,6 +53,26 @@ const BillcutLeadsFilters = ({
   // New search implementation
   const [searchInput, setSearchInput] = useState(searchQuery);
   
+  // Set default date values on component mount
+  useEffect(() => {
+    const today = new Date();
+    const fourDaysAgo = new Date(today);
+    fourDaysAgo.setDate(today.getDate() - 4);
+
+    // Format dates as YYYY-MM-DD
+    const formatDate = (date: Date) => {
+      return date.toISOString().split('T')[0];
+    };
+
+    // Only set default values if dates are empty
+    if (!fromDate) {
+      setFromDate(formatDate(fourDaysAgo));
+    }
+    if (!toDate) {
+      setToDate(formatDate(today));
+    }
+  }, []);
+  
   // Create a more efficient debounced search function
   const debouncedSearch = useCallback(
     debounce((value: string) => {

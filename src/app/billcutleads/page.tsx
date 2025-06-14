@@ -57,6 +57,19 @@ const extractStateFromAddress = (address: string): string => {
   return 'Unknown State';
 };
 
+// Set default date range to current month to avoid loading all leads initially
+const getDefaultFromDate = () => {
+  const now = new Date();
+  const fourDaysAgo = new Date(now);
+  fourDaysAgo.setDate(now.getDate() - 4);
+  return fourDaysAgo.toISOString().split('T')[0];
+};
+
+const getDefaultToDate = () => {
+  const now = new Date();
+  return now.toISOString().split('T')[0];
+};
+
 const BillCutLeadsPage = () => {
   // State Management
   const [isLoading, setIsLoading] = useState(true);
@@ -68,8 +81,8 @@ const BillCutLeadsPage = () => {
   const [salesPersonFilter, setSalesPersonFilter] = useState('all');
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [showMyLeads, setShowMyLeads] = useState(false);
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(getDefaultFromDate());
+  const [toDate, setToDate] = useState(getDefaultToDate());
   const [sortConfig, setSortConfig] = useState({ 
     key: 'date',
     direction: 'descending' as 'ascending' | 'descending' 
@@ -107,7 +120,25 @@ const BillCutLeadsPage = () => {
       setIsLoading(true);
       try {
         const billcutLeadsRef = collection(crmDb, 'billcutLeads');
-        const querySnapshot = await getDocs(billcutLeadsRef);
+        
+        // Create query constraints based on date filters
+        let queryConstraints = [];
+        
+        if (fromDate) {
+          const fromDateStart = new Date(fromDate);
+          fromDateStart.setHours(0, 0, 0, 0);
+          queryConstraints.push(where('date', '>=', fromDateStart.getTime()));
+        }
+        
+        if (toDate) {
+          const toDateEnd = new Date(toDate);
+          toDateEnd.setHours(23, 59, 59, 999);
+          queryConstraints.push(where('date', '<=', toDateEnd.getTime()));
+        }
+        
+        // Create and execute the query
+        const q = query(billcutLeadsRef, ...queryConstraints);
+        const querySnapshot = await getDocs(q);
         
         const fetchedLeads = querySnapshot.docs.map(doc => {
           const data = doc.data();
@@ -161,7 +192,7 @@ const BillCutLeadsPage = () => {
     };
 
     fetchBillcutLeads();
-  }, []);
+  }, [fromDate, toDate]);
 
   // Fetch team members
   useEffect(() => {
@@ -226,22 +257,6 @@ const BillCutLeadsPage = () => {
       }
     }
 
-    if (fromDate || toDate) {
-      result = result.filter(lead => {
-        const leadDate = lead.lastModified || new Date(lead.date);
-        const leadDateString = leadDate.toISOString().split('T')[0];
-        
-        if (fromDate && toDate) {
-          return leadDateString >= fromDate && leadDateString <= toDate;
-        } else if (fromDate) {
-          return leadDateString >= fromDate;
-        } else if (toDate) {
-          return leadDateString <= toDate;
-        }
-        return true;
-      });
-    }
-
     if (showMyLeads) {
       const currentUserName = localStorage.getItem('userName');
       console.log('Current User Name from localStorage:', currentUserName);
@@ -263,7 +278,7 @@ const BillCutLeadsPage = () => {
     }
     
     setFilteredLeads(result);
-  }, [leads, searchQuery, statusFilter, salesPersonFilter, convertedFilter, showMyLeads, fromDate, toDate]);
+  }, [leads, searchQuery, statusFilter, salesPersonFilter, convertedFilter, showMyLeads]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
