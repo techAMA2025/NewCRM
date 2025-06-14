@@ -347,7 +347,7 @@ const BillcutLeadsFilters = ({
         </div>
         
         {/* Date range clear button */}
-        {(fromDate || toDate) && (
+        {/* {(fromDate || toDate) && (
           <div className="mt-4 flex justify-start">
             <button 
               onClick={clearDateFilters}
@@ -360,7 +360,7 @@ const BillcutLeadsFilters = ({
               Clear date filters
             </button>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
