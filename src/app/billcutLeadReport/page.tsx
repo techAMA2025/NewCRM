@@ -1,0 +1,536 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db as crmDb } from '@/firebase/firebase';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  RadialBarChart,
+  RadialBar,
+  ComposedChart
+} from 'recharts';
+import { FiUsers, FiTrendingUp, FiTarget, FiDollarSign, FiPhone, FiMail, FiMapPin, FiCalendar, FiActivity, FiPieChart } from 'react-icons/fi';
+
+// Types
+interface BillcutLead {
+  id: string;
+  address: string;
+  assigned_to: string;
+  category: string;
+  date: number;
+  debt_range: string;
+  email: string;
+  income: string;
+  mobile: string;
+  name: string;
+  sales_notes: string;
+  synced_date: any;
+}
+
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  change?: string;
+  changeType?: 'positive' | 'negative' | 'neutral';
+  icon: React.ReactNode;
+  color: string;
+}
+
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, changeType, icon, color }) => (
+  <div className="bg-white rounded-xl shadow-lg p-6 border-l-4" style={{ borderLeftColor: color }}>
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+        {change && (
+          <p className={`text-sm mt-2 flex items-center ${
+            changeType === 'positive' ? 'text-green-600' : 
+            changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
+          }`}>
+            {change}
+          </p>
+        )}
+      </div>
+      <div className="p-3 rounded-full" style={{ backgroundColor: `${color}20` }}>
+        <div style={{ color }}>{icon}</div>
+      </div>
+    </div>
+  </div>
+);
+
+const COLORS = [
+  '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
+  '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
+];
+
+const BillcutLeadReportPage = () => {
+  const [leads, setLeads] = useState<BillcutLead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
+  // Fetch leads data
+  useEffect(() => {
+    const fetchLeads = async () => {
+      setIsLoading(true);
+      try {
+        const billcutLeadsRef = collection(crmDb, 'billcutLeads');
+        
+        let queryConstraints = [];
+        
+        if (dateRange.startDate) {
+          const startDate = new Date(dateRange.startDate);
+          startDate.setHours(0, 0, 0, 0);
+          queryConstraints.push(where('date', '>=', startDate.getTime()));
+        }
+        
+        if (dateRange.endDate) {
+          const endDate = new Date(dateRange.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          queryConstraints.push(where('date', '<=', endDate.getTime()));
+        }
+        
+        const q = queryConstraints.length > 0 ? query(billcutLeadsRef, ...queryConstraints) : billcutLeadsRef;
+        const querySnapshot = await getDocs(q);
+        
+        const fetchedLeads = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as BillcutLead));
+        
+        setLeads(fetchedLeads);
+      } catch (error) {
+        console.error("Error fetching billcut leads:", error);
+        toast.error("Failed to load billcut leads data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLeads();
+  }, [dateRange]);
+
+  // Analytics calculations
+  const analytics = useMemo(() => {
+    if (!leads.length) return null;
+
+    // Basic metrics
+    const totalLeads = leads.length;
+    const uniqueAssignees = new Set(leads.map(lead => lead.assigned_to)).size;
+    const averageIncome = leads.reduce((sum, lead) => sum + (parseInt(lead.income) || 0), 0) / totalLeads;
+    
+    // Category distribution
+    const categoryDistribution = leads.reduce((acc, lead) => {
+      const category = lead.category || 'Uncategorized';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Assigned to distribution
+    const assigneeDistribution = leads.reduce((acc, lead) => {
+      const assignee = lead.assigned_to || 'Unassigned';
+      acc[assignee] = (acc[assignee] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Debt range distribution
+    const debtRangeDistribution = leads.reduce((acc, lead) => {
+      const range = lead.debt_range || 'Not specified';
+      acc[range] = (acc[range] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Income distribution
+    const incomeRanges = {
+      '0-25K': 0,
+      '25K-50K': 0,
+      '50K-75K': 0,
+      '75K-100K': 0,
+      '100K+': 0
+    };
+    
+    leads.forEach(lead => {
+      const income = parseInt(lead.income) || 0;
+      if (income <= 25000) incomeRanges['0-25K']++;
+      else if (income <= 50000) incomeRanges['25K-50K']++;
+      else if (income <= 75000) incomeRanges['50K-75K']++;
+      else if (income <= 100000) incomeRanges['75K-100K']++;
+      else incomeRanges['100K+']++;
+    });
+
+    // Geographic distribution (extract state from address)
+    const stateDistribution = leads.reduce((acc, lead) => {
+      const address = lead.address || '';
+      const addressParts = address.split(',');
+      const state = addressParts[addressParts.length - 1]?.trim() || 'Unknown';
+      acc[state] = (acc[state] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Time-based analysis
+    const monthlyDistribution = leads.reduce((acc, lead) => {
+      const date = new Date(lead.date);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      acc[monthYear] = (acc[monthYear] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Sales performance
+    const salesPerformance = Object.entries(assigneeDistribution).map(([name, count]) => {
+      const assigneeLeads = leads.filter(lead => lead.assigned_to === name);
+      const interestedCount = assigneeLeads.filter(lead => lead.category === 'Interested').length;
+      const convertedCount = assigneeLeads.filter(lead => lead.category === 'Converted').length;
+      const conversionRate = count > 0 ? ((interestedCount + convertedCount) / count * 100) : 0;
+      
+      return {
+        name,
+        totalLeads: count,
+        interested: interestedCount,
+        converted: convertedCount,
+        conversionRate: Math.round(conversionRate * 100) / 100
+      };
+    });
+
+    // Contact info analysis
+    const contactAnalysis = {
+      hasEmail: leads.filter(lead => lead.email && lead.email !== '').length,
+      hasPhone: leads.filter(lead => lead.mobile && lead.mobile !== '').length,
+      hasNotes: leads.filter(lead => lead.sales_notes && lead.sales_notes !== '').length
+    };
+
+    return {
+      totalLeads,
+      uniqueAssignees,
+      averageIncome: Math.round(averageIncome),
+      categoryDistribution: Object.entries(categoryDistribution).map(([name, value]) => ({ name, value })),
+      assigneeDistribution: Object.entries(assigneeDistribution).map(([name, value]) => ({ name, value })),
+      debtRangeDistribution: Object.entries(debtRangeDistribution).map(([name, value]) => ({ name, value })),
+      incomeDistribution: Object.entries(incomeRanges).map(([name, value]) => ({ name, value })),
+      stateDistribution: Object.entries(stateDistribution).map(([name, value]) => ({ name, value })).slice(0, 10),
+      monthlyDistribution: Object.entries(monthlyDistribution).map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name)),
+      salesPerformance,
+      contactAnalysis
+    };
+  }, [leads]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <OverlordSidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-lg text-gray-600">Loading analytics data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <OverlordSidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg text-gray-600">No data available for analysis</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <OverlordSidebar />
+      <div className="flex-1 p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Billcut Leads Analytics</h1>
+            <p className="text-gray-600">Comprehensive analysis of your billcut leads data</p>
+            
+            {/* Date Range Filter */}
+            <div className="mt-4 flex gap-4 items-center">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <button
+                onClick={() => setDateRange({ startDate: '', endDate: '' })}
+                className="mt-6 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <MetricCard
+              title="Total Leads"
+              value={analytics.totalLeads.toLocaleString()}
+              icon={<FiUsers size={24} />}
+              color="#3B82F6"
+            />
+            <MetricCard
+              title="Active Sales Reps"
+              value={analytics.uniqueAssignees}
+              icon={<FiTarget size={24} />}
+              color="#10B981"
+            />
+            <MetricCard
+              title="Average Income"
+              value={`₹${analytics.averageIncome.toLocaleString()}`}
+              icon={<FiDollarSign size={24} />}
+              color="#F59E0B"
+            />
+            <MetricCard
+              title="Contact Rate"
+              value={`${Math.round((analytics.contactAnalysis.hasPhone / analytics.totalLeads) * 100)}%`}
+              icon={<FiPhone size={24} />}
+              color="#EF4444"
+            />
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Category Distribution */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FiPieChart className="mr-2" />
+                Lead Status Distribution
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={analytics.categoryDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {analytics.categoryDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Sales Performance */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FiActivity className="mr-2" />
+                Sales Rep Performance
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.salesPerformance}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="totalLeads" fill="#3B82F6" name="Total Leads" />
+                  <Bar dataKey="interested" fill="#10B981" name="Interested" />
+                  <Bar dataKey="converted" fill="#F59E0B" name="Converted" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Additional Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Debt Range Distribution */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FiDollarSign className="mr-2" />
+                Debt Range Distribution
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.debtRangeDistribution} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" width={100} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Income Distribution */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FiTrendingUp className="mr-2" />
+                Income Range Distribution
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={analytics.incomeDistribution}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {analytics.incomeDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Time-based and Geographic Analysis */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Monthly Trend */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FiCalendar className="mr-2" />
+                Monthly Lead Trend
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={analytics.monthlyDistribution}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="value" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Geographic Distribution */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FiMapPin className="mr-2" />
+                Top States
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.stateDistribution}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#EC4899" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Conversion Rate Analysis */}
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <FiTarget className="mr-2" />
+              Sales Rep Conversion Rates
+            </h3>
+            <ResponsiveContainer width="100%" height={400}>
+              <ComposedChart data={analytics.salesPerformance}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Legend />
+                <Bar yAxisId="left" dataKey="totalLeads" fill="#3B82F6" name="Total Leads" />
+                <Line yAxisId="right" type="monotone" dataKey="conversionRate" stroke="#EF4444" strokeWidth={3} name="Conversion Rate %" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Contact Information Analysis */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900">Has Email</h4>
+                  <p className="text-3xl font-bold text-blue-600 mt-2">
+                    {analytics.contactAnalysis.hasEmail}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {Math.round((analytics.contactAnalysis.hasEmail / analytics.totalLeads) * 100)}% of total
+                  </p>
+                </div>
+                <FiMail size={32} className="text-blue-600" />
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900">Has Phone</h4>
+                  <p className="text-3xl font-bold text-green-600 mt-2">
+                    {analytics.contactAnalysis.hasPhone}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {Math.round((analytics.contactAnalysis.hasPhone / analytics.totalLeads) * 100)}% of total
+                  </p>
+                </div>
+                <FiPhone size={32} className="text-green-600" />
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900">Has Notes</h4>
+                  <p className="text-3xl font-bold text-purple-600 mt-2">
+                    {analytics.contactAnalysis.hasNotes}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {Math.round((analytics.contactAnalysis.hasNotes / analytics.totalLeads) * 100)}% of total
+                  </p>
+                </div>
+                <FiActivity size={32} className="text-purple-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ToastContainer />
+    </div>
+  );
+};
+
+export default BillcutLeadReportPage;
