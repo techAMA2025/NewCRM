@@ -79,7 +79,6 @@ const BillCutLeadsPage = () => {
   const [sourceFilter] = useState('Bill Cut Campaign');
   const [statusFilter, setStatusFilter] = useState('all');
   const [salesPersonFilter, setSalesPersonFilter] = useState('all');
-  const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [showMyLeads, setShowMyLeads] = useState(false);
   const [fromDate, setFromDate] = useState(getDefaultFromDate());
   const [toDate, setToDate] = useState(getDefaultToDate());
@@ -234,11 +233,12 @@ const BillCutLeadsPage = () => {
     
     if (statusFilter !== 'all') {
       if (statusFilter === 'No Status') {
-        // Filter for leads where status field doesn't exist, is null/undefined, empty string, or is literally "No Status"
+        // Filter for leads where status field doesn't exist, is null/undefined, empty string, is "-", or is literally "No Status"
         result = result.filter(lead => 
           lead.status === undefined || 
           lead.status === null || 
           lead.status === '' || 
+          lead.status === '-' ||
           lead.status === 'No Status'
         );
       } else {
@@ -254,10 +254,6 @@ const BillCutLeadsPage = () => {
         lead.email?.toLowerCase().includes(query) ||
         lead.phone?.toLowerCase().includes(query)
       );
-    }
-    
-    if (convertedFilter !== null) {
-      result = result.filter(lead => lead.convertedToClient === convertedFilter);
     }
 
     if (salesPersonFilter !== 'all') {
@@ -289,7 +285,7 @@ const BillCutLeadsPage = () => {
     }
     
     setFilteredLeads(result);
-  }, [leads, searchQuery, statusFilter, salesPersonFilter, convertedFilter, showMyLeads]);
+  }, [leads, searchQuery, statusFilter, salesPersonFilter, showMyLeads]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
@@ -567,8 +563,6 @@ const BillCutLeadsPage = () => {
             statusOptions={statusOptions}
             showMyLeads={showMyLeads}
             setShowMyLeads={setShowMyLeads}
-            convertedFilter={convertedFilter}
-            setConvertedFilter={setConvertedFilter}
             fromDate={fromDate}
             setFromDate={setFromDate}
             toDate={toDate}
