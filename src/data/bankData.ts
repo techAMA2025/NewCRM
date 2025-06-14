@@ -482,5 +482,9 @@ export const bankData: Record<string, BankData> = {
   "North East Small Finance": {
     address: "1st & 3rd Floor, Fortune Central, Basisthapur, Bye lane 3, Beltola, Guwahati, Assam 781028",
     email: "customergrievance@nesfb.com, customergrievance@sliceit.com, principal.nodalofficer@nesfb.com, nodalofficer@sliceit.com"
+  },
+  "Groww": {
+    address: "Vaishnavi Tech Park, South Tower, 3rd floor, Sarjapur Main Road, Bellandur, Bengaluru – 560103, Karnataka",
+    email: "headcustomerservice@groww.in, grievances@groww.in, escalation@groww.in, support@groww.in, creditsupport@groww.in"
   }
 }; 
