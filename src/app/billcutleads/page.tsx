@@ -96,6 +96,11 @@ const BillCutLeadsPage = () => {
   const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([]);
   const [debugInfo, setDebugInfo] = useState('');
 
+  // Add bulk selection state
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [showBulkAssignment, setShowBulkAssignment] = useState(false);
+  const [bulkAssignTarget, setBulkAssignTarget] = useState('');
+
   // Authentication effect
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -211,10 +216,10 @@ const BillCutLeadsPage = () => {
               name: `${data.firstName || ''} ${data.lastName || ''}`.trim()
             } as User;
           })
-          .filter(user => user.role === 'salesperson' || user.role === 'admin');
+          .filter(user => user.role === 'sales' || user.role === 'admin' || user.role === 'overlord');
         
         setTeamMembers(usersData);
-        const salesPersonnel = usersData.filter(user => user.role === 'salesperson');
+        const salesPersonnel = usersData.filter(user => user.role === 'sales');
         setSalesTeamMembers(salesPersonnel);
       } catch (error) {
         console.error("Error fetching team members: ", error);
@@ -285,6 +290,9 @@ const BillCutLeadsPage = () => {
     }
     
     setFilteredLeads(result);
+    
+    // Clear selected leads when filters change to prevent stale selections
+    setSelectedLeads(prev => prev.filter(leadId => result.some(lead => lead.id === leadId)));
   }, [leads, searchQuery, statusFilter, salesPersonFilter, showMyLeads]);
 
   // Add debug effect to monitor leads data
@@ -395,6 +403,114 @@ const BillCutLeadsPage = () => {
         autoClose: 3000
       });
     }
+  };
+
+  // Bulk assignment function
+  const bulkAssignLeads = async (leadIds: string[], salesPersonName: string, salesPersonId: string) => {
+    try {
+      const updatePromises = leadIds.map(async (leadId) => {
+        const leadRef = doc(crmDb, 'billcutLeads', leadId);
+        
+        // Add history entry
+        const historyRef = collection(crmDb, 'billcutLeads', leadId, 'history');
+        await addDoc(historyRef, {
+          assignmentChange: true,
+          previousAssignee: leads.find(l => l.id === leadId)?.assignedTo || 'Unassigned',
+          newAssignee: salesPersonName,
+          timestamp: serverTimestamp(),
+          assignedById: localStorage.getItem('userName') || '',
+          editor: {
+            id: currentUser?.uid || 'unknown'
+          }
+        });
+        
+        // Update lead
+        await updateDoc(leadRef, {
+          assigned_to: salesPersonName,
+          assignedToId: salesPersonId,
+          lastModified: serverTimestamp()
+        });
+      });
+
+      await Promise.all(updatePromises);
+      
+      // Update local state
+      const updatedLeads = leads.map(lead => 
+        leadIds.includes(lead.id) 
+          ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } 
+          : lead
+      );
+      
+      setLeads(updatedLeads);
+      setSelectedLeads([]);
+      setShowBulkAssignment(false);
+      setBulkAssignTarget('');
+      
+      toast.success(
+        <div>
+          <p className="font-medium">Bulk Assignment Complete</p>
+          <p className="text-sm">{leadIds.length} leads assigned to {salesPersonName}</p>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 3000
+        }
+      );
+    } catch (error) {
+      console.error("Error bulk assigning leads: ", error);
+      toast.error("Failed to assign leads", {
+        position: "top-right",
+        autoClose: 3000
+      });
+    }
+  };
+
+  // Selection handlers
+  const handleSelectLead = (leadId: string) => {
+    setSelectedLeads(prev => 
+      prev.includes(leadId) 
+        ? prev.filter(id => id !== leadId)
+        : [...prev, leadId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLeads.length === filteredLeads.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(filteredLeads.map(lead => lead.id));
+    }
+  };
+
+  const handleBulkAssign = () => {
+    if (selectedLeads.length === 0) {
+      toast.error("Please select leads to assign");
+      return;
+    }
+    
+    // Check permissions for bulk assignment
+    const canBulkAssign = userRole === 'admin' || userRole === 'overlord' || userRole === 'sales';
+    if (!canBulkAssign) {
+      toast.error("You don't have permission to bulk assign leads");
+      return;
+    }
+    
+    setShowBulkAssignment(true);
+  };
+
+  const executeBulkAssign = () => {
+    if (!bulkAssignTarget) {
+      toast.error("Please select a salesperson");
+      return;
+    }
+
+    const selectedPerson = teamMembers.find(member => member.name === bulkAssignTarget);
+    if (!selectedPerson) {
+      toast.error("Selected salesperson not found");
+      return;
+    }
+
+    bulkAssignLeads(selectedLeads, bulkAssignTarget, selectedPerson.id);
   };
 
   // Delete lead function
@@ -573,6 +689,9 @@ const BillCutLeadsPage = () => {
             salesPersonFilter={salesPersonFilter}
             setSalesPersonFilter={setSalesPersonFilter}
             salesTeamMembers={salesTeamMembers}
+            selectedLeads={selectedLeads}
+            onBulkAssign={handleBulkAssign}
+            onClearSelection={() => setSelectedLeads([])}
           />
           
           {isLoading ? (
@@ -590,7 +709,65 @@ const BillCutLeadsPage = () => {
                 crmDb={crmDb}
                 user={currentUser}
                 showMyLeads={showMyLeads}
+                selectedLeads={selectedLeads}
+                onSelectLead={handleSelectLead}
+                onSelectAll={handleSelectAll}
               />
+              
+              {/* Bulk Assignment Modal */}
+              {showBulkAssignment && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+                    <h3 className="text-xl font-semibold text-gray-100 mb-4">
+                      Bulk Assign Leads
+                    </h3>
+                    
+                    <div className="mb-4">
+                      <p className="text-gray-300 mb-2">
+                        Assigning {selectedLeads.length} lead{selectedLeads.length > 1 ? 's' : ''}
+                      </p>
+                      
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Assign to:
+                      </label>
+                      <select
+                        value={bulkAssignTarget}
+                        onChange={(e) => setBulkAssignTarget(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
+                      >
+                        <option value="">Select Salesperson</option>
+                        {(userRole === 'admin' || userRole === 'overlord' 
+                          ? teamMembers.filter(member => member.role === 'sales')
+                          : teamMembers.filter(member => member.name === localStorage.getItem('userName') && member.role === 'sales')
+                        ).map((member) => (
+                          <option key={member.id} value={member.name}>
+                            {member.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <button
+                        onClick={executeBulkAssign}
+                        disabled={!bulkAssignTarget}
+                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200"
+                      >
+                        Assign Leads
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowBulkAssignment(false);
+                          setBulkAssignTarget('');
+                        }}
+                        className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors duration-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {!isLoading && leads.length === 0 && (
                 <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-700/50">

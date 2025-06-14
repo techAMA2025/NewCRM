@@ -22,6 +22,10 @@ type BillcutLeadsFiltersProps = {
   salesPersonFilter?: string;
   setSalesPersonFilter?: (salesperson: string) => void;
   salesTeamMembers: any[];
+  // Bulk assignment props
+  selectedLeads: string[];
+  onBulkAssign: () => void;
+  onClearSelection: () => void;
 };
 
 const BillcutLeadsFilters = ({
@@ -41,7 +45,11 @@ const BillcutLeadsFilters = ({
   userRole,
   salesPersonFilter = '',
   setSalesPersonFilter = () => {},
-  salesTeamMembers
+  salesTeamMembers,
+  // Bulk assignment props
+  selectedLeads,
+  onBulkAssign,
+  onClearSelection
 }: BillcutLeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,7 +108,7 @@ const BillcutLeadsFilters = ({
     const fetchSalesUsers = async () => {
       try {
         setIsLoading(true);
-        const salesQuery = query(collection(crmDb, 'users'), where('role', '==', 'salesperson'));
+        const salesQuery = query(collection(crmDb, 'users'), where('role', '==', 'sales'));
         const querySnapshot = await getDocs(salesQuery);
         
         const users = querySnapshot.docs.map(doc => {
@@ -217,6 +225,28 @@ const BillcutLeadsFilters = ({
             <p className="text-sm text-gray-400">
               Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
             </p>
+            
+            {/* Bulk Assignment Button */}
+            {selectedLeads.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-blue-300 font-medium">
+                  {selectedLeads.length} selected
+                </span>
+                <button
+                  onClick={onBulkAssign}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
+                >
+                  Bulk Assign
+                </button>
+                <button
+                  onClick={onClearSelection}
+                  className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+            
             {hasActiveFilters && (
               <button 
                 onClick={clearAllFilters}
