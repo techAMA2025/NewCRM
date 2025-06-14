@@ -67,6 +67,9 @@ interface BillcutLeadsTableProps {
   crmDb: any;
   user: any;
   showMyLeads: boolean;
+  selectedLeads: string[];
+  onSelectLead: (leadId: string) => void;
+  onSelectAll: () => void;
 }
 
 const BillcutLeadsTable = ({
@@ -78,6 +81,9 @@ const BillcutLeadsTable = ({
   crmDb,
   user,
   showMyLeads,
+  selectedLeads,
+  onSelectLead,
+  onSelectAll,
 }: BillcutLeadsTableProps) => {
   const [editingData, setEditingData] = useState<{ [key: string]: Partial<Lead> }>({});
   const [salesPeople, setSalesPeople] = useState<User[]>([]);
@@ -365,6 +371,14 @@ const BillcutLeadsTable = ({
       <table className="min-w-full divide-y divide-gray-700/50">
         <thead className="bg-gray-800/50">
           <tr>
+            <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-16">
+              <input
+                type="checkbox"
+                checked={selectedLeads.length === leads.length && leads.length > 0}
+                onChange={onSelectAll}
+                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </th>
             <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-32">Date</th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Contact Info</th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Location</th>
@@ -384,6 +398,14 @@ const BillcutLeadsTable = ({
                 key={lead.id} 
                 className="hover:bg-gray-700/20 transition-colors duration-150 ease-in-out"
               >
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={selectedLeads.includes(lead.id)}
+                    onChange={() => onSelectLead(lead.id)}
+                    className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                  />
+                </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex flex-col gap-1">
                     <div className="text-sm text-blue-300">
