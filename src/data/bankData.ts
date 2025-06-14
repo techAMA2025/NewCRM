@@ -445,4 +445,10 @@ export const bankData: Record<string, BankData> = {
     email:
       "care@kissht.com, info@sicrevacapital.com, care@paywithring.com, escalation@paywithring.com",
   },
+  "UGRO Capital": {
+    address:
+      "Mr. Satyabrata Mohapatra, U GRO Capital Limited, 4th Floor, Tower 3, Equinox Business Park, LBS Road, Kurla, Mumbai 400070",
+    email:
+      "info@ugrocapital.com, customercare@ugrocapital.com, Pnodalofficer@ugrocapital.com",
+  },
 }; 
