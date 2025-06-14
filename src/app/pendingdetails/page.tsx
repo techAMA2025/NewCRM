@@ -30,6 +30,7 @@ const MyClientsPage = () => {
   const [clientDetailsLoading, setClientDetailsLoading] = useState(false)
   const [clientDetailsError, setClientDetailsError] = useState<string | null>(null)
   const [clientRecordExists, setClientRecordExists] = useState<{[key: string]: boolean}>({})
+  const [selectedSource, setSelectedSource] = useState<string>('all')
   
   const { user, userRole } = useAuth()
   const router = useRouter()
@@ -931,6 +932,67 @@ const MyClientsPage = () => {
     }
   };
 
+  // Add this after the PageHeader component
+  const SourceFilter = ({ selectedSource, onSourceChange }: { selectedSource: string, onSourceChange: (source: string) => void }) => (
+    <div className="my-4 flex flex-wrap gap-2">
+      <button
+        onClick={() => onSourceChange('all')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'all'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        All Sources
+      </button>
+      <button
+        onClick={() => onSourceChange('credsettlee')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'credsettle'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        CredSettle
+      </button>
+      <button
+        onClick={() => onSourceChange('settleloans')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'settleloans'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        SettleLoans
+      </button>
+      <button
+        onClick={() => onSourceChange('billcut')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'billcut'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        BillCut
+      </button>
+      <button
+        onClick={() => onSourceChange('ama')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'ama'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        AMA
+      </button>
+    </div>
+  )
+
+  // Add this before the return statement
+  const filteredLeads = selectedSource === 'all' 
+    ? leads 
+    : leads.filter(lead => lead.source_database === selectedSource);
+
   if (loading) {
     return <LoadingState username={currentUserName} />
   }
@@ -954,11 +1016,16 @@ const MyClientsPage = () => {
         <div className="p-4 sm:p-6 lg:p-8 flex-1">
           <PageHeader 
             onAddNewClient={handleAddNewClient}
-            leadsCount={leads.length}
+            leadsCount={filteredLeads.length}
+          />
+          
+          <SourceFilter 
+            selectedSource={selectedSource}
+            onSourceChange={setSelectedSource}
           />
           
           <ClientTable 
-            leads={leads}
+            leads={filteredLeads}
             clientRecordExists={clientRecordExists}
             onViewLead={handleViewLead}
             onEditLead={handleEditLead}

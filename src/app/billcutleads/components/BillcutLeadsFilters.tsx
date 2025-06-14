@@ -335,13 +335,13 @@ const BillcutLeadsFilters = ({
               className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${
                 showMyLeads
                   ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-400'
-                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
+                  : 'bg-green-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50'
               }`}
             >
               <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              My Leads
+              {showMyLeads ? 'All Leads' : 'Show My Leads'}
             </button>
           </div>
         </div>
