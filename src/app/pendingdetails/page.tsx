@@ -120,7 +120,7 @@ const MyClientsPage = () => {
         console.log("Current user role:", userRole)
         console.log("Current user name:", currentUserName)
         
-        // Fetch leads from the unified crm_leads collection with "Qualified" status
+        // Fetch leads from the unified crm_leads collection with "Converted" status
         const leadsCollection = collection(crmDb, 'crm_leads')
         
         // Create query for qualified leads
@@ -136,14 +136,32 @@ const MyClientsPage = () => {
           )
         }
         
+        // Fetch billcutLeads collection with "Converted" category
+        const billcutLeadsCollection = collection(crmDb, 'billcutLeads')
+        const billcutQuery = query(billcutLeadsCollection, where('category', '==', 'Converted'))
+        
+        // If we're a sales user, also filter billcutLeads by assigned_to
+        let finalBillcutQuery = billcutQuery
+        if (userRole === 'sales' && currentUserName) {
+          console.log("Filtering billcutLeads by sales person:", currentUserName)
+          finalBillcutQuery = query(billcutLeadsCollection, 
+            where('category', '==', 'Converted'),
+            where('assigned_to', '==', currentUserName)
+          )
+        }
+        
         // First, get all qualified leads to debug
         const allQualifiedSnapshot = await getDocs(q)
-        console.log(`Found ${allQualifiedSnapshot.docs.length} total converted leads in database`)
+        console.log(`Found ${allQualifiedSnapshot.docs.length} total converted leads in crm_leads database`)
+        
+        // Get all billcut leads to debug
+        const allBillcutSnapshot = await getDocs(billcutQuery)
+        console.log(`Found ${allBillcutSnapshot.docs.length} total converted leads in billcutLeads database`)
         
         // Log some basic info about them
         allQualifiedSnapshot.docs.forEach(doc => {
           const data = doc.data()
-          console.log(`Converted lead: ${data.name}, assigned to: ${data.assignedTo}, status: ${data.status}`)
+          console.log(`Converted lead (crm_leads): ${data.name}, assigned to: ${data.assignedTo}, status: ${data.status}`)
           
           // More detailed debugging for each qualified lead
           console.log("Lead details:", {
@@ -166,15 +184,46 @@ const MyClientsPage = () => {
             console.log(`Assignment mismatch: "${data.assignedTo}" vs "${currentUserName}"`)
           }
         })
+
+        // Log billcut leads info
+        allBillcutSnapshot.docs.forEach(doc => {
+          const data = doc.data()
+          console.log(`Converted lead (billcutLeads): ${data.name}, assigned to: ${data.assigned_to}, category: ${data.category}`)
+          
+          // More detailed debugging for each billcut lead
+          console.log("BillcutLead details:", {
+            id: doc.id,
+            name: data.name,
+            category: data.category,
+            assigned_to: data.assigned_to,
+            assignedToExact: `"${data.assigned_to}"`, 
+            categoryExact: `"${data.category}"`,
+            source: 'billcut'
+          })
+          
+          // Check if this lead would match our current user
+          const wouldMatch = data.category === 'Converted' && data.assigned_to === currentUserName
+          console.log(`Would this billcut lead match current user? ${wouldMatch ? 'YES' : 'NO'}`)
+          
+          if (!wouldMatch && data.category === 'Converted') {
+            console.log(`Assignment mismatch: "${data.assigned_to}" vs "${currentUserName}"`)
+          }
+        })
         
-        // Now get the filtered leads based on user role
-        const leadsSnapshot = await getDocs(finalQuery)
-        console.log(`After filtering by user role, fetched ${leadsSnapshot.docs.length} converted leads`)
+        // Now get the filtered leads based on user role from both collections
+        const [leadsSnapshot, billcutSnapshot] = await Promise.all([
+          getDocs(finalQuery),
+          getDocs(finalBillcutQuery)
+        ])
+        
+        console.log(`After filtering by user role, fetched ${leadsSnapshot.docs.length} converted leads from crm_leads`)
+        console.log(`After filtering by user role, fetched ${billcutSnapshot.docs.length} converted leads from billcutLeads`)
         
         // Log details about the filtering criteria
         console.log("Filter criteria: status='Converted' AND assignedTo='"+currentUserName+"'")
+        console.log("BillcutLeads Filter criteria: category='Converted' AND assigned_to='"+currentUserName+"'")
         
-        // Map the data
+        // Map the crm_leads data
         let leadsData = leadsSnapshot.docs.map(doc => {
           const data = doc.data()
           console.log(`Adding lead to display: ${data.name}`)
@@ -210,22 +259,68 @@ const MyClientsPage = () => {
           
           return leadData;
         });
+
+        // Map the billcutLeads data
+        const billcutLeadsData = billcutSnapshot.docs.map(doc => {
+          const data = doc.data()
+          console.log(`Adding billcut lead to display: ${data.name}`)
+          
+          // Map billcutLeads fields to Lead interface
+          const leadData: Lead = {
+            id: doc.id,
+            name: data.name || 'Unknown',
+            email: data.email || 'No email',
+            phone: data.mobile || 'No phone',
+            source: 'billcut',
+            status: 'Converted', // Map category to status
+            assignedTo: data.assigned_to || '',
+            assignedToId: '',
+            salesNotes: data.salesNotes || data.sales_notes || '',
+            remarks: data.sales_notes || '',
+            personalLoanDues: data.debt_range || '',
+            creditCardDues: '',
+            monthlyIncome: data.income || '',
+            lastModified: data.lastModified?.toDate ? data.lastModified.toDate() : 
+              (data.date ? new Date(data.date) : new Date()),
+            original_id: doc.id,
+            original_collection: 'billcutLeads',
+            source_database: 'billcut',
+            synced_at: data.synced_date || data.lastModified,
+            city: data.address || '',
+            City: data.address || '',
+            message: '',
+            queries: '',
+            Queries: '',
+            // Keep billcut-specific fields
+            address: data.address || '',
+            debt_range: data.debt_range || '',
+            category: data.category || '',
+            sales_notes: data.sales_notes || ''
+          }
+          
+          return leadData;
+        });
+        
+        // Combine leads from both collections
+        const combinedLeads = [...leadsData, ...billcutLeadsData];
         
         // Sort by synced_at timestamp (newest first)
-        const sortedLeads = leadsData.sort((a, b) => {
-          const aTime = a.synced_at?.toDate().getTime() || 0
-          const bTime = b.synced_at?.toDate().getTime() || 0
+        const sortedLeads = combinedLeads.sort((a, b) => {
+          const aTime = a.synced_at?.toDate ? a.synced_at.toDate().getTime() : 
+            (a.lastModified instanceof Date ? a.lastModified.getTime() : 0)
+          const bTime = b.synced_at?.toDate ? b.synced_at.toDate().getTime() : 
+            (b.lastModified instanceof Date ? b.lastModified.getTime() : 0)
           return bTime - aTime
         })
         
-        console.log("Setting leads with", sortedLeads.length, "items")
+        console.log("Setting leads with", sortedLeads.length, "items (combined from both collections)")
         setLeads(sortedLeads)
         
         // Check which leads already have client records
         const clientExistsMap: {[key: string]: boolean} = {};
         
         // Create promises for all lead checks
-        await Promise.all(leads.map(async (lead) => {
+        await Promise.all(sortedLeads.map(async (lead) => {
           try {
             if (!lead.id) return; // Skip if no ID
             
@@ -943,7 +1038,7 @@ const PageHeader = ({
       <div className="sm:flex-auto">
         <h1 className="text-2xl font-semibold text-gray-100">Pending Details</h1>
         <p className="mt-2 text-sm text-gray-400">
-          Showing all leads whose details are pending.
+          Showing all converted leads whose client details are pending from multiple sources.
         </p>
       </div>
       
