@@ -451,4 +451,36 @@ export const bankData: Record<string, BankData> = {
     email:
       "info@ugrocapital.com, customercare@ugrocapital.com, Pnodalofficer@ugrocapital.com",
   },
+  "MPOCKET": {
+    address: "PS Srijan Corporate Park, Unit 1204, Sector V, Kolkata – 700091",
+    email: "grievance@mpokket.com, nodal@mpokket.com, support@mpokket.com, supervisor@mpokket.com"
+  },
+  "KRAZYBEE": {
+    address: "3rd Floor, No. 128/9, Maruthi Sapphire HAL Old Airport Road, Murugesh Palya, Bangalore - 560017",
+    email: "reachus@kbnbfc.in, grievance@kbnbfc.in"
+  },
+  "Union Bank of India": {
+    address: "Union Bank Bhavan, 239, Vidhan Bhavan Marg, Nariman Point, Mumbai – 400021, Maharashtra, India",
+    email: "cgo@unionbankofindia.bank, dgro@unionbankofindia.bank"
+  },
+  "VIVRATI": {
+    address: "Prestige Zackria Metropolitan, No.200/1-8, 2nd Floor, Block 1, Anna Salai, Chennai 600002",
+    email: "grievanceredressal@vivriticapital.com, Ajitkumar.Menon@vivriticapital.com"
+  },
+  "TVS Credit": {
+    address: "3rd Floor, Bristol Towers, Plot No. 10, South Phase, Thiru-Vi-Ka Industrial Estate, Adjacent to Maruti Service Masters, Guindy, Chennai – 600032",
+    email: "gro@tvscredit.com"
+  },
+  "South Indian Bank": {
+    address: "South Indian Bank Ltd., Head Office, T.B Road, Mission Quarters, Thrissur 680 001, Kerala, India",
+    email: "pno@sib.co.in, nodalofficer@sib.co.in, customercare@sib.co.in"
+  },
+  "REFYNE": {
+    address: "522, 24th Main Road, Parangi Palya, Sector 2, HSR Layout, Bangalore, Karnataka - 560102",
+    email: "grievance@refynefinance.com, compliance@refynefinance.com"
+  },
+  "North East Small Finance": {
+    address: "1st & 3rd Floor, Fortune Central, Basisthapur, Bye lane 3, Beltola, Guwahati, Assam 781028",
+    email: "customergrievance@nesfb.com, customergrievance@sliceit.com, principal.nodalofficer@nesfb.com, nodalofficer@sliceit.com"
+  }
 }; 
