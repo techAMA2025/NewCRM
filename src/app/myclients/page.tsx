@@ -61,6 +61,7 @@ export default function MyClientsPage() {
   const [isDocViewerOpen, setIsDocViewerOpen] = useState(false);
   const [viewingDocumentUrl, setViewingDocumentUrl] = useState("");
   const [viewingDocumentName, setViewingDocumentName] = useState("");
+  const [selectedSource, setSelectedSource] = useState<string>('all');
 
   // Set dark theme on component mount and fetch clients
   useEffect(() => {
@@ -136,6 +137,65 @@ export default function MyClientsPage() {
     setIsDocViewerOpen(true);
   };
 
+  const filteredClients = selectedSource === 'all' 
+    ? clients 
+    : clients.filter(client => client.source_database === selectedSource);
+
+  const SourceFilter = ({ selectedSource, onSourceChange }: { selectedSource: string, onSourceChange: (source: string) => void }) => (
+    <div className="my-4 flex flex-wrap gap-2">
+      <button
+        onClick={() => onSourceChange('all')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'all'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        All Sources
+      </button>
+      <button
+        onClick={() => onSourceChange('credsettlee')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'credsettle'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        CredSettle
+      </button>
+      <button
+        onClick={() => onSourceChange('settleloans')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'settleloans'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        SettleLoans
+      </button>
+      <button
+        onClick={() => onSourceChange('billcut')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'billcut'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        BillCut
+      </button>
+      <button
+        onClick={() => onSourceChange('ama')}
+        className={`px-3 py-1 rounded-full text-sm font-medium ${
+          selectedSource === 'ama'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        }`}
+      >
+        AMA
+      </button>
+    </div>
+  );
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <SalesSidebar />
@@ -145,12 +205,17 @@ export default function MyClientsPage() {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">My Clients</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Manage and view all your assigned clients</p>
         </div>
+
+        <SourceFilter 
+          selectedSource={selectedSource}
+          onSourceChange={setSelectedSource}
+        />
         
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
           </div>
-        ) : clients.length === 0 ? (
+        ) : filteredClients.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900 mb-4">
               <FaUser className="h-8 w-8 text-yellow-500" />
@@ -162,7 +227,7 @@ export default function MyClientsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {clients.map((client) => (
+            {filteredClients.map((client) => (
               <div 
                 key={client.id} 
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"

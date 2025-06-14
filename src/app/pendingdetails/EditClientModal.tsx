@@ -113,6 +113,16 @@ const EditClientModal = ({
     }
   }, [lead.banks, lead.tenure]);
 
+  // Effect to set default tenure for billcut source
+  useEffect(() => {
+    if (lead.source_database === 'billcut' && !lead.tenure) {
+      setLead(prevLead => ({
+        ...prevLead,
+        tenure: '09'
+      }));
+    }
+  }, [lead.source_database]);
+
   // Handle field changes
   const handleFieldChange = (field: keyof Lead, value: any) => {
     console.log(`Updating field: ${field} with value:`, value); // Debug logging
@@ -132,6 +142,30 @@ const EditClientModal = ({
       const numericValue = value.replace(/[^0-9]/g, '');
       // Take only first 10 digits
       value = numericValue.slice(0, 10);
+    }
+
+    // Special handling for altPhone field - same as phone validation
+    if (field === 'altPhone') {
+      // Remove any non-numeric characters
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Take only first 10 digits
+      value = numericValue.slice(0, 10);
+    }
+
+    // Special handling for PAN number - only alphanumeric and max 10 characters
+    if (field === 'panNumber') {
+      // Remove any non-alphanumeric characters and convert to uppercase
+      const cleanValue = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      // Take only first 10 characters
+      value = cleanValue.slice(0, 10);
+    }
+
+    // Special handling for Aadhar number - only numeric and max 12 digits
+    if (field === 'aadharNumber') {
+      // Remove any non-numeric characters
+      const numericValue = value.replace(/[^0-9]/g, '');
+      // Take only first 12 digits
+      value = numericValue.slice(0, 12);
     }
 
     setLead(prevLead => {
@@ -463,12 +497,25 @@ const EditClientModal = ({
                       ))}
                     </select>
                   </div>
-                  <InputField
-                    id="occupation"
-                    label="Occupation"
-                    value={lead.occupation || ''}
-                    onChange={(value) => handleFieldChange('occupation', value)}
-                  />
+                  <div>
+                    <label htmlFor="occupation" className="block text-sm font-medium text-gray-400 mb-1">
+                      Occupation
+                    </label>
+                    <select
+                      id="occupation"
+                      value={lead.occupation || ''}
+                      onChange={(e) => handleFieldChange('occupation', e.target.value)}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select occupation</option>
+                      <option value="Not Employed">Not Employed</option>
+                      <option value="Self employed">Self employed</option>
+                      <option value="Employed With Government">Employed With Government</option>
+                      <option value="Employed With Private">Employed With Private</option>
+                      <option value="Small Business">Small Business</option>
+                      <option value="Business with 10 people">Business with 10 people</option>
+                    </select>
+                  </div>
                   <InputField
                     id="aadharNumber"
                     label="Aadhar Card Number"
@@ -511,13 +558,24 @@ const EditClientModal = ({
                     onChange={(value) => handleFieldChange('creditCardDues', value)}
                     placeholder="₹"
                   />
-                  <InputField
-                    id="monthlyIncome"
-                    label="Monthly Income"
-                    value={lead.monthlyIncome?.toString() || ''}
-                    onChange={(value) => handleFieldChange('monthlyIncome', value)}
-                    placeholder="₹"
-                  />
+                  <div>
+                    <label htmlFor="monthlyIncome" className="block text-sm font-medium text-gray-400 mb-1">
+                      Monthly Income
+                    </label>
+                    <select
+                      id="monthlyIncome"
+                      value={lead.monthlyIncome?.toString() || ''}
+                      onChange={(e) => handleFieldChange('monthlyIncome', e.target.value)}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select income range</option>
+                      <option value="0-25000">₹0 - ₹25,000</option>
+                      <option value="25000-50000">₹25,000 - ₹50,000</option>
+                      <option value="50000-75000">₹50,000 - ₹75,000</option>
+                      <option value="75000-100000">₹75,000 - ₹1,00,000</option>
+                      <option value="100000+">₹1,00,000+</option>
+                    </select>
+                  </div>
                 </div>
               </FormSection>
               
@@ -530,13 +588,15 @@ const EditClientModal = ({
                     onChange={(value) => handleFieldChange('tenure', value)}
                     required
                   />
-                  <InputField
-                    id="monthlyFees"
-                    label="Monthly Fees"
-                    value={lead.monthlyFees?.toString() || ''}
-                    onChange={(value) => handleFieldChange('monthlyFees', value)}
-                    placeholder="₹"
-                  />
+                  {lead.source_database !== 'billcut' && (
+                    <InputField
+                      id="monthlyFees"
+                      label="Monthly Fees"
+                      value={lead.monthlyFees?.toString() || ''}
+                      onChange={(value) => handleFieldChange('monthlyFees', value)}
+                      placeholder="₹"
+                    />
+                  )}
                   <InputField
                     id="startDate"
                     label="Start Date of Service"
@@ -581,124 +641,126 @@ const EditClientModal = ({
               </div>
               
               {/* Document Upload Section */}
-              <FormSection title="Document Upload">
-                <div className="space-y-4">
-                  {lead.documentUrl ? (
-                    <div className="p-3 bg-gray-700 rounded-lg border border-gray-600">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-white font-medium flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                              <polyline points="14 2 14 8 20 8"></polyline>
-                              <line x1="16" y1="13" x2="8" y2="13"></line>
-                              <line x1="16" y1="17" x2="8" y2="17"></line>
-                              <polyline points="10 9 9 9 8 9"></polyline>
-                            </svg>
-                            {lead.documentName || 'Document'}
-                          </p>
-                          {lead.documentUploadedAt && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              Uploaded on: {lead.documentUploadedAt.toString()}
+              {lead.source_database !== 'billcut' && (
+                <FormSection title="Document Upload">
+                  <div className="space-y-4">
+                    {lead.documentUrl ? (
+                      <div className="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-medium flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                              </svg>
+                              {lead.documentName || 'Document'}
                             </p>
-                          )}
+                            {lead.documentUploadedAt && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                Uploaded on: {lead.documentUploadedAt.toString()}
+                              </p>
+                            )}
+                          </div>
+                          <a 
+                            href={lead.documentUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+                          >
+                            View Document
+                          </a>
                         </div>
-                        <a 
-                          href={lead.documentUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm italic">No document has been uploaded for this lead yet.</p>
+                    )}
+                    
+                    <div className="p-4 bg-gray-700 rounded-lg border border-gray-600">
+                      <div className="flex items-end gap-3">
+                        <div className="flex-1">
+                          <label htmlFor="file-upload" className="block text-sm font-medium text-gray-400 mb-1">
+                            Upload Word Document
+                          </label>
+                          <input 
+                            id="file-upload"
+                            type="file"
+                            accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            onChange={handleFileChange}
+                            className="block w-full text-sm text-gray-400 
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-600 file:text-white
+                                    hover:file:bg-blue-700
+                                    bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleFileUpload}
+                          disabled={!fileUpload || uploading}
+                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          View Document
-                        </a>
+                          {uploading ? (
+                            <span className="flex items-center">
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Uploading...
+                            </span>
+                          ) : 'Upload Document'}
+                        </button>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="text-gray-400 text-sm italic">No document has been uploaded for this lead yet.</p>
-                  )}
-                  
-                  <div className="p-4 bg-gray-700 rounded-lg border border-gray-600">
-                    <div className="flex items-end gap-3">
-                      <div className="flex-1">
-                        <label htmlFor="file-upload" className="block text-sm font-medium text-gray-400 mb-1">
-                          Upload Word Document
+                      
+                      {/* Generate Agreement checkbox */}
+                      <div className="mt-3">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={shouldGenerateAgreement}
+                            onChange={(e) => setShouldGenerateAgreement(e.target.checked)}
+                            className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out bg-gray-700 border-gray-500 rounded"
+                          />
+                          <span className="ml-2 text-sm text-gray-300">Generate agreement document</span>
                         </label>
-                        <input 
-                          id="file-upload"
-                          type="file"
-                          accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                          onChange={handleFileChange}
-                          className="block w-full text-sm text-gray-400 
-                                  file:mr-4 file:py-2 file:px-4
-                                  file:rounded-md file:border-0
-                                  file:text-sm file:font-semibold
-                                  file:bg-blue-600 file:text-white
-                                  hover:file:bg-blue-700
-                                  bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3"
-                        />
                       </div>
+                      
+                      {uploadError && (
+                        <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
+                          {uploadError}
+                        </div>
+                      )}
+                      {uploadSuccess && (
+                        <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
+                          Document uploaded successfully!
+                        </div>
+                      )}
+                      
+                      {/* Generate Agreement Button */}
                       <button
                         type="button"
-                        onClick={handleFileUpload}
-                        disabled={!fileUpload || uploading}
-                        className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => generateAgreementDocument(lead)}
+                        disabled={uploading || !lead.name || !lead.email || !lead.startDate || !lead.tenure || !lead.monthlyFees || !shouldGenerateAgreement}
+                        className="mt-4 w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {uploading ? (
-                          <span className="flex items-center">
+                          <span className="flex items-center justify-center">
                             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Uploading...
+                            Generating...
                           </span>
-                        ) : 'Upload Document'}
+                        ) : 'Generate Agreement Document'}
                       </button>
                     </div>
-                    
-                    {/* Generate Agreement checkbox */}
-                    <div className="mt-3">
-                      <label className="inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={shouldGenerateAgreement}
-                          onChange={(e) => setShouldGenerateAgreement(e.target.checked)}
-                          className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out bg-gray-700 border-gray-500 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-300">Generate agreement document</span>
-                      </label>
-                    </div>
-                    
-                    {uploadError && (
-                      <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
-                        {uploadError}
-                      </div>
-                    )}
-                    {uploadSuccess && (
-                      <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
-                        Document uploaded successfully!
-                      </div>
-                    )}
-                    
-                    {/* Generate Agreement Button */}
-                    <button
-                      type="button"
-                      onClick={() => generateAgreementDocument(lead)}
-                      disabled={uploading || !lead.name || !lead.email || !lead.startDate || !lead.tenure || !lead.monthlyFees || !shouldGenerateAgreement}
-                      className="mt-4 w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {uploading ? (
-                        <span className="flex items-center justify-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Generating...
-                        </span>
-                      ) : 'Generate Agreement Document'}
-                    </button>
                   </div>
-                </div>
-              </FormSection>
+                </FormSection>
+              )}
               
               <FormSection title="Notes & Remarks">
                 <div className="space-y-4">
@@ -804,11 +866,50 @@ const InputField = ({ id, label, value, onChange, type = 'text', required = fals
     }
   } : {};
   
+  // Special handling for altPhone input
+  const altPhoneProps = id === 'altPhone' ? {
+    maxLength: 10,
+    pattern: '[0-9]*',
+    inputMode: 'numeric' as const,
+    onKeyPress: (e: React.KeyboardEvent) => {
+      // Allow only numeric input for altPhone
+      if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+      }
+    }
+  } : {};
+
+  // Special handling for PAN number input
+  const panProps = id === 'panNumber' ? {
+    maxLength: 10,
+    pattern: '[A-Za-z0-9]*',
+    style: { textTransform: 'uppercase' as const },
+    onKeyPress: (e: React.KeyboardEvent) => {
+      // Allow only alphanumeric characters for PAN
+      if (!/[A-Za-z0-9]/.test(e.key)) {
+        e.preventDefault();
+      }
+    }
+  } : {};
+
+  // Special handling for Aadhar number input
+  const aadharProps = id === 'aadharNumber' ? {
+    maxLength: 12,
+    pattern: '[0-9]*',
+    inputMode: 'numeric' as const,
+    onKeyPress: (e: React.KeyboardEvent) => {
+      // Allow only numeric input for Aadhar
+      if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+      }
+    }
+  } : {};
+  
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-gray-400">{label}</label>
       <input
-        type={id === 'phone' ? 'tel' : type}
+        type={id === 'phone' || id === 'altPhone' ? 'tel' : type}
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -817,12 +918,24 @@ const InputField = ({ id, label, value, onChange, type = 'text', required = fals
         placeholder={placeholder}
         disabled={disabled}
         {...inputProps}
+        {...altPhoneProps}
+        {...panProps}
+        {...aadharProps}
       />
       {isNumericField && (
         <p className="mt-1 text-xs text-amber-400">Please enter numbers only (no commas)</p>
       )}
       {id === 'phone' && (
         <p className="mt-1 text-xs text-amber-400">Enter exactly 10 digits</p>
+      )}
+      {id === 'altPhone' && (
+        <p className="mt-1 text-xs text-amber-400">Enter exactly 10 digits</p>
+      )}
+      {id === 'panNumber' && (
+        <p className="mt-1 text-xs text-amber-400">Enter exactly 10 alphanumeric characters (e.g., ABCDE1234F)</p>
+      )}
+      {id === 'aadharNumber' && (
+        <p className="mt-1 text-xs text-amber-400">Enter exactly 12 digits</p>
       )}
     </div>
   )
