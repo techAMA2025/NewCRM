@@ -56,6 +56,12 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
                     (lead.created?.toDate ? lead.created.toDate() : new Date(lead.created));
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
       }
+
+      if (lead.source_database === 'billcut' && lead.synced_at) {
+        // For BillCut, use synced_at field
+        const date = lead.synced_at?.toDate ? lead.synced_at.toDate() : new Date();
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      }
       
       // Fall back to lastModified if source-specific field is not available
       if (lead.lastModified) {
@@ -147,11 +153,14 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
           ${lead.source_database === 'credsettlee' ? 'bg-purple-900 text-purple-100 border border-purple-700' : 
             lead.source_database === 'settleloans' ? 'bg-teal-900 text-teal-100 border border-teal-700' : 
               lead.source_database === 'ama' ? 'bg-amber-900 text-amber-100 border border-amber-700' : 
-                'bg-gray-800 text-gray-200 border border-gray-700'}`}
+                lead.source_database === 'billcut' ? 'bg-indigo-900 text-indigo-100 border border-indigo-700' :
+                  'bg-gray-800 text-gray-200 border border-gray-700'}`}
           >
           {lead.source_database === 'credsettlee' ? 'CS' : 
             lead.source_database === 'settleloans' ? 'SL' : 
-              lead.source_database === 'ama' ? 'AMA' : 'N/A'}
+              lead.source_database === 'ama' ? 'AMA' : 
+                lead.source_database === 'billcut' ? 'BC' :
+                  'N/A'}
         </span>
       </td>
       
@@ -161,7 +170,7 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
           <div>
             <span className="font-medium text-gray-400">PL:</span> 
             <span className={getFinancialColor('pl')}>
-              {lead.personalLoanDues || lead['Total personal loan amount'] || 'N/A'}
+              {lead.personalLoanDues || lead.debt_range || lead['Total personal loan amount'] || 'N/A'}
             </span>
           </div>
           <div>

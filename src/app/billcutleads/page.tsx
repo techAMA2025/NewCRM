@@ -233,7 +233,18 @@ const BillCutLeadsPage = () => {
     let result = [...leads];
     
     if (statusFilter !== 'all') {
-      result = result.filter(lead => lead.status === statusFilter);
+      if (statusFilter === 'No Status') {
+        // Filter for leads where status field doesn't exist, is null/undefined, empty string, or is literally "No Status"
+        result = result.filter(lead => 
+          lead.status === undefined || 
+          lead.status === null || 
+          lead.status === '' || 
+          lead.status === 'No Status'
+        );
+      } else {
+        // Normal status filtering
+        result = result.filter(lead => lead.status === statusFilter);
+      }
     }
     
     if (searchQuery) {
@@ -310,8 +321,8 @@ const BillCutLeadsPage = () => {
         updateData.category = data.status;
       }
       
-      if ('assigned_to' in data) {
-        updateData.assigned_to = data.assigned_to;
+      if ('assignedTo' in data) {
+        updateData.assigned_to = data.assignedTo;
       }
       
       if ('sales_notes' in data) {
@@ -584,6 +595,7 @@ const BillCutLeadsPage = () => {
                 fetchNotesHistory={fetchNotesHistory}
                 crmDb={crmDb}
                 user={currentUser}
+                showMyLeads={showMyLeads}
               />
               
               {!isLoading && leads.length === 0 && (

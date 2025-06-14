@@ -36,6 +36,11 @@ export interface Lead {
   monthlyFees?: string | number
   startDate?: string
   salesNotes?: string
+  // BillCut specific fields
+  address?: string
+  debt_range?: string
+  category?: string
+  sales_notes?: string
   // String index signature for other dynamically accessed properties
   [key: string]: any
 }

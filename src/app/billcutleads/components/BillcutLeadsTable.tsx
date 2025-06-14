@@ -66,6 +66,7 @@ interface BillcutLeadsTableProps {
   fetchNotesHistory: (leadId: string) => Promise<void>;
   crmDb: any;
   user: any;
+  showMyLeads: boolean;
 }
 
 const BillcutLeadsTable = ({
@@ -76,10 +77,15 @@ const BillcutLeadsTable = ({
   fetchNotesHistory,
   crmDb,
   user,
+  showMyLeads,
 }: BillcutLeadsTableProps) => {
   const [editingData, setEditingData] = useState<{ [key: string]: Partial<Lead> }>({});
   const [salesPeople, setSalesPeople] = useState<User[]>([]);
   const [salesPersonColors, setSalesPersonColors] = useState<ColorMap>({});
+
+  // Get user info from localStorage
+  const userRole = localStorage.getItem('userRole') || '';
+  const userName = localStorage.getItem('userName') || '';
 
   // Initialize color mapping when sales people are loaded
   useEffect(() => {
@@ -97,19 +103,27 @@ const BillcutLeadsTable = ({
         const usersRef = collection(crmDb, 'users');
         const q = query(usersRef, where('role', 'in', ['sales']));
         const querySnapshot = await getDocs(q);
-        const salesTeam = querySnapshot.docs.map(doc => ({
+        let salesTeam = querySnapshot.docs.map(doc => ({
           id: doc.id,
           name: doc.data().firstName + ' ' + doc.data().lastName,
           email: doc.data().email,
           role: doc.data().role,
         }));
+
+        // Filter based on user role
+        if (userRole === 'sales') {
+          // Sales users can only see themselves in the dropdown
+          salesTeam = salesTeam.filter(person => person.name === userName);
+        }
+        // Admin and overlord users see all salespeople
+
         setSalesPeople(salesTeam);
       } catch (error) {
         console.error('Error fetching sales team:', error);
       }
     };
     fetchSalesTeam();
-  }, []);
+  }, [userRole, userName]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -158,10 +172,6 @@ const BillcutLeadsTable = ({
   const canAssignLead = (lead: Lead) => {
     if (!user) return false;
     
-    const userRole = localStorage.getItem('userRole');
-    const userName = localStorage.getItem('userName');
-    console.log('User role from localStorage:', userRole);
-    
     const unassigned = isUnassigned(lead);
     console.log('Can assign lead check:', {
       id: lead.id,
@@ -195,7 +205,7 @@ const BillcutLeadsTable = ({
   const handleUnassign = async (leadId: string) => {
     try {
       const dbData = {
-        assigned_to: '',
+        assignedTo: '',
         assignedToId: '',
       };
       
@@ -245,7 +255,7 @@ const BillcutLeadsTable = ({
       if (!selectedPerson) return;
 
       const dbData = { 
-        assigned_to: value || '',
+        assignedTo: value || '',
         assignedToId: selectedPerson.id || ''
       };
       
@@ -322,6 +332,34 @@ const BillcutLeadsTable = ({
     }
   };
 
+  // Check if user can edit lead (status and notes)
+  const canEditLead = (lead: Lead, showMyLeads: boolean) => {
+    // If lead is unassigned and My Leads is not turned on, disable editing
+    if (isUnassigned(lead) && !showMyLeads) {
+      return false;
+    }
+
+    // If My Leads is turned on, allow editing for any lead
+    if (showMyLeads) {
+      return true;
+    }
+
+    // If lead is assigned, check permissions
+    if (!isUnassigned(lead)) {
+      // Admin and overlord can always edit
+      if (userRole === 'admin' || userRole === 'overlord') {
+        return true;
+      }
+      
+      // Sales users can only edit leads assigned to them
+      if (userRole === 'sales') {
+        return lead.assignedTo === userName;
+      }
+    }
+
+    return false;
+  };
+
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm">
       <table className="min-w-full divide-y divide-gray-700/50">
@@ -392,7 +430,12 @@ const BillcutLeadsTable = ({
                         handleChange(lead.id, 'status', e.target.value);
                         handleSave(lead.id);
                       }}
-                      className="w-full px-3 py-1.5 bg-gray-700/50 rounded-lg border border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm text-gray-100"
+                      disabled={!canEditLead(lead, showMyLeads)}
+                      className={`w-full px-3 py-1.5 rounded-lg border text-sm ${
+                        canEditLead(lead, showMyLeads)
+                          ? 'bg-gray-700/50 border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-100'
+                          : 'bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed'
+                      }`}
                     >
                       {statusOptions.map((status) => (
                         <option key={status} value={status}>
@@ -472,6 +515,7 @@ const BillcutLeadsTable = ({
                   fetchNotesHistory={fetchNotesHistory}
                   crmDb={crmDb}
                   updateLead={updateLead}
+                  disabled={!canEditLead(lead, showMyLeads)}
                 />
               </tr>
             );

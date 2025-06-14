@@ -70,9 +70,10 @@ const ViewClientModal = ({ lead, loading, error, onClose }: ViewClientModalProps
                   { label: "Name", value: lead.name },
                   { label: "Email", value: lead.email },
                   { label: "Phone", value: formatPhoneNumber(lead.phone) },
-                  { label: "City", value: lead.city },
+                  { label: "City", value: lead.city || lead.address },
                   { label: "Occupation", value: lead.occupation },
-                  { label: "Aadhar Card Number", value: lead.aadharNumber }
+                  { label: "Aadhar Card Number", value: lead.aadharNumber },
+                  ...(lead.source_database === 'billcut' && lead.address ? [{ label: "Address", value: lead.address }] : [])
                 ]}
               />
 
@@ -80,9 +81,10 @@ const ViewClientModal = ({ lead, loading, error, onClose }: ViewClientModalProps
               <ClientInfoSection 
                 title="Financial Information"
                 fields={[
-                  { label: "Personal Loan Dues", value: lead.personalLoanDues, type: "currency" },
+                  { label: "Personal Loan Dues", value: lead.personalLoanDues || (lead.source_database === 'billcut' ? lead.debt_range : undefined), type: "currency" },
                   { label: "Credit Card Dues", value: lead.creditCardDues, type: "currency" },
-                  { label: "Monthly Income", value: lead.monthlyIncome, type: "currency" }
+                  { label: "Monthly Income", value: lead.monthlyIncome, type: "currency" },
+                  ...(lead.source_database === 'billcut' && lead.debt_range ? [{ label: "Debt Range", value: lead.debt_range }] : [])
                 ]}
                 columns={3}
               />
@@ -147,12 +149,20 @@ const ViewClientModal = ({ lead, loading, error, onClose }: ViewClientModalProps
                       {lead.message || lead.queries || lead.Queries || lead.remarks || 'No message provided.'}
                     </div>
                   </div>
-                  <div>
+                  <div className="mb-4">
                     <span className="block text-sm font-medium text-gray-400">Sales Notes</span>
                     <div className="mt-1 p-3 bg-gray-700 rounded-md text-white">
                       {lead.salesNotes || 'No sales notes added.'}
                     </div>
                   </div>
+                  {lead.source_database === 'billcut' && lead.sales_notes && (
+                    <div>
+                      <span className="block text-sm font-medium text-gray-400">Additional Sales Notes</span>
+                      <div className="mt-1 p-3 bg-gray-700 rounded-md text-white">
+                        {lead.sales_notes}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

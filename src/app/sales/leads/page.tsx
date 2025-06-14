@@ -331,9 +331,14 @@ const LeadsPage = () => {
       
       // Status filter
       if (statusFilter !== 'all') {
-        if (statusFilter === '') {
-          // Filter for leads where status field doesn't exist or is null/undefined
-          result = result.filter(lead => lead.status === undefined || lead.status === null);
+        if (statusFilter === 'No Status') {
+          // Filter for leads where status field doesn't exist, is null/undefined, empty string, or is literally "No Status"
+          result = result.filter(lead => 
+            lead.status === undefined || 
+            lead.status === null || 
+            lead.status === '' || 
+            lead.status === 'No Status'
+          );
         } else {
           // Normal status filtering
           result = result.filter(lead => lead.status === statusFilter);
