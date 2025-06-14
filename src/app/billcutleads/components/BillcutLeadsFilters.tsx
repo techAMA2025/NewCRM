@@ -12,8 +12,6 @@ type BillcutLeadsFiltersProps = {
   statusOptions: string[];
   showMyLeads: boolean;
   setShowMyLeads: (show: boolean) => void;
-  convertedFilter: boolean | null;
-  setConvertedFilter: (converted: boolean | null) => void;
   fromDate: string;
   setFromDate: (date: string) => void;
   toDate: string;
@@ -34,8 +32,6 @@ const BillcutLeadsFilters = ({
   statusOptions,
   showMyLeads,
   setShowMyLeads,
-  convertedFilter,
-  setConvertedFilter,
   fromDate,
   setFromDate,
   toDate,
@@ -147,7 +143,6 @@ const BillcutLeadsFilters = ({
     setSearchInput('');
     setSearchQuery('');
     setStatusFilter('all');
-    setConvertedFilter(null);
     setFromDate('');
     setToDate('');
     setShowMyLeads(false);
@@ -157,7 +152,7 @@ const BillcutLeadsFilters = ({
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery || statusFilter !== 'all' || convertedFilter !== null || fromDate || toDate || showMyLeads || (salesPersonFilter && salesPersonFilter !== 'all');
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || fromDate || toDate || showMyLeads || (salesPersonFilter && salesPersonFilter !== 'all');
 
   return (
     <div className="space-y-4 mb-8">
@@ -234,7 +229,7 @@ const BillcutLeadsFilters = ({
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Status Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-gray-400">Status</label>
@@ -254,48 +249,28 @@ const BillcutLeadsFilters = ({
           </div>
           
           {/* Salesperson Filter */}
-          {(userRole === 'admin' || userRole === 'overlord') && (
-            <div className="space-y-1">
-              <label className="block text-xs text-gray-400">Assigned To</label>
-              <div className="relative">
-                <select
-                  value={salesPersonFilter}
-                  onChange={e => setSalesPersonFilter && setSalesPersonFilter(e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
-                >
-                  <option value="all">All Assigned</option>
-                  <option value="">Unassigned</option>
-                  {isLoading ? (
-                    <option value="" disabled>Loading...</option>
-                  ) : (
-                    salesTeamMembers.map(user => (
-                      <option key={user.id} value={user.name}>{user.name}</option>
-                    ))
-                  )}
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                  <FaUserTie className="h-4 w-4 text-gray-400" />
-                </div>
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-400">Salesperson</label>
+            <div className="relative">
+              <select
+                value={salesPersonFilter}
+                onChange={e => setSalesPersonFilter && setSalesPersonFilter(e.target.value)}
+                className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
+              >
+                <option value="all">All Salesperson</option>
+                <option value="">Unassigned</option>
+                {isLoading ? (
+                  <option value="" disabled>Loading...</option>
+                ) : (
+                  salesTeamMembers.map(user => (
+                    <option key={user.id} value={user.name}>{user.name}</option>
+                  ))
+                )}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                <FaUserTie className="h-4 w-4 text-gray-400" />
               </div>
             </div>
-          )}
-          
-          {/* Converted Filter */}
-          <div className="space-y-1">
-            <label className="block text-xs text-gray-400">Conversion</label>
-            <select
-              value={convertedFilter === null ? 'all' : convertedFilter ? 'converted' : 'not-converted'}
-              onChange={e => {
-                if (e.target.value === 'all') setConvertedFilter(null);
-                else if (e.target.value === 'converted') setConvertedFilter(true);
-                else setConvertedFilter(false);
-              }}
-              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
-            >
-              <option value="all">All Leads</option>
-              <option value="converted">Converted</option>
-              <option value="not-converted">Not Converted</option>
-            </select>
           </div>
           
           {/* From Date */}
