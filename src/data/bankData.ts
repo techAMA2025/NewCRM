@@ -486,5 +486,25 @@ export const bankData: Record<string, BankData> = {
   "Groww": {
     address: "Vaishnavi Tech Park, South Tower, 3rd floor, Sarjapur Main Road, Bellandur, Bengaluru – 560103, Karnataka",
     email: "headcustomerservice@groww.in, grievances@groww.in, escalation@groww.in, support@groww.in, creditsupport@groww.in"
+  },
+  "Aye Finance": {
+    address: "Unit No. - 701-711, 7th Floor, Unitech Commercial Tower-2, Sector-45, Arya Samaj Road, Gurugram – 122003, Haryana, India",
+    email: "corporate@ayefin.com, customer.care@ayefin.com, customer.complaint@ayefin.com, ombudsman@ayefin.com"
+  },
+  "CSB Bank": {
+    address: "Smt. Sreelatha K, Principal Nodal Officer for Customer Grievances CSB Bank Limited, Head Office, CSB Bhavan, St Marys College Road Thrissur – 680020 Kerala",
+    email: "pno@csb.co.in, cutomercare@csb.co.in, advparshvashah.fpl@gmail.com"
+  },
+  "UNIFINZ": {
+    address: "Lending Plate, Chawla House 3rd Floor, 19 Nehru Place, New Delhi-110019",
+    email: "care@lendingplate.com, legal@lendingplate.com"
+  },
+  "Uni Card": {
+    address: "Danish Mirza, Indiqube Sigma No.3/B, Nexus Koramangala 3rd Block SBI Colony, Koramangala, Bengaluru, Karnataka 560034",
+    email: "gro@uni.club, care@uni.club"
+  },
+  "Other": {
+    address: "Other",
+    email: "Other"
   }
 }; 
