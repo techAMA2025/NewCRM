@@ -177,14 +177,51 @@ const BillcutLeadReportPage = () => {
       else incomeRanges['100K+']++;
     });
 
-    // Geographic distribution (extract state from address)
+    // Geographic distribution (extract state from pincode)
     const stateDistribution = leads.reduce((acc, lead) => {
       const address = lead.address || '';
-      const addressParts = address.split(',');
-      const state = addressParts[addressParts.length - 1]?.trim() || 'Unknown';
+      // Extract pincode (6 digits) from address
+      const pincodeMatch = address.match(/\b\d{6}\b/);
+      const pincode = pincodeMatch ? pincodeMatch[0] : '';
+      
+      let state = 'Unknown';
+      if (pincode) {
+        const firstTwoDigits = parseInt(pincode.substring(0, 2));
+        
+        if (firstTwoDigits === 11) state = 'Delhi';
+        else if (firstTwoDigits >= 12 && firstTwoDigits <= 13) state = 'Haryana';
+        else if (firstTwoDigits >= 14 && firstTwoDigits <= 16) state = 'Punjab';
+        else if (firstTwoDigits === 17) state = 'Himachal Pradesh';
+        else if (firstTwoDigits >= 18 && firstTwoDigits <= 19) state = 'Jammu & Kashmir';
+        else if (firstTwoDigits >= 20 && firstTwoDigits <= 28) state = 'Uttar Pradesh';
+        else if (firstTwoDigits >= 30 && firstTwoDigits <= 34) state = 'Rajasthan';
+        else if (firstTwoDigits >= 36 && firstTwoDigits <= 39) state = 'Gujarat';
+        else if (firstTwoDigits >= 0 && firstTwoDigits <= 44) state = 'Maharashtra';
+        else if (firstTwoDigits >= 45 && firstTwoDigits <= 48) state = 'Madhya Pradesh';
+        else if (firstTwoDigits === 49) state = 'Chhattisgarh';
+        else if (firstTwoDigits >= 50 && firstTwoDigits <= 53) state = 'Andhra Pradesh/Telangana';
+        else if (firstTwoDigits >= 56 && firstTwoDigits <= 59) state = 'Karnataka';
+        else if (firstTwoDigits >= 60 && firstTwoDigits <= 64) state = 'Tamil Nadu';
+        else if (firstTwoDigits >= 67 && firstTwoDigits <= 69) state = 'Kerala';
+        else if (firstTwoDigits === 682) state = 'Lakshadweep';
+        else if (firstTwoDigits >= 70 && firstTwoDigits <= 74) state = 'West Bengal';
+        else if (firstTwoDigits === 744) state = 'Andaman & Nicobar';
+        else if (firstTwoDigits >= 75 && firstTwoDigits <= 77) state = 'Odisha';
+        else if (firstTwoDigits === 78) state = 'Assam';
+        else if (firstTwoDigits === 79) state = 'North Eastern States';
+        else if (firstTwoDigits >= 80 && firstTwoDigits <= 85) state = 'Bihar';
+        else if ((firstTwoDigits >= 80 && firstTwoDigits <= 83) || firstTwoDigits === 92) state = 'Jharkhand';
+      }
+      
       acc[state] = (acc[state] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+
+    // Sort states by count in descending order
+    const sortedStateDistribution = Object.entries(stateDistribution)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10); // Take top 10 states
 
     // Time-based analysis
     const monthlyDistribution = leads.reduce((acc, lead) => {
@@ -225,7 +262,7 @@ const BillcutLeadReportPage = () => {
       assigneeDistribution: Object.entries(assigneeDistribution).map(([name, value]) => ({ name, value })),
       debtRangeDistribution: Object.entries(debtRangeDistribution).map(([name, value]) => ({ name, value })),
       incomeDistribution: Object.entries(incomeRanges).map(([name, value]) => ({ name, value })),
-      stateDistribution: Object.entries(stateDistribution).map(([name, value]) => ({ name, value })).slice(0, 10),
+      stateDistribution: sortedStateDistribution,
       monthlyDistribution: Object.entries(monthlyDistribution).map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name)),
       salesPerformance,
       contactAnalysis
@@ -445,15 +482,15 @@ const BillcutLeadReportPage = () => {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <FiMapPin className="mr-2" />
-                Top States
+                Top States Distribution
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.stateDistribution}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#EC4899" />
+                  <Bar dataKey="value" fill="#EC4899" name="Number of Leads" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
