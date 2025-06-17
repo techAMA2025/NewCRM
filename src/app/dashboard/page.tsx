@@ -13,6 +13,7 @@ import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import SuperAdminDashboard from './superadmin'
 import BillcutSidebar from '@/components/navigation/BillcutSidebar'
 import BillcutDashboard from '@/app/dashboard/billcut'
+import BillcutLeadReport from '../billcutLeadReport/page'
 
 const DashboardPage = () => {
   const { user, userRole, userName, loading, logout } = useAuth()
@@ -48,8 +49,6 @@ const DashboardPage = () => {
         return <SalesSidebar />
       case 'overlord':
         return <OverlordSidebar />
-      case 'billcut':
-        return <BillcutSidebar />
       default:
         return null
     }
@@ -67,7 +66,7 @@ const DashboardPage = () => {
       case 'overlord':
         return <SuperAdminDashboard />
       case 'billcut':
-        return <BillcutDashboard />
+        return <BillcutLeadReport />
       default:
         return <div>Unknown role</div>
     }
