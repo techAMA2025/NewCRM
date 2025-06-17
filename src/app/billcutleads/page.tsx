@@ -57,6 +57,51 @@ const extractStateFromAddress = (address: string): string => {
   return 'Unknown State';
 };
 
+// Function to extract state from pincode
+const getStateFromPincode = (pincode: string): string => {
+  // Extract first two digits
+  const firstTwoDigits = pincode.substring(0, 2);
+  const firstThreeDigits = pincode.substring(0, 3);
+
+  // Special case for 3-digit pincodes
+  if (firstThreeDigits === '682') return 'Lakshadweep';
+  if (firstThreeDigits === '744') return 'Andaman & Nicobar';
+
+  // Convert to number for comparison
+  const digits = parseInt(firstTwoDigits);
+
+  if (digits === 11) return 'Delhi';
+  if (digits >= 12 && digits <= 13) return 'Haryana';
+  if (digits >= 14 && digits <= 16) return 'Punjab';
+  if (digits === 17) return 'Himachal Pradesh';
+  if (digits >= 18 && digits <= 19) return 'Jammu & Kashmir';
+  if (digits >= 20 && digits <= 28) return 'Uttar Pradesh';
+  if (digits >= 30 && digits <= 34) return 'Rajasthan';
+  if (digits >= 36 && digits <= 39) return 'Gujarat';
+  if (digits >= 0 && digits <= 44) return 'Maharashtra';
+  if (digits >= 45 && digits <= 48) return 'Madhya Pradesh';
+  if (digits === 49) return 'Chhattisgarh';
+  if (digits >= 50 && digits <= 53) return 'Andhra Pradesh & Telangana';
+  if (digits >= 56 && digits <= 59) return 'Karnataka';
+  if (digits >= 60 && digits <= 64) return 'Tamil Nadu';
+  if (digits >= 67 && digits <= 69) return 'Kerala';
+  if (digits >= 70 && digits <= 74) return 'West Bengal';
+  if (digits >= 75 && digits <= 77) return 'Orissa';
+  if (digits === 78) return 'Assam';
+  if (digits === 79) return 'North Eastern States';
+  if (digits >= 80 && digits <= 85) return 'Bihar';
+  if ((digits >= 80 && digits <= 83) || digits === 92) return 'Jharkhand';
+
+  return 'Unknown State';
+};
+
+// Function to extract pincode from address
+const extractPincodeFromAddress = (address: string): string => {
+  // Match 6 digit number in the address
+  const pincodeMatch = address.match(/\b\d{6}\b/);
+  return pincodeMatch ? pincodeMatch[0] : '';
+};
+
 // Set default date range to current month to avoid loading all leads initially
 const getDefaultFromDate = () => {
   const now = new Date();
@@ -146,12 +191,16 @@ const BillCutLeadsPage = () => {
         
         const fetchedLeads = querySnapshot.docs.map(doc => {
           const data = doc.data();
+          const address = data.address || '';
+          const pincode = extractPincodeFromAddress(address);
+          const state = pincode ? getStateFromPincode(pincode) : 'Unknown State';
+          
           return {
             id: doc.id,
             name: data.name || '',
             email: data.email || '',
             phone: data.mobile || '',
-            city: extractStateFromAddress(data.address || ''),
+            city: state,
             status: data.category || 'No Status',
             source_database: 'Bill Cut Campaign',
             assignedTo: data.assigned_to || '',
