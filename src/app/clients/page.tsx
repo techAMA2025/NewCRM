@@ -102,18 +102,18 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [advocateFilter, setAdvocateFilter] = useState<string>('all')
-  const [cityFilter, setCityFilter] = useState<string>('all')
+  const [sourceFilter, setSourceFilter] = useState<string>('all')
   
   // Lists for filter dropdowns
   const [allAdvocates, setAllAdvocates] = useState<string[]>([])
-  const [allCities, setAllCities] = useState<string[]>([])
-  const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding'])
   const [allSources] = useState<string[]>([
     'credsettlee',
     'ama',
     'settleloans',
-    'billcut'
+    'billcut',
+    'manual'
   ]);
+  const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding'])
 
   // Filtered clients based on search and filters
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
@@ -185,7 +185,6 @@ export default function ClientsPage() {
         const cities = Array.from(new Set(clientsData.map(client => client.city).filter(Boolean) as string[]))
         
         setAllAdvocates(advocates)
-        setAllCities(cities)
       } catch (err) {
         console.error('Detailed error fetching clients:', err)
         if (err instanceof Error) {
@@ -512,6 +511,13 @@ export default function ClientsPage() {
     setIsDocViewerOpen(true);
   };
 
+  // Function to normalize source value
+  const normalizeSource = (source: string | undefined): string => {
+    if (!source) return '';
+    // Remove any numbers and extra spaces
+    return source.replace(/\s*\d+\s*/g, '').trim().toLowerCase();
+  };
+
   // Apply filters and search
   useEffect(() => {
     let results = [...clients]
@@ -537,25 +543,26 @@ export default function ClientsPage() {
       results = results.filter(client => client.adv_status === statusFilter)
     }
     
-    // Apply city filter
-    if (cityFilter !== 'all') {
-      results = results.filter(client => client.city === cityFilter)
+    // Apply source filter
+    if (sourceFilter !== 'all') {
+      results = results.filter(client => normalizeSource(client.source_database) === sourceFilter)
     }
     
     setFilteredClients(results)
-  }, [clients, searchTerm, advocateFilter, statusFilter, cityFilter])
+  }, [clients, searchTerm, advocateFilter, statusFilter, sourceFilter])
   
   // Reset all filters
   const resetFilters = () => {
     setSearchTerm('')
     setStatusFilter('all')
     setAdvocateFilter('all')
-    setCityFilter('all')
+    setSourceFilter('all')
   }
 
   // Function to format source display name
   const formatSourceName = (source: string): string => {
-    switch (source) {
+    const normalizedSource = normalizeSource(source);
+    switch (normalizedSource) {
       case 'credsettlee':
         return 'Cred Settle';
       case 'ama':
@@ -564,6 +571,8 @@ export default function ClientsPage() {
         return 'Settle Loans';
       case 'billcut':
         return 'Bill Cut';
+      case 'manual':
+        return 'Manual Entry';
       default:
         return source;
     }
@@ -803,22 +812,22 @@ export default function ClientsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={cityFilter} onValueChange={setCityFilter}>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
               <SelectTrigger className={`w-[120px] ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-gray-200'
                   : 'bg-white border-gray-300 text-gray-800'
               } text-xs h-6`}>
-                <SelectValue placeholder="Filter by city" />
+                <SelectValue placeholder="Filter by source" />
               </SelectTrigger>
               <SelectContent className={`${
                 theme === 'dark'
                   ? 'bg-gray-800 text-gray-200 border-gray-700'
                   : 'bg-white text-gray-800 border-gray-300'
               } text-xs`}>
-                <SelectItem value="all">All Cities</SelectItem>
-                {allCities.map(city => (
-                  <SelectItem key={city} value={city}>{city}</SelectItem>
+                <SelectItem value="all">All Sources</SelectItem>
+                {allSources.map(source => (
+                  <SelectItem key={source} value={source}>{formatSourceName(source)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -838,7 +847,7 @@ export default function ClientsPage() {
 
         {/* Clients Table */}
         <ClientsTable
-          clients={clients}
+          clients={filteredClients}
           onViewDetails={handleViewDetails}
           onEditClient={handleEditClient}
           onDeleteClient={handleDeleteInitiate}
