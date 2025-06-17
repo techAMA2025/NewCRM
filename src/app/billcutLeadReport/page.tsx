@@ -155,9 +155,29 @@ const BillcutLeadReportPage = () => {
     // Debt range distribution
     const debtRangeDistribution = leads.reduce((acc, lead) => {
       const range = lead.debt_range || 'Not specified';
-      acc[range] = (acc[range] || 0) + 1;
+      // Sort the ranges numerically for better display
+      if (range !== 'Not specified') {
+        const [min, max] = range.split(' - ').map(r => {
+          const num = parseInt(r);
+          return num * 100000; // Convert lakhs to actual amount
+        });
+        acc[range] = (acc[range] || 0) + 1;
+      } else {
+        acc[range] = (acc[range] || 0) + 1;
+      }
       return acc;
     }, {} as Record<string, number>);
+
+    // Sort debt ranges for better visualization
+    const sortedDebtRanges = Object.entries(debtRangeDistribution)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => {
+        if (a.name === 'Not specified') return 1;
+        if (b.name === 'Not specified') return -1;
+        const [aMin] = a.name.split(' - ').map(r => parseInt(r));
+        const [bMin] = b.name.split(' - ').map(r => parseInt(r));
+        return aMin - bMin;
+      });
 
     // Income distribution
     const incomeRanges = {
@@ -260,7 +280,7 @@ const BillcutLeadReportPage = () => {
       averageIncome: Math.round(averageIncome),
       categoryDistribution: Object.entries(categoryDistribution).map(([name, value]) => ({ name, value })),
       assigneeDistribution: Object.entries(assigneeDistribution).map(([name, value]) => ({ name, value })),
-      debtRangeDistribution: Object.entries(debtRangeDistribution).map(([name, value]) => ({ name, value })),
+      debtRangeDistribution: sortedDebtRanges,
       incomeDistribution: Object.entries(incomeRanges).map(([name, value]) => ({ name, value })),
       stateDistribution: sortedStateDistribution,
       monthlyDistribution: Object.entries(monthlyDistribution).map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name)),
@@ -422,12 +442,24 @@ const BillcutLeadReportPage = () => {
                 Debt Range Distribution
               </h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analytics.debtRangeDistribution} layout="horizontal">
+                <BarChart data={analytics.debtRangeDistribution} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#8B5CF6" />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={150}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value} leads`, 'Count']}
+                    labelFormatter={(label) => `Debt Range: ${label}`}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    fill="#8B5CF6"
+                    name="Number of Leads"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
