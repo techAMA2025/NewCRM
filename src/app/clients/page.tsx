@@ -24,6 +24,7 @@ import { storage } from '@/firebase/firebase'
 import ViewDetailsModal from './ViewDetailsModal'
 import EditModal from './EditModal'
 import { format } from 'date-fns'
+import ClientsTable from '@/components/ClientsTable'
 
 interface Client {
   id: string
@@ -130,6 +131,9 @@ export default function ClientsPage() {
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false)
   const [selectedAdvocateForBulk, setSelectedAdvocateForBulk] = useState<string>('')
+
+  // Add new state for theme
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -731,14 +735,14 @@ export default function ClientsPage() {
   )
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
       {renderSidebar()}
       
-      <div className="flex-1 p-4 bg-white text-gray-800">
+      <div className={`flex-1 p-4 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-white text-gray-800'}`}>
         {/* Header Section */}
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold text-gray-800">
+            <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
               Clients Management
             </h1>
             {selectedClients.size > 0 && (
@@ -755,13 +759,25 @@ export default function ClientsPage() {
               placeholder="Search clients..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-44 bg-white border-gray-300 text-gray-800 placeholder-gray-500 text-xs h-6"
+              className={`w-44 ${
+                theme === 'dark' 
+                  ? 'bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400' 
+                  : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
+              } text-xs h-6`}
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[120px] bg-white border-gray-300 text-gray-800 text-xs h-6">
+              <SelectTrigger className={`w-[120px] ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-800'
+              } text-xs h-6`}>
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent className="bg-white text-gray-800 border-gray-300 text-xs">
+              <SelectContent className={`${
+                theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 border-gray-700'
+                  : 'bg-white text-gray-800 border-gray-300'
+              } text-xs`}>
                 <SelectItem value="all">All Statuses</SelectItem>
                 {allStatuses.map(status => (
                   <SelectItem key={status} value={status}>{status}</SelectItem>
@@ -769,10 +785,18 @@ export default function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={advocateFilter} onValueChange={setAdvocateFilter}>
-              <SelectTrigger className="w-[120px] bg-white border-gray-300 text-gray-800 text-xs h-6">
+              <SelectTrigger className={`w-[120px] ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-800'
+              } text-xs h-6`}>
                 <SelectValue placeholder="Filter by advocate" />
               </SelectTrigger>
-              <SelectContent className="bg-white text-gray-800 border-gray-300 text-xs">
+              <SelectContent className={`${
+                theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 border-gray-700'
+                  : 'bg-white text-gray-800 border-gray-300'
+              } text-xs`}>
                 <SelectItem value="all">All Advocates</SelectItem>
                 {allAdvocates.map(advocate => (
                   <SelectItem key={advocate} value={advocate}>{advocate}</SelectItem>
@@ -780,10 +804,18 @@ export default function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="w-[120px] bg-white border-gray-300 text-gray-800 text-xs h-6">
+              <SelectTrigger className={`w-[120px] ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-800'
+              } text-xs h-6`}>
                 <SelectValue placeholder="Filter by city" />
               </SelectTrigger>
-              <SelectContent className="bg-white text-gray-800 border-gray-300 text-xs">
+              <SelectContent className={`${
+                theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 border-gray-700'
+                  : 'bg-white text-gray-800 border-gray-300'
+              } text-xs`}>
                 <SelectItem value="all">All Cities</SelectItem>
                 {allCities.map(city => (
                   <SelectItem key={city} value={city}>{city}</SelectItem>
@@ -793,7 +825,11 @@ export default function ClientsPage() {
             <Button 
               onClick={resetFilters}
               variant="outline" 
-              className="border-gray-300 text-gray-700 hover:bg-gray-100 text-xs h-6 px-2"
+              className={`${
+                theme === 'dark'
+                  ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+              } text-xs h-6 px-2`}
             >
               Reset Filters
             </Button>
@@ -801,109 +837,18 @@ export default function ClientsPage() {
         </div>
 
         {/* Clients Table */}
-        <div className="rounded-lg border border-gray-300 overflow-hidden text-xs">
-          <Table>
-            <TableHeader className="bg-gray-50">
-              <TableRow className="border-gray-300 hover:bg-gray-100">
-                <TableHead className="text-gray-600 w-[32px] p-1.5">
-                  <input
-                    type="checkbox"
-                    className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 bg-white h-3 w-3"
-                    checked={selectedClients.size === filteredClients.length && filteredClients.length > 0}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
-                </TableHead>
-                <TableHead className="text-gray-600 p-1.5">Name</TableHead>
-                <TableHead className="text-gray-600 p-1.5">Phone</TableHead>
-                <TableHead className="text-gray-600 p-1.5">City</TableHead>
-                <TableHead className="text-gray-600 p-1.5">Advocate</TableHead>
-                <TableHead className="text-gray-600 p-1.5">Status</TableHead>
-                <TableHead className="text-gray-600 p-1.5">Sales By</TableHead>
-                <TableHead className="text-gray-600 text-right p-1.5">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClients.map(client => (
-                <TableRow key={client.id} className="border-gray-300 hover:bg-gray-50">
-                  <TableCell className="p-1.5">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-blue-500 focus:ring-blue-500 bg-white h-3 w-3"
-                      checked={selectedClients.has(client.id)}
-                      onChange={(e) => handleSelectClient(client.id, e.target.checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium text-gray-800 p-1.5">
-                    {client.name}
-                  </TableCell>
-                  <TableCell className="p-1.5">{client.phone}</TableCell>
-                  <TableCell className="p-1.5">{client.city}</TableCell>
-                  <TableCell className="p-1.5">
-                    <div className="flex flex-col">
-                      <span className="text-blue-600">{client.alloc_adv || 'Unassigned'}</span>
-                      {client.alloc_adv_secondary && (
-                        <span className="text-[10px] text-gray-500">
-                          Secondary: {client.alloc_adv_secondary}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="p-1.5">
-                    <Select 
-                      value={client.adv_status || 'Pending'} 
-                      onValueChange={(value) => handleAdvocateStatusChange(client.id, value)}
-                    >
-                      <SelectTrigger className={`w-[90px] h-5 px-1.5 py-0 text-[10px] border ${
-                        client.adv_status === 'Active' 
-                          ? 'bg-green-50 text-green-600 border-green-200'
-                          : client.adv_status === 'Dropped'
-                          ? 'bg-red-50 text-red-600 border-red-200'
-                          : 'bg-yellow-50 text-yellow-600 border-yellow-200'
-                      }`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white text-gray-800 border-gray-300 text-[10px]">
-                        <SelectItem value="Active" className="text-green-600">Active</SelectItem>
-                        <SelectItem value="Dropped" className="text-red-600">Dropped</SelectItem>
-                        <SelectItem value="Not Responding" className="text-yellow-600">Not Responding</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="p-1.5">
-                    <span className="text-gray-600">
-                      {client.assignedTo || 'Unassigned'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right p-1.5">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        onClick={() => handleViewDetails(client)}
-                        size="sm"
-                        className="bg-blue-500 hover:bg-blue-600 text-white h-5 w-5 p-0"
-                      >
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        onClick={() => handleEditClient(client)}
-                        size="sm"
-                        className="bg-amber-500 hover:bg-amber-600 text-white h-5 w-5 p-0"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                      </Button>
-                      <Button
-                        onClick={() => handleDeleteInitiate(client)}
-                        size="sm"
-                        className="bg-red-500 hover:bg-red-600 text-white h-5 w-5 p-0"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <ClientsTable
+          clients={clients}
+          onViewDetails={handleViewDetails}
+          onEditClient={handleEditClient}
+          onDeleteClient={handleDeleteInitiate}
+          onAdvocateStatusChange={handleAdvocateStatusChange}
+          selectedClients={selectedClients}
+          onSelectAll={handleSelectAll}
+          onSelectClient={handleSelectClient}
+          theme={theme}
+          onThemeChange={setTheme}
+        />
 
         {/* Modals */}
         {selectedClient && (
