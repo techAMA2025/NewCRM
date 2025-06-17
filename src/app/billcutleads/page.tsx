@@ -171,8 +171,8 @@ const BillCutLeadsPage = () => {
         });
 
         const sortedLeads = fetchedLeads.sort((a, b) => {
-          const dateA = a.lastModified?.getTime() || 0;
-          const dateB = b.lastModified?.getTime() || 0;
+          const dateA = a.date || 0;
+          const dateB = b.date || 0;
           return dateB - dateA;
         });
 
