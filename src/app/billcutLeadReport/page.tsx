@@ -6,6 +6,7 @@ import { db as crmDb } from '@/firebase/firebase';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import BillcutSidebar from '@/components/navigation/BillcutSidebar';
 import {
   BarChart,
   Bar,
@@ -87,6 +88,15 @@ const BillcutLeadReportPage = () => {
     startDate: '',
     endDate: ''
   });
+  const [userRole, setUserRole] = useState<string>('');
+
+  // Check user role on component mount
+  useEffect(() => {
+    const storedRole = localStorage.getItem('userRole');
+    if (storedRole) {
+      setUserRole(storedRole);
+    }
+  }, []);
 
   // Fetch leads data
   useEffect(() => {
@@ -292,7 +302,7 @@ const BillcutLeadReportPage = () => {
   if (isLoading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <OverlordSidebar />
+        {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
@@ -306,7 +316,7 @@ const BillcutLeadReportPage = () => {
   if (!analytics) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <OverlordSidebar />
+        {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-lg text-gray-600">No data available for analysis</p>
@@ -318,13 +328,12 @@ const BillcutLeadReportPage = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <OverlordSidebar />
+      {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Billcut Leads Analytics</h1>
-            <p className="text-gray-600">Comprehensive analysis of your billcut leads data</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Billcut Leads Dashboard</h1>
             
             {/* Date Range Filter */}
             <div className="mt-4 flex gap-4 items-center">
@@ -548,53 +557,7 @@ const BillcutLeadReportPage = () => {
             </ResponsiveContainer>
           </div>
 
-          {/* Contact Information Analysis */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900">Has Email</h4>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">
-                    {analytics.contactAnalysis.hasEmail}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {Math.round((analytics.contactAnalysis.hasEmail / analytics.totalLeads) * 100)}% of total
-                  </p>
-                </div>
-                <FiMail size={32} className="text-blue-600" />
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900">Has Phone</h4>
-                  <p className="text-3xl font-bold text-green-600 mt-2">
-                    {analytics.contactAnalysis.hasPhone}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {Math.round((analytics.contactAnalysis.hasPhone / analytics.totalLeads) * 100)}% of total
-                  </p>
-                </div>
-                <FiPhone size={32} className="text-green-600" />
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900">Has Notes</h4>
-                  <p className="text-3xl font-bold text-purple-600 mt-2">
-                    {analytics.contactAnalysis.hasNotes}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {Math.round((analytics.contactAnalysis.hasNotes / analytics.totalLeads) * 100)}% of total
-                  </p>
-                </div>
-                <FiActivity size={32} className="text-purple-600" />
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
       <ToastContainer />
