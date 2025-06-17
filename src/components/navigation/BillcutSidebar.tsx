@@ -1,9 +1,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { FiPieChart } from 'react-icons/fi'
+import { useRouter } from 'next/navigation'
 
 const BillcutSidebar = () => {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    // Add your logout logic here
+    router.push('/login')
+  }
 
   const isActive = (path: string) => {
     return pathname === path
@@ -83,16 +90,16 @@ const BillcutSidebar = () => {
       </nav>
 
       {/* User Section */}
-      <div className="flex items-center px-4 py-3 border-t border-gray-800 bg-gray-900">
-        <div className="flex-shrink-0">
-          <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center">
-            <span className="text-sm font-medium text-white">BC</span>
-          </div>
-        </div>
-        <div className="ml-3">
-          <p className="text-sm font-medium text-white">Billcut User</p>
-          <p className="text-xs text-gray-400">Billcut Role</p>
-        </div>
+      <div className="flex flex-col px-4 py-3 border-t border-gray-800 bg-gray-900">
+        <button
+          onClick={handleLogout}
+          className="flex items-center px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors duration-150"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clipRule="evenodd" />
+          </svg>
+          Logout
+        </button>
       </div>
     </div>
   )
