@@ -104,26 +104,48 @@ const BillcutLeadReportPage = () => {
 
     switch (filter) {
       case 'today':
+        // Set to start of current day (00:00:00)
+        startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
+        // Set to current time
+        endDate = new Date();
         break;
       case 'thisMonth':
+        // Set to start of current month (00:00:00)
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+        startDate.setHours(0, 0, 0, 0);
+        // Set to current time
+        endDate = new Date();
         break;
       case 'last30Days':
+        // Set to 30 days ago at start of day (00:00:00)
+        startDate = new Date(today);
         startDate.setDate(today.getDate() - 30);
         startDate.setHours(0, 0, 0, 0);
+        // Set to current time
+        endDate = new Date();
         break;
       case 'last60Days':
+        // Set to 60 days ago at start of day (00:00:00)
+        startDate = new Date(today);
         startDate.setDate(today.getDate() - 60);
         startDate.setHours(0, 0, 0, 0);
+        // Set to current time
+        endDate = new Date();
         break;
     }
 
+    // Convert to local date strings to ensure correct timezone handling
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     setDateRange({
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate)
     });
   };
 
@@ -169,7 +191,12 @@ const BillcutLeadReportPage = () => {
         
         if (dateRange.endDate) {
           const endDate = new Date(dateRange.endDate);
-          endDate.setHours(23, 59, 59, 999);
+          // If it's today, use current time, otherwise use end of day
+          if (endDate.toDateString() === new Date().toDateString()) {
+            endDate.setTime(new Date().getTime());
+          } else {
+            endDate.setHours(23, 59, 59, 999);
+          }
           queryConstraints.push(where('date', '<=', endDate.getTime()));
         }
         
