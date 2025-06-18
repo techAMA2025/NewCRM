@@ -588,7 +588,16 @@ const EditClientModal = ({
                     onChange={(value) => handleFieldChange('tenure', value)}
                     required
                   />
-                  {lead.source_database !== 'billcut' && (
+                  {lead.source_database === 'billcut' ? (
+                    <InputField
+                      id="monthlyFees"
+                      label="Monthly Fees"
+                      value="0"
+                      onChange={() => {}}
+                      disabled
+                      placeholder="₹"
+                    />
+                  ) : (
                     <InputField
                       id="monthlyFees"
                       label="Monthly Fees"
