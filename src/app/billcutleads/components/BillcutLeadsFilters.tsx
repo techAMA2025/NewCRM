@@ -288,7 +288,7 @@ const BillcutLeadsFilters = ({
                 className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
               >
                 <option value="all">All Salesperson</option>
-                <option value="">Unassigned</option>
+                <option value="-">Unassigned</option>
                 {isLoading ? (
                   <option value="" disabled>Loading...</option>
                 ) : (
