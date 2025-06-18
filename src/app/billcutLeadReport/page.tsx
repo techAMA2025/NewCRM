@@ -25,9 +25,14 @@ import {
   Area,
   RadialBarChart,
   RadialBar,
-  ComposedChart
+  ComposedChart,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
 } from 'recharts';
-import { FiUsers, FiTrendingUp, FiTarget, FiDollarSign, FiPhone, FiMail, FiMapPin, FiCalendar, FiActivity, FiPieChart } from 'react-icons/fi';
+import { FiUsers, FiTrendingUp, FiTarget, FiDollarSign, FiPhone, FiMail, FiMapPin, FiCalendar, FiActivity, FiPieChart, FiSun, FiMoon } from 'react-icons/fi';
 
 // Types
 interface BillcutLead {
@@ -89,14 +94,63 @@ const BillcutLeadReportPage = () => {
     endDate: ''
   });
   const [userRole, setUserRole] = useState<string>('');
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Check user role on component mount
+  // Function to handle quick date range filters
+  const handleQuickDateFilter = (filter: string) => {
+    const today = new Date();
+    let startDate = new Date();
+    let endDate = new Date();
+
+    switch (filter) {
+      case 'today':
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'thisMonth':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      case 'last30Days':
+        startDate.setDate(today.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'last60Days':
+        startDate.setDate(today.getDate() - 60);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+    }
+
+    setDateRange({
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    });
+  };
+
+  // Check user role and theme preference on component mount
   useEffect(() => {
     const storedRole = localStorage.getItem('userRole');
+    const storedTheme = localStorage.getItem('theme');
     if (storedRole) {
       setUserRole(storedRole);
     }
+    if (storedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
   }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   // Fetch leads data
   useEffect(() => {
@@ -146,14 +200,38 @@ const BillcutLeadReportPage = () => {
     // Basic metrics
     const totalLeads = leads.length;
     const uniqueAssignees = new Set(leads.map(lead => lead.assigned_to)).size;
-    const averageIncome = leads.reduce((sum, lead) => sum + (parseInt(lead.income) || 0), 0) / totalLeads;
     
-    // Category distribution
+    // Calculate average debt range
+    const debtRanges: number[] = leads.map(lead => {
+      const range = lead.debt_range || 'Not specified';
+      if (range === 'Not specified') return null;
+      const [min, max] = range.split(' - ').map(r => {
+        const num = parseInt(r);
+        return isNaN(num) ? 0 : num * 100000; // Convert lakhs to actual amount, handle invalid numbers
+      });
+      return (min + max) / 2;
+    }).filter((val): val is number => val !== null && val > 0); // Filter out null and zero values
+    
+    const averageDebt = debtRanges.length > 0 
+      ? Math.round(debtRanges.reduce((sum, val) => sum + val, 0) / debtRanges.length)
+      : 0;
+    
+    // Calculate conversion rate
+    const convertedLeads = leads.filter(lead => lead.category === 'Converted').length;
+    const conversionRate = (convertedLeads / totalLeads) * 100;
+    
+    // Category distribution with percentage
     const categoryDistribution = leads.reduce((acc, lead) => {
       const category = lead.category || 'Uncategorized';
       acc[category] = (acc[category] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+
+    const categoryData = Object.entries(categoryDistribution).map(([name, value]) => ({
+      name,
+      value,
+      percentage: (value / totalLeads) * 100
+    }));
 
     // Assigned to distribution
     const assigneeDistribution = leads.reduce((acc, lead) => {
@@ -287,8 +365,9 @@ const BillcutLeadReportPage = () => {
     return {
       totalLeads,
       uniqueAssignees,
-      averageIncome: Math.round(averageIncome),
-      categoryDistribution: Object.entries(categoryDistribution).map(([name, value]) => ({ name, value })),
+      averageDebt,
+      conversionRate: Math.round(conversionRate * 100) / 100,
+      categoryDistribution: categoryData,
       assigneeDistribution: Object.entries(assigneeDistribution).map(([name, value]) => ({ name, value })),
       debtRangeDistribution: sortedDebtRanges,
       incomeDistribution: Object.entries(incomeRanges).map(([name, value]) => ({ name, value })),
@@ -301,12 +380,12 @@ const BillcutLeadReportPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
         {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-lg text-gray-600">Loading analytics data...</p>
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">Loading analytics data...</p>
           </div>
         </div>
       </div>
@@ -315,11 +394,11 @@ const BillcutLeadReportPage = () => {
 
   if (!analytics) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
         {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-lg text-gray-600">No data available for analysis</p>
+            <p className="text-lg text-gray-600 dark:text-gray-300">No data available for analysis</p>
           </div>
         </div>
       </div>
@@ -327,40 +406,82 @@ const BillcutLeadReportPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Billcut Leads Dashboard</h1>
+          <div className="mb-8 flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billcut Leads Dashboard</h1>
             
-            {/* Date Range Filter */}
-            <div className="mt-4 flex gap-4 items-center">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+            {/* Dark Mode Toggle Button */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? (
+                <FiSun className="w-6 h-6 text-yellow-500" />
+              ) : (
+                <FiMoon className="w-6 h-6 text-gray-700" />
+              )}
+            </button>
+          </div>
+          
+          {/* Date Range Filter */}
+          <div className="my-4 flex gap-4 items-center">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={dateRange.startDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+              <input
+                type="date"
+                value={dateRange.endDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quick Filters</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleQuickDateFilter('today')}
+                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => handleQuickDateFilter('thisMonth')}
+                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                >
+                  This Month
+                </button>
+                <button
+                  onClick={() => handleQuickDateFilter('last30Days')}
+                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                >
+                  Last 30 Days
+                </button>
+                <button
+                  onClick={() => handleQuickDateFilter('last60Days')}
+                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+                >
+                  Last 60 Days
+                </button>
+                <button
+                  onClick={() => setDateRange({ startDate: '', endDate: '' })}
+                  className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
+                >
+                  Clear
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={dateRange.endDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <button
-                onClick={() => setDateRange({ startDate: '', endDate: '' })}
-                className="mt-6 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-              >
-                Clear
-              </button>
             </div>
           </div>
 
@@ -379,15 +500,15 @@ const BillcutLeadReportPage = () => {
               color="#10B981"
             />
             <MetricCard
-              title="Average Income"
-              value={`₹${analytics.averageIncome.toLocaleString()}`}
+              title="Average Debt"
+              value={analytics.averageDebt > 0 ? `₹${(analytics.averageDebt / 100000).toFixed(2)}L` : '₹0.00L'}
               icon={<FiDollarSign size={24} />}
               color="#F59E0B"
             />
             <MetricCard
-              title="Contact Rate"
-              value={`${Math.round((analytics.contactAnalysis.hasPhone / analytics.totalLeads) * 100)}%`}
-              icon={<FiPhone size={24} />}
+              title="Conversion Rate"
+              value={`${analytics.conversionRate}%`}
+              icon={<FiTrendingUp size={24} />}
               color="#EF4444"
             />
           </div>
@@ -395,44 +516,96 @@ const BillcutLeadReportPage = () => {
           {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Category Distribution */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiPieChart className="mr-2" />
                 Lead Status Distribution
               </h3>
               <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={analytics.categoryDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {analytics.categoryDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
+                <ComposedChart
+                  data={analytics.categoryDistribution}
+                  margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                >
+                  <CartesianGrid stroke="#f5f5f5" strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                    interval={0}
+                    stroke={isDarkMode ? "#fff" : "#000"}
+                  />
+                  <YAxis 
+                    yAxisId="left" 
+                    orientation="left" 
+                    label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+                    stroke={isDarkMode ? "#fff" : "#000"}
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="right" 
+                    label={{ value: 'Percentage', angle: 90, position: 'insideRight' }}
+                    stroke={isDarkMode ? "#fff" : "#000"}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#fff' : '#000'
+                    }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'Count') return [value, 'Number of Leads'];
+                      if (name === 'Percentage') return [`${value.toFixed(1)}%`, 'Percentage'];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend />
+                  <Bar 
+                    yAxisId="left"
+                    dataKey="value" 
+                    fill="#3B82F6" 
+                    name="Count"
+                    barSize={40}
+                  />
+                  <Line 
+                    yAxisId="right"
+                    type="monotone" 
+                    dataKey="percentage" 
+                    stroke="#EF4444" 
+                    strokeWidth={2}
+                    name="Percentage"
+                    dot={{ r: 4 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 
             {/* Sales Performance */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiActivity className="mr-2" />
                 Sales Rep Performance
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.salesPerformance}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={80}
+                    stroke={isDarkMode ? "#fff" : "#000"}
+                  />
+                  <YAxis stroke={isDarkMode ? "#fff" : "#000"} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#fff' : '#000'
+                    }}
+                  />
                   <Legend />
                   <Bar dataKey="totalLeads" fill="#3B82F6" name="Total Leads" />
                   <Bar dataKey="interested" fill="#10B981" name="Interested" />
@@ -445,22 +618,29 @@ const BillcutLeadReportPage = () => {
           {/* Additional Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Debt Range Distribution */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiDollarSign className="mr-2" />
                 Debt Range Distribution
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.debtRangeDistribution} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
+                  <XAxis type="number" stroke={isDarkMode ? "#fff" : "#000"} />
                   <YAxis 
                     dataKey="name" 
                     type="category" 
                     width={150}
                     tick={{ fontSize: 12 }}
+                    stroke={isDarkMode ? "#fff" : "#000"}
                   />
                   <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#fff' : '#000'
+                    }}
                     formatter={(value: number) => [`${value} leads`, 'Count']}
                     labelFormatter={(label) => `Debt Range: ${label}`}
                   />
@@ -474,8 +654,8 @@ const BillcutLeadReportPage = () => {
             </div>
 
             {/* Income Distribution */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiTrendingUp className="mr-2" />
                 Income Range Distribution
               </h3>
@@ -494,7 +674,14 @@ const BillcutLeadReportPage = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#fff' : '#000'
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -503,34 +690,57 @@ const BillcutLeadReportPage = () => {
           {/* Time-based and Geographic Analysis */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Monthly Trend */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiCalendar className="mr-2" />
                 Monthly Lead Trend
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={analytics.monthlyDistribution}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
+                  <XAxis 
+                    dataKey="name"
+                    stroke={isDarkMode ? "#fff" : "#000"}
+                  />
+                  <YAxis stroke={isDarkMode ? "#fff" : "#000"} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#fff' : '#000'
+                    }}
+                  />
                   <Area type="monotone" dataKey="value" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
 
             {/* Geographic Distribution */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiMapPin className="mr-2" />
                 Top States Distribution
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.stateDistribution}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <Tooltip />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={100}
+                    stroke={isDarkMode ? "#fff" : "#000"}
+                  />
+                  <YAxis stroke={isDarkMode ? "#fff" : "#000"} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#fff' : '#000'
+                    }}
+                  />
                   <Bar dataKey="value" fill="#EC4899" name="Number of Leads" />
                 </BarChart>
               </ResponsiveContainer>
@@ -538,26 +748,44 @@ const BillcutLeadReportPage = () => {
           </div>
 
           {/* Conversion Rate Analysis */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               <FiTarget className="mr-2" />
               Sales Rep Conversion Rates
             </h3>
             <ResponsiveContainer width="100%" height={400}>
               <ComposedChart data={analytics.salesPerformance}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80}
+                  stroke={isDarkMode ? "#fff" : "#000"}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  stroke={isDarkMode ? "#fff" : "#000"}
+                />
+                <YAxis 
+                  yAxisId="right" 
+                  orientation="right"
+                  stroke={isDarkMode ? "#fff" : "#000"}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: isDarkMode ? '#fff' : '#000'
+                  }}
+                />
                 <Legend />
                 <Bar yAxisId="left" dataKey="totalLeads" fill="#3B82F6" name="Total Leads" />
                 <Line yAxisId="right" type="monotone" dataKey="conversionRate" stroke="#EF4444" strokeWidth={3} name="Conversion Rate %" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-
-
         </div>
       </div>
       <ToastContainer />
