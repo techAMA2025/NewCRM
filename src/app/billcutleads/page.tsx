@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
@@ -238,45 +238,8 @@ const BillCutLeadsPage = () => {
       try {
         const billcutLeadsRef = collection(crmDb, 'billcutLeads');
         
-        // Create query constraints based on all filters
-        let queryConstraints = [];
-        
-        // Date filters
-        if (fromDate) {
-          const fromDateStart = new Date(fromDate);
-          fromDateStart.setHours(0, 0, 0, 0);
-          queryConstraints.push(where('date', '>=', fromDateStart.getTime()));
-        }
-        
-        if (toDate) {
-          const toDateEnd = new Date(toDate);
-          toDateEnd.setHours(23, 59, 59, 999);
-          queryConstraints.push(where('date', '<=', toDateEnd.getTime()));
-        }
-        
-        // Status filter
-        if (statusFilter !== 'all') {
-          if (statusFilter === 'No Status') {
-            // For "No Status", we need to handle this differently since it could be null/undefined/empty
-            // We'll fetch all and filter in memory for this case
-          } else {
-            queryConstraints.push(where('category', '==', statusFilter));
-          }
-        }
-        
-        // Salesperson filter
-        if (salesPersonFilter !== 'all') {
-          if (salesPersonFilter === '') {
-            // For unassigned leads
-            queryConstraints.push(where('assigned_to', '==', ''));
-          } else {
-            queryConstraints.push(where('assigned_to', '==', salesPersonFilter));
-          }
-        }
-        
-        // Create and execute the query
-        const q = query(billcutLeadsRef, ...queryConstraints);
-        const querySnapshot = await getDocs(q);
+        // Fetch all leads without complex queries to avoid index requirements
+        const querySnapshot = await getDocs(billcutLeadsRef);
         
         const fetchedLeads = querySnapshot.docs.map(doc => {
           const data = doc.data();
@@ -309,16 +272,49 @@ const BillCutLeadsPage = () => {
           } as Lead;
         });
 
-        // Apply "No Status" filter in memory if needed
+        // Apply filters in memory instead of in the query
         let filteredLeads = fetchedLeads;
-        if (statusFilter === 'No Status') {
-          filteredLeads = fetchedLeads.filter(lead => 
-            lead.status === undefined || 
-            lead.status === null || 
-            lead.status === '' || 
-            lead.status === '-' ||
-            lead.status === 'No Status'
+
+        // Date filters
+        if (fromDate) {
+          const fromDateStart = new Date(fromDate);
+          fromDateStart.setHours(0, 0, 0, 0);
+          filteredLeads = filteredLeads.filter(lead => 
+            lead.date >= fromDateStart.getTime()
           );
+        }
+        
+        if (toDate) {
+          const toDateEnd = new Date(toDate);
+          toDateEnd.setHours(23, 59, 59, 999);
+          filteredLeads = filteredLeads.filter(lead => 
+            lead.date <= toDateEnd.getTime()
+          );
+        }
+        
+        // Status filter
+        if (statusFilter !== 'all') {
+          if (statusFilter === 'No Status') {
+            filteredLeads = filteredLeads.filter(lead => 
+              lead.status === undefined || 
+              lead.status === null || 
+              lead.status === '' || 
+              lead.status === '-' ||
+              lead.status === 'No Status'
+            );
+          } else {
+            filteredLeads = filteredLeads.filter(lead => lead.status === statusFilter);
+          }
+        }
+        
+        // Salesperson filter
+        if (salesPersonFilter !== 'all') {
+          if (salesPersonFilter === '') {
+            // For unassigned leads
+            filteredLeads = filteredLeads.filter(lead => lead.assignedTo === '');
+          } else {
+            filteredLeads = filteredLeads.filter(lead => lead.assignedTo === salesPersonFilter);
+          }
         }
 
         const sortedLeads = filteredLeads.sort((a, b) => {
