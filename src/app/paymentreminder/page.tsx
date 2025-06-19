@@ -418,8 +418,41 @@ export default function PaymentReminderPage() {
     setEndDate(end);
   };
 
+  // Function to extract source from clientId
+  const extractSourceFromClientId = (clientId: string): { source: string; color: string } => {
+    if (!clientId) return { source: 'Unknown', color: 'bg-gray-900/30 text-gray-300 border-gray-700/50' };
+    
+    // Handle different source formats
+    if (clientId.startsWith('BIL') || clientId.startsWith('billcut_')) {
+      return { source: 'BillCut', color: 'bg-purple-900/30 text-purple-300 border-purple-700/50' };
+    }
+    
+    if (clientId.startsWith('SET') || clientId.startsWith('settleloans_')) {
+      return { source: 'SettleLoans', color: 'bg-orange-900/30 text-orange-300 border-orange-700/50' };
+    }
+    
+    if (clientId.startsWith('ama_') || clientId.startsWith('AMA-')) {
+      return { source: 'AMA', color: 'bg-blue-900/30 text-blue-300 border-blue-700/50' };
+    }
+    
+    if (clientId.startsWith('credsettlee_')) {
+      return { source: 'CredSettle', color: 'bg-green-900/30 text-green-300 border-green-700/50' };
+    }
+    
+    // Fallback for other formats
+    const parts = clientId.split('-');
+    const firstPart = parts[0] || 'Unknown';
+    return { source: firstPart, color: 'bg-gray-900/30 text-gray-300 border-gray-700/50' };
+  };
+
   // Enhanced filtering logic
   const filteredClients = clients.filter(client => {
+    // Filter out BillCut source clients
+    const sourceInfo = extractSourceFromClientId(client.clientId);
+    if (sourceInfo.source === 'BillCut') {
+      return false;
+    }
+    
     // Existing search filter
     const matchesSearch = 
       client.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -706,7 +739,16 @@ export default function PaymentReminderPage() {
                                   <td className="p-4 border-b border-gray-800 text-gray-400">
                                     {client.createdAt ? formatDate(client.createdAt) : 'Not available'}
                                   </td>
-                                  <td className="p-4 border-b border-gray-800 text-gray-200">{client.clientName.toUpperCase()}</td>
+                                  <td className="p-4 border-b border-gray-800 text-gray-200">
+                                    <div>
+                                      <div className="font-medium">{client.clientName.toUpperCase()}</div>
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        <span className={`px-1 py-0.5 rounded text-xs font-medium border ${extractSourceFromClientId(client.clientId).color}`}>
+                                          {extractSourceFromClientId(client.clientId).source}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">{client.clientPhone}</td>
                                   <td className="p-4 border-b border-gray-800">
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium inline-block
@@ -922,6 +964,11 @@ export default function PaymentReminderPage() {
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-400 mt-1">{client.clientPhone}</p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Source: <span className={`px-1 py-0.5 rounded text-xs font-medium border ${extractSourceFromClientId(client.clientId).color}`}>
+                                          {extractSourceFromClientId(client.clientId).source}
+                                        </span>
+                                      </p>
                                     </div>
                                     <div className="text-right">
                                       <p className={`font-medium 

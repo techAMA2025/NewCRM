@@ -1099,6 +1099,11 @@ function ClientsList() {
 
           if (existingIndex >= 0) {
             clientsList[existingIndex].isSecondary = true
+            // Initialize request letter states for existing clients (both primary and secondary)
+            setRequestLetterStates((prev) => ({
+              ...prev,
+              [doc.id]: clientData.request_letter || false,
+            }))
           } else {
             clientsList.push({
               id: doc.id,
@@ -1106,6 +1111,11 @@ function ClientsList() {
               isPrimary: false,
               isSecondary: true,
             } as Client)
+            // Initialize request letter states for new secondary clients
+            setRequestLetterStates((prev) => ({
+              ...prev,
+              [doc.id]: clientData.request_letter || false,
+            }))
           }
         })
 
@@ -1186,6 +1196,7 @@ function ClientsList() {
   }
 
   const openRequestLetterModal = (client: Client) => {
+    // Both primary and secondary advocates can generate request letters
     setSelectedClientForDoc(client)
     setIsRequestLetterModalOpen(true)
   }
@@ -1270,7 +1281,7 @@ function ClientsList() {
         [clientId]: checked,
       }))
 
-      // Update in Firebase
+      // Update in Firebase - both primary and secondary advocates can update request letter status
       const clientRef = doc(db, "clients", clientId)
       await updateDoc(clientRef, {
         request_letter: checked,
