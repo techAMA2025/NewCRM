@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import BillcutSidebar from '@/components/navigation/BillcutSidebar';
+import AdminSidebar from '@/components/navigation/AdminSidebar';
 import {
   BarChart,
   Bar,
@@ -481,7 +482,7 @@ const BillcutLeadReportPage = () => {
   if (isLoading) {
     return (
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-        {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
+        {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
@@ -495,7 +496,7 @@ const BillcutLeadReportPage = () => {
   if (!analytics) {
     return (
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-        {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
+        {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-lg text-gray-600 dark:text-gray-300">No data available for analysis</p>
@@ -507,7 +508,7 @@ const BillcutLeadReportPage = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      {userRole === 'overlord' ? <OverlordSidebar /> : <BillcutSidebar />}
+      {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
