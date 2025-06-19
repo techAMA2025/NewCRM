@@ -86,6 +86,32 @@ const COLORS = [
   '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
 ];
 
+// Status color function
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'interested':
+      return 'bg-green-700 text-green-100 border-green-700';
+    case 'not interested':
+      return 'bg-red-900 text-red-100 border-red-700';
+    case 'not answering':
+      return 'bg-orange-900 text-orange-100 border-orange-700';
+    case 'callback':
+      return 'bg-yellow-900 text-yellow-100 border-yellow-700';
+    case 'converted':
+      return 'bg-emerald-900 text-emerald-100 border-emerald-700';
+    case 'loan required':
+      return 'bg-purple-900 text-purple-100 border-purple-700';
+    case 'cibil issue':
+      return 'bg-rose-900 text-rose-100 border-rose-700';
+    case 'closed lead':
+      return 'bg-gray-500 text-white border-gray-700';
+    case 'select status':
+      return 'bg-gray-400 text-gray-100 border-gray-600';
+    default:
+      return 'bg-gray-400 text-gray-100 border-gray-600';
+  }
+};
+
 const BillcutLeadReportPage = () => {
   const [leads, setLeads] = useState<BillcutLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -858,7 +884,9 @@ const BillcutLeadReportPage = () => {
                     </th>
                     {analytics.categoryDistribution.map(category => (
                       <th key={category.name} className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        {category.name}
+                        <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(category.name)}`}>
+                          {category.name}
+                        </span>
                       </th>
                     ))}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -886,7 +914,9 @@ const BillcutLeadReportPage = () => {
                         {analytics.categoryDistribution.map(category => (
                           <td key={category.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                             <div className="flex items-center">
-                              <span className="mr-2">{statusBreakdown[category.name] || 0}</span>
+                              <span className={`mr-2 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(category.name)}`}>
+                                {statusBreakdown[category.name] || 0}
+                              </span>
                               {rep.totalLeads > 0 && (
                                 <span className="text-xs text-gray-400 dark:text-gray-500">
                                   ({((statusBreakdown[category.name] || 0) / rep.totalLeads * 100).toFixed(1)}%)
