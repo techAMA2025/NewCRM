@@ -47,6 +47,10 @@ interface Letter {
   createdAt?: any;
   bankName?: string;
   dueDate?: string;
+  primaryAdvocate?: string;
+  secondaryAdvocate?: string;
+  source_database?: string;
+  assignedTo?: string;
 }
 
 // Define interface for task data
@@ -140,7 +144,11 @@ const AdvocateDashboard = () => {
               id: doc.id,
               clientName: clientData.name,
               bankName: clientData.bank || 'Not specified',
-              dueDate: clientData.nextFollowUp || clientData.lastFollowUp
+              dueDate: clientData.nextFollowUp || clientData.lastFollowUp,
+              primaryAdvocate: clientData.alloc_adv,
+              secondaryAdvocate: clientData.alloc_adv_secondary,
+              source_database: clientData.source_database,
+              assignedTo: clientData.assignedTo
             });
           }
         });
@@ -327,6 +335,54 @@ const AdvocateDashboard = () => {
     };
 
     fetchAdvocateData();
+  }, []);
+
+  // Add a new useEffect to fetch all pending letters for everyone
+  useEffect(() => {
+    const fetchAllPendingLetters = async () => {
+      try {
+        // Fetch all clients to get pending letters for everyone
+        const clientsRef = collection(db, 'clients');
+        const allClientsSnapshot = await getDocs(clientsRef);
+        
+        const allPendingLettersList: Letter[] = [];
+        
+        allClientsSnapshot.forEach((doc) => {
+          const clientData = doc.data();
+          
+          // Check for pending letters - for all clients where request_letter is false or not present
+          if (clientData.request_letter !== true) {
+            allPendingLettersList.push({
+              id: doc.id,
+              clientName: clientData.name,
+              bankName: clientData.bank || 'Not specified',
+              dueDate: clientData.nextFollowUp || clientData.lastFollowUp,
+              primaryAdvocate: clientData.alloc_adv || 'Unassigned',
+              secondaryAdvocate: clientData.alloc_adv_secondary || 'Unassigned',
+              source_database: clientData.source_database || 'Not specified',
+              assignedTo: clientData.assignedTo || 'Not specified'
+            });
+          }
+        });
+        
+        console.log(`Found ${allPendingLettersList.length} total pending letters across all clients`);
+        
+        // Sort pending letters by due date (if available)
+        allPendingLettersList.sort((a, b) => {
+          if (a.dueDate && b.dueDate) {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          }
+          return 0;
+        });
+        
+        setPendingLetters(allPendingLettersList);
+        
+      } catch (error) {
+        console.error('Error fetching all pending letters:', error);
+      }
+    };
+
+    fetchAllPendingLetters();
   }, []);
 
   useEffect(() => {
@@ -924,6 +980,18 @@ const AdvocateDashboard = () => {
                     Client Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Source
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Primary Advocate
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Secondary Advocate
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Sales Person
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -933,6 +1001,30 @@ const AdvocateDashboard = () => {
                   <tr key={letter.id} className="hover:bg-gray-700 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap font-medium">
                       {letter.clientName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                      {letter.source_database}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        letter.primaryAdvocate === 'Unassigned' 
+                          ? 'bg-red-900/30 text-red-300 border border-red-700/50' 
+                          : 'bg-blue-900/30 text-blue-300 border border-blue-700/50'
+                      }`}>
+                        {letter.primaryAdvocate}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        letter.secondaryAdvocate === 'Unassigned' 
+                          ? 'bg-gray-900/30 text-gray-300 border border-gray-700/50' 
+                          : 'bg-purple-900/30 text-purple-300 border border-purple-700/50'
+                      }`}>
+                        {letter.secondaryAdvocate}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                      {letter.assignedTo}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button 
