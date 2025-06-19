@@ -128,7 +128,7 @@ export default function ClientsTable({
                   />
                 </TableCell>
                 <TableCell className={`font-medium p-1.5 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                  {client.name}
+                  {client.name.toUpperCase()}
                 </TableCell>
                 <TableCell className="p-1.5">{client.phone}</TableCell>
                 <TableCell className="p-1.5">{client.city}</TableCell>
