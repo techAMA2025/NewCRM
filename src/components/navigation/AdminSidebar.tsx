@@ -7,6 +7,7 @@ import { FaUsers, FaChartPie, FaCog, FaFileAlt, FaHistory, FaMoneyBillWave, FaSi
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
+import { FiPieChart } from 'react-icons/fi'
 
 const AdminSidebar = () => {
   const pathname = usePathname()
@@ -55,6 +56,12 @@ const AdminSidebar = () => {
             <Link href="/billcutleads" className={`flex items-center px-6 py-3 ${isActive('/billcutleads')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
               <FaUsers className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
               <span>Billcut Leads</span>
+            </Link>
+          </li>
+          <li>
+            <Link href="/billcutLeadReport" className={`flex items-center px-6 py-3 ${isActive('/billcutLeadReport')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
+              <FiPieChart className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
+              <span>Billcut Analysis</span>
             </Link>
           </li>
           <li>
