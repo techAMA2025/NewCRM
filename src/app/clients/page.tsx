@@ -101,7 +101,8 @@ export default function ClientsPage() {
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [advocateFilter, setAdvocateFilter] = useState<string>('all')
+  const [primaryAdvocateFilter, setPrimaryAdvocateFilter] = useState<string>('all')
+  const [secondaryAdvocateFilter, setSecondaryAdvocateFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   
   // Lists for filter dropdowns
@@ -131,6 +132,10 @@ export default function ClientsPage() {
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false)
   const [selectedAdvocateForBulk, setSelectedAdvocateForBulk] = useState<string>('')
+  
+  // Add new state for secondary bulk assignment
+  const [isBulkSecondaryAssignModalOpen, setIsBulkSecondaryAssignModalOpen] = useState(false)
+  const [selectedSecondaryAdvocateForBulk, setSelectedSecondaryAdvocateForBulk] = useState<string>('')
 
   // Add new state for theme
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
@@ -533,9 +538,14 @@ export default function ClientsPage() {
       )
     }
     
-    // Apply advocate filter
-    if (advocateFilter !== 'all') {
-      results = results.filter(client => client.alloc_adv === advocateFilter)
+    // Apply primary advocate filter
+    if (primaryAdvocateFilter !== 'all') {
+      results = results.filter(client => client.alloc_adv === primaryAdvocateFilter)
+    }
+    
+    // Apply secondary advocate filter
+    if (secondaryAdvocateFilter !== 'all') {
+      results = results.filter(client => client.alloc_adv_secondary === secondaryAdvocateFilter)
     }
     
     // Apply status filter
@@ -549,13 +559,14 @@ export default function ClientsPage() {
     }
     
     setFilteredClients(results)
-  }, [clients, searchTerm, advocateFilter, statusFilter, sourceFilter])
+  }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter])
   
   // Reset all filters
   const resetFilters = () => {
     setSearchTerm('')
     setStatusFilter('all')
-    setAdvocateFilter('all')
+    setPrimaryAdvocateFilter('all')
+    setSecondaryAdvocateFilter('all')
     setSourceFilter('all')
   }
 
@@ -584,8 +595,8 @@ export default function ClientsPage() {
       try {
         const advocatesQuery = query(
           collection(db, 'users'),
-          where('role', '==', 'advocate'),
-          where('status', '==', 'active')
+          where('role', '==', 'advocate')
+          // Removed status filter to include inactive advocates
         );
         
         const querySnapshot = await getDocs(advocatesQuery);
@@ -595,6 +606,12 @@ export default function ClientsPage() {
         } as User));
         
         setAdvocates(advocatesData);
+        
+        // Extract unique advocate names for filters (including inactive ones)
+        const advocateNames = Array.from(new Set(advocatesData.map(advocate => 
+          `${advocate.firstName} ${advocate.lastName}`.trim()
+        )));
+        setAllAdvocates(advocateNames);
       } catch (err) {
         console.error('Error fetching advocates:', err);
         showToast(
@@ -702,7 +719,7 @@ export default function ClientsPage() {
       
       showToast(
         "Bulk update successful",
-        `Updated advocate for ${selectedClients.size} clients`,
+        `Updated primary advocate for ${selectedClients.size} clients`,
         "success"
       )
       
@@ -715,6 +732,52 @@ export default function ClientsPage() {
       showToast(
         "Bulk update failed",
         "Failed to update advocates. Please try again.",
+        "error"
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Add function to handle bulk secondary advocate assignment
+  const handleBulkSecondaryAdvocateAssignment = async () => {
+    if (!selectedSecondaryAdvocateForBulk || selectedClients.size === 0) return
+    
+    setIsSaving(true)
+    try {
+      const batch = []
+      for (const clientId of selectedClients) {
+        const clientRef = doc(db, 'clients', clientId)
+        batch.push(updateDoc(clientRef, {
+          alloc_adv_secondary: selectedSecondaryAdvocateForBulk,
+          lastModified: new Date()
+        }))
+      }
+      
+      await Promise.all(batch)
+      
+      // Update local state
+      setClients(clients.map(client => 
+        selectedClients.has(client.id) 
+          ? { ...client, alloc_adv_secondary: selectedSecondaryAdvocateForBulk }
+          : client
+      ))
+      
+      showToast(
+        "Bulk update successful",
+        `Updated secondary advocate for ${selectedClients.size} clients`,
+        "success"
+      )
+      
+      // Reset selection state
+      setSelectedClients(new Set())
+      setIsBulkSecondaryAssignModalOpen(false)
+      setSelectedSecondaryAdvocateForBulk('')
+    } catch (err) {
+      console.error('Error in bulk secondary advocate assignment:', err)
+      showToast(
+        "Bulk update failed",
+        "Failed to update secondary advocates. Please try again.",
         "error"
       )
     } finally {
@@ -755,12 +818,20 @@ export default function ClientsPage() {
               Clients Management
             </h1>
             {selectedClients.size > 0 && (
-              <Button
-                onClick={() => setIsBulkAssignModalOpen(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white text-xs py-0.5 px-2 h-6"
-              >
-                Assign Advocate ({selectedClients.size} selected)
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  onClick={() => setIsBulkAssignModalOpen(true)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs py-0.5 px-2 h-6"
+                >
+                  Assign Primary ({selectedClients.size} selected)
+                </Button>
+                <Button
+                  onClick={() => setIsBulkSecondaryAssignModalOpen(true)}
+                  className="bg-green-500 hover:bg-green-600 text-white text-xs py-0.5 px-2 h-6"
+                >
+                  Assign Secondary ({selectedClients.size} selected)
+                </Button>
+              </div>
             )}
           </div>
           <div className="flex gap-2">
@@ -793,20 +864,39 @@ export default function ClientsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={advocateFilter} onValueChange={setAdvocateFilter}>
-              <SelectTrigger className={`w-[120px] ${
+            <Select value={primaryAdvocateFilter} onValueChange={setPrimaryAdvocateFilter}>
+              <SelectTrigger className={`w-[140px] ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-gray-200'
                   : 'bg-white border-gray-300 text-gray-800'
               } text-xs h-6`}>
-                <SelectValue placeholder="Filter by advocate" />
+                <SelectValue placeholder="Primary advocate" />
               </SelectTrigger>
               <SelectContent className={`${
                 theme === 'dark'
                   ? 'bg-gray-800 text-gray-200 border-gray-700'
                   : 'bg-white text-gray-800 border-gray-300'
               } text-xs`}>
-                <SelectItem value="all">All Advocates</SelectItem>
+                <SelectItem value="all">All Primary Advocates</SelectItem>
+                {allAdvocates.map(advocate => (
+                  <SelectItem key={advocate} value={advocate}>{advocate}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={secondaryAdvocateFilter} onValueChange={setSecondaryAdvocateFilter}>
+              <SelectTrigger className={`w-[140px] ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-800'
+              } text-xs h-6`}>
+                <SelectValue placeholder="Secondary advocate" />
+              </SelectTrigger>
+              <SelectContent className={`${
+                theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 border-gray-700'
+                  : 'bg-white text-gray-800 border-gray-300'
+              } text-xs`}>
+                <SelectItem value="all">All Secondary Advocates</SelectItem>
                 {allAdvocates.map(advocate => (
                   <SelectItem key={advocate} value={advocate}>{advocate}</SelectItem>
                 ))}
@@ -993,14 +1083,14 @@ export default function ClientsPage() {
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-3">
             <div className="bg-white rounded-lg border border-gray-300 p-4 max-w-xs w-full animate-fade-in shadow-xl">
               <div className="flex flex-col">
-                <h3 className="text-base font-bold text-gray-800 mb-2">Bulk Assign Advocate</h3>
+                <h3 className="text-base font-bold text-gray-800 mb-2">Bulk Assign Primary Advocate</h3>
                 <p className="text-gray-600 text-xs mb-2">
-                  Assign an advocate to {selectedClients.size} selected clients
+                  Assign a primary advocate to {selectedClients.size} selected clients
                 </p>
                 
                 <Select value={selectedAdvocateForBulk} onValueChange={setSelectedAdvocateForBulk}>
                   <SelectTrigger className="w-full bg-white border-gray-300 text-gray-800 text-xs h-6 mb-3">
-                    <SelectValue placeholder="Select an advocate" />
+                    <SelectValue placeholder="Select a primary advocate" />
                   </SelectTrigger>
                   <SelectContent className="bg-white text-gray-800 border-gray-300 text-xs">
                     {advocates.map(advocate => (
@@ -1033,7 +1123,61 @@ export default function ClientsPage() {
                         Assigning...
                       </div>
                     ) : (
-                      'Assign Advocate'
+                      'Assign Primary'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Secondary Assign Modal */}
+        {isBulkSecondaryAssignModalOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+            <div className="bg-white rounded-lg border border-gray-300 p-4 max-w-xs w-full animate-fade-in shadow-xl">
+              <div className="flex flex-col">
+                <h3 className="text-base font-bold text-gray-800 mb-2">Bulk Assign Secondary Advocate</h3>
+                <p className="text-gray-600 text-xs mb-2">
+                  Assign a secondary advocate to {selectedClients.size} selected clients
+                </p>
+                
+                <Select value={selectedSecondaryAdvocateForBulk} onValueChange={setSelectedSecondaryAdvocateForBulk}>
+                  <SelectTrigger className="w-full bg-white border-gray-300 text-gray-800 text-xs h-6 mb-3">
+                    <SelectValue placeholder="Select a secondary advocate" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white text-gray-800 border-gray-300 text-xs">
+                    {advocates.map(advocate => (
+                      <SelectItem 
+                        key={advocate.uid} 
+                        value={`${advocate.firstName} ${advocate.lastName}`}
+                      >
+                        {advocate.firstName} {advocate.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <div className="flex gap-1.5">
+                  <Button
+                    onClick={() => setIsBulkSecondaryAssignModalOpen(false)}
+                    variant="outline"
+                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-100 text-xs h-6"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleBulkSecondaryAdvocateAssignment}
+                    disabled={!selectedSecondaryAdvocateForBulk || isSaving}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 text-xs h-6"
+                  >
+                    {isSaving ? (
+                      <div className="flex items-center justify-center">
+                        <div className="h-3 w-3 border-2 border-t-transparent border-white rounded-full animate-spin mr-1.5"></div>
+                        Assigning...
+                      </div>
+                    ) : (
+                      'Assign Secondary'
                     )}
                   </Button>
                 </div>
