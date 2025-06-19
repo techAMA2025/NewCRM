@@ -91,25 +91,51 @@ const COLORS = [
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
     case 'interested':
-      return 'bg-green-700 text-green-100 border-green-700';
+      return 'bg-green-700 text-white';
     case 'not interested':
-      return 'bg-red-900 text-red-100 border-red-700';
+      return 'bg-red-900 text-white';
     case 'not answering':
-      return 'bg-orange-900 text-orange-100 border-orange-700';
+      return 'bg-orange-900 text-white';
     case 'callback':
-      return 'bg-yellow-900 text-yellow-100 border-yellow-700';
+      return 'bg-yellow-900 text-white';
     case 'converted':
-      return 'bg-emerald-900 text-emerald-100 border-emerald-700';
+      return 'bg-emerald-900 text-white';
     case 'loan required':
-      return 'bg-purple-900 text-purple-100 border-purple-700';
+      return 'bg-purple-900 text-white';
     case 'cibil issue':
-      return 'bg-rose-900 text-rose-100 border-rose-700';
+      return 'bg-rose-900 text-white';
+    case 'closed lead':
+      return 'bg-gray-500 text-white';
+    case 'select status':
+      return 'bg-gray-400 text-white';
+    default:
+      return 'bg-gray-400 text-white';
+  }
+};
+
+// Status badge color function (for table cells with borders)
+const getStatusBadgeColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'interested':
+      return 'bg-green-700 text-white border-green-700';
+    case 'not interested':
+      return 'bg-red-900 text-white border-red-700';
+    case 'not answering':
+      return 'bg-orange-900 text-white border-orange-700';
+    case 'callback':
+      return 'bg-yellow-900 text-white border-yellow-700';
+    case 'converted':
+      return 'bg-emerald-900 text-white border-emerald-700';
+    case 'loan required':
+      return 'bg-purple-900 text-white border-purple-700';
+    case 'cibil issue':
+      return 'bg-rose-900 text-white border-rose-700';
     case 'closed lead':
       return 'bg-gray-500 text-white border-gray-700';
     case 'select status':
-      return 'bg-gray-400 text-gray-100 border-gray-600';
+      return 'bg-gray-400 text-white border-gray-600';
     default:
-      return 'bg-gray-400 text-gray-100 border-gray-600';
+      return 'bg-gray-400 text-white border-gray-600';
   }
 };
 
@@ -907,27 +933,25 @@ const BillcutLeadReportPage = () => {
             {/* Detailed Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
                       Salesperson
                     </th>
                     {analytics.categoryDistribution.map(category => (
-                      <th key={category.name} className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(category.name)}`}>
-                          {category.name}
-                        </span>
+                      <th key={category.name} className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${getStatusColor(category.name)}`}>
+                        {category.name}
                       </th>
                     ))}
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
                       Total
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
                       Conversion Rate
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {analytics.salesPerformance.map((rep) => {
                     // Get detailed status breakdown for this salesperson
                     const repLeads = leads.filter(lead => lead.assigned_to === rep.name);
@@ -937,32 +961,32 @@ const BillcutLeadReportPage = () => {
                     }, {} as Record<string, number>);
 
                     return (
-                      <tr key={rep.name} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      <tr key={rep.name} className="hover:opacity-80 transition-opacity duration-200">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
                           {rep.name}
                         </td>
                         {analytics.categoryDistribution.map(category => (
-                          <td key={category.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          <td key={category.name} className={`px-6 py-4 whitespace-nowrap text-sm ${getStatusColor(category.name)}`}>
                             <div className="flex items-center">
                               <span 
-                                className={`mr-2 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(category.name)} cursor-pointer hover:opacity-80 transition-opacity duration-200`}
+                                className={`mr-2 px-2 py-1 rounded-md text-xs font-medium border ${getStatusBadgeColor(category.name)} cursor-pointer hover:opacity-80 transition-opacity duration-200`}
                                 onClick={() => navigateToLeadsWithFilters(rep.name, category.name)}
                                 title={`Click to view ${category.name} leads for ${rep.name}`}
                               >
                                 {statusBreakdown[category.name] || 0}
                               </span>
                               {rep.totalLeads > 0 && (
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                <span className="text-xs text-white opacity-80">
                                   ({((statusBreakdown[category.name] || 0) / rep.totalLeads * 100).toFixed(1)}%)
                                 </span>
                               )}
                             </div>
                           </td>
                         ))}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
                           {rep.totalLeads}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white bg-gray-800">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             rep.conversionRate >= 20 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                             rep.conversionRate >= 10 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :

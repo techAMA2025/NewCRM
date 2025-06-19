@@ -6,7 +6,6 @@ import { toast, ToastContainer } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
 import 'react-toastify/dist/ReactToastify.css';
-import { useSearchParams } from 'next/navigation';
 
 // Import Components
 import BillcutLeadsHeader from './components/BillcutLeadsHeader';
@@ -150,15 +149,16 @@ const BillCutLeadsPage = () => {
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [bulkAssignTarget, setBulkAssignTarget] = useState('');
 
-  // Get URL search parameters
-  const searchParams = useSearchParams();
-
-  // Handle URL parameters on component mount
+  // Handle URL parameters on component mount (client-side only)
   useEffect(() => {
-    const statusParam = searchParams.get('status');
-    const salesPersonParam = searchParams.get('salesPerson');
-    const fromDateParam = searchParams.get('fromDate');
-    const toDateParam = searchParams.get('toDate');
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const statusParam = urlParams.get('status');
+    const salesPersonParam = urlParams.get('salesPerson');
+    const fromDateParam = urlParams.get('fromDate');
+    const toDateParam = urlParams.get('toDate');
 
     // Apply status filter
     if (statusParam) {
@@ -177,7 +177,7 @@ const BillCutLeadsPage = () => {
     if (toDateParam) {
       setToDate(toDateParam);
     }
-  }, [searchParams]);
+  }, []); // Empty dependency array since we only want to run this once on mount
 
   // Authentication effect
   useEffect(() => {
