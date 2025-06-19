@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
 import BillcutLeadNotesCell from './BillcutLeadNotesCell';
+import CallbackSchedulingModal from './CallbackSchedulingModal';
 
 // Add color mapping interface and function
 interface ColorMap {
@@ -42,6 +43,12 @@ interface Lead {
   salesNotes: string;
   lastModified: Date;
   date: number;
+  callbackInfo?: {
+    id: string;
+    scheduled_dt: Date;
+    scheduled_by: string;
+    created_at: any;
+  } | null;
 }
 
 interface SalesPerson {
@@ -70,6 +77,8 @@ interface BillcutLeadsTableProps {
   selectedLeads: string[];
   onSelectLead: (leadId: string) => void;
   onSelectAll: () => void;
+  activeTab: 'all' | 'callback';
+  refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
 }
 
 const BillcutLeadsTable = ({
@@ -84,14 +93,23 @@ const BillcutLeadsTable = ({
   selectedLeads,
   onSelectLead,
   onSelectAll,
+  activeTab,
+  refreshLeadCallbackInfo,
 }: BillcutLeadsTableProps) => {
   const [editingData, setEditingData] = useState<{ [key: string]: Partial<Lead> }>({});
   const [salesPeople, setSalesPeople] = useState<User[]>([]);
   const [salesPersonColors, setSalesPersonColors] = useState<ColorMap>({});
 
+  // Add callback modal state
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
+  const [callbackLeadId, setCallbackLeadId] = useState('');
+  const [callbackLeadName, setCallbackLeadName] = useState('');
+  const [isEditingCallback, setIsEditingCallback] = useState(false);
+  const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null);
+
   // Get user info from localStorage
-  const userRole = localStorage.getItem('userRole') || '';
-  const userName = localStorage.getItem('userName') || '';
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') || '' : '';
+  const userName = typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '';
 
   // Initialize color mapping when sales people are loaded
   useEffect(() => {
@@ -152,6 +170,47 @@ const BillcutLeadsTable = ({
       case 'select status':
       default:
         return 'bg-gray-700 text-gray-200 border-gray-600';
+    }
+  };
+
+  // Get callback date color based on scheduled date
+  const getCallbackDateColor = (scheduledDate: Date) => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const dayAfterTomorrow = new Date(today);
+    dayAfterTomorrow.setDate(today.getDate() + 2);
+
+    // Reset time to compare only dates
+    const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+    const dayAfterTomorrowOnly = new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate());
+
+    if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
+      return { 
+        textColor: 'text-white font-bold', 
+        dotColor: 'bg-white',
+        rowBg: 'bg-red-600' // Today - Full red background
+      };
+    } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
+      return { 
+        textColor: 'text-white font-bold', 
+        dotColor: 'bg-white',
+        rowBg: 'bg-yellow-500' // Tomorrow - Full yellow background
+      };
+    } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
+      return { 
+        textColor: 'text-white font-bold', 
+        dotColor: 'bg-white',
+        rowBg: 'bg-green-600' // After tomorrow - Full green background
+      };
+    } else {
+      return { 
+        textColor: 'text-white', 
+        dotColor: 'bg-white',
+        rowBg: 'bg-gray-600' // Past dates - Full gray background
+      };
     }
   };
 
@@ -231,28 +290,48 @@ const BillcutLeadsTable = ({
     }
   };
 
-  const handleChange = (id: string, field: keyof Lead, value: any) => {
+  const handleChange = async (id: string, field: keyof Lead, value: any) => {
     console.log('handleChange called:', { id, field, value });
     
-    // For status changes, immediately save to database
+    // For status changes, check if it's "Callback"
     if (field === 'status') {
-      const dbData = { status: value };
-      console.log('Saving status change:', { id, dbData });
-      updateLead(id, dbData).then(success => {
-        if (success) {
-          // Remove local state update since parent will handle it
-          console.log('Update successful, clearing editing data');
-          setEditingData(prev => {
-            const newData = { ...prev };
-            delete newData[id];
-            console.log('Cleared editing data:', newData);
-            return newData;
-          });
+      if (value === 'Callback') {
+        // Show callback scheduling modal
+        setCallbackLeadId(id);
+        const lead = leads.find(l => l.id === id);
+        setCallbackLeadName(lead?.name || 'Unknown Lead');
+        
+        // Check if there's existing callback info for this lead
+        if (lead?.callbackInfo) {
+          setIsEditingCallback(true);
+          setEditingCallbackInfo(lead.callbackInfo);
+        } else {
+          setIsEditingCallback(false);
+          setEditingCallbackInfo(null);
         }
-      }).catch(error => {
-        console.error('Error updating status:', error);
-      });
-      return;
+        
+        setShowCallbackModal(true);
+        return; // Don't update status yet
+      } else {
+        // For other status changes, immediately save to database
+        const dbData = { status: value };
+        console.log('Saving status change:', { id, dbData });
+        updateLead(id, dbData).then(success => {
+          if (success) {
+            // Remove local state update since parent will handle it
+            console.log('Update successful, clearing editing data');
+            setEditingData(prev => {
+              const newData = { ...prev };
+              delete newData[id];
+              console.log('Cleared editing data:', newData);
+              return newData;
+            });
+          }
+        }).catch(error => {
+          console.error('Error updating status:', error);
+        });
+        return;
+      }
     }
 
     // For assignedTo changes, immediately save to database
@@ -366,185 +445,312 @@ const BillcutLeadsTable = ({
     return false;
   };
 
+  // Handle callback modal confirmation
+  const handleCallbackConfirm = async () => {
+    if (isEditingCallback) {
+      // For editing, just refresh the callback information
+      await refreshLeadCallbackInfo(callbackLeadId);
+    } else {
+      // For new callbacks, update the lead status to "Callback"
+      const dbData = { status: 'Callback' };
+      const success = await updateLead(callbackLeadId, dbData);
+      if (success) {
+        // Refresh callback information for this lead
+        await refreshLeadCallbackInfo(callbackLeadId);
+        
+        setEditingData(prev => {
+          const newData = { ...prev };
+          delete newData[callbackLeadId];
+          return newData;
+        });
+      }
+    }
+    
+    setShowCallbackModal(false);
+    setCallbackLeadId('');
+    setCallbackLeadName('');
+    setIsEditingCallback(false);
+    setEditingCallbackInfo(null);
+  };
+
+  // Handle callback modal close
+  const handleCallbackClose = () => {
+    setShowCallbackModal(false);
+    setCallbackLeadId('');
+    setCallbackLeadName('');
+    setIsEditingCallback(false);
+    setEditingCallbackInfo(null);
+    // Reset the status dropdown to its previous value
+    setEditingData(prev => {
+      const newData = { ...prev };
+      delete newData[callbackLeadId];
+      return newData;
+    });
+  };
+
+  // Handle editing callback details
+  const handleEditCallback = (lead: Lead) => {
+    setCallbackLeadId(lead.id);
+    setCallbackLeadName(lead.name);
+    setIsEditingCallback(true);
+    setEditingCallbackInfo(lead.callbackInfo);
+    setShowCallbackModal(true);
+  };
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm">
-      <table className="min-w-full divide-y divide-gray-700/50">
-        <thead className="bg-gray-800/50">
-          <tr>
-            <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-16">
-              <input
-                type="checkbox"
-                checked={selectedLeads.length === leads.length && leads.length > 0}
-                onChange={onSelectAll}
-                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-              />
-            </th>
-            <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-32">Date</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Contact Info</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Location</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Financials</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Status</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Assigned To</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Sales Notes</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-700/50 bg-gray-800/10">
-          {leads.map((lead) => {
-            const canAssign = canAssignLead(lead);
-            const isOwner = user && lead.assignedToId === user.uid;
-            
-            return (
-              <tr 
-                key={lead.id} 
-                className="hover:bg-gray-700/20 transition-colors duration-150 ease-in-out"
-              >
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <input
-                    type="checkbox"
-                    checked={selectedLeads.includes(lead.id)}
-                    onChange={() => onSelectLead(lead.id)}
-                    className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-                  />
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="flex flex-col gap-1">
-                    <div className="text-sm text-blue-300">
-                      {new Date(lead.date).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </div>
-                    <div className="text-xs text-blue-300/70">
-                      {new Date(lead.date).toLocaleString('en-US', {
-                        hour: 'numeric',
-                        minute: 'numeric',
-                        hour12: true
-                      })}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
-                    <div className="text-sm font-medium text-gray-100">{lead.name}</div>
-                    <div className="text-sm text-blue-300/80">{lead.email}</div>
-                    <div className="text-sm text-red-300">{lead.phone}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-purple-300">{lead.city}</div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
-                    <div className="text-sm text-green-300">Income: ₹{lead.monthlyIncome}</div>
-                    <div className="text-sm text-orange-300">{lead.remarks}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col space-y-2">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(lead.status || 'Select Status')}`}>
-                      {lead.status || 'Select Status'}
-                    </span>
-                    <select
-                      value={editingData[lead.id]?.status || lead.status}
-                      onChange={(e) => {
-                        console.log('Status select changed:', { id: lead.id, newValue: e.target.value });
-                        handleChange(lead.id, 'status', e.target.value);
-                        handleSave(lead.id);
-                      }}
-                      disabled={!canEditLead(lead, showMyLeads)}
-                      className={`w-full px-3 py-1.5 rounded-lg border text-sm ${
-                        canEditLead(lead, showMyLeads)
-                          ? 'bg-gray-700/50 border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-100'
-                          : 'bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {statusOptions.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col space-y-2">
-                    {!isUnassigned(lead) ? (
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center flex-1">
-                          <div 
-                            className={`inline-flex items-center justify-center h-8 w-8 rounded-full ${
-                              salesPersonColors[lead.assignedTo] || 'bg-gray-800'
-                            } text-white border border-gray-700 shadow-sm font-medium text-xs`}
-                          >
-                            {lead.assignedTo.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
-                          </div>
-                          <span className="ml-2 text-xs text-gray-300 truncate">{lead.assignedTo}</span>
-                        </div>
-                        {user && lead.assignedTo === localStorage.getItem('userName') && (
-                          <button
-                            onClick={() => handleUnassign(lead.id)}
-                            className="flex items-center justify-center h-6 w-6 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150"
-                            title="Unassign lead"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-800 text-gray-400 border border-gray-700 shadow-sm font-medium text-xs">
-                        UN
-                      </div>
-                    )}
-                    {canAssignLead(lead) && (
-                      <div className="mt-2">
-                        <select
-                          value={editingData[lead.id]?.assignedTo || (isUnassigned(lead) ? '' : lead.assignedTo)}
-                          onChange={(e) => {
-                            console.log('Assigned To select changed:', { 
-                              id: lead.id, 
-                              newValue: e.target.value,
-                              currentAssignedTo: lead.assignedTo,
-                              isUnassigned: isUnassigned(lead)
-                            });
-                            handleChange(lead.id, 'assignedTo', e.target.value);
-                            handleSave(lead.id);
-                          }}
-                          className="w-full px-3 py-1.5 bg-gray-700/50 rounded-lg border border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm text-gray-100"
-                        >
-                          <option value="">Unassigned</option>
-                          {salesPeople.map((person) => (
-                            <option 
-                              key={person.id} 
-                              value={person.name}
-                              style={{
-                                backgroundColor: salesPersonColors[person.name]?.replace('bg-', '') || 'gray-700',
-                                color: 'white'
-                              }}
-                            >
-                              {person.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <BillcutLeadNotesCell
-                  lead={lead}
-                  fetchNotesHistory={fetchNotesHistory}
-                  crmDb={crmDb}
-                  updateLead={updateLead}
-                  disabled={!canEditLead(lead, showMyLeads)}
+    <>
+      <div className="overflow-x-auto rounded-xl border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm">
+        <table className="min-w-full divide-y divide-gray-700/50">
+          <thead className="bg-gray-800/50">
+            <tr>
+              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-16">
+                <input
+                  type="checkbox"
+                  checked={selectedLeads.length === leads.length && leads.length > 0}
+                  onChange={onSelectAll}
+                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
                 />
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              </th>
+              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-32">Date</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Contact Info</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Location</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Financials</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Assigned To</th>
+              {activeTab === 'callback' && (
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Callback Details</th>
+              )}
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Sales Notes</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700/50 bg-gray-800/10">
+            {leads.map((lead) => {
+              const canAssign = canAssignLead(lead);
+              const isOwner = user && lead.assignedToId === user.uid;
+              
+              // Get row background color for callback tab
+              const getRowBackground = () => {
+                if (activeTab === 'callback' && lead.callbackInfo && lead.callbackInfo.scheduled_dt) {
+                  const colors = getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt));
+                  return {
+                    rowBg: colors.rowBg,
+                    textColor: colors.textColor
+                  };
+                }
+                return {
+                  rowBg: 'hover:bg-gray-700/20',
+                  textColor: ''
+                };
+              };
+              
+              const rowColors = getRowBackground();
+              
+              return (
+                <tr 
+                  key={lead.id} 
+                  className={`transition-colors duration-150 ease-in-out ${rowColors.rowBg}`}
+                >
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedLeads.includes(lead.id)}
+                      onChange={() => onSelectLead(lead.id)}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      <div className={`text-sm ${rowColors.textColor || 'text-blue-300'}`}>
+                        {new Date(lead.date).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </div>
+                      <div className={`text-xs ${rowColors.textColor ? 'text-white/70' : 'text-blue-300/70'}`}>
+                        {new Date(lead.date).toLocaleString('en-US', {
+                          hour: 'numeric',
+                          minute: 'numeric',
+                          hour12: true
+                        })}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <div className={`text-sm font-medium ${rowColors.textColor || 'text-gray-100'}`}>{lead.name}</div>
+                      <div className={`text-sm ${rowColors.textColor ? 'text-white/80' : 'text-blue-300/80'}`}>{lead.email}</div>
+                      <div className={`text-sm ${rowColors.textColor ? 'text-white/90' : 'text-red-300'}`}>{lead.phone}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className={`text-sm ${rowColors.textColor ? 'text-white/90' : 'text-purple-300'}`}>{lead.city}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <div className={`text-sm ${rowColors.textColor ? 'text-white/90' : 'text-green-300'}`}>Income: ₹{lead.monthlyIncome}</div>
+                      <div className={`text-sm ${rowColors.textColor ? 'text-white/90' : 'text-orange-300'}`}>{lead.remarks}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col space-y-2">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(lead.status || 'Select Status')}`}>
+                        {lead.status || 'Select Status'}
+                      </span>
+                      <select
+                        value={editingData[lead.id]?.status || lead.status}
+                        onChange={async (e) => {
+                          console.log('Status select changed:', { id: lead.id, newValue: e.target.value });
+                          await handleChange(lead.id, 'status', e.target.value);
+                          handleSave(lead.id);
+                        }}
+                        disabled={!canEditLead(lead, showMyLeads)}
+                        className={`w-full px-3 py-1.5 rounded-lg border text-sm ${
+                          canEditLead(lead, showMyLeads)
+                            ? 'bg-gray-700/50 border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-100'
+                            : 'bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {statusOptions.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col space-y-2">
+                      {!isUnassigned(lead) ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center flex-1">
+                            <div 
+                              className={`inline-flex items-center justify-center h-8 w-8 rounded-full ${
+                                salesPersonColors[lead.assignedTo] || 'bg-gray-800'
+                              } text-white border border-gray-700 shadow-sm font-medium text-xs`}
+                            >
+                              {lead.assignedTo.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
+                            </div>
+                            <span className={`ml-2 text-xs ${rowColors.textColor ? 'text-white/90' : 'text-gray-300'} truncate`}>{lead.assignedTo}</span>
+                          </div>
+                          {user && typeof window !== 'undefined' && lead.assignedTo === localStorage.getItem('userName') && (
+                            <button
+                              onClick={() => handleUnassign(lead.id)}
+                              className="flex items-center justify-center h-6 w-6 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150"
+                              title="Unassign lead"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-800 text-gray-400 border border-gray-700 shadow-sm font-medium text-xs">
+                          UN
+                        </div>
+                      )}
+                      {canAssignLead(lead) && (
+                        <div className="mt-2">
+                          <select
+                            value={editingData[lead.id]?.assignedTo || (isUnassigned(lead) ? '' : lead.assignedTo)}
+                            onChange={(e) => {
+                              console.log('Assigned To select changed:', { 
+                                id: lead.id, 
+                                newValue: e.target.value,
+                                currentAssignedTo: lead.assignedTo,
+                                isUnassigned: isUnassigned(lead)
+                              });
+                              handleChange(lead.id, 'assignedTo', e.target.value);
+                              handleSave(lead.id);
+                            }}
+                            className="w-full px-3 py-1.5 bg-gray-700/50 rounded-lg border border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm text-gray-100"
+                          >
+                            <option value="">Unassigned</option>
+                            {salesPeople.map((person) => (
+                              <option 
+                                key={person.id} 
+                                value={person.name}
+                                style={{
+                                  backgroundColor: salesPersonColors[person.name]?.replace('bg-', '') || 'gray-700',
+                                  color: 'white'
+                                }}
+                              >
+                                {person.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  {activeTab === 'callback' && (
+                    <td className="px-6 py-4">
+                      {lead.callbackInfo ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-2 h-2 rounded-full ${getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt)).dotColor}`}></div>
+                            <div className={`text-sm font-medium ${getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt)).textColor}`}>
+                              {new Date(lead.callbackInfo.scheduled_dt).toLocaleString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                            </div>
+                          </div>
+                          <div className={`text-xs ${rowColors.textColor ? 'text-white/80' : 'text-gray-600'}`}>
+                            Scheduled by: {lead.callbackInfo.scheduled_by}
+                          </div>
+                          <div className={`text-xs ${rowColors.textColor ? 'text-white/70' : 'text-gray-500'}`}>
+                            {lead.callbackInfo.created_at?.toDate ? 
+                              new Date(lead.callbackInfo.created_at.toDate()).toLocaleDateString() :
+                              'Date not available'
+                            }
+                          </div>
+                          <button
+                            onClick={() => handleEditCallback(lead)}
+                            className="mt-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md font-medium transition-colors duration-200"
+                            title="Edit callback details"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      ) : (
+                        <div className={`text-sm ${rowColors.textColor ? 'text-white/70' : 'text-gray-500'} italic`}>
+                          No callback info
+                        </div>
+                      )}
+                    </td>
+                  )}
+                  <BillcutLeadNotesCell
+                    lead={lead}
+                    fetchNotesHistory={fetchNotesHistory}
+                    crmDb={crmDb}
+                    updateLead={updateLead}
+                    disabled={!canEditLead(lead, showMyLeads)}
+                  />
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Callback Scheduling Modal */}
+      <CallbackSchedulingModal
+        isOpen={showCallbackModal}
+        onClose={handleCallbackClose}
+        onConfirm={handleCallbackConfirm}
+        leadId={callbackLeadId}
+        leadName={callbackLeadName}
+        crmDb={crmDb}
+        isEditing={isEditingCallback}
+        existingCallbackInfo={editingCallbackInfo}
+      />
+    </>
   );
 };
 

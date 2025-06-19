@@ -11,6 +11,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import BillcutLeadsHeader from './components/BillcutLeadsHeader';
 import BillcutLeadsFilters from './components/BillcutLeadsFilters';
 import BillcutLeadsTable from './components/BillcutLeadsTable';
+import BillcutLeadsTabs from './components/BillcutLeadsTabs';
+import UpcomingCallbackAlert from './components/UpcomingCallbackAlert';
 import EditModal from '../sales/leads/components/EditModal';
 import HistoryModal from '../sales/leads/components/HistoryModal';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
@@ -127,6 +129,7 @@ const BillCutLeadsPage = () => {
   const [showMyLeads, setShowMyLeads] = useState(false);
   const [fromDate, setFromDate] = useState(getDefaultFromDate());
   const [toDate, setToDate] = useState(getDefaultToDate());
+  const [activeTab, setActiveTab] = useState<'all' | 'callback'>('all');
   const [sortConfig, setSortConfig] = useState({ 
     key: 'date',
     direction: 'descending' as 'ascending' | 'descending' 
@@ -162,6 +165,28 @@ const BillCutLeadsPage = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // Add function to fetch callback information
+  const fetchCallbackInfo = async (leadId: string) => {
+    try {
+      const callbackInfoRef = collection(crmDb, 'billcutLeads', leadId, 'callback_info');
+      const callbackSnapshot = await getDocs(callbackInfoRef);
+      
+      if (!callbackSnapshot.empty) {
+        const callbackData = callbackSnapshot.docs[0].data();
+        return {
+          id: callbackData.id || 'attempt_1',
+          scheduled_dt: callbackData.scheduled_dt?.toDate ? callbackData.scheduled_dt.toDate() : new Date(callbackData.scheduled_dt),
+          scheduled_by: callbackData.scheduled_by || '',
+          created_at: callbackData.created_at
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching callback info:', error);
+      return null;
+    }
+  };
 
   // Initialize with sample data immediately
   useEffect(() => {
@@ -215,7 +240,8 @@ const BillCutLeadsPage = () => {
             bankNames: [],
             totalEmi: '',
             occupation: '',
-            loanTypes: []
+            loanTypes: [],
+            callbackInfo: null // Will be populated later for callback leads
           } as Lead;
         });
 
@@ -225,11 +251,22 @@ const BillCutLeadsPage = () => {
           return dateB - dateA;
         });
 
-        setLeads(sortedLeads);
-        setFilteredLeads(sortedLeads);
+        // Fetch callback information for callback leads
+        const leadsWithCallbackInfo = await Promise.all(
+          sortedLeads.map(async (lead) => {
+            if (lead.status === 'Callback') {
+              const callbackInfo = await fetchCallbackInfo(lead.id);
+              return { ...lead, callbackInfo };
+            }
+            return lead;
+          })
+        );
+
+        setLeads(leadsWithCallbackInfo);
+        setFilteredLeads(leadsWithCallbackInfo);
         
         const initialEditingState: EditingLeadsState = {};
-        sortedLeads.forEach(lead => {
+        leadsWithCallbackInfo.forEach(lead => {
           initialEditingState[lead.id] = {
             ...lead,
             salesNotes: lead.salesNotes || ''
@@ -285,6 +322,17 @@ const BillCutLeadsPage = () => {
     
     let result = [...leads];
     
+    // Apply tab-based filtering first
+    if (activeTab === 'callback') {
+      if (typeof window !== 'undefined') {
+        const currentUserName = localStorage.getItem('userName');
+        result = result.filter(lead => 
+          lead.status === 'Callback' && 
+          lead.assignedTo === currentUserName
+        );
+      }
+    }
+    
     if (statusFilter !== 'all') {
       if (statusFilter === 'No Status') {
         // Filter for leads where status field doesn't exist, is null/undefined, empty string, is "-", or is literally "No Status"
@@ -319,30 +367,32 @@ const BillCutLeadsPage = () => {
     }
 
     if (showMyLeads) {
-      const currentUserName = localStorage.getItem('userName');
-      console.log('Current User Name from localStorage:', currentUserName);
-      console.log('Before My Leads filter:', result.length);
-      
-      if (currentUserName) {
-        result = result.filter(lead => {
-          const assignedTo = lead.assignedTo || '';
-          const isMatch = assignedTo === currentUserName;
-          console.log('Comparing:', {
-            assignedTo: assignedTo,
-            currentUserName: currentUserName,
-            isMatch: isMatch
+      if (typeof window !== 'undefined') {
+        const currentUserName = localStorage.getItem('userName');
+        console.log('Current User Name from localStorage:', currentUserName);
+        console.log('Before My Leads filter:', result.length);
+        
+        if (currentUserName) {
+          result = result.filter(lead => {
+            const assignedTo = lead.assignedTo || '';
+            const isMatch = assignedTo === currentUserName;
+            console.log('Comparing:', {
+              assignedTo: assignedTo,
+              currentUserName: currentUserName,
+              isMatch: isMatch
+            });
+            return isMatch;
           });
-          return isMatch;
-        });
+        }
+        console.log('After My Leads filter:', result.length);
       }
-      console.log('After My Leads filter:', result.length);
     }
     
     setFilteredLeads(result);
     
     // Clear selected leads when filters change to prevent stale selections
     setSelectedLeads(prev => prev.filter(leadId => result.some(lead => lead.id === leadId)));
-  }, [leads, searchQuery, statusFilter, salesPersonFilter, showMyLeads]);
+  }, [leads, searchQuery, statusFilter, salesPersonFilter, showMyLeads, activeTab]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
@@ -350,6 +400,38 @@ const BillCutLeadsPage = () => {
     console.log('Filtered leads:', filteredLeads);
     console.log('Show My Leads:', showMyLeads);
   }, [leads, filteredLeads, showMyLeads]);
+
+  // Calculate counts for tabs
+  const callbackCount = useMemo(() => {
+    if (typeof window === 'undefined') return 0; // Server-side rendering check
+    const currentUserName = localStorage.getItem('userName');
+    return leads.filter(lead => 
+      lead.status === 'Callback' && 
+      lead.assignedTo === currentUserName
+    ).length;
+  }, [leads]);
+
+  const allLeadsCount = useMemo(() => {
+    return leads.length;
+  }, [leads]);
+
+  // Handle tab change
+  const handleTabChange = (tab: 'all' | 'callback') => {
+    setActiveTab(tab);
+    // Reset status filter when switching to callback tab
+    if (tab === 'callback') {
+      setStatusFilter('all');
+    }
+  };
+
+  // Handle alert actions
+  const handleViewCallbacks = () => {
+    setActiveTab('callback');
+  };
+
+  const handleDismissAlert = () => {
+    // Alert is dismissed, no action needed
+  };
 
   // Request sort handler
   const requestSort = (key: string) => {
@@ -384,9 +466,17 @@ const BillCutLeadsPage = () => {
 
       await updateDoc(leadRef, updateData);
       
-      const updatedLeads = leads.map(lead => 
-        lead.id === id ? { ...lead, ...data, lastModified: new Date() } : lead
-      );
+      // Update local state
+      const updatedLeads = leads.map(lead => {
+        if (lead.id === id) {
+          const updatedLead = { ...lead, ...data, lastModified: new Date() };
+          
+          // If status is being updated to "Callback", we'll fetch callback info later
+          // For now, just update the status
+          return updatedLead;
+        }
+        return lead;
+      });
       
       setLeads(updatedLeads);
       setFilteredLeads(updatedLeads);
@@ -417,7 +507,7 @@ const BillCutLeadsPage = () => {
         previousAssignee: leads.find(l => l.id === leadId)?.assignedTo || 'Unassigned',
         newAssignee: salesPersonName,
         timestamp: serverTimestamp(),
-        assignedById: localStorage.getItem('userName') || '',
+        assignedById: typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '',
         editor: {
           id: currentUser?.uid || 'unknown'
         }
@@ -467,7 +557,7 @@ const BillCutLeadsPage = () => {
           previousAssignee: leads.find(l => l.id === leadId)?.assignedTo || 'Unassigned',
           newAssignee: salesPersonName,
           timestamp: serverTimestamp(),
-          assignedById: localStorage.getItem('userName') || '',
+          assignedById: typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '',
           editor: {
             id: currentUser?.uid || 'unknown'
           }
@@ -681,6 +771,20 @@ const BillCutLeadsPage = () => {
     }
   };
 
+  // Add function to refresh callback information for a specific lead
+  const refreshLeadCallbackInfo = async (leadId: string) => {
+    try {
+      const callbackInfo = await fetchCallbackInfo(leadId);
+      const updatedLeads = leads.map(lead => 
+        lead.id === leadId ? { ...lead, callbackInfo } : lead
+      );
+      setLeads(updatedLeads);
+      setFilteredLeads(updatedLeads);
+    } catch (error) {
+      console.error('Error refreshing callback info:', error);
+    }
+  };
+
   // Render sidebar based on user role
   const SidebarComponent = useMemo(() => {
     if (userRole === 'admin') {
@@ -718,6 +822,21 @@ const BillCutLeadsPage = () => {
             userRole={userRole} 
             currentUser={currentUser} 
             exportToCSV={exportToCSV}
+          />
+          
+          <BillcutLeadsTabs
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            callbackCount={callbackCount}
+            allLeadsCount={allLeadsCount}
+          />
+          
+          {/* Upcoming Callback Alert - Handles toast notifications */}
+          <UpcomingCallbackAlert 
+            leads={leads}
+            isVisible={true}
+            onViewCallbacks={handleViewCallbacks}
+            onDismiss={handleDismissAlert}
           />
           
           <BillcutLeadsFilters 
@@ -761,6 +880,8 @@ const BillCutLeadsPage = () => {
                 selectedLeads={selectedLeads}
                 onSelectLead={handleSelectLead}
                 onSelectAll={handleSelectAll}
+                activeTab={activeTab}
+                refreshLeadCallbackInfo={refreshLeadCallbackInfo}
               />
               
               {/* Bulk Assignment Modal */}
@@ -787,7 +908,11 @@ const BillCutLeadsPage = () => {
                         <option value="">Select Salesperson</option>
                         {(userRole === 'admin' || userRole === 'overlord' 
                           ? teamMembers.filter(member => member.role === 'sales')
-                          : teamMembers.filter(member => member.name === localStorage.getItem('userName') && member.role === 'sales')
+                          : teamMembers.filter(member => 
+                              typeof window !== 'undefined' && 
+                              member.name === localStorage.getItem('userName') && 
+                              member.role === 'sales'
+                            )
                         ).map((member) => (
                           <option key={member.id} value={member.name}>
                             {member.name}

@@ -29,6 +29,12 @@ export type Lead = {
   totalEmi: string;
   occupation: string;
   loanTypes: string[];
+  callbackInfo?: {
+    id: string;
+    scheduled_dt: Date;
+    scheduled_by: string;
+    created_at: any;
+  } | null;
 };
 
 export type User = {
