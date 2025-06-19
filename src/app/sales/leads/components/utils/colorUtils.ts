@@ -79,4 +79,40 @@ export const getSalespersonBadge = (name: string) => {
   
   const colorIndex = name.charCodeAt(0) % colors.length;
   return { initials, color: colors[colorIndex] };
-} 
+}
+
+// Callback date color function
+export const getCallbackDateColor = (scheduledDate: Date) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const scheduledDay = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+  
+  if (scheduledDay.getTime() === today.getTime()) {
+    // Today - Red
+    return {
+      rowBg: 'bg-red-900/20 hover:bg-red-900/30',
+      textColor: 'text-red-400'
+    };
+  } else if (scheduledDay.getTime() === tomorrow.getTime()) {
+    // Tomorrow - Yellow
+    return {
+      rowBg: 'bg-yellow-900/20 hover:bg-yellow-900/30',
+      textColor: 'text-yellow-400'
+    };
+  } else if (scheduledDate > now) {
+    // Future dates - Green
+    return {
+      rowBg: 'bg-green-900/20 hover:bg-green-900/30',
+      textColor: 'text-green-400'
+    };
+  } else {
+    // Past due - Dark red
+    return {
+      rowBg: 'bg-red-950/30 hover:bg-red-950/40',
+      textColor: 'text-red-300'
+    };
+  }
+}; 

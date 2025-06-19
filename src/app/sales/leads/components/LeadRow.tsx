@@ -1,6 +1,6 @@
 import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaTrash } from 'react-icons/fa';
 import { formatPhoneNumber, getFormattedDate } from './utils/formatters';
-import { getFinancialColor } from './utils/colorUtils';
+import { getFinancialColor, getCallbackDateColor } from './utils/colorUtils';
 import StatusCell from './StatusCell';
 import SalespersonCell from './SalespersonCell';
 // import LeadNotesCell from './LeadNotesCell';
@@ -24,6 +24,10 @@ type LeadRowProps = {
   crmDb: any;
   user: any;
   deleteLead: (leadId: string) => Promise<void>;
+  activeTab: 'all' | 'callback';
+  refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
+  onStatusChangeToCallback: (leadId: string, leadName: string) => void;
+  onEditCallback: (lead: Lead) => void;
 };
 
 const LeadRow = ({
@@ -39,7 +43,11 @@ const LeadRow = ({
   updateLeadsState,
   crmDb,
   user,
-  deleteLead
+  deleteLead,
+  activeTab,
+  refreshLeadCallbackInfo,
+  onStatusChangeToCallback,
+  onEditCallback
 }: LeadRowProps) => {
   // Helper function for safer data access with case-insensitive matching
   const getLeadData = (keys: string[], defaultValue: string = 'N/A') => {
@@ -176,8 +184,25 @@ const LeadRow = ({
     // toast.success("Remarks updated successfully");
   };
 
+  // Get row background color for callback tab
+  const getRowBackground = () => {
+    if (activeTab === 'callback' && lead.callbackInfo && lead.callbackInfo.scheduled_dt) {
+      const colors = getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt));
+      return {
+        rowBg: colors.rowBg,
+        textColor: colors.textColor
+      };
+    }
+    return {
+      rowBg: 'hover:bg-gray-800',
+      textColor: ''
+    };
+  };
+  
+  const rowColors = getRowBackground();
+
   return (
-    <tr className="hover:bg-gray-800 transition-colors duration-150" role="row">
+    <tr className={`${rowColors.rowBg} transition-colors duration-150`} role="row">
       {/* Date & Time - more compact */}
       <td className="px-1 py-0.5 whitespace-nowrap">
         <div className="flex flex-col">
@@ -250,7 +275,12 @@ const LeadRow = ({
       </td>
       
       {/* Status Cell Component */}
-      <StatusCell lead={lead} updateLead={handleUpdateLead} statusOptions={statusOptions} />
+      <StatusCell 
+        lead={lead} 
+        updateLead={handleUpdateLead} 
+        statusOptions={statusOptions} 
+        onStatusChangeToCallback={onStatusChangeToCallback}
+      />
       
       {/* Salesperson Cell Component */}
       <SalespersonCell 
@@ -260,6 +290,39 @@ const LeadRow = ({
         assignLeadToSalesperson={assignLeadToSalesperson} 
         crmDb={crmDb} 
       />
+      
+      {/* Callback Details Column */}
+      {activeTab === 'callback' && (
+        <td className="px-1 py-0.5 text-[11px]">
+          {lead.callbackInfo ? (
+            <div className="space-y-1">
+              <div className={`font-medium ${rowColors.textColor || 'text-green-400'}`}>
+                {new Date(lead.callbackInfo.scheduled_dt).toLocaleDateString()}
+              </div>
+              <div className={`${rowColors.textColor ? 'text-white/70' : 'text-gray-400'}`}>
+                {new Date(lead.callbackInfo.scheduled_dt).toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </div>
+              <div className={`text-[10px] ${rowColors.textColor ? 'text-white/50' : 'text-gray-500'}`}>
+                by {lead.callbackInfo.scheduled_by}
+              </div>
+              <button
+                onClick={() => onEditCallback(lead)}
+                className="mt-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md font-medium transition-colors duration-200"
+                title="Edit callback details"
+              >
+                Edit
+              </button>
+            </div>
+          ) : (
+            <div className={`text-sm ${rowColors.textColor ? 'text-white/70' : 'text-gray-500'} italic`}>
+              No callback info
+            </div>
+          )}
+        </td>
+      )}
       
       {/* Customer Query - More Compact */}
       <td className="px-1 py-0.5 text-[11px] text-gray-400 max-w-[200px]">

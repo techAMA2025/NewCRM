@@ -18,6 +18,10 @@ type LeadsTableProps = {
   crmDb: any;
   user: any;
   deleteLead: (leadId: string) => Promise<void>;
+  activeTab: 'all' | 'callback';
+  refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
+  onStatusChangeToCallback: (leadId: string, leadName: string) => void;
+  onEditCallback: (lead: any) => void;
 };
 
 const LeadsTable = ({
@@ -36,6 +40,10 @@ const LeadsTable = ({
   crmDb,
   user,
   deleteLead,
+  activeTab,
+  refreshLeadCallbackInfo,
+  onStatusChangeToCallback,
+  onEditCallback,
 }: LeadsTableProps) => {
   const renderTableHeader = () => (
     <thead className="bg-gray-800 text-xs uppercase font-medium sticky top-0 z-10">
@@ -101,6 +109,15 @@ const LeadsTable = ({
           <span className="text-blue-400">Assigned To</span>
         </th>
         
+        {activeTab === 'callback' && (
+          <th 
+            className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
+            scope="col"
+          >
+            <span className="text-blue-400">Callback Details</span>
+          </th>
+        )}
+        
         <th 
           className="px-2 py-1 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[2%]"
           scope="col"
@@ -130,7 +147,7 @@ const LeadsTable = ({
     if (filteredLeads.length === 0) {
       return (
         <tr>
-          <td colSpan={9} className="px-4 py-4 text-center text-sm text-gray-400">
+          <td colSpan={activeTab === 'callback' ? 10 : 9} className="px-4 py-4 text-center text-sm text-gray-400">
             No leads found matching the current filters.
           </td>
         </tr>
@@ -153,6 +170,10 @@ const LeadsTable = ({
         crmDb={crmDb}
         user={user}
         deleteLead={deleteLead}
+        activeTab={activeTab}
+        refreshLeadCallbackInfo={refreshLeadCallbackInfo}
+        onStatusChangeToCallback={onStatusChangeToCallback}
+        onEditCallback={onEditCallback}
       />
     ));
   };

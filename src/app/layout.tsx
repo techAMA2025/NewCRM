@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from '@/context/AuthContext'
 import GlobalCallbackAlert from '@/components/GlobalCallbackAlert';
+import SalesLeadsCallbackAlert from '@/components/SalesLeadsCallbackAlert';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -34,6 +35,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <GlobalCallbackAlert />
+          <SalesLeadsCallbackAlert />
           <ToastContainer
             position="top-right"
             autoClose={3000}

@@ -28,6 +28,12 @@ export interface Lead {
   convertedToClient?: boolean;
   synced_at?: any;
   timestamp?: any;
+  callbackInfo?: {
+    id: string;
+    scheduled_dt: Date;
+    scheduled_by: string;
+    created_at: any;
+  } | null;
   [key: string]: any; // For other dynamic properties
 }
 
