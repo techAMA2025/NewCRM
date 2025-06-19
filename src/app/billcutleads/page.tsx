@@ -2,17 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
-import 'react-toastify/dist/ReactToastify.css';
 
 // Import Components
 import BillcutLeadsHeader from './components/BillcutLeadsHeader';
 import BillcutLeadsFilters from './components/BillcutLeadsFilters';
 import BillcutLeadsTable from './components/BillcutLeadsTable';
 import BillcutLeadsTabs from './components/BillcutLeadsTabs';
-import UpcomingCallbackAlert from './components/UpcomingCallbackAlert';
 import EditModal from '../sales/leads/components/EditModal';
 import HistoryModal from '../sales/leads/components/HistoryModal';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
@@ -159,6 +157,12 @@ const BillCutLeadsPage = () => {
     const salesPersonParam = urlParams.get('salesPerson');
     const fromDateParam = urlParams.get('fromDate');
     const toDateParam = urlParams.get('toDate');
+    const tabParam = urlParams.get('tab');
+
+    // Apply tab parameter
+    if (tabParam === 'callback') {
+      setActiveTab('callback');
+    }
 
     // Apply status filter
     if (statusParam) {
@@ -869,20 +873,6 @@ const BillCutLeadsPage = () => {
       
       <div className="flex-1 overflow-auto p-6 bg-gradient-to-br from-gray-900 via-gray-850 to-gray-800">
         <div className="container mx-auto">
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="dark"
-            toastClassName="bg-gray-800/90 text-gray-100"
-          />
-          
           <BillcutLeadsHeader 
             isLoading={isLoading} 
             userRole={userRole} 
@@ -895,14 +885,6 @@ const BillCutLeadsPage = () => {
             onTabChange={handleTabChange}
             callbackCount={callbackCount}
             allLeadsCount={allLeadsCount}
-          />
-          
-          {/* Upcoming Callback Alert - Handles toast notifications */}
-          <UpcomingCallbackAlert 
-            leads={leads}
-            isVisible={true}
-            onViewCallbacks={handleViewCallbacks}
-            onDismiss={handleDismissAlert}
           />
           
           <BillcutLeadsFilters 
