@@ -6,6 +6,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
 import 'react-toastify/dist/ReactToastify.css';
+import { useSearchParams } from 'next/navigation';
 
 // Import Components
 import BillcutLeadsHeader from './components/BillcutLeadsHeader';
@@ -148,6 +149,35 @@ const BillCutLeadsPage = () => {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [bulkAssignTarget, setBulkAssignTarget] = useState('');
+
+  // Get URL search parameters
+  const searchParams = useSearchParams();
+
+  // Handle URL parameters on component mount
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    const salesPersonParam = searchParams.get('salesPerson');
+    const fromDateParam = searchParams.get('fromDate');
+    const toDateParam = searchParams.get('toDate');
+
+    // Apply status filter
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+
+    // Apply salesperson filter
+    if (salesPersonParam) {
+      setSalesPersonFilter(salesPersonParam);
+    }
+
+    // Apply date filters
+    if (fromDateParam) {
+      setFromDate(fromDateParam);
+    }
+    if (toDateParam) {
+      setToDate(toDateParam);
+    }
+  }, [searchParams]);
 
   // Authentication effect
   useEffect(() => {

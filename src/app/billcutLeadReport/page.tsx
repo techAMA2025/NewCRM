@@ -5,6 +5,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useRouter } from 'next/navigation';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import BillcutSidebar from '@/components/navigation/BillcutSidebar';
 import {
@@ -121,6 +122,35 @@ const BillcutLeadReportPage = () => {
   });
   const [userRole, setUserRole] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const router = useRouter();
+
+  // Function to navigate to billcut leads page with filters
+  const navigateToLeadsWithFilters = (salesperson: string, status: string) => {
+    const params = new URLSearchParams();
+    
+    // Add salesperson filter
+    if (salesperson && salesperson !== 'Unassigned') {
+      params.append('salesPerson', salesperson);
+    }
+    
+    // Add status filter
+    if (status && status !== 'No Status') {
+      params.append('status', status);
+    } else if (status === 'No Status') {
+      params.append('status', 'No Status');
+    }
+    
+    // Add date range filters if they exist
+    if (dateRange.startDate) {
+      params.append('fromDate', dateRange.startDate);
+    }
+    if (dateRange.endDate) {
+      params.append('toDate', dateRange.endDate);
+    }
+    
+    // Navigate to billcut leads page with filters
+    router.push(`/billcutleads?${params.toString()}`);
+  };
 
   // Function to handle quick date range filters
   const handleQuickDateFilter = (filter: string) => {
@@ -914,7 +944,11 @@ const BillcutLeadReportPage = () => {
                         {analytics.categoryDistribution.map(category => (
                           <td key={category.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                             <div className="flex items-center">
-                              <span className={`mr-2 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(category.name)}`}>
+                              <span 
+                                className={`mr-2 px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(category.name)} cursor-pointer hover:opacity-80 transition-opacity duration-200`}
+                                onClick={() => navigateToLeadsWithFilters(rep.name, category.name)}
+                                title={`Click to view ${category.name} leads for ${rep.name}`}
+                              >
                                 {statusBreakdown[category.name] || 0}
                               </span>
                               {rep.totalLeads > 0 && (
