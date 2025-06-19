@@ -11,8 +11,10 @@ import 'react-toastify/dist/ReactToastify.css';
 import LeadsHeader from './components/LeadsHeader';
 import LeadsFilters from './components/LeadsFilters';
 import LeadsTable from './components/LeadsTable';
+import LeadsTabs from './components/LeadsTabs';
 import EditModal from './components/EditModal';
 import HistoryModal from './components/HistoryModal';
+import CallbackSchedulingModal from './components/CallbackSchedulingModal';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 
@@ -45,6 +47,7 @@ const LeadsPage = () => {
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'callback'>('all');
   const [sortConfig, setSortConfig] = useState({ 
     key: 'synced_at', 
     direction: 'descending' as 'ascending' | 'descending' 
@@ -58,6 +61,27 @@ const LeadsPage = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([]);
   const [debugInfo, setDebugInfo] = useState('');
+
+  // Callback modal state
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
+  const [callbackLeadId, setCallbackLeadId] = useState('');
+  const [callbackLeadName, setCallbackLeadName] = useState('');
+  const [isEditingCallback, setIsEditingCallback] = useState(false);
+  const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null);
+
+  // Handle URL parameters on component mount (client-side only)
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+
+    // Apply tab parameter
+    if (tabParam === 'callback') {
+      setActiveTab('callback');
+    }
+  }, []); // Empty dependency array since we only want to run this once on mount
 
   // Authentication effect
   useEffect(() => {
@@ -290,12 +314,23 @@ const LeadsPage = () => {
           ...doc.data()
         } as Lead));
         
-        setLeads(leadsData);
-        setFilteredLeads(leadsData);
+        // Fetch callback information for callback leads
+        const leadsWithCallbackInfo = await Promise.all(
+          leadsData.map(async (lead) => {
+            if (lead.status === 'Callback') {
+              const callbackInfo = await fetchCallbackInfo(lead.id);
+              return { ...lead, callbackInfo };
+            }
+            return lead;
+          })
+        );
+        
+        setLeads(leadsWithCallbackInfo);
+        setFilteredLeads(leadsWithCallbackInfo);
         
         // Initialize editing state
         const initialEditingState: EditingLeadsState = {};
-        leadsData.forEach(lead => {
+        leadsWithCallbackInfo.forEach(lead => {
           initialEditingState[lead.id] = {
             ...lead,
             salesNotes: lead.salesNotes || ''
@@ -323,6 +358,25 @@ const LeadsPage = () => {
     
     const filterLeads = () => {
       let result = [...leads];
+      
+      // Apply tab-based filtering first
+      if (activeTab === 'callback') {
+        if (typeof window !== 'undefined') {
+          const currentUserName = localStorage.getItem('userName');
+          const currentUserRole = localStorage.getItem('userRole');
+          
+          // Admin and overlord users can see all callback data
+          if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
+            result = result.filter(lead => lead.status === 'Callback');
+          } else {
+            // Sales users can only see their own callback data
+            result = result.filter(lead => 
+              lead.status === 'Callback' && 
+              lead.assignedTo === currentUserName
+            );
+          }
+        }
+      }
       
       // Source filter
       if (sourceFilter !== 'all') {
@@ -477,7 +531,7 @@ const LeadsPage = () => {
     };
     
     setFilteredLeads(filterLeads());
-  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig, fromDate, toDate]);
+  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig, fromDate, toDate, activeTab]);
 
   // Request sort handler
   const requestSort = (key: string) => {
@@ -779,6 +833,190 @@ const LeadsPage = () => {
     return SalesSidebar;
   }, [userRole]);
 
+  // Add function to fetch callback information
+  const fetchCallbackInfo = async (leadId: string) => {
+    try {
+      const callbackInfoRef = collection(crmDb, 'crm_leads', leadId, 'callback_info');
+      const callbackSnapshot = await getDocs(callbackInfoRef);
+      
+      if (!callbackSnapshot.empty) {
+        const callbackData = callbackSnapshot.docs[0].data();
+        return {
+          id: callbackData.id || 'attempt_1',
+          scheduled_dt: callbackData.scheduled_dt?.toDate ? callbackData.scheduled_dt.toDate() : new Date(callbackData.scheduled_dt),
+          scheduled_by: callbackData.scheduled_by || '',
+          created_at: callbackData.created_at
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching callback info:', error);
+      return null;
+    }
+  };
+
+  // Add function to refresh callback information for a specific lead
+  const refreshLeadCallbackInfo = async (leadId: string) => {
+    try {
+      const callbackInfo = await fetchCallbackInfo(leadId);
+      const updatedLeads = leads.map(lead => 
+        lead.id === leadId ? { ...lead, callbackInfo } : lead
+      );
+      setLeads(updatedLeads);
+      setFilteredLeads(updatedLeads);
+    } catch (error) {
+      console.error('Error refreshing callback info:', error);
+    }
+  };
+
+  // Calculate counts for tabs
+  const callbackCount = useMemo(() => {
+    if (typeof window === 'undefined') return 0; // Server-side rendering check
+    const currentUserName = localStorage.getItem('userName');
+    const currentUserRole = localStorage.getItem('userRole');
+    
+    // Admin and overlord users can see count of all callback data
+    if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
+      return leads.filter(lead => lead.status === 'Callback').length;
+    } else {
+      // Sales users can only see count of their own callback data
+      return leads.filter(lead => 
+        lead.status === 'Callback' && 
+        lead.assignedTo === currentUserName
+      ).length;
+    }
+  }, [leads]);
+
+  const allLeadsCount = useMemo(() => {
+    return leads.length;
+  }, [leads]);
+
+  // Handle tab change
+  const handleTabChange = (tab: 'all' | 'callback') => {
+    setActiveTab(tab);
+    // Reset status filter when switching to callback tab
+    if (tab === 'callback') {
+      setStatusFilter('all');
+    }
+  };
+
+  // Handle callback modal confirmation
+  const handleCallbackConfirm = async () => {
+    if (isEditingCallback) {
+      // For editing, just refresh the callback information
+      await refreshLeadCallbackInfo(callbackLeadId);
+      
+      // Show success toast for editing
+      toast.success(
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+            </div>
+            <div className="ml-3 flex-1">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">✅</span>
+                <p className="text-sm font-bold text-white">
+                  Callback Updated
+                </p>
+              </div>
+              <p className="mt-2 text-sm text-green-100 font-medium">
+                {callbackLeadName}
+              </p>
+              <p className="mt-1 text-sm text-green-200">
+                Callback details have been updated successfully
+              </p>
+            </div>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+        }
+      );
+    } else {
+      // For new callbacks, update the lead status to "Callback"
+      const dbData = { status: 'Callback' };
+      const success = await updateLead(callbackLeadId, dbData);
+      if (success) {
+        // Refresh callback information for this lead
+        await refreshLeadCallbackInfo(callbackLeadId);
+        
+        // Show success toast for new callback
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">✅</span>
+                  <p className="text-sm font-bold text-white">
+                    Callback Scheduled
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">
+                  {callbackLeadName}
+                </p>
+                <p className="mt-1 text-sm text-green-200">
+                  Lead status updated to "Callback" and scheduled
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          }
+        );
+      }
+    }
+    
+    setShowCallbackModal(false);
+    setCallbackLeadId('');
+    setCallbackLeadName('');
+    setIsEditingCallback(false);
+    setEditingCallbackInfo(null);
+  };
+
+  // Handle callback modal close
+  const handleCallbackClose = () => {
+    setShowCallbackModal(false);
+    setCallbackLeadId('');
+    setCallbackLeadName('');
+    setIsEditingCallback(false);
+    setEditingCallbackInfo(null);
+  };
+
+  // Handle editing callback details
+  const handleEditCallback = (lead: Lead) => {
+    setCallbackLeadId(lead.id);
+    setCallbackLeadName(lead.name || 'Unknown Lead');
+    setIsEditingCallback(true);
+    setEditingCallbackInfo(lead.callbackInfo);
+    setShowCallbackModal(true);
+  };
+
+  // Handle status change to callback
+  const handleStatusChangeToCallback = (leadId: string, leadName: string) => {
+    setCallbackLeadId(leadId);
+    setCallbackLeadName(leadName);
+    setIsEditingCallback(false);
+    setEditingCallbackInfo(null);
+    setShowCallbackModal(true);
+  };
+
   return (
     <div className="flex h-screen bg-gray-950 text-white w-full text-sm">
       {/* Sidebar based on user role */}
@@ -792,6 +1030,14 @@ const LeadsPage = () => {
             userRole={userRole} 
             currentUser={currentUser} 
             exportToCSV={exportToCSV}
+          />
+          
+          {/* Tabs */}
+          <LeadsTabs
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            callbackCount={callbackCount}
+            allLeadsCount={allLeadsCount}
           />
           
           {/* Filters */}
@@ -847,6 +1093,10 @@ const LeadsPage = () => {
                 crmDb={crmDb}
                 user={currentUser}
                 deleteLead={deleteLead}
+                activeTab={activeTab}
+                refreshLeadCallbackInfo={refreshLeadCallbackInfo}
+                onStatusChangeToCallback={handleStatusChangeToCallback}
+                onEditCallback={handleEditCallback}
               />
               
               {/* Empty state message */}
@@ -878,6 +1128,18 @@ const LeadsPage = () => {
                 updateLead={updateLead}
                 teamMembers={teamMembers}
                 statusOptions={statusOptions}
+              />
+              
+              {/* Callback Scheduling Modal */}
+              <CallbackSchedulingModal
+                isOpen={showCallbackModal}
+                onClose={handleCallbackClose}
+                onConfirm={handleCallbackConfirm}
+                leadId={callbackLeadId}
+                leadName={callbackLeadName}
+                crmDb={crmDb}
+                isEditing={isEditingCallback}
+                existingCallbackInfo={editingCallbackInfo}
               />
             </>
           )}
