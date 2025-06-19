@@ -170,20 +170,22 @@ const BillCutLeadsPage = () => {
       setSalesPersonFilter(salesPersonParam);
     }
 
-    // Apply date filters - if no date params are provided, clear the default filters
+    // Apply date filters - only clear defaults if coming from analytics with specific parameters
     if (fromDateParam !== null) {
       setFromDate(fromDateParam);
-    } else {
-      // Clear the default 4-day filter when coming from analytics
+    } else if (statusParam || salesPersonParam) {
+      // Only clear date filters if we have status or salesperson params (coming from analytics)
       setFromDate('');
     }
+    // If no parameters at all, keep the default 4-day filter
     
     if (toDateParam !== null) {
       setToDate(toDateParam);
-    } else {
-      // Clear the default 4-day filter when coming from analytics
+    } else if (statusParam || salesPersonParam) {
+      // Only clear date filters if we have status or salesperson params (coming from analytics)
       setToDate('');
     }
+    // If no parameters at all, keep the default 4-day filter
   }, []); // Empty dependency array since we only want to run this once on mount
 
   // Authentication effect
@@ -396,10 +398,18 @@ const BillCutLeadsPage = () => {
     if (activeTab === 'callback') {
       if (typeof window !== 'undefined') {
         const currentUserName = localStorage.getItem('userName');
-        result = result.filter(lead => 
-          lead.status === 'Callback' && 
-          lead.assignedTo === currentUserName
-        );
+        const currentUserRole = localStorage.getItem('userRole');
+        
+        // Admin and overlord users can see all callback data
+        if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
+          result = result.filter(lead => lead.status === 'Callback');
+        } else {
+          // Sales users can only see their own callback data
+          result = result.filter(lead => 
+            lead.status === 'Callback' && 
+            lead.assignedTo === currentUserName
+          );
+        }
       }
     }
     
@@ -453,10 +463,18 @@ const BillCutLeadsPage = () => {
   const callbackCount = useMemo(() => {
     if (typeof window === 'undefined') return 0; // Server-side rendering check
     const currentUserName = localStorage.getItem('userName');
-    return leads.filter(lead => 
-      lead.status === 'Callback' && 
-      lead.assignedTo === currentUserName
-    ).length;
+    const currentUserRole = localStorage.getItem('userRole');
+    
+    // Admin and overlord users can see count of all callback data
+    if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
+      return leads.filter(lead => lead.status === 'Callback').length;
+    } else {
+      // Sales users can only see count of their own callback data
+      return leads.filter(lead => 
+        lead.status === 'Callback' && 
+        lead.assignedTo === currentUserName
+      ).length;
+    }
   }, [leads]);
 
   const allLeadsCount = useMemo(() => {
