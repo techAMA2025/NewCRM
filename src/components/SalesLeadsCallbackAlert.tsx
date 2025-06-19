@@ -124,8 +124,8 @@ const SalesLeadsCallbackAlert = () => {
         )
         // Filter based on user role and assignment
         .filter(lead => {
-          // Admin and overlord users can see all callback alerts
-          if (userRole === 'admin' || userRole === 'overlord') {
+          // Admin users can see all callback alerts
+          if (userRole === 'admin') {
             return true;
           }
           // Sales users can only see alerts for callbacks assigned to them
