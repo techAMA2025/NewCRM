@@ -166,15 +166,7 @@ const BillcutLeadReportPage = () => {
       params.append('status', 'No Status');
     }
     
-    // Add date range filters if they exist
-    if (dateRange.startDate) {
-      params.append('fromDate', dateRange.startDate);
-    }
-    if (dateRange.endDate) {
-      params.append('toDate', dateRange.endDate);
-    }
-    
-    // Navigate to billcut leads page with filters
+    // Navigate to billcut leads page with filters (without date restrictions)
     router.push(`/billcutleads?${params.toString()}`);
   };
 

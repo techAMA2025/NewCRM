@@ -170,12 +170,19 @@ const BillCutLeadsPage = () => {
       setSalesPersonFilter(salesPersonParam);
     }
 
-    // Apply date filters
-    if (fromDateParam) {
+    // Apply date filters - if no date params are provided, clear the default filters
+    if (fromDateParam !== null) {
       setFromDate(fromDateParam);
+    } else {
+      // Clear the default 4-day filter when coming from analytics
+      setFromDate('');
     }
-    if (toDateParam) {
+    
+    if (toDateParam !== null) {
       setToDate(toDateParam);
+    } else {
+      // Clear the default 4-day filter when coming from analytics
+      setToDate('');
     }
   }, []); // Empty dependency array since we only want to run this once on mount
 
@@ -225,9 +232,10 @@ const BillCutLeadsPage = () => {
       try {
         const billcutLeadsRef = collection(crmDb, 'billcutLeads');
         
-        // Create query constraints based on date filters
+        // Create query constraints based on all filters
         let queryConstraints = [];
         
+        // Date filters
         if (fromDate) {
           const fromDateStart = new Date(fromDate);
           fromDateStart.setHours(0, 0, 0, 0);
@@ -238,6 +246,26 @@ const BillCutLeadsPage = () => {
           const toDateEnd = new Date(toDate);
           toDateEnd.setHours(23, 59, 59, 999);
           queryConstraints.push(where('date', '<=', toDateEnd.getTime()));
+        }
+        
+        // Status filter
+        if (statusFilter !== 'all') {
+          if (statusFilter === 'No Status') {
+            // For "No Status", we need to handle this differently since it could be null/undefined/empty
+            // We'll fetch all and filter in memory for this case
+          } else {
+            queryConstraints.push(where('category', '==', statusFilter));
+          }
+        }
+        
+        // Salesperson filter
+        if (salesPersonFilter !== 'all') {
+          if (salesPersonFilter === '') {
+            // For unassigned leads
+            queryConstraints.push(where('assigned_to', '==', ''));
+          } else {
+            queryConstraints.push(where('assigned_to', '==', salesPersonFilter));
+          }
         }
         
         // Create and execute the query
@@ -275,7 +303,19 @@ const BillCutLeadsPage = () => {
           } as Lead;
         });
 
-        const sortedLeads = fetchedLeads.sort((a, b) => {
+        // Apply "No Status" filter in memory if needed
+        let filteredLeads = fetchedLeads;
+        if (statusFilter === 'No Status') {
+          filteredLeads = fetchedLeads.filter(lead => 
+            lead.status === undefined || 
+            lead.status === null || 
+            lead.status === '' || 
+            lead.status === '-' ||
+            lead.status === 'No Status'
+          );
+        }
+
+        const sortedLeads = filteredLeads.sort((a, b) => {
           const dateA = a.date || 0;
           const dateB = b.date || 0;
           return dateB - dateA;
@@ -312,7 +352,7 @@ const BillCutLeadsPage = () => {
     };
 
     fetchBillcutLeads();
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, statusFilter, salesPersonFilter]);
 
   // Fetch team members
   useEffect(() => {
@@ -363,22 +403,7 @@ const BillCutLeadsPage = () => {
       }
     }
     
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'No Status') {
-        // Filter for leads where status field doesn't exist, is null/undefined, empty string, is "-", or is literally "No Status"
-        result = result.filter(lead => 
-          lead.status === undefined || 
-          lead.status === null || 
-          lead.status === '' || 
-          lead.status === '-' ||
-          lead.status === 'No Status'
-        );
-      } else {
-        // Normal status filtering
-        result = result.filter(lead => lead.status === statusFilter);
-      }
-    }
-    
+    // Apply search query filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(lead => 
@@ -388,14 +413,7 @@ const BillCutLeadsPage = () => {
       );
     }
 
-    if (salesPersonFilter !== 'all') {
-      if (salesPersonFilter === '') {
-        result = result.filter(lead => !lead.assignedTo || lead.assignedTo === '');
-      } else {
-        result = result.filter(lead => lead.assignedTo === salesPersonFilter);
-      }
-    }
-
+    // Apply "My Leads" filter
     if (showMyLeads) {
       if (typeof window !== 'undefined') {
         const currentUserName = localStorage.getItem('userName');
@@ -422,7 +440,7 @@ const BillCutLeadsPage = () => {
     
     // Clear selected leads when filters change to prevent stale selections
     setSelectedLeads(prev => prev.filter(leadId => result.some(lead => lead.id === leadId)));
-  }, [leads, searchQuery, statusFilter, salesPersonFilter, showMyLeads, activeTab]);
+  }, [leads, searchQuery, showMyLeads, activeTab]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
