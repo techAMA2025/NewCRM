@@ -813,6 +813,155 @@ const BillcutLeadReportPage = () => {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Salesperson-wise Lead Status Analytics */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <FiUsers className="mr-2" />
+              Salesperson-wise Lead Status Analytics
+            </h3>
+            
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {analytics.salesPerformance.map((rep, index) => (
+                <div key={rep.name} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">{rep.name}</h4>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Total:</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{rep.totalLeads}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Interested:</span>
+                      <span className="font-medium text-green-600">{rep.interested}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Converted:</span>
+                      <span className="font-medium text-blue-600">{rep.converted}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-300">Rate:</span>
+                      <span className="font-medium text-purple-600">{rep.conversionRate}%</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Detailed Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Salesperson
+                    </th>
+                    {analytics.categoryDistribution.map(category => (
+                      <th key={category.name} className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {category.name}
+                      </th>
+                    ))}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Total
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Conversion Rate
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {analytics.salesPerformance.map((rep) => {
+                    // Get detailed status breakdown for this salesperson
+                    const repLeads = leads.filter(lead => lead.assigned_to === rep.name);
+                    const statusBreakdown = analytics.categoryDistribution.reduce((acc, category) => {
+                      acc[category.name] = repLeads.filter(lead => lead.category === category.name).length;
+                      return acc;
+                    }, {} as Record<string, number>);
+
+                    return (
+                      <tr key={rep.name} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {rep.name}
+                        </td>
+                        {analytics.categoryDistribution.map(category => (
+                          <td key={category.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            <div className="flex items-center">
+                              <span className="mr-2">{statusBreakdown[category.name] || 0}</span>
+                              {rep.totalLeads > 0 && (
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                  ({((statusBreakdown[category.name] || 0) / rep.totalLeads * 100).toFixed(1)}%)
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {rep.totalLeads}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            rep.conversionRate >= 20 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            rep.conversionRate >= 10 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          }`}>
+                            {rep.conversionRate}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Performance Insights */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">Top Performer</h4>
+                {(() => {
+                  const topPerformer = analytics.salesPerformance.reduce((max, rep) => 
+                    rep.conversionRate > max.conversionRate ? rep : max
+                  );
+                  return (
+                    <div className="text-sm">
+                      <p className="text-blue-700 dark:text-blue-300">{topPerformer.name}</p>
+                      <p className="text-blue-600 dark:text-blue-400 font-medium">{topPerformer.conversionRate}% conversion rate</p>
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                <h4 className="font-semibold text-green-900 dark:text-green-200 mb-2">Most Leads</h4>
+                {(() => {
+                  const mostLeads = analytics.salesPerformance.reduce((max, rep) => 
+                    rep.totalLeads > max.totalLeads ? rep : max
+                  );
+                  return (
+                    <div className="text-sm">
+                      <p className="text-green-700 dark:text-green-300">{mostLeads.name}</p>
+                      <p className="text-green-600 dark:text-green-400 font-medium">{mostLeads.totalLeads} total leads</p>
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                <h4 className="font-semibold text-purple-900 dark:text-purple-200 mb-2">Most Converted</h4>
+                {(() => {
+                  const mostConverted = analytics.salesPerformance.reduce((max, rep) => 
+                    rep.converted > max.converted ? rep : max
+                  );
+                  return (
+                    <div className="text-sm">
+                      <p className="text-purple-700 dark:text-purple-300">{mostConverted.name}</p>
+                      <p className="text-purple-600 dark:text-purple-400 font-medium">{mostConverted.converted} conversions</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <ToastContainer />
