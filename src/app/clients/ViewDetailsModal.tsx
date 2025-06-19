@@ -1,6 +1,6 @@
 'use client'
 
-import { format } from 'date-fns'
+import { format, formatDate } from 'date-fns'
 import { User, Clock } from 'lucide-react'
 import { FaRupeeSign } from 'react-icons/fa'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ interface Client {
   city: string
   occupation: string
   aadharNumber: string
+  panNumber: string
   assignedTo: string
   alloc_adv?: string
   alloc_adv_at?: any
@@ -44,6 +45,7 @@ interface Client {
   documentUrl?: string
   documentName?: string
   documentUploadedAt?: Date
+  dob?: string
 }
 
 interface ViewDetailsModalProps {
@@ -131,12 +133,20 @@ export default function ViewDetailsModal({
                 <div className="text-white">{client.city ? client.city.toUpperCase() : 'N/A'}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
+                <div className="text-gray-400">Date of Birth</div>
+                <div className="text-white">{client.dob ? formatDate(client.dob, 'dd/MM/yyyy') : 'Sales Person did not provide this information'}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div className="text-gray-400">Occupation</div>
                 <div className="text-white">{client.occupation}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="text-gray-400">Aadhar Number</div>
                 <div className="text-white">{client.aadharNumber}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-gray-400">Pan Card Number</div>
+                <div className="text-white">{client.panNumber}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="text-gray-400">Assigned To</div>
