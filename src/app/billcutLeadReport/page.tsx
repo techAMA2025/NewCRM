@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import BillcutSidebar from '@/components/navigation/BillcutSidebar';
@@ -1044,7 +1043,6 @@ const BillcutLeadReportPage = () => {
           </div>
         </div>
       </div>
-      <ToastContainer />
     </div>
   );
 };

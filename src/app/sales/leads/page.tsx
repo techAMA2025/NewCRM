@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
 import 'react-toastify/dist/ReactToastify.css';
@@ -786,21 +786,6 @@ const LeadsPage = () => {
       
       <div className="flex-1 overflow-auto px-3">
         <div className="w-[98%] mx-auto">
-          {/* Toast Container with improved visibility */}
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="dark"
-            toastClassName="bg-gray-800 text-white text-sm"
-          />
-          
           {/* Header with title and actions */}
           <LeadsHeader 
             isLoading={isLoading} 
