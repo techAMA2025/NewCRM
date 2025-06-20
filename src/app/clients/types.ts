@@ -16,14 +16,14 @@ export interface Client {
   convertedFromLead?: boolean
   creditCardDues?: string
   lastModified?: any
-  leadId?: string
+  leadId: string
   monthlyFees?: string
   monthlyIncome?: string
   personalLoanDues?: string
   remarks?: string
   salesNotes?: string
   source_database?: string
-  startDate?: string
+  startDate: string
   tenure?: string
   banks?: Array<{
     id: string;
@@ -35,6 +35,7 @@ export interface Client {
   adv_status?: string
   documentUrl?: string
   documentName?: string
-  documentUploadedAt?: Date
+  documentUploadedAt?: any
   dob?: string
+  message: string
 } 

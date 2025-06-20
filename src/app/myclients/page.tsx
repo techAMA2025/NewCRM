@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase/firebase';
+import { db, storage } from '@/firebase/firebase';
+import { ref, getDownloadURL } from 'firebase/storage';
 import ClientDetailsModal from './ClientDetailsModal';
 import ClientEditModal from './ClientEditModal';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
@@ -49,6 +50,8 @@ interface Client {
   leadId: string;
   startDate: string;
   message: string;
+  documentUrl?: string;
+  documentName?: string;
 }
 
 export default function MyClientsPage() {
@@ -82,11 +85,32 @@ export default function MyClientsPage() {
       const q = query(clientsRef, where('assignedTo', '==', salesPersonName));
       const querySnapshot = await getDocs(q);
       
-      const clientsData: Client[] = [];
+      let clientsData: Client[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data() as Omit<Client, 'id'>;
         clientsData.push({ id: doc.id, ...data });
       });
+
+      // Enhance clients with document URLs if they are missing for billcut source
+      clientsData = await Promise.all(clientsData.map(async (client) => {
+        if (client.source_database === 'billcut' && !client.documentUrl) {
+          try {
+            const documentName = `${client.name}_billcut_agreement.docx`;
+            const storagePath = `clients/billcut/documents/${documentName}`;
+            const docRef = ref(storage, storagePath);
+            const url = await getDownloadURL(docRef);
+            // If successful, add the URL and name to the client object
+            return { ...client, documentUrl: url, documentName };
+          } catch (error: any) {
+            // If the file doesn't exist, we can ignore the error
+            if (error.code !== 'storage/object-not-found') {
+              console.error(`Error checking for document for ${client.name}:`, error);
+            }
+            return client; // Return original client if no doc or on error
+          }
+        }
+        return client;
+      }));
       
       // Sort clients by lastModified timestamp (newest first)
       clientsData.sort((a, b) => {
@@ -283,6 +307,15 @@ export default function MyClientsPage() {
                       <div className="font-medium text-green-600 dark:text-green-400">₹{client.monthlyIncome}</div>
                     </div>
                     <div className="flex gap-2">
+                      {client.documentUrl && (
+                        <button
+                          onClick={() => openDocumentViewer(client.documentUrl as string, client.documentName || 'Client Document')}
+                          className="flex items-center justify-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-300"
+                        >
+                          <FaFileAlt className="mr-1" />
+                          Document
+                        </button>
+                      )}
                       <button
                         onClick={() => openEditModal(client)}
                         className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-300"

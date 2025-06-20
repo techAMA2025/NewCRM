@@ -9,22 +9,28 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Eye, Sun, Moon } from 'lucide-react'
+import { Eye, Sun, Moon, Edit, Trash2, FileText } from 'lucide-react'
+import { Client } from '@/app/clients/types'
 
-interface Client {
-  id: string
-  name: string
-  phone: string
-  email: string
-  status: string
-  city: string
-  occupation: string
-  aadharNumber: string
-  assignedTo: string
-  alloc_adv?: string
-  alloc_adv_secondary?: string
-  adv_status?: string
-}
+// Helper function to format source display name and get color
+const formatSourceName = (source: string): { name: string; color: string } => {
+  if (!source) return { name: 'Manual Entry', color: 'text-gray-500' };
+  const normalizedSource = source.replace(/\s*\d+\s*/g, '').trim().toLowerCase();
+  switch (normalizedSource) {
+    case 'credsettlee':
+      return { name: 'Cred Settle', color: 'text-blue-500' };
+    case 'ama':
+      return { name: 'AMA', color: 'text-green-500' };
+    case 'settleloans':
+      return { name: 'Settle Loans', color: 'text-purple-500' };
+    case 'billcut':
+      return { name: 'Bill Cut', color: 'text-orange-500' };
+    case 'manual':
+      return { name: 'Manual Entry', color: 'text-gray-500' };
+    default:
+      return { name: source, color: 'text-gray-400' };
+  }
+};
 
 interface ClientsTableProps {
   clients: Client[]
@@ -37,6 +43,7 @@ interface ClientsTableProps {
   onSelectClient: (clientId: string, checked: boolean) => void
   theme?: 'light' | 'dark'
   onThemeChange?: (theme: 'light' | 'dark') => void
+  openDocumentViewer: (documentUrl: string, documentName: string) => void
 }
 
 export default function ClientsTable({
@@ -49,7 +56,8 @@ export default function ClientsTable({
   onSelectAll,
   onSelectClient,
   theme = 'light',
-  onThemeChange
+  onThemeChange,
+  openDocumentViewer
 }: ClientsTableProps) {
   const isDark = theme === 'dark'
 
@@ -128,7 +136,12 @@ export default function ClientsTable({
                   />
                 </TableCell>
                 <TableCell className={`font-medium p-1.5 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                  {client.name.toUpperCase()}
+                  <div className="flex flex-col">
+                    <span className="font-medium">{client.name.toUpperCase()}</span>
+                    <span className={`text-[10px] ${formatSourceName(client.source_database || '').color}`}>
+                      {formatSourceName(client.source_database || '').name}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell className="p-1.5">{client.phone}</TableCell>
                 <TableCell className="p-1.5">{client.city}</TableCell>
@@ -176,28 +189,26 @@ export default function ClientsTable({
                     {client.assignedTo || 'Unassigned'}
                   </span>
                 </TableCell>
-                <TableCell className="text-right p-1.5">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      onClick={() => onViewDetails(client)}
-                      size="sm"
-                      className="bg-blue-500 hover:bg-blue-600 text-white h-5 w-5 p-0"
-                    >
-                      <Eye className="h-3 w-3" />
+                <TableCell className="p-1.5">
+                  <div className="flex items-center justify-end space-x-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewDetails(client)}>
+                      <Eye className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      onClick={() => onEditClient(client)}
-                      size="sm"
-                      className="bg-amber-500 hover:bg-amber-600 text-white h-5 w-5 p-0"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditClient(client)}>
+                      <Edit className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      onClick={() => onDeleteClient(client)}
-                      size="sm"
-                      className="bg-red-500 hover:bg-red-600 text-white h-5 w-5 p-0"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    {client.documentUrl && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-purple-500 hover:text-purple-600"
+                        onClick={() => openDocumentViewer(client.documentUrl as string, client.documentName || 'Client Document')}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => onDeleteClient(client)}>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </TableCell>
