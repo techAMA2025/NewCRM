@@ -203,6 +203,7 @@ function ClientViewModal({
   openDemandNoticeModal,
   openHarassmentComplaintModal,
   openDocumentEditor,
+  openBillCutDocument,
 }: {
   client: Client | null
   isOpen: boolean
@@ -213,6 +214,7 @@ function ClientViewModal({
   openDemandNoticeModal: (client: Client) => void
   openHarassmentComplaintModal: (client: Client) => void
   openDocumentEditor: (url: string, name: string, index: number, clientId: string) => void
+  openBillCutDocument: (client: Client) => void
 }) {
   if (!isOpen || !client) return null
 
@@ -855,6 +857,28 @@ function ClientViewModal({
                           </svg>
                           Legal Notice
                         </button>
+                        {client.source_database === "billcut" && (
+                          <button
+                            onClick={() => openBillCutDocument(client)}
+                            className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                          >
+                            <svg
+                              className="w-4 h-4 mr-1"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                              />
+                            </svg>
+                            BillCut Agreement
+                          </button>
+                        )}
                         <button
                           onClick={() => openHarassmentComplaintModal(client)}
                           className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
@@ -1781,6 +1805,20 @@ function ClientsList() {
     setEditingDocument({ url, name, index, clientId })
   }
 
+  // Function to generate BillCut document URL
+  const generateBillCutDocumentUrl = (clientName: string) => {
+    // Clean the client name for URL (remove special characters, replace spaces with %20)
+    const cleanName = encodeURIComponent(clientName.replace(/[^a-zA-Z0-9\s]/g, '').trim())
+    return `https://firebasestorage.googleapis.com/v0/b/amacrm-76fd1.firebasestorage.app/o/clients%2Fbillcut%2Fdocuments%2F${cleanName}_billcut_agreement.docx?alt=media&token=fdc2eb03-04e9-4343-b8a6-6129f460823b`
+  }
+
+  // Function to open BillCut document
+  const openBillCutDocument = (client: Client) => {
+    const billCutUrl = generateBillCutDocumentUrl(client.name)
+    const documentName = `${client.name} - BillCut Agreement`
+    openDocumentViewer(billCutUrl, documentName)
+  }
+
   return (
     <div className="flex-1">
       {renderContent()}
@@ -1794,6 +1832,7 @@ function ClientsList() {
         openDemandNoticeModal={openDemandNoticeModal}
         openHarassmentComplaintModal={openHarassmentComplaintModal}
         openDocumentEditor={openDocumentEditor}
+        openBillCutDocument={openBillCutDocument}
       />
       <ClientEditModal
         client={editClient}
@@ -1837,11 +1876,26 @@ function ClientsList() {
               </button>
             </div>
             <div className="flex-1 bg-white rounded overflow-hidden">
-              <iframe
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
-                className="w-full h-full border-0"
-                title="Document Viewer"
-              ></iframe>
+              {viewingDocumentUrl.includes('firebasestorage.googleapis.com') ? (
+                // For Firebase Storage URLs (like BillCut documents), try direct viewing first
+                <iframe
+                  src={viewingDocumentUrl}
+                  className="w-full h-full border-0"
+                  title="Document Viewer"
+                  onError={(e) => {
+                    // Fallback to Google Docs viewer if direct viewing fails
+                    const iframe = e.target as HTMLIFrameElement;
+                    iframe.src = `https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`;
+                  }}
+                />
+              ) : (
+                // For other URLs, use Google Docs viewer
+                <iframe
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                  className="w-full h-full border-0"
+                  title="Document Viewer"
+                />
+              )}
             </div>
           </div>
         </div>

@@ -128,44 +128,52 @@ export default function ClientsPage() {
     const fetchClients = async () => {
       try {
         console.log('Starting to fetch clients...');
-        console.log('Firebase db instance:', db);
+        const clientsQuery = query(collection(db, 'clients'), orderBy('name'));
+        const querySnapshot = await getDocs(clientsQuery);
         
-        const clientsQuery = query(collection(db, 'clients'), orderBy('name'))
-        console.log('Query created:', clientsQuery);
-        
-        const querySnapshot = await getDocs(clientsQuery)
-        console.log('Query snapshot received:', querySnapshot);
-        console.log('Number of documents:', querySnapshot.size);
-        
-        const clientsData: Client[] = querySnapshot.docs.map(doc => ({
+        let clientsData: Client[] = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        } as Client))
-        console.log('Processed client data:', clientsData);
+        } as Client));
         
-        // Display all clients regardless of allocation status
-        setClients(clientsData)
-        setFilteredClients(clientsData)
+        // Enhance clients with document URLs if they are missing for billcut source
+        clientsData = await Promise.all(clientsData.map(async (client) => {
+          if (client.source_database === 'billcut' && !client.documentUrl) {
+            try {
+              const documentName = `${client.name}_billcut_agreement.docx`;
+              const storagePath = `clients/billcut/documents/${documentName}`;
+              const docRef = ref(storage, storagePath);
+              const url = await getDownloadURL(docRef);
+              return { ...client, documentUrl: url, documentName };
+            } catch (error: any) {
+              if (error.code !== 'storage/object-not-found') {
+                console.error(`Error checking for document for ${client.name}:`, error);
+              }
+              return client;
+            }
+          }
+          return client;
+        }));
+
+        setClients(clientsData);
+        setFilteredClients(clientsData);
         
-        // Extract unique advocates and cities for filters
-        const advocates = Array.from(new Set(clientsData.map(client => client.alloc_adv).filter(Boolean) as string[]))
-        const cities = Array.from(new Set(clientsData.map(client => client.city).filter(Boolean) as string[]))
-        
-        setAllAdvocates(advocates)
+        const advocates = Array.from(new Set(clientsData.map(client => client.alloc_adv).filter(Boolean) as string[]));
+        setAllAdvocates(advocates);
       } catch (err) {
-        console.error('Detailed error fetching clients:', err)
+        console.error('Detailed error fetching clients:', err);
         if (err instanceof Error) {
-          setError(`Failed to load clients data: ${err.message}`)
+          setError(`Failed to load clients data: ${err.message}`);
         } else {
-          setError('Failed to load clients data: Unknown error')
+          setError('Failed to load clients data: Unknown error');
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchClients()
-  }, [])
+    fetchClients();
+  }, []);
 
   useEffect(() => {
     console.log("Firebase storage initialized:", storage);
@@ -909,6 +917,7 @@ export default function ClientsPage() {
           onSelectClient={handleSelectClient}
           theme={theme}
           onThemeChange={setTheme}
+          openDocumentViewer={openDocumentViewer}
         />
 
         {/* Modals */}

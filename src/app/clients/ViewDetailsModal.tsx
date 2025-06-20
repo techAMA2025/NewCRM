@@ -35,6 +35,20 @@ export default function ViewDetailsModal({
 }: ViewDetailsModalProps) {
   if (!isOpen || !client) return null
 
+  // Function to generate BillCut document URL
+  const generateBillCutDocumentUrl = (clientName: string) => {
+    // Clean the client name for URL (remove special characters, replace spaces with %20)
+    const cleanName = encodeURIComponent(clientName.replace(/[^a-zA-Z0-9\s]/g, '').trim())
+    return `https://firebasestorage.googleapis.com/v0/b/amacrm-76fd1.firebasestorage.app/o/clients%2Fbillcut%2Fdocuments%2F${cleanName}_billcut_agreement.docx?alt=media&token=fdc2eb03-04e9-4343-b8a6-6129f460823b`
+  }
+
+  // Function to open BillCut document
+  const openBillCutDocument = () => {
+    const billCutUrl = generateBillCutDocumentUrl(client.name)
+    const documentName = `${client.name} - BillCut Agreement`
+    openDocumentViewer(billCutUrl, documentName)
+  }
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in shadow-2xl">
@@ -273,32 +287,55 @@ export default function ViewDetailsModal({
         </div>
 
         {/* Document Section */}
-        {client.documentUrl && (
+        {(client.documentUrl || client.source_database === 'billcut') && (
           <div className="mt-6 bg-gray-800/50 rounded-lg p-4 border border-gray-800">
             <h3 className="font-semibold text-lg mb-4 text-green-400 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              Client Document
+              Client Documents
             </h3>
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-800">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <p className="text-white font-medium flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    {client.documentName || "Client Document"}
-                  </p>
-                  {client.documentUploadedAt && (
-                    <p className="text-sm text-gray-400 mt-1">
-                      Uploaded on: {formatTimestamp(client.documentUploadedAt)}
+                  {client.documentUrl && (
+                    <>
+                      <p className="text-white font-medium flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        {client.documentName || "Client Document"}
+                      </p>
+                      {client.documentUploadedAt && (
+                        <p className="text-sm text-gray-400 mt-1">
+                          Uploaded on: {formatTimestamp(client.documentUploadedAt)}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {client.source_database === 'billcut' && (
+                    <p className="text-white font-medium flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      BillCut Agreement
                     </p>
                   )}
                 </div>
-                <Button
-                  onClick={() => openDocumentViewer(client.documentUrl || "", client.documentName || "Document")}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                  View Document
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {client.documentUrl && (
+                    <Button
+                      onClick={() => openDocumentViewer(client.documentUrl || "", client.documentName || "Document")}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      View Document
+                    </Button>
+                  )}
+                  {client.source_database === 'billcut' && (
+                    <Button
+                      onClick={openBillCutDocument}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      View BillCut Agreement
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

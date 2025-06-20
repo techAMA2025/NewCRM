@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Lead } from './types/lead'
 // import firebase from '../../firebase/firebase'
 import  {db, storage}  from '../../firebase/firebase'
@@ -52,6 +52,9 @@ const EditClientModal = ({
   
   // Add state for agreement generation checkbox
   const [shouldGenerateAgreement, setShouldGenerateAgreement] = useState(false);
+  
+  // Add state for loan percentage (billcut specific)
+  const [loanPercentage, setLoanPercentage] = useState('');
   
   // Update local lead state when initialLead changes
   useEffect(() => {
@@ -305,6 +308,12 @@ const EditClientModal = ({
       return;
     }
     
+    // Additional validation for billcut clients
+    if (lead.source_database === 'billcut' && !loanPercentage) {
+      setLocalSaveError('Loan percentage is required for billcut clients');
+      return;
+    }
+    
     // Clear any previous errors
     setLocalSaveError(null);
     
@@ -363,20 +372,56 @@ const EditClientModal = ({
     try {
       setUploading(true);
       setUploadError(null);
+      console.log('Starting agreement generation for lead:', leadData.id);
+
+      // Determine which API endpoint to use based on source and loan amount
+      let apiEndpoint = '/api/agreement';
+      let requestData: any = leadData;
       
-      const response = await fetch('/api/agreement', {
+      if (leadData.source_database === 'billcut') {
+        // Calculate total loan amount
+        const totalLoanAmount = (leadData.banks || []).reduce((total: number, bank: any) => {
+          return total + (parseFloat(bank.loanAmount) || 0);
+        }, 0);
+        
+        // If total loan amount is <= 400000, use billcut agreement
+        if (totalLoanAmount <= 400000) {
+          apiEndpoint = '/api/billcut-agreement';
+          
+          // Prepare data for billcut agreement
+          requestData = {
+            name: leadData.name,
+            email: leadData.email,
+            panNumber: leadData.panNumber,
+            feePercentage: parseFloat(loanPercentage),
+            date: leadData.startDate || new Date().toISOString().split('T')[0],
+            banks: (leadData.banks || []).map((bank: any) => ({
+              bankName: bank.bankName,
+              loanAmount: bank.loanAmount,
+              loanType: bank.loanType
+            }))
+          };
+        }
+      }
+      
+      console.log(`Sending request to ${apiEndpoint} with data:`, requestData);
+
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(leadData),
+        body: JSON.stringify(requestData),
       });
       
       if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('Failed to generate agreement. Status:', response.status, 'Body:', errorBody);
         throw new Error('Failed to generate agreement');
       }
       
       const data = await response.json();
+      console.log('Received response from agreement API:', data);
       
       // Update lead with document information
       setLead(prevLead => ({
@@ -389,10 +434,34 @@ const EditClientModal = ({
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 3000);
       
+      // Download the file
+      if (data.documentUrl && data.documentName) {
+        console.log('Attempting to download file:', data.documentName, 'from URL:', data.documentUrl);
+        try {
+          const fileResponse = await fetch(data.documentUrl);
+          if (!fileResponse.ok) {
+            throw new Error(`Failed to fetch the document from storage. Status: ${fileResponse.status}`);
+          }
+          const blob = await fileResponse.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = data.documentName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          console.log('File download initiated successfully.');
+        } catch (downloadError) {
+          console.error('Error downloading the generated document:', downloadError);
+          setUploadError('Document saved to cloud, but automatic download failed.');
+        }
+      }
+      
       return data;
       
-    } catch (error) {
-      console.error('Error generating agreement:', error);
+    } catch (error: any) {
+      console.error('Error in generateAgreementDocument function:', error);
       setUploadError('Failed to generate agreement document');
       setTimeout(() => setUploadError(null), 3000);
       return null;
@@ -400,6 +469,43 @@ const EditClientModal = ({
       setUploading(false);
     }
   };
+
+  const { isGenerateDisabled, generateDisabledReason } = useMemo(() => {
+    const reasons = [];
+    if (uploading) reasons.push('Currently uploading or generating.');
+    if (!lead.name) reasons.push('Client Name is required.');
+    if (!lead.email) reasons.push('Client Email is required.');
+    if (!lead.startDate) reasons.push('Start Date of Service is required.');
+    if (!lead.tenure) reasons.push('Tenure is required.');
+    if (!shouldGenerateAgreement) reasons.push('The "Generate agreement document" checkbox must be checked.');
+
+    if (lead.source_database === 'billcut') {
+      if (!loanPercentage) reasons.push('Loan Percentage is required for Billcut clients.');
+    } else {
+      if (!lead.monthlyFees) reasons.push('Monthly Fees are required.');
+    }
+
+    const isDisabled = reasons.length > 0;
+    const reasonText = isDisabled ? `Cannot generate: ${reasons.join(' ')}` : 'Generate Agreement Document';
+    
+    // Log the state to the console for debugging
+    console.log('Generate Agreement Button State:', { 
+      isDisabled, 
+      reasons,
+      leadData: {
+        name: !!lead.name,
+        email: !!lead.email,
+        startDate: !!lead.startDate,
+        tenure: !!lead.tenure,
+        monthlyFees: lead.monthlyFees,
+        isBillcut: lead.source_database === 'billcut',
+        loanPercentage: loanPercentage,
+        isBoxChecked: shouldGenerateAgreement,
+      }
+    });
+
+    return { isGenerateDisabled: isDisabled, generateDisabledReason: reasonText };
+  }, [uploading, lead, loanPercentage, shouldGenerateAgreement]);
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center overflow-y-auto">
@@ -615,6 +721,21 @@ const EditClientModal = ({
                     required
                   />
                 </div>
+                
+                {/* Loan Percentage field for billcut */}
+                {lead.source_database === 'billcut' && (
+                  <div className="mt-4">
+                    <InputField
+                      id="loanPercentage"
+                      label="Loan Percentage (%)"
+                      value={loanPercentage}
+                      onChange={(value) => setLoanPercentage(value)}
+                      type="number"
+                      placeholder="Enter percentage"
+                      required
+                    />
+                  </div>
+                )}
               </FormSection>
               
               <div>
@@ -724,53 +845,58 @@ const EditClientModal = ({
                           ) : 'Upload Document'}
                         </button>
                       </div>
-                      
-                      {/* Generate Agreement checkbox */}
-                      <div className="mt-3">
-                        <label className="inline-flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={shouldGenerateAgreement}
-                            onChange={(e) => setShouldGenerateAgreement(e.target.checked)}
-                            className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out bg-gray-700 border-gray-500 rounded"
-                          />
-                          <span className="ml-2 text-sm text-gray-300">Generate agreement document</span>
-                        </label>
-                      </div>
-                      
-                      {uploadError && (
-                        <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
-                          {uploadError}
-                        </div>
-                      )}
-                      {uploadSuccess && (
-                        <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
-                          Document uploaded successfully!
-                        </div>
-                      )}
-                      
-                      {/* Generate Agreement Button */}
-                      <button
-                        type="button"
-                        onClick={() => generateAgreementDocument(lead)}
-                        disabled={uploading || !lead.name || !lead.email || !lead.startDate || !lead.tenure || !lead.monthlyFees || !shouldGenerateAgreement}
-                        className="mt-4 w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {uploading ? (
-                          <span className="flex items-center justify-center">
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Generating...
-                          </span>
-                        ) : 'Generate Agreement Document'}
-                      </button>
                     </div>
                   </div>
                 </FormSection>
               )}
               
+              <FormSection title="Agreement Generation">
+                <div className="p-4 bg-gray-700 rounded-lg border border-gray-600">
+                    {/* Generate Agreement checkbox */}
+                    <div className="mt-3">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={shouldGenerateAgreement}
+                          onChange={(e) => setShouldGenerateAgreement(e.target.checked)}
+                          className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out bg-gray-700 border-gray-500 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-300">Generate agreement document</span>
+                      </label>
+                    </div>
+                    
+                    {uploadError && (
+                      <div className="mt-2 p-2 bg-red-800 text-red-100 rounded-md text-sm">
+                        {uploadError}
+                      </div>
+                    )}
+                    {uploadSuccess && (
+                      <div className="mt-2 p-2 bg-green-800 text-green-100 rounded-md text-sm">
+                        Document processed successfully!
+                      </div>
+                    )}
+                    
+                    {/* Generate Agreement Button */}
+                    <button
+                      type="button"
+                      onClick={() => generateAgreementDocument(lead)}
+                      disabled={isGenerateDisabled}
+                      title={generateDisabledReason}
+                      className="mt-4 w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Generating...
+                        </span>
+                      ) : `Generate ${lead.source_database === 'billcut' ? 'Billcut ' : ''}Agreement Document`}
+                    </button>
+                </div>
+              </FormSection>
+
               <FormSection title="Notes & Remarks">
                 <div className="space-y-4">
                   <div>
