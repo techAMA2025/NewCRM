@@ -22,6 +22,9 @@ type LeadsTableProps = {
   refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
   onStatusChangeToCallback: (leadId: string, leadName: string) => void;
   onEditCallback: (lead: any) => void;
+  hasMoreLeads?: boolean;
+  isLoadingMore?: boolean;
+  loadMoreLeads?: () => Promise<void>;
 };
 
 const LeadsTable = ({
@@ -44,6 +47,9 @@ const LeadsTable = ({
   refreshLeadCallbackInfo,
   onStatusChangeToCallback,
   onEditCallback,
+  hasMoreLeads = false,
+  isLoadingMore = false,
+  loadMoreLeads,
 }: LeadsTableProps) => {
   const renderTableHeader = () => (
     <thead className="bg-gray-800 text-xs uppercase font-medium sticky top-0 z-10">
@@ -178,6 +184,29 @@ const LeadsTable = ({
     ));
   };
 
+  const renderLoadMoreButton = () => {
+    if (!hasMoreLeads || !loadMoreLeads) return null;
+
+    return (
+      <div className="flex justify-center py-4">
+        <button
+          onClick={loadMoreLeads}
+          disabled={isLoadingMore}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-md text-sm font-medium transition-colors duration-200 flex items-center space-x-2"
+        >
+          {isLoadingMore ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+              <span>Loading...</span>
+            </>
+          ) : (
+            <span>Load More Leads</span>
+          )}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-gray-900 shadow-2xl rounded-xl overflow-hidden border border-gray-700">
       <table className="w-full divide-y divide-gray-700" role="table" aria-label="Leads table">
@@ -186,6 +215,7 @@ const LeadsTable = ({
           {renderTableBody()}
         </tbody>
       </table>
+      {renderLoadMoreButton()}
     </div>
   );
 };
