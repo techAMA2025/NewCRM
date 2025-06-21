@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc, limit, orderBy, startAfter } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
 import 'react-toastify/dist/ReactToastify.css';
+import { debounce } from 'lodash';
 
 // Import Components
 import LeadsHeader from './components/LeadsHeader';
@@ -35,6 +36,10 @@ const statusOptions = [
   'Closed Lead'
 ];
 
+// Pagination constants
+const LEADS_PER_PAGE = 50;
+const CALLBACK_INFO_BATCH_SIZE = 10;
+
 const LeadsPage = () => {
   // State Management
   const [isLoading, setIsLoading] = useState(true);
@@ -62,12 +67,23 @@ const LeadsPage = () => {
   const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([]);
   const [debugInfo, setDebugInfo] = useState('');
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreLeads, setHasMoreLeads] = useState(true);
+  const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   // Callback modal state
   const [showCallbackModal, setShowCallbackModal] = useState(false);
   const [callbackLeadId, setCallbackLeadId] = useState('');
   const [callbackLeadName, setCallbackLeadName] = useState('');
   const [isEditingCallback, setIsEditingCallback] = useState(false);
   const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null);
+
+  // Performance optimization refs
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const filterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callbackInfoCache = useRef<Map<string, any>>(new Map());
 
   // Handle URL parameters on component mount (client-side only)
   useEffect(() => {
@@ -245,17 +261,84 @@ const LeadsPage = () => {
     setToDate(today.toISOString().split('T')[0]);
   }, []);
 
-  // Effect to fetch leads when dates change
+  // Optimized fetch callback info function with caching
+  const fetchCallbackInfo = useCallback(async (leadId: string) => {
+    // Check cache first
+    if (callbackInfoCache.current.has(leadId)) {
+      return callbackInfoCache.current.get(leadId);
+    }
+
+    try {
+      const callbackInfoRef = collection(crmDb, 'crm_leads', leadId, 'callback_info');
+      const callbackSnapshot = await getDocs(callbackInfoRef);
+      
+      if (!callbackSnapshot.empty) {
+        const callbackData = callbackSnapshot.docs[0].data();
+        const result = {
+          id: callbackData.id || 'attempt_1',
+          scheduled_dt: callbackData.scheduled_dt?.toDate ? callbackData.scheduled_dt.toDate() : new Date(callbackData.scheduled_dt),
+          scheduled_by: callbackData.scheduled_by || '',
+          created_at: callbackData.created_at
+        };
+        
+        // Cache the result
+        callbackInfoCache.current.set(leadId, result);
+        return result;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching callback info:', error);
+      return null;
+    }
+  }, []);
+
+  // Batch fetch callback info for multiple leads
+  const fetchCallbackInfoBatch = useCallback(async (leads: Lead[]) => {
+    const callbackLeads = leads.filter(lead => lead.status === 'Callback');
+    
+    if (callbackLeads.length === 0) return leads;
+
+    // Process in batches to avoid overwhelming the network
+    const batches = [];
+    for (let i = 0; i < callbackLeads.length; i += CALLBACK_INFO_BATCH_SIZE) {
+      batches.push(callbackLeads.slice(i, i + CALLBACK_INFO_BATCH_SIZE));
+    }
+
+    const updatedLeads = [...leads];
+    
+    for (const batch of batches) {
+      await Promise.all(
+        batch.map(async (lead) => {
+          const callbackInfo = await fetchCallbackInfo(lead.id);
+          const leadIndex = updatedLeads.findIndex(l => l.id === lead.id);
+          if (leadIndex !== -1) {
+            updatedLeads[leadIndex] = { ...updatedLeads[leadIndex], callbackInfo };
+          }
+        })
+      );
+    }
+
+    return updatedLeads;
+  }, [fetchCallbackInfo]);
+
+  // Effect to fetch leads when dates change - OPTIMIZED with pagination
   useEffect(() => {
     // Skip on initial render before user is loaded
     if (!currentUser) return;
     
     const fetchLeadsByDateRange = async () => {
       setIsLoading(true);
+      setCurrentPage(1);
+      setLastVisibleDoc(null);
+      setHasMoreLeads(true);
+      
       try {
         let leadsRef;
         
-        // If both dates are set, use them for filtering
+        // Build query with proper constraints
+        const constraints: any[] = [];
+        
+        // Add date range constraints if set
         if (fromDate && toDate) {
           const fromDateTime = new Date(fromDate);
           fromDateTime.setHours(0, 0, 0, 0);
@@ -263,49 +346,25 @@ const LeadsPage = () => {
           const toDateTime = new Date(toDate);
           toDateTime.setHours(23, 59, 59, 999);
           
-          // Add query with date range
-          if (userRole === 'salesperson') {
-            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-            const userData = userDoc.data() as User;
-            
-            if (userData && userData.name) {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('synced_at', '>=', fromDateTime),
-                where('synced_at', '<=', toDateTime)
-              );
-            } else {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('synced_at', '>=', fromDateTime),
-                where('synced_at', '<=', toDateTime)
-              );
-            }
-          } else {
-            leadsRef = query(
-              collection(crmDb, 'crm_leads'),
-              where('synced_at', '>=', fromDateTime),
-              where('synced_at', '<=', toDateTime)
-            );
-          }
-        } else {
-          // If dates aren't set, fetch all leads with role-based filtering
-          if (userRole === 'salesperson') {
-            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-            const userData = userDoc.data() as User;
-            
-            if (userData && userData.name) {
-              leadsRef = query(
-                collection(crmDb, 'crm_leads'),
-                where('assignedTo', '==', userData.name)
-              );
-            } else {
-              leadsRef = collection(crmDb, 'crm_leads');
-            }
-          } else {
-            leadsRef = collection(crmDb, 'crm_leads');
+          constraints.push(where('synced_at', '>=', fromDateTime));
+          constraints.push(where('synced_at', '<=', toDateTime));
+        }
+        
+        // Add role-based filtering
+        if (userRole === 'salesperson') {
+          const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
+          const userData = userDoc.data() as User;
+          
+          if (userData && userData.name) {
+            constraints.push(where('assignedTo', '==', userData.name));
           }
         }
+        
+        // Add sorting and limit
+        constraints.push(orderBy('synced_at', 'desc'));
+        constraints.push(limit(LEADS_PER_PAGE));
+        
+        leadsRef = query(collection(crmDb, 'crm_leads'), ...constraints);
         
         // Fetch the data
         const leadsSnapshot = await getDocs(leadsRef);
@@ -314,16 +373,12 @@ const LeadsPage = () => {
           ...doc.data()
         } as Lead));
         
-        // Fetch callback information for callback leads
-        const leadsWithCallbackInfo = await Promise.all(
-          leadsData.map(async (lead) => {
-            if (lead.status === 'Callback') {
-              const callbackInfo = await fetchCallbackInfo(lead.id);
-              return { ...lead, callbackInfo };
-            }
-            return lead;
-          })
-        );
+        // Update pagination state
+        setLastVisibleDoc(leadsSnapshot.docs[leadsSnapshot.docs.length - 1]);
+        setHasMoreLeads(leadsSnapshot.docs.length === LEADS_PER_PAGE);
+        
+        // Fetch callback information in batches
+        const leadsWithCallbackInfo = await fetchCallbackInfoBatch(leadsData);
         
         setLeads(leadsWithCallbackInfo);
         setFilteredLeads(leadsWithCallbackInfo);
@@ -350,172 +405,219 @@ const LeadsPage = () => {
     };
     
     fetchLeadsByDateRange();
-  }, [currentUser, userRole, crmDb, fromDate, toDate]);
+  }, [currentUser, userRole, crmDb, fromDate, toDate, fetchCallbackInfoBatch]);
 
-  // Apply filters on data change
-  useEffect(() => {
-    if (!leads) return;
+  // Load more leads function
+  const loadMoreLeads = useCallback(async () => {
+    if (!hasMoreLeads || isLoadingMore || !lastVisibleDoc) return;
     
-    const filterLeads = () => {
-      let result = [...leads];
+    setIsLoadingMore(true);
+    
+    try {
+      const constraints: any[] = [];
       
-      // Apply tab-based filtering first
-      if (activeTab === 'callback') {
-        if (typeof window !== 'undefined') {
-          const currentUserName = localStorage.getItem('userName');
-          const currentUserRole = localStorage.getItem('userRole');
-          
-          // Admin and overlord users can see all callback data
-          if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
-            result = result.filter(lead => lead.status === 'Callback');
-          } else {
-            // Sales users can only see their own callback data
-            result = result.filter(lead => 
-              lead.status === 'Callback' && 
-              lead.assignedTo === currentUserName
-            );
-          }
+      // Add date range constraints if set
+      if (fromDate && toDate) {
+        const fromDateTime = new Date(fromDate);
+        fromDateTime.setHours(0, 0, 0, 0);
+        
+        const toDateTime = new Date(toDate);
+        toDateTime.setHours(23, 59, 59, 999);
+        
+        constraints.push(where('synced_at', '>=', fromDateTime));
+        constraints.push(where('synced_at', '<=', toDateTime));
+      }
+      
+      // Add role-based filtering
+      if (userRole === 'salesperson') {
+        const userDoc = await getDoc(doc(crmDb, 'users', currentUser!.uid));
+        const userData = userDoc.data() as User;
+        
+        if (userData && userData.name) {
+          constraints.push(where('assignedTo', '==', userData.name));
         }
       }
       
-      // Source filter
-      if (sourceFilter !== 'all') {
-        result = result.filter(lead => lead.source_database === sourceFilter);
-      }
+      // Add sorting, pagination, and limit
+      constraints.push(orderBy('synced_at', 'desc'));
+      constraints.push(startAfter(lastVisibleDoc));
+      constraints.push(limit(LEADS_PER_PAGE));
       
-      // Status filter
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'No Status') {
-          // Filter for leads where status field doesn't exist, is null/undefined, empty string, or is literally "No Status"
+      const leadsRef = query(collection(crmDb, 'crm_leads'), ...constraints);
+      const leadsSnapshot = await getDocs(leadsRef);
+      
+      const newLeadsData = leadsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Lead));
+      
+      // Update pagination state
+      setLastVisibleDoc(leadsSnapshot.docs[leadsSnapshot.docs.length - 1]);
+      setHasMoreLeads(leadsSnapshot.docs.length === LEADS_PER_PAGE);
+      
+      // Fetch callback information for new leads
+      const newLeadsWithCallbackInfo = await fetchCallbackInfoBatch(newLeadsData);
+      
+      // Append to existing leads
+      setLeads(prev => [...prev, ...newLeadsWithCallbackInfo]);
+      setFilteredLeads(prev => [...prev, ...newLeadsWithCallbackInfo]);
+      
+      // Update editing state
+      setEditingLeads(prev => {
+        const updated = { ...prev };
+        newLeadsWithCallbackInfo.forEach(lead => {
+          updated[lead.id] = {
+            ...lead,
+            salesNotes: lead.salesNotes || ''
+          };
+        });
+        return updated;
+      });
+      
+    } catch (error) {
+      console.error("Error loading more leads: ", error);
+      toast.error("Failed to load more leads", {
+        position: "top-right",
+        autoClose: 3000
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [hasMoreLeads, isLoadingMore, lastVisibleDoc, fromDate, toDate, userRole, currentUser, fetchCallbackInfoBatch]);
+
+  // Optimized filter function with memoization
+  const filterLeads = useCallback(() => {
+    if (!leads) return [];
+    
+    let result = [...leads];
+    
+    // Apply tab-based filtering first
+    if (activeTab === 'callback') {
+      if (typeof window !== 'undefined') {
+        const currentUserName = localStorage.getItem('userName');
+        const currentUserRole = localStorage.getItem('userRole');
+        
+        // Admin and overlord users can see all callback data
+        if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
+          result = result.filter(lead => lead.status === 'Callback');
+        } else {
+          // Sales users can only see their own callback data
           result = result.filter(lead => 
-            lead.status === undefined || 
-            lead.status === null || 
-            lead.status === '' || 
-            lead.status === 'No Status'
+            lead.status === 'Callback' && 
+            lead.assignedTo === currentUserName
           );
-        } else {
-          // Normal status filtering
-          result = result.filter(lead => lead.status === statusFilter);
         }
       }
+    }
+    
+    // Source filter
+    if (sourceFilter !== 'all') {
+      result = result.filter(lead => lead.source_database === sourceFilter);
+    }
+    
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'No Status') {
+        result = result.filter(lead => 
+          lead.status === undefined || 
+          lead.status === null || 
+          lead.status === '' || 
+          lead.status === 'No Status'
+        );
+      } else {
+        result = result.filter(lead => lead.status === statusFilter);
+      }
+    }
+    
+    // Salesperson filter
+    if (salesPersonFilter !== 'all') {
+      if (salesPersonFilter === '') {
+        result = result.filter(lead => !lead.assignedTo);
+      } else {
+        result = result.filter(lead => lead.assignedTo === salesPersonFilter);
+      }
+    }
+    
+    // Search query - OPTIMIZED with early return
+    if (searchQuery) {
+      const lowercasedQuery = searchQuery.toLowerCase().trim();
+      result = result.filter(lead => {
+        // Check name fields
+        const name = lead.name || lead.Name || lead.fullName || lead.customerName || '';
+        if (name.toLowerCase().includes(lowercasedQuery)) return true;
+        
+        // Check email fields
+        const email = lead.email || lead.Email || lead.emailAddress || '';
+        if (email.toLowerCase().includes(lowercasedQuery)) return true;
+        
+        // Check phone fields
+        const phone = lead.phone || lead.Phone || lead.phoneNumber || lead.mobileNumber || lead['Mobile Number'] || lead.number || '';
+        if (phone.toLowerCase().includes(lowercasedQuery)) return true;
+        
+        return false;
+      });
+    }
+    
+    // Converted filter
+    if (convertedFilter !== null) {
+      result = result.filter(lead => lead.convertedToClient === convertedFilter);
+    }
+    
+    // Date range filter - OPTIMIZED
+    if (fromDate || toDate) {
+      const fromDateTime = fromDate ? new Date(fromDate) : null;
+      if (fromDateTime) fromDateTime.setHours(0, 0, 0, 0);
       
-      // Salesperson filter
-      if (salesPersonFilter !== 'all') {
-        if (salesPersonFilter === '') {
-          // Unassigned leads
-          result = result.filter(lead => !lead.assignedTo);
+      const toDateTime = toDate ? new Date(toDate) : null;
+      if (toDateTime) toDateTime.setHours(23, 59, 59, 999);
+      
+      result = result.filter(lead => {
+        const leadDate = lead.synced_at || lead.timestamp || lead.created || lead.lastModified || lead.createdAt;
+        
+        if (!leadDate) return false;
+        
+        let dateObj: Date;
+        if (leadDate.toDate) {
+          dateObj = leadDate.toDate();
+        } else if (leadDate instanceof Date) {
+          dateObj = leadDate;
         } else {
-          // Leads assigned to specific salesperson
-          result = result.filter(lead => lead.assignedTo === salesPersonFilter);
+          dateObj = new Date(leadDate);
         }
-      }
-      
-      // Search query - IMPROVED to handle different field names and case sensitivity
-      if (searchQuery) {
-        const lowercasedQuery = searchQuery.toLowerCase().trim();
-        result = result.filter(lead => {
-          // Check all possible name field variations
-          const nameFields = ['name', 'Name', 'fullName', 'customerName'];
-          const nameMatch = nameFields.some(field => 
-            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
-          );
-          
-          // Check all possible email field variations
-          const emailFields = ['email', 'Email', 'emailAddress'];
-          const emailMatch = emailFields.some(field => 
-            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
-          );
-          
-          // Check all possible phone field variations
-          const phoneFields = ['phone', 'Phone', 'phoneNumber', 'mobileNumber', 'Mobile Number', 'number'];
-          const phoneMatch = phoneFields.some(field => 
-            lead[field] && String(lead[field]).toLowerCase().includes(lowercasedQuery)
-          );
-          
-          // Return true if any field matches
-          return nameMatch || emailMatch || phoneMatch;
-        });
-      }
-      
-      // Converted filter
-      if (convertedFilter !== null) {
-        result = result.filter(lead => lead.convertedToClient === convertedFilter);
-      }
-      
-      // Date range filter - OPTIMIZED for performance
-      if (fromDate || toDate) {
-        // Create proper date boundaries for comparison
-        const fromDateTime = fromDate ? new Date(fromDate) : null;
-        if (fromDateTime) fromDateTime.setHours(0, 0, 0, 0);
         
-        const toDateTime = toDate ? new Date(toDate) : null;
-        if (toDateTime) toDateTime.setHours(23, 59, 59, 999);
+        if (isNaN(dateObj.getTime())) return false;
         
-        result = result.filter(lead => {
-          // Get the date from various possible fields
-          let leadDate = lead.synced_at || lead.timestamp || lead.created || lead.lastModified || lead.createdAt;
+        if (fromDateTime && toDateTime) {
+          return dateObj >= fromDateTime && dateObj <= toDateTime;
+        } else if (fromDateTime) {
+          return dateObj >= fromDateTime;
+        } else if (toDateTime) {
+          return dateObj <= toDateTime;
+        }
+        
+        return true;
+      });
+    }
+    
+    // Sorting - OPTIMIZED
+    if (sortConfig) {
+      result.sort((a, b) => {
+        const isDateField = ['lastModified', 'timestamp', 'synced_at', 'convertedAt', 'created'].includes(sortConfig.key);
+        
+        if (isDateField) {
+          let aValue = a[sortConfig.key] || a.timestamp || a.created;
+          let bValue = b[sortConfig.key] || b.timestamp || b.created;
           
-          // Skip if no date is available
-          if (!leadDate) return false; // Changed to false to exclude leads without dates
+          if (!aValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+          if (!bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
           
-          // Convert to Date object if it's a Firestore timestamp or string
-          if (leadDate.toDate) leadDate = leadDate.toDate(); // Firestore timestamp
-          else if (!(leadDate instanceof Date)) leadDate = new Date(leadDate); // String date
+          if (typeof aValue === 'number') aValue = new Date(aValue);
+          else if (aValue.toDate) aValue = aValue.toDate();
+          else if (!(aValue instanceof Date)) aValue = new Date(aValue);
           
-          // Skip invalid dates
-          if (isNaN(leadDate.getTime())) return false; // Changed to false to exclude invalid dates
-          
-          // Check date range
-          if (fromDateTime && toDateTime) {
-            return leadDate >= fromDateTime && leadDate <= toDateTime;
-          } else if (fromDateTime) {
-            return leadDate >= fromDateTime;
-          } else if (toDateTime) {
-            return leadDate <= toDateTime;
-          }
-          
-          return true;
-        });
-      }
-      
-      // Ensure proper date sorting by handling different date formats
-      if (sortConfig) {
-        result.sort((a, b) => {
-          // Handle date fields specially
-          if (sortConfig.key === 'lastModified' || sortConfig.key === 'timestamp' || 
-              sortConfig.key === 'synced_at' || sortConfig.key === 'convertedAt' || 
-              sortConfig.key === 'created') {
-            
-            // Get values, considering potential field name variations
-            let aValue = a[sortConfig.key] || a.timestamp || a.created;
-            let bValue = b[sortConfig.key] || b.timestamp || b.created;
-            
-            // Handle missing values (put them at the end)
-            if (!aValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-            if (!bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
-            
-            // Convert to date objects for proper comparison
-            if (typeof aValue === 'number') aValue = new Date(aValue); // For timestamp values stored as numbers
-            else if (aValue.toDate) aValue = aValue.toDate(); // For Firestore timestamps
-            else if (!(aValue instanceof Date)) aValue = new Date(aValue); // For string dates
-            
-            if (typeof bValue === 'number') bValue = new Date(bValue);
-            else if (bValue.toDate) bValue = bValue.toDate();
-            else if (!(bValue instanceof Date)) bValue = new Date(bValue);
-            
-            // Compare dates
-            if (aValue < bValue) {
-              return sortConfig.direction === 'ascending' ? -1 : 1;
-            }
-            if (aValue > bValue) {
-              return sortConfig.direction === 'ascending' ? 1 : -1;
-            }
-            return 0;
-          }
-          
-          // Handle non-date fields (existing logic)
-          let aValue = a[sortConfig.key];
-          let bValue = b[sortConfig.key];
+          if (typeof bValue === 'number') bValue = new Date(bValue);
+          else if (bValue.toDate) bValue = bValue.toDate();
+          else if (!(bValue instanceof Date)) bValue = new Date(bValue);
           
           if (aValue < bValue) {
             return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -524,14 +626,56 @@ const LeadsPage = () => {
             return sortConfig.direction === 'ascending' ? 1 : -1;
           }
           return 0;
-        });
-      }
-      
-      return result;
-    };
+        }
+        
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
     
-    setFilteredLeads(filterLeads());
-  }, [leads, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, sortConfig, fromDate, toDate, activeTab]);
+    return result;
+  }, [leads, activeTab, sourceFilter, statusFilter, salesPersonFilter, searchQuery, convertedFilter, fromDate, toDate, sortConfig]);
+
+  // Apply filters on data change - OPTIMIZED with debouncing
+  useEffect(() => {
+    if (!leads) return;
+    
+    // Clear existing timeout
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
+    
+    // Debounce filter application
+    filterTimeoutRef.current = setTimeout(() => {
+      setFilteredLeads(filterLeads());
+    }, 100);
+    
+    return () => {
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+      }
+    };
+  }, [leads, filterLeads]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Request sort handler
   const requestSort = (key: string) => {
@@ -566,21 +710,6 @@ const LeadsPage = () => {
       if (editingLead && editingLead.id === id) {
         setEditingLead(null);
       }
-      
-      // toast.success(
-      //   <div>
-      //     <p className="font-medium">Update Successful</p>
-      //     <p className="text-sm">Lead information has been updated</p>
-      //   </div>,
-      //   {
-      //     position: "top-right",
-      //     autoClose: 3000,
-      //     hideProgressBar: false,
-      //     closeOnClick: true,
-      //     pauseOnHover: true,
-      //     draggable: true
-      //   }
-      // );
       
       return true;
     } catch (error) {
@@ -833,28 +962,6 @@ const LeadsPage = () => {
     return SalesSidebar;
   }, [userRole]);
 
-  // Add function to fetch callback information
-  const fetchCallbackInfo = async (leadId: string) => {
-    try {
-      const callbackInfoRef = collection(crmDb, 'crm_leads', leadId, 'callback_info');
-      const callbackSnapshot = await getDocs(callbackInfoRef);
-      
-      if (!callbackSnapshot.empty) {
-        const callbackData = callbackSnapshot.docs[0].data();
-        return {
-          id: callbackData.id || 'attempt_1',
-          scheduled_dt: callbackData.scheduled_dt?.toDate ? callbackData.scheduled_dt.toDate() : new Date(callbackData.scheduled_dt),
-          scheduled_by: callbackData.scheduled_by || '',
-          created_at: callbackData.created_at
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching callback info:', error);
-      return null;
-    }
-  };
-
   // Add function to refresh callback information for a specific lead
   const refreshLeadCallbackInfo = async (leadId: string) => {
     try {
@@ -1097,6 +1204,9 @@ const LeadsPage = () => {
                 refreshLeadCallbackInfo={refreshLeadCallbackInfo}
                 onStatusChangeToCallback={handleStatusChangeToCallback}
                 onEditCallback={handleEditCallback}
+                hasMoreLeads={hasMoreLeads}
+                isLoadingMore={isLoadingMore}
+                loadMoreLeads={loadMoreLeads}
               />
               
               {/* Empty state message */}
