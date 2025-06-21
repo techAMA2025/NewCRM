@@ -54,7 +54,7 @@ const EditClientModal = ({
   const [shouldGenerateAgreement, setShouldGenerateAgreement] = useState(false);
   
   // Add state for loan percentage (billcut specific)
-  const [loanPercentage, setLoanPercentage] = useState('');
+  const [loanPercentage, setLoanPercentage] = useState('15');
   
   // Update local lead state when initialLead changes
   useEffect(() => {
@@ -309,9 +309,17 @@ const EditClientModal = ({
     }
     
     // Additional validation for billcut clients
-    if (lead.source_database === 'billcut' && !loanPercentage) {
-      setLocalSaveError('Loan percentage is required for billcut clients');
-      return;
+    if (lead.source_database === 'billcut') {
+      // Calculate total loan amount for billcut clients
+      const totalLoanAmount = (lead.banks || []).reduce((total: number, bank: any) => {
+        return total + (parseFloat(bank.loanAmount) || 0);
+      }, 0);
+      
+      // Only require loanPercentage if total loan amount is <= 400000
+      if (totalLoanAmount <= 400000 && !loanPercentage) {
+        setLocalSaveError('Loan percentage is required for billcut clients with total loan amount ≤ ₹4,00,000');
+        return;
+      }
     }
     
     // Clear any previous errors
@@ -384,6 +392,8 @@ const EditClientModal = ({
           return total + (parseFloat(bank.loanAmount) || 0);
         }, 0);
         
+        console.log('Total loan amount for billcut client:', totalLoanAmount);
+        
         // If total loan amount is <= 400000, use billcut agreement
         if (totalLoanAmount <= 400000) {
           apiEndpoint = '/api/billcut-agreement';
@@ -394,6 +404,27 @@ const EditClientModal = ({
             email: leadData.email,
             panNumber: leadData.panNumber,
             feePercentage: parseFloat(loanPercentage),
+            date: leadData.startDate || new Date().toISOString().split('T')[0],
+            banks: (leadData.banks || []).map((bank: any) => ({
+              bankName: bank.bankName,
+              loanAmount: bank.loanAmount,
+              loanType: bank.loanType
+            }))
+          };
+        } else {
+          // If total loan amount is > 400000, use billcut PAS agreement with adjusted fee
+          apiEndpoint = '/api/billcut-agreement-pas';
+          
+          // Calculate adjusted fee percentage (2% less than entered)
+          const enteredPercentage = parseFloat(loanPercentage);
+          const adjustedPercentage = Math.max(0, enteredPercentage - 2); // Ensure it doesn't go negative
+          
+          // Prepare data for billcut PAS agreement with adjusted fee
+          requestData = {
+            name: leadData.name,
+            email: leadData.email,
+            panNumber: leadData.panNumber,
+            feePercentage: adjustedPercentage, // Pass the adjusted percentage
             date: leadData.startDate || new Date().toISOString().split('T')[0],
             banks: (leadData.banks || []).map((bank: any) => ({
               bankName: bank.bankName,
@@ -480,7 +511,15 @@ const EditClientModal = ({
     if (!shouldGenerateAgreement) reasons.push('The "Generate agreement document" checkbox must be checked.');
 
     if (lead.source_database === 'billcut') {
-      if (!loanPercentage) reasons.push('Loan Percentage is required for Billcut clients.');
+      // Calculate total loan amount for billcut clients
+      const totalLoanAmount = (lead.banks || []).reduce((total: number, bank: any) => {
+        return total + (parseFloat(bank.loanAmount) || 0);
+      }, 0);
+      
+      // Only require loanPercentage if total loan amount is <= 400000
+      if (totalLoanAmount <= 400000 && !loanPercentage) {
+        reasons.push('Loan Percentage is required for Billcut clients with total loan amount ≤ ₹4,00,000.');
+      }
     } else {
       if (!lead.monthlyFees) reasons.push('Monthly Fees are required.');
     }
@@ -501,6 +540,9 @@ const EditClientModal = ({
         isBillcut: lead.source_database === 'billcut',
         loanPercentage: loanPercentage,
         isBoxChecked: shouldGenerateAgreement,
+        totalLoanAmount: lead.source_database === 'billcut' ? (lead.banks || []).reduce((total: number, bank: any) => {
+          return total + (parseFloat(bank.loanAmount) || 0);
+        }, 0) : 0
       }
     });
 
@@ -725,15 +767,47 @@ const EditClientModal = ({
                 {/* Loan Percentage field for billcut */}
                 {lead.source_database === 'billcut' && (
                   <div className="mt-4">
-                    <InputField
-                      id="loanPercentage"
-                      label="Loan Percentage (%)"
-                      value={loanPercentage}
-                      onChange={(value) => setLoanPercentage(value)}
-                      type="number"
-                      placeholder="Enter percentage"
-                      required
-                    />
+                    {(() => {
+                      const totalLoanAmount = (lead.banks || []).reduce((total: number, bank: any) => {
+                        return total + (parseFloat(bank.loanAmount) || 0);
+                      }, 0);
+                      
+                      if (totalLoanAmount <= 400000) {
+                        return (
+                          <InputField
+                            id="loanPercentage"
+                            label="Loan Percentage (%)"
+                            value={loanPercentage}
+                            onChange={(value) => setLoanPercentage(value)}
+                            type="number"
+                            placeholder="Enter percentage"
+                            required
+                          />
+                        );
+                      } else {
+                        const enteredPercentage = parseFloat(loanPercentage);
+                        const adjustedPercentage = Math.max(0, enteredPercentage - 2);
+                        return (
+                          <div className="space-y-3">
+                            <InputField
+                              id="loanPercentage"
+                              label="Loan Percentage (%)"
+                              value={loanPercentage}
+                              onChange={(value) => setLoanPercentage(value)}
+                              type="number"
+                              placeholder="Enter percentage"
+                              required
+                            />
+                            <div className="p-3 bg-blue-900 border border-blue-700 rounded-md">
+                              <p className="text-blue-200 text-sm">
+                                <strong>PAS Agreement:</strong> For total loan amount over ₹4,00,000, 
+                                the actual fee will be <strong>{adjustedPercentage}%</strong> (2% less than entered percentage).
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 )}
               </FormSection>
