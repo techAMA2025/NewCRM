@@ -153,8 +153,7 @@ const AdvocateDashboard = () => {
           }
         });
         
-        console.log(`Processed ${totalClients} total clients, ${letterEligibleClients} eligible for letters`);
-        console.log(`Found ${pendingLettersList.length} pending letters`);
+
         
         // Update stats
         setClientStats({
@@ -364,8 +363,7 @@ const AdvocateDashboard = () => {
             });
           }
         });
-        
-        console.log(`Found ${allPendingLettersList.length} total pending letters across all clients`);
+
         
         // Sort pending letters by due date (if available)
         allPendingLettersList.sort((a, b) => {
@@ -409,10 +407,8 @@ const AdvocateDashboard = () => {
             setAudioEnabled(true);
             setShowPermissionPrompt(false);
             toast.success("Audio notifications enabled successfully!");
-            console.log("Audio enabled successfully");
           })
           .catch(e => {
-            console.log("Couldn't enable audio:", e);
             setShowPermissionPrompt(true); // Show prompt again on failure
           });
       }
@@ -460,13 +456,11 @@ const AdvocateDashboard = () => {
           // Make sure audio is reset before playing
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
-          console.log('Attempting to play notification sound');
           
           // Force play attempt after a small delay to ensure DOM is ready
           setTimeout(() => {
             audioRef.current?.play()
               .then(() => {
-                console.log('Successfully playing notification sound');
                 // Set timeout to stop audio after toast duration
                 audioTimeout = setTimeout(() => {
                   cleanupNotification();
@@ -635,7 +629,6 @@ const AdvocateDashboard = () => {
           console.error(`Audio file not found at ${audioPath}`)
           toast.error("Audio notification file not found")
         } else {
-          console.log("Audio file exists and should be playable")
         }
       })
       .catch(error => {
@@ -652,7 +645,6 @@ const AdvocateDashboard = () => {
       audioRef.current.currentTime = 0
       audioRef.current.play()
         .then(() => {
-          console.log("Audio is playing")
           setTimeout(() => {
             if (audioRef.current) {
               audioRef.current.pause()

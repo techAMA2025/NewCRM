@@ -217,20 +217,17 @@ export default function MonthlyPaymentRequestsComponent() {
   const fetchPaymentRequests = useCallback(async () => {
     try {
       setIsLoading(true);
-      console.log("--- FETCH PAYMENT REQUESTS STARTED ---");
       
       // Limit the number of clients fetched and order them
       const clientsQuery = query(collection(db, 'clients_payments'));
       const clientsSnapshot = await getDocs(clientsQuery);
-      
-      console.log(`Found ${clientsSnapshot.docs.length} clients`);
       
       // Create an array of promises to fetch payment history
       const requestPromises = clientsSnapshot.docs.map(async (clientDoc) => {
         const clientId = clientDoc.id;
         const clientName = clientDoc.data().clientName || 'Unknown Client';
         
-        console.log(`Fetching payment history for client: ${clientName} (${clientId})`);
+
         
         // Limit and sort the payment history
         const historyQuery = query(
@@ -240,7 +237,6 @@ export default function MonthlyPaymentRequestsComponent() {
         );
         
         const historySnapshot = await getDocs(historyQuery);
-        console.log(`Client ${clientName}: Found ${historySnapshot.docs.length} payment history records`);
         
         const requests = historySnapshot.docs.map(doc => ({
           id: doc.id,
@@ -251,7 +247,6 @@ export default function MonthlyPaymentRequestsComponent() {
         
         // Log each request's payment status
         requests.forEach(req => {
-          console.log(`Request ${req.id} for ${req.clientName}: status=${req.payment_status}, amount=${req.requestedAmount}`);
         });
         
         return requests;
@@ -260,12 +255,6 @@ export default function MonthlyPaymentRequestsComponent() {
       // Execute all requests in parallel instead of sequentially
       const results = await Promise.all(requestPromises);
       const allRequests = results.flat();
-      
-      console.log("--- FETCH RESULTS SUMMARY ---");
-      console.log(`Total requests fetched: ${allRequests.length}`);
-      console.log("Payment statuses present:", [...new Set(allRequests.map(req => req.payment_status))]);
-      console.log("Client names present:", [...new Set(allRequests.map(req => req.clientName))]);
-      console.log("All clientIds:", allRequests.map(req => req.clientId));
       
       // Debug check for undefined or missing fields
       const invalidRequests = allRequests.filter(req => 
@@ -302,34 +291,28 @@ export default function MonthlyPaymentRequestsComponent() {
 
   // Add more debug logs to the filtering logic
   const pendingRequests = useMemo(() => {
-    console.log("--- FILTERING PENDING REQUESTS ---");
-    console.log("Total requests to filter:", paymentRequests.length);
-    
+
     const filtered = paymentRequests.filter(req => {
       const isPending = req.payment_status !== 'approved' && req.payment_status !== 'Approved';
       if (isPending) {
-        console.log(`PENDING: ${req.clientName} - ${req.id} - Status: ${req.payment_status}`);
+
       }
       return isPending;
     });
     
-    console.log(`Found ${filtered.length} pending requests`);
     return filtered;
   }, [paymentRequests]);
   
   const approvedRequests = useMemo(() => {
-    console.log("--- FILTERING APPROVED REQUESTS ---");
-    console.log("Total requests to filter:", paymentRequests.length);
+
     
     const filtered = paymentRequests.filter(req => {
       const isApproved = req.payment_status === 'approved' || req.payment_status === 'Approved';
       if (isApproved) {
-        console.log(`APPROVED: ${req.clientName} - ${req.id} - Status: ${req.payment_status}`);
       }
       return isApproved;
     });
     
-    console.log(`Found ${filtered.length} approved requests`);
     return filtered;
   }, [paymentRequests]);
 
@@ -519,10 +502,7 @@ export default function MonthlyPaymentRequestsComponent() {
     );
   }
 
-  console.log("--- RENDERING COMPONENT ---");
-  console.log("Total payment requests:", paymentRequests.length);
-  console.log("Pending requests:", pendingRequests.length);
-  console.log("Approved requests:", approvedRequests.length);
+
 
   return (
     <StyledEngineProvider injectFirst>

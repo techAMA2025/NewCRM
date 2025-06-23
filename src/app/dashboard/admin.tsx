@@ -202,7 +202,6 @@ const AdminDashboard = () => {
       
       // Create the monthly document ID
       const monthDocId = `${currentMonth}_${currentYear}`;
-      console.log(`Looking for targets in: ${monthDocId}`);
       
       // Check if the monthly document exists
       const monthlyDocRef = doc(db, "targets", monthDocId);
@@ -215,7 +214,6 @@ const AdminDashboard = () => {
       let totalLeadsTargetCount = 0;
       
       if (monthlyDocSnap.exists()) {
-        console.log("Monthly document exists, fetching from subcollection");
         
         // Get all documents from the sales_targets subcollection
         const salesTargetsRef = collection(db, "targets", monthDocId, "sales_targets");
@@ -240,7 +238,6 @@ const AdminDashboard = () => {
           totalLeadsTargetCount += data.convertedLeadsTarget || 0;
         });
       } else {
-        console.log(`Monthly document ${monthDocId} does not exist, checking legacy data`);
         
         // Fallback to legacy target structure
         const targetsRef = collection(db, 'targets');

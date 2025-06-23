@@ -42,7 +42,6 @@ const SalespersonCell = ({
         });
         
         setSalesTeamMembers(salesUsers);
-        console.log('Fetched sales team members:', salesUsers);
       } catch (error) {
         console.error('Error fetching sales team members:', error);
       } finally {

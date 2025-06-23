@@ -14,6 +14,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from 'chart.js';
 import { collection, getDocs, query, where, Timestamp, QueryConstraint, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
@@ -28,7 +29,8 @@ ChartJS.register(
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 // Define type for status and source keys
@@ -260,14 +262,7 @@ export default function SuperAdminDashboard() {
           };
         });
         
-        // Log for debugging
-        console.log("Total leads found:", 
-          sourceTotalCounts.settleloans + sourceTotalCounts.credsettlee + sourceTotalCounts.ama,
-          "Settleloans:", sourceTotalCounts.settleloans,
-          "Credsettlee:", sourceTotalCounts.credsettlee,
-          "AMA:", sourceTotalCounts.ama,
-          "Date Filter:", isFilterApplied ? `${startDate || 'any'} to ${endDate || 'any'}` : 'None'
-        );
+       
         
         // Update chart data
         setLeadsBySourceData({
@@ -278,7 +273,7 @@ export default function SuperAdminDashboard() {
         setSourceTotals(sourceTotalCounts);
         setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching leads data:", error);
+        // Error fetching leads data
         setIsLoading(false);
       }
     };
@@ -335,12 +330,7 @@ export default function SuperAdminDashboard() {
           // Get target month's start and end dates
           const startOfMonth = new Date(targetYear, targetMonth, 1);
           const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
-          
-          console.log(`Looking for payments between:`, 
-            startOfMonth.toISOString(), 
-            endOfMonth.toISOString()
-          );
-          
+      
           let paymentCount = 0;
           
           paymentsSnapshot.forEach((doc) => {
@@ -350,12 +340,7 @@ export default function SuperAdminDashboard() {
               // Convert timestamp string to Date object
               const paymentDate = new Date(payment.timestamp);
               
-              // Debug log to see all payments
-              console.log(`Payment date:`, paymentDate.toISOString(), 
-                `Amount: ${payment.amount}`, 
-                `Status: ${payment.status}`,
-                `In range: ${paymentDate >= startOfMonth && paymentDate <= endOfMonth}`
-              );
+           
               
               // Check if payment is in target month
               if (paymentDate >= startOfMonth && paymentDate <= endOfMonth) {
@@ -368,14 +353,13 @@ export default function SuperAdminDashboard() {
             }
           });
           
-          console.log(`Found ${paymentCount} approved payments for ${targetMonthName} ${targetYear} totaling ₹${paymentBasedRevenue}`);
+
           
         } catch (error) {
-          console.error("Error fetching payments data:", error);
+          // Error fetching payments data
         }
         
-        // Whether we have payment data or not, always fetch target data from the targets collection
-        console.log(`Fetching target data for ${targetMonthName} ${targetYear}`);
+
         
         try {
           const targetMonthDoc = `${targetMonthName}_${targetYear}`;
@@ -395,7 +379,7 @@ export default function SuperAdminDashboard() {
             const targetAmount = targetData.amountCollectedTarget || 0;
             totalTarget += targetAmount;
             
-            console.log(`Target for ${targetData.userName || 'unnamed'}: ₹${targetAmount}`);
+
             
             // Only use collected amount if we don't have payment data
             if (!hasPaymentData) {
@@ -403,11 +387,9 @@ export default function SuperAdminDashboard() {
             }
           });
           
-          console.log(`Found ${targetDataCount} target entries for ${targetMonthName} ${targetYear} with total target: ₹${totalTarget}`);
           
           if (targetDataCount === 0) {
             // If target data isn't found for the selected month, try to find the closest available month's data
-            console.log(`No targets found for ${targetMonthName} ${targetYear}, trying to find closest month data`);
             
             // Try previous months in the same year
             for (let m = targetMonth - 1; m >= 0; m--) {
@@ -419,7 +401,6 @@ export default function SuperAdminDashboard() {
                 const prevTargetsSnapshot = await getDocs(prevTargetsRef);
                 
                 if (!prevTargetsSnapshot.empty) {
-                  console.log(`Found data in previous month: ${prevMonthName} ${targetYear}`);
                   
                   // Use this month's data
                   totalTarget = 0;
@@ -433,17 +414,17 @@ export default function SuperAdminDashboard() {
                     }
                   });
                   
-                  console.log(`Using ${prevMonthName} ${targetYear} total target: ₹${totalTarget}`);
+                 
                   break;
                 }
               } catch (err) {
-                console.log(`Error checking ${prevMonthName}: ${err}`);
+                // Error checking previous month
               }
             }
           }
           
         } catch (error) {
-          console.log(`Error fetching targets for ${targetMonthName} ${targetYear}:`, error);
+          // Error fetching targets for target month
         }
         
         // If we have payment data, use it (most accurate for collections)
@@ -470,11 +451,10 @@ export default function SuperAdminDashboard() {
         salesData.labels = last6MonthsLabels.map(info => info.label);
         salesData.datasets[0].data = monthlyData;
         
-        console.log(`${targetMonthName} ${targetYear} final revenue: ₹${totalCollected}`);
-        console.log(`${targetMonthName} ${targetYear} target: ₹${totalTarget}`);
+        
         
       } catch (error) {
-        console.error("Error fetching sales analytics:", error);
+        // Error fetching sales analytics
       }
     };
     
@@ -514,7 +494,6 @@ export default function SuperAdminDashboard() {
           
           setSalespeople(salespeople);
         } catch (error) {
-          console.log("Error or no data for current month, trying previous month");
           
           // If current month has no data, try previous month
           const prevMonthIndex = (currentMonth - 1 + 12) % 12;
@@ -542,7 +521,7 @@ export default function SuperAdminDashboard() {
           setSalespeople(salespeople);
         }
       } catch (error) {
-        console.error("Error fetching salespeople:", error);
+        // Error fetching salespeople
       }
     };
     
@@ -603,7 +582,7 @@ export default function SuperAdminDashboard() {
               monthlyData[index] = targetData.amountCollected || 0;
             }
           } catch (error) {
-            console.log(`No data for ${monthName} or other error:`, error);
+            // No data for month or other error
             // Continue with other months
           }
         }
@@ -626,7 +605,7 @@ export default function SuperAdminDashboard() {
           monthlyData: monthlyData
         });
       } catch (error) {
-        console.error("Error fetching individual sales data:", error);
+        // Error fetching individual sales data
       }
     };
     
@@ -1087,7 +1066,6 @@ export default function SuperAdminDashboard() {
                 
                 // Log problematic values to console for debugging
                 if (isNaN(amount)) {
-                  console.log('Could not parse loan amount:', bank.loanAmount);
                 } else {
                   analytics.totalLoanAmount += amount;
                   analytics.loanCount++;
@@ -1164,7 +1142,7 @@ export default function SuperAdminDashboard() {
         });
         
       } catch (error) {
-        console.error("Error fetching client analytics:", error);
+        // Error fetching client analytics
       }
     };
     
@@ -1292,16 +1270,13 @@ export default function SuperAdminDashboard() {
           try {
             const paymentHistorySnapshot = await getDocs(paymentHistoryQuery);
             
-            console.log(`Client ${clientId}: Found ${paymentHistorySnapshot.docs.length} approved payments`);
             
             // Process each payment record
             paymentHistorySnapshot.forEach((paymentDoc) => {
               const payment = paymentDoc.data();
-              console.log(`Processing payment: ${paymentDoc.id}`, payment);
               
               // Add payment amount regardless of date first to debug
               currentMonthCollected += payment.requestedAmount || 0;
-              console.log(`Current total: ${currentMonthCollected}`);
               
               // Still perform the date checks for logging/debugging
               let isCurrentMonth = false;
@@ -1313,7 +1288,6 @@ export default function SuperAdminDashboard() {
                 
                 if (paymentDate >= currentMonthStart && paymentDate <= currentMonthEnd) {
                   isCurrentMonth = true;
-                  console.log(`Payment ${paymentDoc.id} matches current month by paymentDate`);
                 }
               } 
               // Check using dateApproved
@@ -1323,7 +1297,6 @@ export default function SuperAdminDashboard() {
                 
                 if (approvalDate >= currentMonthStart && approvalDate <= currentMonthEnd) {
                   isCurrentMonth = true;
-                  console.log(`Payment ${paymentDoc.id} matches current month by dateApproved`);
                 }
               }
               // Check using requestDate as another fallback
@@ -1333,27 +1306,24 @@ export default function SuperAdminDashboard() {
                 
                 if (requestDate >= currentMonthStart && requestDate <= currentMonthEnd) {
                   isCurrentMonth = true;
-                  console.log(`Payment ${paymentDoc.id} matches current month by requestDate`);
                 }
               }
               // Check using monthNumber as last resort
               else if (payment.monthNumber === currentMonth + 1) {
                 isCurrentMonth = true;
-                console.log(`Payment ${paymentDoc.id} matches current month by monthNumber`);
               }
               
               // Log if payment is not identified as current month
               if (!isCurrentMonth) {
-                console.log(`Payment ${paymentDoc.id} does NOT match current month criteria`);
+                // Payment does not match current month criteria
               }
             });
           } catch (error) {
-            console.error(`Error getting payment history for client ${clientId}:`, error);
+            // Error getting payment history for client
           }
         }
         
-        // Log final calculation
-        console.log("Final current month collections:", currentMonthCollected);
+
         
         // Update current month's pending amount by subtracting collected from total
         currentMonthPending = Math.max(0, currentMonthPending - currentMonthCollected);
@@ -1374,20 +1344,9 @@ export default function SuperAdminDashboard() {
           pending: currentMonthPending
         });
         
-        console.log("Payment Analytics:", {
-          totalPayments: analytics.totalPaymentsAmount,
-          totalPaid: analytics.totalPaidAmount,
-          totalPending: analytics.totalPendingAmount,
-          clientCount: analytics.clientCount,
-          currentMonth: {
-            collected: currentMonthCollected,
-            pending: currentMonthPending,
-          },
-          completionRate
-        });
         
       } catch (error) {
-        console.error("Error fetching payment analytics:", error);
+        // Error fetching payment analytics
       }
     };
     

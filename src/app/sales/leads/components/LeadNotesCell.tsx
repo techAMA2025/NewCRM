@@ -38,7 +38,6 @@ const LeadNotesCell = ({ lead, fetchNotesHistory, crmDb, user }: LeadNotesCellPr
       if (!loggedInUser) {
         try {
           const userString = localStorage.getItem('user');
-          console.log('User from localStorage:', userString); // Debug log
           loggedInUser = userString ? JSON.parse(userString) : {};
         } catch (e) {
           console.error('Error parsing user from localStorage:', e);
@@ -52,8 +51,7 @@ const LeadNotesCell = ({ lead, fetchNotesHistory, crmDb, user }: LeadNotesCellPr
                        loggedInUser?.email || 
                        'Unknown User';
       
-      console.log('Using user name:', userName); // Debug log
-      console.log('Note content:', note); // Debug log
+
       
       // Create the note object
       const noteData = {
@@ -65,12 +63,11 @@ const LeadNotesCell = ({ lead, fetchNotesHistory, crmDb, user }: LeadNotesCellPr
         displayDate: new Date().toLocaleString()
       };
       
-      console.log('Saving note data:', noteData); // Debug log
+
       
       // Add to history subcollection within crm_leads
       const historyCollectionRef = collection(crmDb, 'crm_leads', lead.id, 'history');
       const docRef = await addDoc(historyCollectionRef, noteData);
-      console.log('Note saved with ID:', docRef.id); // Debug log
       
       // Update the lead with reference to latest note
       const leadRef = doc(crmDb, 'crm_leads', lead.id);

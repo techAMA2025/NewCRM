@@ -83,7 +83,6 @@ const LeadsFilters = ({
 
   // Debug the search functionality
   useEffect(() => {
-    console.log('Search query updated:', searchQuery);
   }, [searchQuery]);
 
   // Fetch sales users

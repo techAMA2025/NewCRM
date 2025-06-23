@@ -227,19 +227,15 @@ Below is a draft email you can send to your bank or financial institution to ini
 
       setLoadingClients(true);
       try {
-        console.log("Fetching clients from Firestore...");
 
         // Get advocate name from current user (assuming email format 'name@domain.com')
         const advocateEmail = auth.currentUser?.email;
-        console.log("Current user email:", advocateEmail);
 
         const clientsRef = collection(db, "clients");
         // Query all clients without filtering to ensure we have data
         const clientQuery = query(clientsRef);
 
-        console.log("Executing Firestore query...");
         const snapshot = await getDocs(clientQuery);
-        console.log(`Found ${snapshot.size} clients in Firestore`);
 
         const clientsList: Client[] = [];
 
@@ -256,9 +252,7 @@ Below is a draft email you can send to your bank or financial institution to ini
           }
         });
 
-        console.log(
-          `Processed ${clientsList.length} valid clients with name and email`
-        );
+
         setClients(clientsList);
       } catch (error) {
         console.error("Error fetching clients:", error);
@@ -748,12 +742,11 @@ Below is a draft email you can send to your bank or financial institution to ini
   // Handle form submission
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Starting email submission process...");
 
     // Validate form
     if (recipients.length === 0) {
       toast.error("Please add at least one recipient");
-      console.log("Validation failed: No recipients");
+
       return;
     }
 
@@ -763,13 +756,11 @@ Below is a draft email you can send to your bank or financial institution to ini
       : getCurrentSubjectText();
     if (!currentSubject.trim()) {
       toast.error("Please enter a subject");
-      console.log("Validation failed: No subject");
       return;
     }
 
     if (!emailContent.trim()) {
       toast.error("Please enter email content");
-      console.log("Validation failed: No email content");
       return;
     }
 
@@ -777,7 +768,6 @@ Below is a draft email you can send to your bank or financial institution to ini
     setLoading(true);
 
     try {
-      console.log("Converting file attachments to base64...");
       // Convert file attachments to base64
       const processedAttachments = await Promise.all(
         attachments.map(async (attachment) => {
@@ -789,9 +779,6 @@ Below is a draft email you can send to your bank or financial institution to ini
             data: base64,
           };
         })
-      );
-      console.log(
-        `Processed ${processedAttachments.length} attachments successfully`
       );
 
       // Prepare email data for the cloud function
@@ -805,33 +792,19 @@ Below is a draft email you can send to your bank or financial institution to ini
         bankId: selectedBank || undefined, // Add bank reference if selected
       };
 
-      console.log("Email data prepared:", {
-        subject: currentSubject,
-        recipientCount: recipients.length,
-        ccRecipientCount: ccRecipients.length,
-        recipientTypes: recipients.map((r) => r.type),
-        attachmentCount: processedAttachments.length,
-        contentLength: emailContent.length,
-        clientId: recipients.find((r) => r.type === "client")?.clientId,
-        bankId: selectedBank || undefined,
-      });
 
       // Make sure user is authenticated
       if (!auth.currentUser) {
         toast.error("You must be logged in to send emails");
-        console.log("Authentication error: User not logged in");
         setLoading(false);
         return;
       }
 
-      console.log("User authenticated, preparing to call cloud function...");
       // Call the sendEmail cloud function
       const sendEmailFn = httpsCallable(functions, "sendEmail");
-      console.log("Calling sendEmail cloud function...");
 
       try {
         const result = await sendEmailFn(emailData);
-        console.log("Cloud function response received:", result);
 
         // Cast result to the expected return type
         const response = result.data as {
@@ -841,10 +814,6 @@ Below is a draft email you can send to your bank or financial institution to ini
         };
 
         if (response.success) {
-          console.log(
-            "Email sent successfully with messageId:",
-            response.messageId
-          );
           toast.success("Email sent successfully!");
 
           // Reset form
@@ -904,7 +873,6 @@ Below is a draft email you can send to your bank or financial institution to ini
         `Something went wrong while preparing your email. Please try again.`
       );
     } finally {
-      console.log("Email submission process completed");
       setLoading(false);
     }
   };
