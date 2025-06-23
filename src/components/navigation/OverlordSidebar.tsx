@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, createContext, useContext, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut, FiUserPlus, FiShare2, FiBriefcase, FiCalendar, FiCheckSquare, FiBarChart, FiPieChart } from 'react-icons/fi';
@@ -6,6 +6,38 @@ import { FaBalanceScale, FaMoneyBillWave, FaUserFriends, FaFolder, FaFileAlt, Fa
 import { getAuth, signOut } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 import { app } from '@/firebase/firebase';
+
+// Context for sidebar state
+interface SidebarContextType {
+  isExpanded: boolean;
+  toggleSidebar: () => void;
+}
+
+const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
+
+// Hook to use sidebar context
+export const useSidebar = () => {
+  const context = useContext(SidebarContext);
+  if (context === undefined) {
+    throw new Error('useSidebar must be used within a SidebarProvider');
+  }
+  return context;
+};
+
+// Sidebar Provider Component
+export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const toggleSidebar = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  return (
+    <SidebarContext.Provider value={{ isExpanded, toggleSidebar }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+};
 
 interface NavItemProps {
   href: string;
@@ -37,10 +69,10 @@ const NavItem: React.FC<NavItemProps> = ({ href, icon, label, isActive }) => {
 const OverlordSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const [expanded, setExpanded] = useState(true);
+  const { isExpanded, toggleSidebar } = useSidebar();
   const [username, setUsername] = useState<string>('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Fetch username from localStorage on client-side only
     if (typeof window !== 'undefined') {
       const storedUsername = localStorage.getItem('userName');
@@ -83,15 +115,13 @@ const OverlordSidebar: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col transition-all duration-300 bg-gray-900 shadow-xl"
+    <div className="fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 bg-gray-900 shadow-xl"
          style={{ 
-           width: expanded ? '250px' : '80px',
-           transform: 'scale(1)',
-           transformOrigin: 'left top'
+           width: isExpanded ? '250px' : '80px',
          }}>
       <div className="sticky top-0 z-10 bg-gray-900">
         <div className="flex items-center justify-between px-2 py-5">
-          {expanded ? (
+          {isExpanded ? (
             <div className="flex items-center">
               <div className="p-2 mr-2 bg-indigo-600 rounded-lg">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -115,11 +145,11 @@ const OverlordSidebar: React.FC = () => {
             </div>
           )}
           <button 
-            onClick={() => setExpanded(!expanded)} 
+            onClick={toggleSidebar} 
             className="p-1 text-gray-400 rounded-full hover:bg-gray-800 hover:text-white"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {expanded ? (
+              {isExpanded ? (
                 <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               ) : (
                 <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -137,7 +167,7 @@ const OverlordSidebar: React.FC = () => {
               key={item.href}
               href={item.href}
               icon={item.icon}
-              label={expanded ? item.label : ''}
+              label={isExpanded ? item.label : ''}
               isActive={pathname === item.href}
             />
           ))}
@@ -151,7 +181,7 @@ const OverlordSidebar: React.FC = () => {
           className="flex items-center w-full px-4 py-3 text-gray-300 transition-all duration-200 rounded-lg hover:bg-red-700 hover:text-white"
         >
           <FiLogOut className="mr-3 text-md" />
-          {expanded && <span className="font-medium">Logout</span>}
+          {isExpanded && <span className="font-medium">Logout</span>}
         </button>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import OverlordSidebar, { SidebarProvider, useSidebar } from '@/components/navigation/OverlordSidebar';
 import BillcutSidebar from '@/components/navigation/BillcutSidebar';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import {
@@ -139,7 +139,7 @@ const getStatusBadgeColor = (status: string) => {
   }
 };
 
-const BillcutLeadReportPage = () => {
+const BillcutLeadReportContent = () => {
   const [leads, setLeads] = useState<BillcutLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -155,6 +155,7 @@ const BillcutLeadReportPage = () => {
     endDate: ''
   });
   const router = useRouter();
+  const { isExpanded } = useSidebar();
 
   // Function to navigate to billcut leads page with filters
   const navigateToLeadsWithFilters = (salesperson: string, status: string) => {
@@ -614,7 +615,12 @@ const BillcutLeadReportPage = () => {
     return (
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
         {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
-        <div className="flex-1 flex items-center justify-center">
+        <div 
+          className="flex-1 flex items-center justify-center transition-all duration-300"
+          style={{ 
+            marginLeft: userRole === 'overlord' ? (isExpanded ? '250px' : '80px') : '0'
+          }}
+        >
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">Loading analytics data...</p>
@@ -628,7 +634,12 @@ const BillcutLeadReportPage = () => {
     return (
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
         {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
-        <div className="flex-1 flex items-center justify-center">
+        <div 
+          className="flex-1 flex items-center justify-center transition-all duration-300"
+          style={{ 
+            marginLeft: userRole === 'overlord' ? (isExpanded ? '250px' : '80px') : '0'
+          }}
+        >
           <div className="text-center">
             <p className="text-lg text-gray-600 dark:text-gray-300">No data available for analysis</p>
           </div>
@@ -640,7 +651,12 @@ const BillcutLeadReportPage = () => {
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
-      <div className="flex-1 p-8">
+      <div 
+        className="flex-1 p-8 transition-all duration-300"
+        style={{ 
+          marginLeft: userRole === 'overlord' ? (isExpanded ? '250px' : '80px') : '0'
+        }}
+      >
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
@@ -1408,6 +1424,14 @@ const BillcutLeadReportPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const BillcutLeadReportPage = () => {
+  return (
+    <SidebarProvider>
+      <BillcutLeadReportContent />
+    </SidebarProvider>
   );
 };
 
