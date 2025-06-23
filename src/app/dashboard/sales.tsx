@@ -773,7 +773,7 @@ export default function SalesDashboard() {
               <Card className="border-0 bg-gradient-to-br from-red-800 to-red-900 shadow-xl">
                 <CardContent className="p-4">
                   <div className="text-2xl font-bold text-red-400">{leadAnalytics.leadsNeedingWork}</div>
-                  <p className="text-sm text-gray-300">Need Work</p>
+                  <p className="text-sm text-gray-300">Need To Work On</p>
                 </CardContent>
               </Card>
               
