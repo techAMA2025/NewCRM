@@ -33,7 +33,7 @@ import {
   PolarRadiusAxis,
   Radar
 } from 'recharts';
-import { FiUsers, FiTrendingUp, FiTarget, FiDollarSign, FiPhone, FiMail, FiMapPin, FiCalendar, FiActivity, FiPieChart, FiSun, FiMoon } from 'react-icons/fi';
+import { FiUsers, FiTrendingUp, FiTarget, FiDollarSign, FiPhone, FiMail, FiMapPin, FiCalendar, FiActivity, FiPieChart, FiSun, FiMoon, FiFilter, FiX } from 'react-icons/fi';
 
 // Types
 interface BillcutLead {
@@ -148,6 +148,12 @@ const BillcutLeadReportPage = () => {
   });
   const [userRole, setUserRole] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
+  const [customDateRange, setCustomDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
   const router = useRouter();
 
   // Function to navigate to billcut leads page with filters
@@ -178,38 +184,61 @@ const BillcutLeadReportPage = () => {
 
     switch (filter) {
       case 'today':
-        // Set to start of current day (00:00:00)
         startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
-        // Set to current time
+        endDate = new Date();
+        break;
+      case 'yesterday':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(today);
+        endDate.setDate(today.getDate() - 1);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'thisWeek':
+        const dayOfWeek = today.getDay();
+        const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        startDate = new Date(today.setDate(diff));
+        startDate.setHours(0, 0, 0, 0);
         endDate = new Date();
         break;
       case 'thisMonth':
-        // Set to start of current month (00:00:00)
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
         startDate.setHours(0, 0, 0, 0);
-        // Set to current time
         endDate = new Date();
         break;
+      case 'lastMonth':
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
       case 'last30Days':
-        // Set to 30 days ago at start of day (00:00:00)
         startDate = new Date(today);
         startDate.setDate(today.getDate() - 30);
         startDate.setHours(0, 0, 0, 0);
-        // Set to current time
         endDate = new Date();
         break;
       case 'last60Days':
-        // Set to 60 days ago at start of day (00:00:00)
         startDate = new Date(today);
         startDate.setDate(today.getDate() - 60);
         startDate.setHours(0, 0, 0, 0);
-        // Set to current time
+        endDate = new Date();
+        break;
+      case 'last90Days':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 90);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        break;
+      case 'thisYear':
+        startDate = new Date(today.getFullYear(), 0, 1);
+        startDate.setHours(0, 0, 0, 0);
         endDate = new Date();
         break;
     }
 
-    // Convert to local date strings to ensure correct timezone handling
     const formatDate = (date: Date) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -221,6 +250,101 @@ const BillcutLeadReportPage = () => {
       startDate: formatDate(startDate),
       endDate: formatDate(endDate)
     });
+    setSelectedPreset(filter);
+    setShowDatePicker(false);
+  };
+
+  // Function to clear date filters
+  const clearDateFilters = () => {
+    setDateRange({ startDate: '', endDate: '' });
+    setSelectedPreset('');
+    setShowDatePicker(false);
+  };
+
+  // Function to format date for display
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  // Function to get current date range display text
+  const getDateRangeDisplay = () => {
+    if (!dateRange.startDate && !dateRange.endDate) {
+      return 'All Time';
+    }
+    if (dateRange.startDate && dateRange.endDate) {
+      return `${formatDateForDisplay(dateRange.startDate)} - ${formatDateForDisplay(dateRange.endDate)}`;
+    }
+    if (dateRange.startDate) {
+      return `From ${formatDateForDisplay(dateRange.startDate)}`;
+    }
+    if (dateRange.endDate) {
+      return `Until ${formatDateForDisplay(dateRange.endDate)}`;
+    }
+    return 'All Time';
+  };
+
+  // Function to handle custom date range changes
+  const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
+    setCustomDateRange(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Function to apply custom date range
+  const applyCustomDateRange = () => {
+    setDateRange(customDateRange);
+    setSelectedPreset('');
+    setShowDatePicker(false);
+  };
+
+  // Function to cancel custom date selection
+  const cancelCustomDateSelection = () => {
+    setCustomDateRange(dateRange);
+    setShowDatePicker(false);
+  };
+
+  // Function to get current month and year for display
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    return {
+      month: now.getMonth(),
+      year: now.getFullYear()
+    };
+  };
+
+  // Function to get month name
+  const getMonthName = (monthIndex: number) => {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[monthIndex];
+  };
+
+  // Function to generate calendar days for a month
+  const generateCalendarDays = (year: number, month: number) => {
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days: Array<{ day: number | string; isEmpty: boolean }> = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push({ day: '', isEmpty: true });
+    }
+    
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push({ day, isEmpty: false });
+    }
+    
+    return days;
   };
 
   // Check user role and theme preference on component mount
@@ -235,6 +359,13 @@ const BillcutLeadReportPage = () => {
       document.documentElement.classList.add('dark');
     }
   }, []);
+
+  // Initialize custom date range when date picker is opened
+  useEffect(() => {
+    if (showDatePicker) {
+      setCustomDateRange(dateRange);
+    }
+  }, [showDatePicker, dateRange]);
 
   // Toggle dark mode
   const toggleDarkMode = () => {
@@ -529,61 +660,293 @@ const BillcutLeadReportPage = () => {
             </button>
           </div>
           
-          {/* Date Range Filter */}
-          <div className="my-4 flex gap-4 items-center">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
-              <input
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
-              <input
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quick Filters</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleQuickDateFilter('today')}
-                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => handleQuickDateFilter('thisMonth')}
-                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
-                >
-                  This Month
-                </button>
-                <button
-                  onClick={() => handleQuickDateFilter('last30Days')}
-                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
-                >
-                  Last 30 Days
-                </button>
-                <button
-                  onClick={() => handleQuickDateFilter('last60Days')}
-                  className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
-                >
-                  Last 60 Days
-                </button>
-                <button
-                  onClick={() => setDateRange({ startDate: '', endDate: '' })}
-                  className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
-                >
-                  Clear
-                </button>
+          {/* Date Range Filter - New User-Friendly Design */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* Date Range Display and Controls */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <FiCalendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Date Range
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowDatePicker(!showDatePicker)}
+                        className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center gap-2"
+                      >
+                        <span className="font-medium">{getDateRangeDisplay()}</span>
+                        <FiFilter className="w-4 h-4" />
+                      </button>
+                      {(dateRange.startDate || dateRange.endDate) && (
+                        <button
+                          onClick={clearDateFilters}
+                          className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+                          title="Clear filters"
+                        >
+                          <FiX className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Filter Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'today', label: 'Today', color: 'bg-blue-500 hover:bg-blue-600' },
+                    { key: 'yesterday', label: 'Yesterday', color: 'bg-gray-500 hover:bg-gray-600' },
+                    { key: 'thisWeek', label: 'This Week', color: 'bg-green-500 hover:bg-green-600' },
+                    { key: 'thisMonth', label: 'This Month', color: 'bg-purple-500 hover:bg-purple-600' },
+                    { key: 'lastMonth', label: 'Last Month', color: 'bg-orange-500 hover:bg-orange-600' },
+                    { key: 'last30Days', label: 'Last 30 Days', color: 'bg-indigo-500 hover:bg-indigo-600' },
+                    { key: 'last60Days', label: 'Last 60 Days', color: 'bg-teal-500 hover:bg-teal-600' },
+                    { key: 'last90Days', label: 'Last 90 Days', color: 'bg-pink-500 hover:bg-pink-600' },
+                    { key: 'thisYear', label: 'This Year', color: 'bg-red-500 hover:bg-red-600' }
+                  ].map(({ key, label, color }) => (
+                    <button
+                      key={key}
+                      onClick={() => handleQuickDateFilter(key)}
+                      className={`px-3 py-1.5 text-white rounded-lg text-sm font-medium transition-colors ${
+                        selectedPreset === key ? 'ring-2 ring-offset-2 ring-white dark:ring-offset-gray-800' : ''
+                      } ${color}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Custom Date Range Picker */}
+              {showDatePicker && (
+                <div className="lg:ml-4 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Start Date Picker */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-900 dark:text-white">Start Date</h4>
+                      <div className="space-y-3">
+                        {/* Month/Year Selection */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Month
+                            </label>
+                            <select
+                              value={customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month}
+                              onChange={(e) => {
+                                const month = parseInt(e.target.value);
+                                const year = customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year;
+                                const day = customDateRange.startDate ? new Date(customDateRange.startDate).getDate() : 1;
+                                const newDate = new Date(year, month, day);
+                                handleCustomDateChange('startDate', newDate.toISOString().split('T')[0]);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
+                            >
+                              {Array.from({ length: 12 }, (_, i) => (
+                                <option key={i} value={i}>{getMonthName(i)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Year
+                            </label>
+                            <select
+                              value={customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year}
+                              onChange={(e) => {
+                                const year = parseInt(e.target.value);
+                                const month = customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month;
+                                const day = customDateRange.startDate ? new Date(customDateRange.startDate).getDate() : 1;
+                                const newDate = new Date(year, month, day);
+                                handleCustomDateChange('startDate', newDate.toISOString().split('T')[0]);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
+                            >
+                              {Array.from({ length: 10 }, (_, i) => {
+                                const year = new Date().getFullYear() - 5 + i;
+                                return (
+                                  <option key={year} value={year}>{year}</option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                        </div>
+                        
+                        {/* Calendar Grid */}
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                          <div className="grid grid-cols-7 gap-1 text-xs">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                              <div key={day} className="p-1 text-center text-gray-500 dark:text-gray-400 font-medium">
+                                {day}
+                              </div>
+                            ))}
+                            {generateCalendarDays(
+                              customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year,
+                              customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month
+                            ).map(({ day, isEmpty }, index) => (
+                              <button
+                                key={index}
+                                disabled={isEmpty}
+                                onClick={() => {
+                                  if (!isEmpty && typeof day === 'number') {
+                                    const year = customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year;
+                                    const month = customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month;
+                                    const newDate = new Date(year, month, day);
+                                    handleCustomDateChange('startDate', newDate.toISOString().split('T')[0]);
+                                  }
+                                }}
+                                className={`p-1 text-xs rounded hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
+                                  isEmpty ? 'invisible' : 'cursor-pointer'
+                                } ${
+                                  customDateRange.startDate && 
+                                  typeof day === 'number' &&
+                                  new Date(customDateRange.startDate).getDate() === day &&
+                                  new Date(customDateRange.startDate).getMonth() === (customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month) &&
+                                  new Date(customDateRange.startDate).getFullYear() === (customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year)
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-gray-900 dark:text-white'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* End Date Picker */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-gray-900 dark:text-white">End Date</h4>
+                      <div className="space-y-3">
+                        {/* Month/Year Selection */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Month
+                            </label>
+                            <select
+                              value={customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month}
+                              onChange={(e) => {
+                                const month = parseInt(e.target.value);
+                                const year = customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year;
+                                const day = customDateRange.endDate ? new Date(customDateRange.endDate).getDate() : 1;
+                                const newDate = new Date(year, month, day);
+                                handleCustomDateChange('endDate', newDate.toISOString().split('T')[0]);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
+                            >
+                              {Array.from({ length: 12 }, (_, i) => (
+                                <option key={i} value={i}>{getMonthName(i)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Year
+                            </label>
+                            <select
+                              value={customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year}
+                              onChange={(e) => {
+                                const year = parseInt(e.target.value);
+                                const month = customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month;
+                                const day = customDateRange.endDate ? new Date(customDateRange.endDate).getDate() : 1;
+                                const newDate = new Date(year, month, day);
+                                handleCustomDateChange('endDate', newDate.toISOString().split('T')[0]);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
+                            >
+                              {Array.from({ length: 10 }, (_, i) => {
+                                const year = new Date().getFullYear() - 5 + i;
+                                return (
+                                  <option key={year} value={year}>{year}</option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                        </div>
+                        
+                        {/* Calendar Grid */}
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                          <div className="grid grid-cols-7 gap-1 text-xs">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                              <div key={day} className="p-1 text-center text-gray-500 dark:text-gray-400 font-medium">
+                                {day}
+                              </div>
+                            ))}
+                            {generateCalendarDays(
+                              customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year,
+                              customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month
+                            ).map(({ day, isEmpty }, index) => (
+                              <button
+                                key={index}
+                                disabled={isEmpty}
+                                onClick={() => {
+                                  if (!isEmpty && typeof day === 'number') {
+                                    const year = customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year;
+                                    const month = customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month;
+                                    const newDate = new Date(year, month, day);
+                                    handleCustomDateChange('endDate', newDate.toISOString().split('T')[0]);
+                                  }
+                                }}
+                                className={`p-1 text-xs rounded hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
+                                  isEmpty ? 'invisible' : 'cursor-pointer'
+                                } ${
+                                  customDateRange.endDate && 
+                                  typeof day === 'number' &&
+                                  new Date(customDateRange.endDate).getDate() === day &&
+                                  new Date(customDateRange.endDate).getMonth() === (customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month) &&
+                                  new Date(customDateRange.endDate).getFullYear() === (customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year)
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-gray-900 dark:text-white'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <button
+                      onClick={cancelCustomDateSelection}
+                      className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={applyCustomDateRange}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium"
+                    >
+                      Apply Date Range
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Active Filters Display */}
+            {(dateRange.startDate || dateRange.endDate) && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <FiFilter className="w-4 h-4" />
+                  <span>Active filters:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {getDateRangeDisplay()}
+                  </span>
+                  {selectedPreset && (
+                    <span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-2 py-1 rounded-full">
+                      {selectedPreset.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Key Metrics */}
