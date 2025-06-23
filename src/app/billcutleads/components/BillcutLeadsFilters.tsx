@@ -57,15 +57,21 @@ const BillcutLeadsFilters = ({
   // New search implementation
   const [searchInput, setSearchInput] = useState(searchQuery);
   
+  // State to force re-render of date inputs when date changes
+  const [dateKey, setDateKey] = useState(new Date().toDateString());
+  
   // Set default date values on component mount
   useEffect(() => {
     const today = new Date();
     const fourDaysAgo = new Date(today);
     fourDaysAgo.setDate(today.getDate() - 4);
 
-    // Format dates as YYYY-MM-DD
+    // Format dates as YYYY-MM-DD using consistent formatting
     const formatDate = (date: Date) => {
-      return date.toISOString().split('T')[0];
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
 
     // Only set default values if dates are empty
@@ -76,6 +82,49 @@ const BillcutLeadsFilters = ({
       setToDate(formatDate(today));
     }
   }, []);
+  
+  // Force refresh of date inputs at midnight to prevent cache issues
+  useEffect(() => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    
+    const timeUntilMidnight = tomorrow.getTime() - now.getTime();
+    
+    const timer = setTimeout(() => {
+      // Force a re-render by updating a state that affects the date inputs
+      // This will refresh the max date attributes without reloading the page
+      const dateInputs = document.querySelectorAll('input[type="date"]');
+      dateInputs.forEach((input) => {
+        const dateInput = input as HTMLInputElement;
+        if (dateInput.max) {
+          const currentDate = new Date();
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(currentDate.getDate()).padStart(2, '0');
+          dateInput.max = `${year}-${month}-${day}`;
+        }
+      });
+      
+      // Update the dateKey to force re-render of date inputs
+      setDateKey(new Date().toDateString());
+    }, timeUntilMidnight);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Update dateKey daily to ensure date inputs stay current
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentDate = new Date().toDateString();
+      if (currentDate !== dateKey) {
+        setDateKey(currentDate);
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [dateKey]);
   
   // Create a more efficient debounced search function
   const debouncedSearch = useCallback(
@@ -134,11 +183,17 @@ const BillcutLeadsFilters = ({
     fetchSalesUsers();
   }, []);
 
-  // Format date for input max attribute
-  const today = useMemo(() => {
+  // Get current date for max attribute - calculate fresh each time
+  const getCurrentDate = () => {
     const date = new Date();
-    return date.toISOString().split('T')[0];
-  }, []);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Get current date string for key prop (updates daily)
+  const currentDateKey = getCurrentDate();
 
   // Clear date filters
   const clearDateFilters = () => {
@@ -307,10 +362,11 @@ const BillcutLeadsFilters = ({
           <div className="space-y-1">
             <label className="block text-xs text-gray-400">From Date</label>
             <input
+              key={`from-date-${dateKey}`}
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              max={toDate || today}
+              max={toDate || getCurrentDate()}
               className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
             />
           </div>
@@ -319,11 +375,12 @@ const BillcutLeadsFilters = ({
           <div className="space-y-1">
             <label className="block text-xs text-gray-400">To Date</label>
             <input
+              key={`to-date-${dateKey}`}
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
               min={fromDate}
-              max={today}
+              max={getCurrentDate()}
               className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
             />
           </div>

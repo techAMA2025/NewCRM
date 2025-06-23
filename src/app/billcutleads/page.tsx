@@ -102,17 +102,25 @@ const extractPincodeFromAddress = (address: string): string => {
   return pincodeMatch ? pincodeMatch[0] : '';
 };
 
+// Utility function for consistent date formatting
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Set default date range to current month to avoid loading all leads initially
 const getDefaultFromDate = () => {
   const now = new Date();
   const fourDaysAgo = new Date(now);
   fourDaysAgo.setDate(now.getDate() - 4);
-  return fourDaysAgo.toISOString().split('T')[0];
+  return formatDateForInput(fourDaysAgo);
 };
 
 const getDefaultToDate = () => {
   const now = new Date();
-  return now.toISOString().split('T')[0];
+  return formatDateForInput(now);
 };
 
 const BillCutLeadsPage = () => {
