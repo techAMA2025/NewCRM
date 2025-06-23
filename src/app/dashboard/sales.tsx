@@ -222,18 +222,15 @@ export default function SalesDashboard() {
 
   const fetchTargetDataByUserName = async (userName: string) => {
     try {
-      console.log(`======= DEBUGGING: Fetching targets for ${userName} for ${currentMonth} ${currentYear} =======`);
       
       // Create the monthly document ID
       const monthDocId = `${currentMonth}_${currentYear}`;
-      console.log(`Looking for targets in: ${monthDocId}`);
       
       // First get the monthly document to see if it exists
       const monthlyDocRef = doc(db, "targets", monthDocId);
       const monthlyDocSnap = await getDoc(monthlyDocRef);
       
       if (monthlyDocSnap.exists()) {
-        console.log("Monthly document exists, checking subcollection");
         
         // Query the subcollection for this user
         const salesTargetsQuery = query(
@@ -242,16 +239,13 @@ export default function SalesDashboard() {
         );
         
         const querySnapshot = await getDocs(salesTargetsQuery);
-        console.log("User target query snapshot size:", querySnapshot.size);
         
         if (!querySnapshot.empty) {
           // Found user's target in subcollection
           const targetDoc = querySnapshot.docs[0];
           const data = targetDoc.data() as TargetData;
-          console.log("Target data found in subcollection:", data);
           setTargetData(data);
         } else {
-          console.log("No target found for this user in subcollection");
           
           // Try finding by userId instead if userName doesn't match
           const salesTargetsAltQuery = collection(db, "targets", monthDocId, "sales_targets");
@@ -264,7 +258,6 @@ export default function SalesDashboard() {
             // Check if this looks like the right user (case-insensitive comparison)
             if (data.userName && 
                 data.userName.toLowerCase().includes(userName.toLowerCase())) {
-              console.log("Found possible match by partial name:", data.userName);
               setTargetData(data as TargetData);
               foundTarget = true;
             }
@@ -283,7 +276,6 @@ export default function SalesDashboard() {
           const prevMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][prevMonthIndex];
           const prevYear = new Date().getMonth() === 0 ? currentYear - 1 : currentYear;
           
-          console.log(`Trying previous month: ${prevMonth}_${prevYear}`);
           
           const prevMonthDocRef = doc(db, "targets", `${prevMonth}_${prevYear}`);
           const prevMonthDocSnap = await getDoc(prevMonthDocRef);
@@ -300,7 +292,6 @@ export default function SalesDashboard() {
             if (!prevQuerySnapshot.empty) {
               const prevTargetDoc = prevQuerySnapshot.docs[0];
               const prevData = prevTargetDoc.data() as TargetData;
-              console.log("Found target in previous month:", prevData);
               setTargetData(prevData);
             }
           }
@@ -317,7 +308,6 @@ export default function SalesDashboard() {
         if (!legacyQuerySnapshot.empty) {
           const legacyDoc = legacyQuerySnapshot.docs[0];
           const legacyData = legacyDoc.data() as TargetData;
-          console.log("Found legacy target data:", legacyData);
           setTargetData(legacyData);
         }
       }
@@ -330,7 +320,6 @@ export default function SalesDashboard() {
 
   const fetchLeadData = async (userName: string) => {
     try {
-      console.log(`======= DEBUGGING: Fetching leads for ${userName} for ${currentMonth} ${currentYear} =======`);
       
       // Query leads assigned to the current user
       const leadsQuery = query(
@@ -339,7 +328,6 @@ export default function SalesDashboard() {
       );
       
       const querySnapshot = await getDocs(leadsQuery);
-      console.log(`Found ${querySnapshot.size} total leads for ${userName}`);
       
       if (!querySnapshot.empty) {
         // Count total leads and converted leads for the selected month
@@ -356,36 +344,27 @@ export default function SalesDashboard() {
         let leadIndex = 0;
         querySnapshot.forEach((doc) => {
           const leadData = doc.data();
-          console.log(`\nProcessing lead #${leadIndex+1} (ID: ${doc.id}):`);
           
           // Get date from timestamp
           let date;
           if (leadData.timestamp) {
             date = leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp);
-            console.log(`  Lead timestamp: ${date.toISOString()}`);
           } else {
             date = new Date(); // Fallback
-            console.log(`  Lead has no timestamp, using current date: ${date.toISOString()}`);
           }
           
           const leadMonth = date.toLocaleString('default', { month: 'short' });
           const leadYear = date.getFullYear();
           
-          console.log(`  Lead date: ${leadMonth} ${leadYear}`);
-          console.log(`  Current filter: ${currentMonth} ${currentYear}`);
-          console.log(`  Does this lead match current filter? ${leadMonth === currentMonth && leadYear === currentYear ? 'YES' : 'NO'}`);
-          
           // Initialize month in monthly data if not exists
           if (!monthlyData[leadMonth]) {
             monthlyData[leadMonth] = { total: 0, converted: 0 };
-            console.log(`  Initialized monthly data for ${leadMonth}`);
           }
           
           // Always add to monthly chart data regardless of filter
           monthlyData[leadMonth].total += 1;
           
           const isConverted = leadData.convertedToClient === true || leadData.status === "Converted";
-          console.log(`  Is lead converted? ${isConverted ? 'YES' : 'NO'} (status: ${leadData.status})`);
           
           if (isConverted) {
             monthlyData[leadMonth].converted += 1;
@@ -394,11 +373,9 @@ export default function SalesDashboard() {
           // ONLY count for current month metrics if matching filter
           if (leadMonth === currentMonth && leadYear === currentYear) {
             totalCount++;
-            console.log(`  Adding to current month total count: ${totalCount}`);
             
             if (isConverted) {
-              convertedCount++;
-              console.log(`  Adding to current month converted count: ${convertedCount}`);
+              convertedCount++; 
             }
             
             // Track status counts for current month
@@ -407,18 +384,10 @@ export default function SalesDashboard() {
               statusCounts[status] = 0;
             }
             statusCounts[status] += 1;
-            console.log(`  Updating status count for '${status}': ${statusCounts[status]}`);
           } else {
-            console.log(`  Skipping metrics for current month (doesn't match filter)`);
           }
           leadIndex++;
         });
-        
-        console.log("\n===== Summary after processing leads: =====");
-        console.log(`Total leads for ${currentMonth} ${currentYear}: ${totalCount}`);
-        console.log(`Converted leads for ${currentMonth} ${currentYear}: ${convertedCount}`);
-        console.log("Status counts:", statusCounts);
-        console.log("Monthly data for chart:", monthlyData);
         
         // Transform monthly data to chart format and sort properly
         const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -437,8 +406,6 @@ export default function SalesDashboard() {
           value: statusCounts[status]
         }));
         
-        console.log("===== Setting state with processed data =====");
-        
         // CRITICAL FIX: Force the same conversion value for all data pieces
         // This ensures every widget uses the same number
         setTotalLeads(totalCount);
@@ -446,13 +413,7 @@ export default function SalesDashboard() {
         setLeadsChartData(formattedChartData);
         setStatusData(formattedStatusData);
         
-        // Debug what we're actually setting
-        console.log(`Setting totalLeads to ${totalCount}`);
-        console.log(`Setting convertedLeads to ${convertedCount}`);
-        console.log("Setting leadsChartData to:", formattedChartData);
-        console.log("Setting statusData to:", formattedStatusData);
       } else {
-        console.log("No leads found for this user, setting empty data");
         setTotalLeads(0);
         setConvertedLeads(0);
         setLeadsChartData([]);
@@ -465,7 +426,6 @@ export default function SalesDashboard() {
 
   const fetchTaskData = async (userName: string) => {
     try {
-      console.log(`Fetching tasks for user: ${userName}`);
       
       // Query tasks assigned to the current user
       const tasksQuery = query(
@@ -474,7 +434,6 @@ export default function SalesDashboard() {
       );
       
       const querySnapshot = await getDocs(tasksQuery);
-      console.log("Tasks query snapshot size:", querySnapshot.size);
       
       const tasksList: Task[] = [];
       
@@ -496,8 +455,7 @@ export default function SalesDashboard() {
       tasksList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       
       setAssignedTasks(tasksList);
-      console.log("Tasks loaded:", tasksList.length);
-      
+
     } catch (error) {
       console.error("Error fetching task data:", error);
     }

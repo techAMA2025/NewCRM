@@ -127,7 +127,7 @@ export default function ClientsPage() {
     
     const fetchClients = async () => {
       try {
-        console.log('Starting to fetch clients...');
+
         const clientsQuery = query(collection(db, 'clients'), orderBy('name'));
         const querySnapshot = await getDocs(clientsQuery);
         
@@ -176,8 +176,7 @@ export default function ClientsPage() {
   }, []);
 
   useEffect(() => {
-    console.log("Firebase storage initialized:", storage);
-    console.log("Firebase db initialized:", db);
+
   }, []);
 
   // Function to format timestamp
@@ -391,27 +390,19 @@ export default function ClientsPage() {
   const handleFileUpload = async () => {
     if (!fileUpload || !editingClient) return;
     
-    console.log("Starting upload for file:", fileUpload.name);
-    console.log("File type:", fileUpload.type);
-    console.log("File size:", fileUpload.size);
+
     
     setUploading(true);
     try {
       const storageRef = ref(storage, `clients/${editingClient.id}/documents/${fileUpload.name}`);
-      console.log("Storage reference created:", storageRef);
-      
+
       // Upload the file
-      console.log("Starting uploadBytes...");
       const snapshot = await uploadBytes(storageRef, fileUpload);
-      console.log("Upload completed:", snapshot);
       
       // Get the download URL
-      console.log("Getting download URL...");
       const downloadURL = await getDownloadURL(storageRef);
-      console.log("Download URL received:", downloadURL);
       
       // Update Firestore
-      console.log("Updating Firestore document...");
       const clientRef = doc(db, 'clients', editingClient.id);
       await updateDoc(clientRef, {
         documentUrl: downloadURL,
@@ -419,7 +410,6 @@ export default function ClientsPage() {
         documentUploadedAt: new Date(),
         lastModified: new Date()
       });
-      console.log("Firestore document updated successfully");
       
       // Update local state
       setEditingClient({
@@ -439,7 +429,6 @@ export default function ClientsPage() {
       // Reset file upload state
       setFileUpload(null);
     } catch (err) {
-      console.error('Error uploading document (detailed):', err);
       // Show more detailed error message
       let errorMessage = "Failed to upload document. ";
       if (err instanceof Error) {
@@ -456,22 +445,17 @@ export default function ClientsPage() {
   };
 
   const testUpload = async () => {
-    console.log("Testing upload functionality...");
     
     // Create a simple test file
     const testBlob = new Blob(["Test content"], { type: "text/plain" });
     const testFile = new File([testBlob], "test-file.txt", { type: "text/plain" });
     
     try {
-      console.log("Creating storage reference...");
       const storageRef = ref(storage, `test/test-file-${Date.now()}.txt`);
       
-      console.log("Starting upload...");
       const snapshot = await uploadBytes(storageRef, testFile);
-      console.log("Upload successful:", snapshot);
       
       const downloadURL = await getDownloadURL(storageRef);
-      console.log("Download URL:", downloadURL);
       
       showToast("Test successful", "Upload test completed successfully", "success");
     } catch (err) {

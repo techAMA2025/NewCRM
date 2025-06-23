@@ -117,20 +117,18 @@ const parseDebtRange = (remarks: string): number => {
   // Extract debt range from remarks (format: "Debt Range: 2 Lakhs- 3 Lakhs")
   const debtRangeMatch = remarks.match(/Debt Range:\s*([^-]+)(?:\s*-\s*([^-]+))?/i);
   if (!debtRangeMatch) {
-    console.log('No debt range found in:', remarks);
     return 0;
   }
   
   // Get the first value (lower bound)
   const firstValue = debtRangeMatch[1]?.trim();
   if (!firstValue) {
-    console.log('No first value found in debt range:', remarks);
     return 0;
   }
   
   // Convert to numeric value
   const numericValue = convertDebtToNumeric(firstValue);
-  console.log('Parsed debt range:', { remarks, firstValue, numericValue });
+
   return numericValue;
 };
 
@@ -489,22 +487,15 @@ const BillCutLeadsPage = () => {
     if (showMyLeads) {
       if (typeof window !== 'undefined') {
         const currentUserName = localStorage.getItem('userName');
-        console.log('Current User Name from localStorage:', currentUserName);
-        console.log('Before My Leads filter:', result.length);
+
         
         if (currentUserName) {
           result = result.filter(lead => {
             const assignedTo = lead.assignedTo || '';
             const isMatch = assignedTo === currentUserName;
-            console.log('Comparing:', {
-              assignedTo: assignedTo,
-              currentUserName: currentUserName,
-              isMatch: isMatch
-            });
             return isMatch;
           });
         }
-        console.log('After My Leads filter:', result.length);
       }
     }
     
@@ -530,9 +521,6 @@ const BillCutLeadsPage = () => {
 
   // Add debug effect to monitor leads data
   useEffect(() => {
-    console.log('Current leads:', leads);
-    console.log('Filtered leads:', filteredLeads);
-    console.log('Show My Leads:', showMyLeads);
   }, [leads, filteredLeads, showMyLeads]);
 
   // Calculate counts for tabs

@@ -215,16 +215,6 @@ const BillcutLeadsTable = ({
   };
 
   const isUnassigned = (lead: Lead) => {
-    console.log('Checking if lead is unassigned:', {
-      id: lead.id,
-      assignedTo: lead.assignedTo,
-      assignedToId: lead.assignedToId,
-      isNull: lead.assignedTo === null,
-      isUndefined: lead.assignedTo === undefined,
-      isEmpty: lead.assignedTo === '',
-      isDash: lead.assignedTo === '-',
-      type: typeof lead.assignedTo
-    });
     
     // Check for all possible unassigned states
     return !lead.assignedTo || 
@@ -238,13 +228,7 @@ const BillcutLeadsTable = ({
     if (!user) return false;
     
     const unassigned = isUnassigned(lead);
-    console.log('Can assign lead check:', {
-      id: lead.id,
-      assignedTo: lead.assignedTo,
-      userRole: userRole,
-      userName: userName,
-      isUnassigned: unassigned
-    });
+
     
     // If lead is unassigned, anyone with sales/admin/overlord role can assign it
     if (unassigned) {
@@ -277,11 +261,11 @@ const BillcutLeadsTable = ({
       const success = await updateLead(leadId, dbData);
       if (success) {
         // Remove local state update since parent will handle it
-        console.log('Update successful, clearing editing data');
+
         setEditingData(prev => {
           const newData = { ...prev };
           delete newData[leadId];
-          console.log('Cleared editing data:', newData);
+
           return newData;
         });
       }
@@ -291,7 +275,7 @@ const BillcutLeadsTable = ({
   };
 
   const handleChange = async (id: string, field: keyof Lead, value: any) => {
-    console.log('handleChange called:', { id, field, value });
+
     
     // For status changes, check if it's "Callback"
     if (field === 'status') {
@@ -315,15 +299,15 @@ const BillcutLeadsTable = ({
       } else {
         // For other status changes, immediately save to database
         const dbData = { status: value };
-        console.log('Saving status change:', { id, dbData });
+
         updateLead(id, dbData).then(success => {
           if (success) {
             // Remove local state update since parent will handle it
-            console.log('Update successful, clearing editing data');
+
             setEditingData(prev => {
               const newData = { ...prev };
               delete newData[id];
-              console.log('Cleared editing data:', newData);
+
               return newData;
             });
           }
@@ -344,15 +328,14 @@ const BillcutLeadsTable = ({
         assignedToId: selectedPerson.id || ''
       };
       
-      console.log('Saving assignedTo change:', { id, dbData });
+
       updateLead(id, dbData).then(success => {
         if (success) {
           // Remove local state update since parent will handle it
-          console.log('Update successful, clearing editing data');
           setEditingData(prev => {
             const newData = { ...prev };
             delete newData[id];
-            console.log('Cleared editing data:', newData);
+
             return newData;
           });
         }
@@ -371,18 +354,17 @@ const BillcutLeadsTable = ({
           [field]: value
         }
       };
-      console.log('New editing data:', newData);
+
       return newData;
     });
   };
 
   const handleSave = async (id: string) => {
-    console.log('handleSave called for id:', id);
-    console.log('Current editing data:', editingData);
+
     
     if (editingData[id] && Object.keys(editingData[id]).length > 0) {
       const data = editingData[id];
-      console.log('Data to save:', data);
+
       
       // Map the fields to their database names
       const dbData: any = {};
@@ -395,17 +377,15 @@ const BillcutLeadsTable = ({
       });
 
       try {
-        console.log('Calling updateLead with:', { id, dbData });
+
         const success = await updateLead(id, dbData);
-        console.log('updateLead result:', success);
+
         
         if (success) {
-          // Remove local state update since parent will handle it
-          console.log('Update successful, clearing editing data');
+
           setEditingData(prev => {
             const newData = { ...prev };
             delete newData[id];
-            console.log('Cleared editing data:', newData);
             return newData;
           });
         }
@@ -413,7 +393,6 @@ const BillcutLeadsTable = ({
         console.error('Error in handleSave:', error);
       }
     } else {
-      console.log('No editing data found for id:', id);
     }
   };
 
@@ -600,7 +579,6 @@ const BillcutLeadsTable = ({
                       <select
                         value={editingData[lead.id]?.status || lead.status}
                         onChange={async (e) => {
-                          console.log('Status select changed:', { id: lead.id, newValue: e.target.value });
                           await handleChange(lead.id, 'status', e.target.value);
                           handleSave(lead.id);
                         }}
@@ -655,12 +633,6 @@ const BillcutLeadsTable = ({
                           <select
                             value={editingData[lead.id]?.assignedTo || (isUnassigned(lead) ? '' : lead.assignedTo)}
                             onChange={(e) => {
-                              console.log('Assigned To select changed:', { 
-                                id: lead.id, 
-                                newValue: e.target.value,
-                                currentAssignedTo: lead.assignedTo,
-                                isUnassigned: isUnassigned(lead)
-                              });
                               handleChange(lead.id, 'assignedTo', e.target.value);
                               handleSave(lead.id);
                             }}

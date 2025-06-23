@@ -127,7 +127,6 @@ const LeadsPage = () => {
         const localStorageRole = localStorage.getItem('userRole');
         if (localStorageRole) {
           setUserRole(localStorageRole);
-          console.log('Role from localStorage:', localStorageRole);
           
           // If not admin, set the filter to their name
           if (localStorageRole !== 'admin' && localStorageRole !== 'overlord') {
@@ -149,7 +148,6 @@ const LeadsPage = () => {
           if (userSnap.exists()) {
             const userData = userSnap.data() as User;
             setUserRole(userData.role || 'user');
-            console.log('Role from Firebase:', userData.role);
             
             // Store in localStorage for future use
             if (userData.role) {
@@ -228,7 +226,6 @@ const LeadsPage = () => {
         const localStorageRole = localStorage.getItem('userRole');
         if (localStorageRole) {
           setUserRole(localStorageRole);
-          console.log('Role from localStorage:', localStorageRole);
           
           // If not admin, set the filter to their name
           if (localStorageRole !== 'admin' && localStorageRole !== 'overlord') {
@@ -249,7 +246,6 @@ const LeadsPage = () => {
         if (userSnap.exists()) {
           const userData = userSnap.data() as User;
           setUserRole(userData.role || 'user');
-          console.log('Role from Firebase:', userData.role);
           
           // Store in localStorage for future use
           if (userData.role) {
@@ -998,7 +994,7 @@ const LeadsPage = () => {
 
   // Render sidebar based on user role
   const SidebarComponent = useMemo(() => {
-    console.log('Current user role:', userRole);
+
     if (userRole === 'admin') {
       return AdminSidebar;
     } else if (userRole === 'overlord') {
