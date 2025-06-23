@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc, limit, orderBy, startAfter } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
@@ -45,6 +45,7 @@ const LeadsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
+  const [totalLeadsCount, setTotalLeadsCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -68,9 +69,7 @@ const LeadsPage = () => {
   const [debugInfo, setDebugInfo] = useState('');
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreLeads, setHasMoreLeads] = useState(true);
-  const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Callback modal state
@@ -84,6 +83,25 @@ const LeadsPage = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const filterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const callbackInfoCache = useRef<Map<string, any>>(new Map());
+
+  // Add state to store all filtered leads for pagination
+  const [allFilteredLeads, setAllFilteredLeads] = useState<Lead[]>([]);
+
+  // Page visibility handling for better bfcache compatibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page is hidden, clear caches to free memory
+        callbackInfoCache.current.clear();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Handle URL parameters on component mount (client-side only)
   useEffect(() => {
@@ -158,7 +176,12 @@ const LeadsPage = () => {
       }
     });
     
-    return () => unsubscribe();
+    // Cleanup function to improve bfcache compatibility
+    return () => {
+      unsubscribe();
+      // Clear any cached data
+      callbackInfoCache.current.clear();
+    };
   }, []);
 
   // Fetch team members
@@ -251,16 +274,6 @@ const LeadsPage = () => {
     fetchUserRole();
   }, [currentUser, crmDb]);
 
-  // Set initial dates
-  useEffect(() => {
-    const today = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 4);
-    
-    setFromDate(sevenDaysAgo.toISOString().split('T')[0]);
-    setToDate(today.toISOString().split('T')[0]);
-  }, []);
-
   // Optimized fetch callback info function with caching
   const fetchCallbackInfo = useCallback(async (leadId: string) => {
     // Check cache first
@@ -328,17 +341,13 @@ const LeadsPage = () => {
     
     const fetchLeadsByDateRange = async () => {
       setIsLoading(true);
-      setCurrentPage(1);
-      setLastVisibleDoc(null);
       setHasMoreLeads(true);
       
       try {
-        let leadsRef;
+        // Use Firebase query for date range to reduce data transfer
+        let leadsRef: any = collection(crmDb, 'crm_leads');
         
-        // Build query with proper constraints
-        const constraints: any[] = [];
-        
-        // Add date range constraints if set
+        // Apply date range filters at database level for better performance
         if (fromDate && toDate) {
           const fromDateTime = new Date(fromDate);
           fromDateTime.setHours(0, 0, 0, 0);
@@ -346,39 +355,109 @@ const LeadsPage = () => {
           const toDateTime = new Date(toDate);
           toDateTime.setHours(23, 59, 59, 999);
           
-          constraints.push(where('synced_at', '>=', fromDateTime));
-          constraints.push(where('synced_at', '<=', toDateTime));
-        }
-        
-        // Add role-based filtering
-        if (userRole === 'salesperson') {
-          const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
-          const userData = userDoc.data() as User;
-          
-          if (userData && userData.name) {
-            constraints.push(where('assignedTo', '==', userData.name));
+          // Apply role-based filtering at database level
+          if (userRole === 'salesperson') {
+            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
+            const userData = userDoc.data() as User;
+            
+            if (userData && userData.name) {
+              leadsRef = query(leadsRef, 
+                where('synced_at', '>=', fromDateTime),
+                where('synced_at', '<=', toDateTime),
+                where('assignedTo', '==', userData.name)
+              );
+            } else {
+              leadsRef = query(leadsRef, 
+                where('synced_at', '>=', fromDateTime),
+                where('synced_at', '<=', toDateTime)
+              );
+            }
+          } else {
+            leadsRef = query(leadsRef, 
+              where('synced_at', '>=', fromDateTime),
+              where('synced_at', '<=', toDateTime)
+            );
+          }
+        } else {
+          // Apply role-based filtering at database level (no date filter)
+          if (userRole === 'salesperson') {
+            const userDoc = await getDoc(doc(crmDb, 'users', currentUser.uid));
+            const userData = userDoc.data() as User;
+            
+            if (userData && userData.name) {
+              leadsRef = query(leadsRef, where('assignedTo', '==', userData.name));
+            }
           }
         }
         
-        // Add sorting and limit
-        constraints.push(orderBy('synced_at', 'desc'));
-        constraints.push(limit(LEADS_PER_PAGE));
-        
-        leadsRef = query(collection(crmDb, 'crm_leads'), ...constraints);
-        
-        // Fetch the data
         const leadsSnapshot = await getDocs(leadsRef);
-        const leadsData = leadsSnapshot.docs.map(doc => ({
+        
+        // Convert to array and apply remaining filters in frontend
+        let allLeads = leadsSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...(doc.data() as object)
         } as Lead));
         
+        // Apply source filter
+        if (sourceFilter !== 'all') {
+          allLeads = allLeads.filter(lead => lead.source_database === sourceFilter);
+        }
+        
+        // Apply status filter
+        if (statusFilter !== 'all') {
+          if (statusFilter === 'No Status') {
+            allLeads = allLeads.filter(lead => 
+              !lead.status || lead.status === '' || lead.status === 'No Status'
+            );
+          } else {
+            allLeads = allLeads.filter(lead => lead.status === statusFilter);
+          }
+        }
+        
+        // Apply salesperson filter (if not already applied at database level)
+        if (salesPersonFilter !== 'all' && userRole !== 'salesperson') {
+          if (salesPersonFilter === '') {
+            allLeads = allLeads.filter(lead => !lead.assignedTo);
+          } else {
+            allLeads = allLeads.filter(lead => lead.assignedTo === salesPersonFilter);
+          }
+        }
+        
+        // Sort by synced_at descending
+        allLeads.sort((a, b) => {
+          const aDate = a.synced_at || a.timestamp || a.created || a.lastModified || a.createdAt;
+          const bDate = b.synced_at || b.timestamp || b.created || b.lastModified || b.createdAt;
+          
+          if (!aDate) return 1;
+          if (!bDate) return -1;
+          
+          let aDateObj: Date, bDateObj: Date;
+          
+          if (aDate.toDate) aDateObj = aDate.toDate();
+          else if (aDate instanceof Date) aDateObj = aDate;
+          else aDateObj = new Date(aDate);
+          
+          if (bDate.toDate) bDateObj = bDate.toDate();
+          else if (bDate instanceof Date) bDateObj = bDate;
+          else bDateObj = new Date(bDate);
+          
+          return bDateObj.getTime() - aDateObj.getTime();
+        });
+        
+        // Store all filtered leads for pagination
+        setAllFilteredLeads(allLeads);
+        
+        // Set total count
+        setTotalLeadsCount(allLeads.length);
+        
+        // Get first page of results
+        const firstPageLeads = allLeads.slice(0, LEADS_PER_PAGE);
+        
         // Update pagination state
-        setLastVisibleDoc(leadsSnapshot.docs[leadsSnapshot.docs.length - 1]);
-        setHasMoreLeads(leadsSnapshot.docs.length === LEADS_PER_PAGE);
+        setHasMoreLeads(allLeads.length > LEADS_PER_PAGE);
         
         // Fetch callback information in batches
-        const leadsWithCallbackInfo = await fetchCallbackInfoBatch(leadsData);
+        const leadsWithCallbackInfo = await fetchCallbackInfoBatch(firstPageLeads);
         
         setLeads(leadsWithCallbackInfo);
         setFilteredLeads(leadsWithCallbackInfo);
@@ -405,58 +484,24 @@ const LeadsPage = () => {
     };
     
     fetchLeadsByDateRange();
-  }, [currentUser, userRole, crmDb, fromDate, toDate, fetchCallbackInfoBatch]);
+  }, [currentUser, userRole, crmDb, fromDate, toDate, sourceFilter, statusFilter, salesPersonFilter, fetchCallbackInfoBatch]);
 
   // Load more leads function
   const loadMoreLeads = useCallback(async () => {
-    if (!hasMoreLeads || isLoadingMore || !lastVisibleDoc) return;
+    if (!hasMoreLeads || isLoadingMore) return;
     
     setIsLoadingMore(true);
     
     try {
-      const constraints: any[] = [];
-      
-      // Add date range constraints if set
-      if (fromDate && toDate) {
-        const fromDateTime = new Date(fromDate);
-        fromDateTime.setHours(0, 0, 0, 0);
-        
-        const toDateTime = new Date(toDate);
-        toDateTime.setHours(23, 59, 59, 999);
-        
-        constraints.push(where('synced_at', '>=', fromDateTime));
-        constraints.push(where('synced_at', '<=', toDateTime));
-      }
-      
-      // Add role-based filtering
-      if (userRole === 'salesperson') {
-        const userDoc = await getDoc(doc(crmDb, 'users', currentUser!.uid));
-        const userData = userDoc.data() as User;
-        
-        if (userData && userData.name) {
-          constraints.push(where('assignedTo', '==', userData.name));
-        }
-      }
-      
-      // Add sorting, pagination, and limit
-      constraints.push(orderBy('synced_at', 'desc'));
-      constraints.push(startAfter(lastVisibleDoc));
-      constraints.push(limit(LEADS_PER_PAGE));
-      
-      const leadsRef = query(collection(crmDb, 'crm_leads'), ...constraints);
-      const leadsSnapshot = await getDocs(leadsRef);
-      
-      const newLeadsData = leadsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Lead));
+      // Calculate the next page of leads from allFilteredLeads
+      const currentLoadedCount = leads.length;
+      const nextPageLeads = allFilteredLeads.slice(currentLoadedCount, currentLoadedCount + LEADS_PER_PAGE);
       
       // Update pagination state
-      setLastVisibleDoc(leadsSnapshot.docs[leadsSnapshot.docs.length - 1]);
-      setHasMoreLeads(leadsSnapshot.docs.length === LEADS_PER_PAGE);
+      setHasMoreLeads(currentLoadedCount + LEADS_PER_PAGE < allFilteredLeads.length);
       
       // Fetch callback information for new leads
-      const newLeadsWithCallbackInfo = await fetchCallbackInfoBatch(newLeadsData);
+      const newLeadsWithCallbackInfo = await fetchCallbackInfoBatch(nextPageLeads);
       
       // Append to existing leads
       setLeads(prev => [...prev, ...newLeadsWithCallbackInfo]);
@@ -483,7 +528,7 @@ const LeadsPage = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [hasMoreLeads, isLoadingMore, lastVisibleDoc, fromDate, toDate, userRole, currentUser, fetchCallbackInfoBatch]);
+  }, [hasMoreLeads, isLoadingMore, leads.length, allFilteredLeads, fetchCallbackInfoBatch]);
 
   // Optimized filter function with memoization
   const filterLeads = useCallback(() => {
@@ -1162,6 +1207,7 @@ const LeadsPage = () => {
             userRole={userRole}
             filteredLeads={filteredLeads}
             leads={leads}
+            totalLeadsCount={totalLeadsCount}
             convertedFilter={convertedFilter}
             setConvertedFilter={setConvertedFilter}
             fromDate={fromDate}

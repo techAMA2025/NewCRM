@@ -18,6 +18,7 @@ type LeadsFiltersProps = {
   userRole: string;
   filteredLeads: any[];
   leads: any[];
+  totalLeadsCount: number;
   convertedFilter: boolean | null;
   setConvertedFilter: (converted: boolean | null) => void;
   fromDate: string;
@@ -40,6 +41,7 @@ const LeadsFilters = ({
   userRole,
   filteredLeads,
   leads,
+  totalLeadsCount,
   convertedFilter,
   setConvertedFilter,
   fromDate,
@@ -159,22 +161,6 @@ const LeadsFilters = ({
             </div>
           )}
         </div>
-        
-        {/* Search results summary */}
-        {searchQuery && (
-          <div className="mt-2 flex items-center">
-            <span className="text-sm text-gray-400">
-              Found <span className="text-blue-400 font-medium">{filteredLeads.length}</span> results for "{searchQuery}"
-            </span>
-            <button 
-              onClick={clearSearch}
-              className="ml-2 text-xs text-blue-400 hover:text-blue-300 focus:outline-none"
-              type="button"
-            >
-              Clear search
-            </button>
-          </div>
-        )}
       </div>
       
       {/* Filters section with improved layout */}
@@ -186,7 +172,15 @@ const LeadsFilters = ({
           {/* Results counter moved to the right */}
           <div className="ml-auto">
             <p className="text-sm text-gray-400">
-              Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
+              {searchQuery ? (
+                <>
+                  Found <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{totalLeadsCount}</span> leads
+                </>
+              ) : (
+                <>
+                  Lead Count:  <span className="text-blue-400 font-medium">{totalLeadsCount}</span>
+                </>
+              )}
             </p>
           </div>
         </div>
