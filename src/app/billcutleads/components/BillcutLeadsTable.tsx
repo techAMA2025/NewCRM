@@ -159,6 +159,8 @@ const BillcutLeadsTable = ({
         return 'bg-orange-900 text-orange-100 border-orange-700';
       case 'callback':
         return 'bg-yellow-900 text-yellow-100 border-yellow-700';
+      case 'future potential':
+        return 'bg-blue-900 text-blue-100 border-blue-700';
       case 'converted':
         return 'bg-emerald-900 text-emerald-100 border-emerald-700';
       case 'loan required':

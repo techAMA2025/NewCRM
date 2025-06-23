@@ -21,9 +21,6 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 
 interface TargetData {
@@ -78,6 +75,26 @@ interface Task {
   createdAt: any;
 }
 
+// Add interface for detailed analytics
+interface LeadAnalytics {
+  totalLeads: number;
+  leadsNeedingWork: number;
+  convertedLeads: number;
+  callbackLeads: number;
+  interestedLeads: number;
+  notInterestedLeads: number;
+  notAnsweringLeads: number;
+  loanRequiredLeads: number;
+  cibilIssueLeads: number;
+  closedLeads: number;
+  statusDistribution: { status: string; count: number; percentage: number }[];
+  sourceDistribution: { source: string; count: number; percentage: number }[];
+  cityDistribution: { city: string; count: number; percentage: number }[];
+  monthlyTrend: { month: string; total: number; converted: number }[];
+  conversionRate: number;
+  averageResponseTime: number;
+}
+
 // Add this function before the component definition
 function getCurrentMonth(): string {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -102,6 +119,10 @@ export default function SalesDashboard() {
   // Add state for tracking available months for filtering
   const [availableMonths, setAvailableMonths] = useState<{month: string, year: number}[]>([]);
 
+  // Add state for detailed analytics
+  const [leadAnalytics, setLeadAnalytics] = useState<LeadAnalytics | null>(null);
+  const [allLeads, setAllLeads] = useState<any[]>([]);
+
   // Create a mapping of status to color based on your application's color scheme
   const statusColors = useMemo(() => ({
     'Interested': '#059669', // green-600
@@ -112,6 +133,7 @@ export default function SalesDashboard() {
     'Loan Required': '#9333ea', // purple-600
     'Cibil Issue': '#e11d48', // rose-600
     'Closed Lead': '#4b5563', // gray-600
+    'No Status': '#6366f1', // indigo-500
     'Unknown': '#6366f1', // indigo-500 (fallback)
   }), []);
 
@@ -330,6 +352,13 @@ export default function SalesDashboard() {
       const querySnapshot = await getDocs(leadsQuery);
       
       if (!querySnapshot.empty) {
+        // Store all leads for analytics
+        const allLeadsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setAllLeads(allLeadsData);
+        
         // Count total leads and converted leads for the selected month
         let totalCount = 0;
         let convertedCount = 0;
@@ -413,15 +442,164 @@ export default function SalesDashboard() {
         setLeadsChartData(formattedChartData);
         setStatusData(formattedStatusData);
         
+        // Calculate detailed analytics
+        calculateDetailedAnalytics(allLeadsData);
+        
       } else {
         setTotalLeads(0);
         setConvertedLeads(0);
         setLeadsChartData([]);
         setStatusData([]);
+        setAllLeads([]);
+        setLeadAnalytics(null);
       }
     } catch (error) {
       console.error("Error fetching lead data:", error);
     }
+  };
+
+  // New function to calculate detailed analytics
+  const calculateDetailedAnalytics = (leads: any[]) => {
+    if (!leads || leads.length === 0) {
+      setLeadAnalytics(null);
+      return;
+    }
+
+    const totalLeads = leads.length;
+    
+    // Status counts
+    const statusCounts: { [key: string]: number } = {};
+    const sourceCounts: { [key: string]: number } = {};
+    const cityCounts: { [key: string]: number } = {};
+    const monthlyTrend: { [key: string]: { total: number; converted: number } } = {};
+    
+    let convertedLeads = 0;
+    let callbackLeads = 0;
+    let interestedLeads = 0;
+    let notInterestedLeads = 0;
+    let notAnsweringLeads = 0;
+    let loanRequiredLeads = 0;
+    let cibilIssueLeads = 0;
+    let closedLeads = 0;
+    let leadsNeedingWork = 0;
+
+    leads.forEach(lead => {
+      const status = lead.status || 'No Status';
+      const source = lead.source_database || 'Unknown';
+      const city = lead.city || lead.City || 'Unknown';
+      
+      // Count statuses
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+      sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+      cityCounts[city] = (cityCounts[city] || 0) + 1;
+      
+      // Count specific statuses
+      if (status === 'Converted' || lead.convertedToClient === true) {
+        convertedLeads++;
+      }
+      if (status === 'Callback') {
+        callbackLeads++;
+      }
+      if (status === 'Interested') {
+        interestedLeads++;
+      }
+      if (status === 'Not Interested') {
+        notInterestedLeads++;
+      }
+      if (status === 'Not Answering') {
+        notAnsweringLeads++;
+      }
+      if (status === 'Loan Required') {
+        loanRequiredLeads++;
+      }
+      if (status === 'Cibil Issue') {
+        cibilIssueLeads++;
+      }
+      if (status === 'Closed Lead') {
+        closedLeads++;
+      }
+      if (status === 'No Status' || !status || status === '') {
+        leadsNeedingWork++;
+      }
+      
+      // Monthly trend
+      let date;
+      if (lead.timestamp) {
+        date = lead.timestamp.toDate ? lead.timestamp.toDate() : new Date(lead.timestamp);
+      } else {
+        date = new Date();
+      }
+      
+      const monthKey = date.toLocaleString('default', { month: 'short' });
+      if (!monthlyTrend[monthKey]) {
+        monthlyTrend[monthKey] = { total: 0, converted: 0 };
+      }
+      monthlyTrend[monthKey].total++;
+      
+      if (status === 'Converted' || lead.convertedToClient === true) {
+        monthlyTrend[monthKey].converted++;
+      }
+    });
+
+    // Transform to arrays and sort
+    const statusDistribution = Object.entries(statusCounts)
+      .map(([status, count]) => ({
+        status,
+        count,
+        percentage: Math.round((count / totalLeads) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const sourceDistribution = Object.entries(sourceCounts)
+      .map(([source, count]) => ({
+        source,
+        count,
+        percentage: Math.round((count / totalLeads) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const cityDistribution = Object.entries(cityCounts)
+      .map(([city, count]) => ({
+        city,
+        count,
+        percentage: Math.round((count / totalLeads) * 100)
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 cities
+
+    const monthlyTrendArray = Object.entries(monthlyTrend)
+      .map(([month, data]) => ({
+        month,
+        total: data.total,
+        converted: data.converted
+      }))
+      .sort((a, b) => {
+        const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
+      });
+
+    const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+    const analytics: LeadAnalytics = {
+      totalLeads,
+      leadsNeedingWork,
+      convertedLeads,
+      callbackLeads,
+      interestedLeads,
+      notInterestedLeads,
+      notAnsweringLeads,
+      loanRequiredLeads,
+      cibilIssueLeads,
+      closedLeads,
+      statusDistribution,
+      sourceDistribution,
+      cityDistribution,
+      monthlyTrend: monthlyTrendArray,
+      conversionRate,
+      averageResponseTime: 0 // TODO: Calculate based on timestamps
+    };
+
+    setLeadAnalytics(analytics);
   };
 
   const fetchTaskData = async (userName: string) => {
@@ -546,6 +724,7 @@ export default function SalesDashboard() {
           </div>
         </div>
         
+        {/* Target Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
@@ -583,6 +762,340 @@ export default function SalesDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Comprehensive Analytics Section */}
+        {leadAnalytics && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-100 mb-6">Lead Analytics Overview</h2>
+            
+            {/* Key Metrics Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+              <Card className="border-0 bg-gradient-to-br from-red-800 to-red-900 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-red-400">{leadAnalytics.leadsNeedingWork}</div>
+                  <p className="text-sm text-gray-300">Need Work</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 bg-gradient-to-br from-yellow-800 to-yellow-900 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-yellow-400">{leadAnalytics.callbackLeads}</div>
+                  <p className="text-sm text-gray-300">Callbacks</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 bg-gradient-to-br from-green-800 to-green-900 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-400">{leadAnalytics.interestedLeads}</div>
+                  <p className="text-sm text-gray-300">Interested</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 bg-gradient-to-br from-emerald-800 to-emerald-900 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-emerald-400">{leadAnalytics.convertedLeads}</div>
+                  <p className="text-sm text-gray-300">Converted</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 bg-gradient-to-br from-purple-800 to-purple-900 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-purple-400">{leadAnalytics.loanRequiredLeads}</div>
+                  <p className="text-sm text-gray-300">Loan Required</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 bg-gradient-to-br from-blue-800 to-blue-900 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-blue-400">{leadAnalytics.conversionRate}%</div>
+                  <p className="text-sm text-gray-300">Conversion Rate</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Status Distribution Table */}
+            <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl mb-6">
+              <CardHeader>
+                <CardTitle className="text-gray-100">Lead Status Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead>
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Count
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Percentage
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Progress
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {leadAnalytics.statusDistribution.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-750 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div 
+                                className="w-3 h-3 rounded-full mr-3"
+                                style={{ backgroundColor: statusColors[item.status as keyof typeof statusColors] || statusColors['Unknown'] }}
+                              ></div>
+                              <span className="text-sm font-medium text-gray-200">{item.status}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {item.count}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {item.percentage}%
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="w-full bg-gray-700 rounded-full h-2">
+                              <div 
+                                className="h-2 rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: `${item.percentage}%`,
+                                  backgroundColor: statusColors[item.status as keyof typeof statusColors] || statusColors['Unknown']
+                                }}
+                              ></div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+           
+          </div>
+        )}
+
+        {/* Additional Analytics Sections */}
+        {leadAnalytics && (
+          <div className="mb-8">
+            {/* Performance Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-gray-100">Performance Metrics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Total Leads</span>
+                      <span className="text-lg font-bold text-blue-400">{leadAnalytics.totalLeads}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Conversion Rate</span>
+                      <span className="text-lg font-bold text-green-400">{leadAnalytics.conversionRate}%</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Active Pipeline</span>
+                      <span className="text-lg font-bold text-yellow-400">
+                        {leadAnalytics.interestedLeads + leadAnalytics.callbackLeads + leadAnalytics.leadsNeedingWork}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Success Rate</span>
+                      <span className="text-lg font-bold text-purple-400">
+                        {leadAnalytics.totalLeads > 0 ? Math.round(((leadAnalytics.convertedLeads + leadAnalytics.interestedLeads) / leadAnalytics.totalLeads) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-gray-100">Lead Quality Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">High Quality</span>
+                      <span className="text-lg font-bold text-emerald-400">
+                        {leadAnalytics.interestedLeads + leadAnalytics.convertedLeads}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Needs Follow-up</span>
+                      <span className="text-lg font-bold text-orange-400">
+                        {leadAnalytics.callbackLeads + leadAnalytics.leadsNeedingWork}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Requires Action</span>
+                      <span className="text-lg font-bold text-red-400">
+                        {leadAnalytics.loanRequiredLeads + leadAnalytics.cibilIssueLeads}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Closed/Rejected</span>
+                      <span className="text-lg font-bold text-gray-400">
+                        {leadAnalytics.notInterestedLeads + leadAnalytics.closedLeads}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-gray-100">Workload Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Immediate Action</span>
+                      <span className="text-lg font-bold text-red-400">{leadAnalytics.leadsNeedingWork}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Scheduled Callbacks</span>
+                      <span className="text-lg font-bold text-yellow-400">{leadAnalytics.callbackLeads}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">In Progress</span>
+                      <span className="text-lg font-bold text-blue-400">{leadAnalytics.interestedLeads}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-300">Completed</span>
+                      <span className="text-lg font-bold text-green-400">{leadAnalytics.convertedLeads}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Callback Details Section */}
+            <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl mb-6">
+              <CardHeader>
+                <CardTitle className="text-gray-100">Callback Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-200 mb-4">Callback Statistics</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-gray-750 rounded-lg">
+                        <span className="text-sm text-gray-300">Total Callbacks</span>
+                        <span className="text-xl font-bold text-yellow-400">{leadAnalytics.callbackLeads}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-750 rounded-lg">
+                        <span className="text-sm text-gray-300">Callback Rate</span>
+                        <span className="text-xl font-bold text-blue-400">
+                          {leadAnalytics.totalLeads > 0 ? Math.round((leadAnalytics.callbackLeads / leadAnalytics.totalLeads) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-750 rounded-lg">
+                        <span className="text-sm text-gray-300">Pending Follow-ups</span>
+                        <span className="text-xl font-bold text-orange-400">
+                          {leadAnalytics.callbackLeads + leadAnalytics.leadsNeedingWork}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-200 mb-4">Quick Actions</h4>
+                    <div className="space-y-3">
+                      <div className="w-full p-3 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg font-medium">
+                        View All Callbacks ({leadAnalytics.callbackLeads})
+                      </div>
+                      <div className="w-full p-3 bg-red-600/20 border border-red-500/30 text-red-300 rounded-lg font-medium">
+                        Leads Needing Work ({leadAnalytics.leadsNeedingWork})
+                      </div>
+                      <div className="w-full p-3 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg font-medium">
+                        High Priority Leads ({leadAnalytics.interestedLeads})
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Lead Source Performance */}
+            <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl mb-6">
+              <CardHeader>
+                <CardTitle className="text-gray-100">Lead Source Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead>
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Source
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Total Leads
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Converted
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Conversion Rate
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Quality Score
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {leadAnalytics.sourceDistribution.slice(0, 5).map((item, index) => {
+                        const sourceLeads = allLeads.filter(lead => (lead.source_database || 'Unknown') === item.source);
+                        const convertedCount = sourceLeads.filter(lead => 
+                          lead.status === 'Converted' || lead.convertedToClient === true
+                        ).length;
+                        const interestedCount = sourceLeads.filter(lead => lead.status === 'Interested').length;
+                        const conversionRate = item.count > 0 ? Math.round((convertedCount / item.count) * 100) : 0;
+                        const qualityScore = item.count > 0 ? Math.round(((convertedCount + interestedCount) / item.count) * 100) : 0;
+                        
+                        return (
+                          <tr key={index} className="hover:bg-gray-750 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-200">{item.source}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {item.count}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {convertedCount}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                conversionRate >= 20 ? 'bg-green-900 text-green-200' :
+                                conversionRate >= 10 ? 'bg-yellow-900 text-yellow-200' :
+                                'bg-red-900 text-red-200'
+                              }`}>
+                                {conversionRate}%
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                qualityScore >= 50 ? 'bg-green-900 text-green-200' :
+                                qualityScore >= 30 ? 'bg-yellow-900 text-yellow-200' :
+                                'bg-red-900 text-red-200'
+                              }`}>
+                                {qualityScore}%
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Tasks Section */}
         <div className="mb-8">
@@ -637,57 +1150,9 @@ export default function SalesDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Lead Status Distribution ({currentMonth} {currentYear})</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
-              {statusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      fill={chartColors.primary}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={statusColors[entry.name as keyof typeof statusColors] || statusColors['Unknown']} 
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
-                      formatter={(value, name, props) => [`${value} leads`, props.payload.name]}
-                    />
-                    <Legend formatter={(value) => (
-                      <span style={{ color: '#e5e5e5' }}>{value}</span>
-                    )} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center h-full flex flex-col items-center justify-center">
-                  <div className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-2">
-                    No Lead Data Available
-                  </div>
-                  <p className="text-sm text-gray-400">
-                    No leads have been assigned to you yet
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Lead Conversion ({currentMonth} {currentYear})</CardTitle>
+              <CardTitle className="text-gray-100">Lead Conversion Trend ({currentMonth} {currentYear})</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -720,6 +1185,31 @@ export default function SalesDashboard() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {/* Monthly Trend Chart */}
+          {leadAnalytics && (
+            <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-purple-500/10 transition-all duration-300">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-gray-100">Monthly Lead Trend</CardTitle>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={leadAnalytics.monthlyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <XAxis dataKey="month" stroke={chartColors.text} />
+                    <YAxis stroke={chartColors.text} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
+                      itemStyle={{ color: '#e5e5e5' }}
+                    />
+                    <Legend wrapperStyle={{ color: chartColors.text }} />
+                    <Bar dataKey="total" fill={chartColors.primary} name="Total Leads" />
+                    <Bar dataKey="converted" fill={chartColors.secondary} name="Converted" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </div>
         
         <div className="mt-6 text-center text-xs text-gray-600">
