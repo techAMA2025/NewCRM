@@ -80,6 +80,7 @@ const LeadsPage = () => {
   const [isEditingCallback, setIsEditingCallback] = useState(false);
   const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null);
   const [isLoadingCallbackInfo, setIsLoadingCallbackInfo] = useState(false);
+  const [leadsUpdateCounter, setLeadsUpdateCounter] = useState(0);
 
   // Performance optimization refs
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -732,169 +733,81 @@ const LeadsPage = () => {
     setSortConfig({ key, direction });
   };
 
-  // Update lead handler
-  const updateLead = async (id: any, data: any) => {
-    try {
-      const leadRef = doc(crmDb, 'crm_leads', id);
-      
-      // Add timestamp
-      const updateData = {
-        ...data,
-        lastModified: serverTimestamp()
-      };
-      
-      await updateDoc(leadRef, updateData);
-      
-      // Update UI state
-      const updatedLeads = leads.map(lead => 
-        lead.id === id ? { ...lead, ...data, lastModified: new Date() } : lead
-      );
-      
-      setLeads(updatedLeads);
-      
-      // Close edit modal if open
-      if (editingLead && editingLead.id === id) {
-        setEditingLead(null);
+  // Helper function to re-apply current filters to leads
+  const reapplyFiltersToLeads = useCallback((leadsToFilter: Lead[]) => {
+    let filteredLeads = [...leadsToFilter];
+    
+    // Apply source filter
+    if (sourceFilter !== 'all') {
+      filteredLeads = filteredLeads.filter(lead => lead.source_database === sourceFilter);
+    }
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'No Status') {
+        filteredLeads = filteredLeads.filter(lead => 
+          !lead.status || lead.status === '' || lead.status === 'No Status'
+        );
+      } else {
+        filteredLeads = filteredLeads.filter(lead => lead.status === statusFilter);
       }
-      
-      return true;
-    } catch (error) {
-      console.error("Error updating lead: ", error);
-      toast.error("Failed to update lead", {
-        position: "top-right",
-        autoClose: 3000
-      });
-      return false;
     }
-  };
-
-  // Assign lead to salesperson
-  const assignLeadToSalesperson = async (leadId: any, salesPersonName: any, salesPersonId: any) => {
-    try {
-      const leadRef = doc(crmDb, 'crm_leads', leadId);
-      
-      // Create assignment history entry
-      const historyRef = collection(crmDb, 'crm_leads', leadId, 'history');
-      await addDoc(historyRef, {
-        assignmentChange: true,
-        previousAssignee: leads.find(l => l.id === leadId)?.assignedTo || 'Unassigned',
-        newAssignee: salesPersonName,
-        timestamp: serverTimestamp(),
-        assignedById: localStorage.getItem('userName') || '',
-        editor: {
-          id: currentUser?.uid || 'unknown'
-        }
-      });
-      
-      // Update the lead
-      await updateDoc(leadRef, {
-        assignedTo: salesPersonName,
-        assignedToId: salesPersonId,
-        lastModified: serverTimestamp()
-      });
-      
-      // Update UI state
-      const updatedLeads = leads.map(lead => 
-        lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } : lead
-      );
-      
-      setLeads(updatedLeads);
-      
-      toast.success(
-        <div>
-          <p className="font-medium">Lead Assigned</p>
-          <p className="text-sm">Lead assigned to {salesPersonName}</p>
-        </div>,
-        {
-          position: "top-right",
-          autoClose: 3000
-        }
-      );
-    } catch (error) {
-      console.error("Error assigning lead: ", error);
-      toast.error("Failed to assign lead", {
-        position: "top-right",
-        autoClose: 3000
-      });
-    }
-  };
-
-  // Fetch lead history for modal
-  const fetchNotesHistory = async (leadId: string) => {
-    try {
-      setShowHistoryModal(true);
-      
-      const historyCollectionRef = collection(crmDb, 'crm_leads', leadId, 'history');
-      const historySnapshot = await getDocs(historyCollectionRef);
-      
-      if (historySnapshot.empty) {
-        setCurrentHistory([]);
-        return;
+    
+    // Apply salesperson filter (if not already applied at database level)
+    if (salesPersonFilter !== 'all' && userRole !== 'salesperson') {
+      if (salesPersonFilter === '') {
+        filteredLeads = filteredLeads.filter(lead => !lead.assignedTo);
+      } else {
+        filteredLeads = filteredLeads.filter(lead => lead.assignedTo === salesPersonFilter);
       }
-      
-      // Convert to array of objects
-      const historyData = historySnapshot.docs.map(doc => {
-        const data = doc.data();
-        
-        // Convert Firestore timestamps to Date objects
-        let timestamp = data.timestamp;
-        if (timestamp && typeof timestamp.toDate === 'function') {
-          timestamp = timestamp.toDate();
-        } else if (timestamp) {
-          // If it's not a Firestore timestamp but still a valid date format
-          timestamp = new Date(timestamp);
-        } else {
-          timestamp = new Date(); // Fallback
-        }
-        
-        return {
-          id: doc.id,
-          ...data,
-          timestamp
-        };
-      });
-      
-      // Sort by timestamp (newest first)
-      historyData.sort((a, b) => b.timestamp - a.timestamp);
-      
-      // Transform the history data to match HistoryItem interface
-      const formattedHistoryData = historyData.map(item => {
-        // Extract properties or set defaults for all required fields
-        const entry: HistoryItem = {
-          content: (item as any).content ? (item as any).content : 
-                  ((item as any).assignmentChange ? `Assigned to ${(item as any).newAssignee || 'someone'}` : "Note updated"),
-          createdAt: item.timestamp,
-          createdBy: (item as any).createdBy || ((item as any).editor?.name) || "",
-          createdById: (item as any).createdById || ((item as any).editor?.id) || item.id,
-          leadId: leadId,
-          displayDate: (item as any).displayDate || '',
-          assignedById: (item as any).assignedById || 'unknown'
-        };
-        return entry;
-      });
-      
-      // Sort if needed
-      formattedHistoryData.sort((a, b) => (b.createdAt as any) - (a.createdAt as any));
-      
-      setCurrentHistory(formattedHistoryData);
-    } catch (error) {
-      console.error("Error fetching history: ", error);
-      toast.error("Failed to load history");
     }
-  };
+    
+    // Sort by synced_at descending
+    filteredLeads.sort((a, b) => {
+      const aDate = a.synced_at || a.timestamp || a.created || a.lastModified || a.createdAt;
+      const bDate = b.synced_at || b.timestamp || b.created || b.lastModified || b.createdAt;
+      
+      if (!aDate) return 1;
+      if (!bDate) return -1;
+      
+      let aDateObj: Date, bDateObj: Date;
+      
+      if (aDate.toDate) aDateObj = aDate.toDate();
+      else if (aDate instanceof Date) aDateObj = aDate;
+      else aDateObj = new Date(aDate);
+      
+      if (bDate.toDate) bDateObj = bDate.toDate();
+      else if (bDate instanceof Date) bDateObj = bDate;
+      else bDateObj = new Date(bDate);
+      
+      return bDateObj.getTime() - aDateObj.getTime();
+    });
+    
+    return filteredLeads;
+  }, [sourceFilter, statusFilter, salesPersonFilter, userRole]);
 
   // Update the leads state after saving notes
   const updateLeadsState = (leadId: any, newValue: any) => {
-    const updatedLeads = leads.map(lead => 
-      lead.id === leadId 
-        ? { ...lead, salesNotes: newValue, lastModified: new Date() } 
-        : lead
-    );
+    const updateLeadsInState = (currentLeads: Lead[]) => 
+      currentLeads.map(lead => 
+        lead.id === leadId 
+          ? { ...lead, salesNotes: newValue, lastModified: new Date() } 
+          : lead
+      );
     
-    setLeads(updatedLeads);
+    setLeads(prevLeads => updateLeadsInState(prevLeads));
+    
+    // Re-apply filters to allFilteredLeads to ensure it reflects the current filter criteria
+    setAllFilteredLeads(prevLeads => {
+      const updatedLeads = updateLeadsInState(prevLeads);
+      return reapplyFiltersToLeads(updatedLeads);
+    });
+    
+    // Increment counter to trigger count recalculation
+    setLeadsUpdateCounter(prev => prev + 1);
     
     // Apply all filters to ensure filtered leads are also updated
-    const newFilteredLeads = updatedLeads.filter(lead => 
+    const newFilteredLeads = updateLeadsInState(leads).filter(lead => 
       (sourceFilter === 'all' || lead.source_database === sourceFilter) &&
       (statusFilter === 'all' || lead.status === statusFilter) &&
       (salesPersonFilter === 'all' || 
@@ -981,13 +894,19 @@ const LeadsPage = () => {
       // Delete the lead document
       await deleteDoc(doc(crmDb, 'crm_leads', leadId));
       
-      // Update local state
-      const updatedLeads = leads.filter(lead => lead.id !== leadId);
-      setLeads(updatedLeads);
+      // Update local state - update both leads and allFilteredLeads
+      const removeLeadFromState = (currentLeads: Lead[]) => 
+        currentLeads.filter(lead => lead.id !== leadId);
+      
+      setLeads(prevLeads => removeLeadFromState(prevLeads));
+      setAllFilteredLeads(prevLeads => removeLeadFromState(prevLeads));
       
       // Update filtered leads
       const updatedFilteredLeads = filteredLeads.filter(lead => lead.id !== leadId);
       setFilteredLeads(updatedFilteredLeads);
+      
+      // Increment counter to trigger count recalculation
+      setLeadsUpdateCounter(prev => prev + 1);
       
       // Show success message
       toast.success('Lead deleted successfully');
@@ -1012,11 +931,14 @@ const LeadsPage = () => {
   const refreshLeadCallbackInfo = async (leadId: string) => {
     try {
       const callbackInfo = await fetchCallbackInfo(leadId);
-      const updatedLeads = leads.map(lead => 
-        lead.id === leadId ? { ...lead, callbackInfo } : lead
-      );
-      setLeads(updatedLeads);
-      setFilteredLeads(updatedLeads);
+      const updateLeadsWithCallbackInfo = (currentLeads: Lead[]) => 
+        currentLeads.map(lead => 
+          lead.id === leadId ? { ...lead, callbackInfo } : lead
+        );
+      
+      setLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
+      setAllFilteredLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
+      setFilteredLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
     } catch (error) {
       console.error('Error refreshing callback info:', error);
     }
@@ -1041,11 +963,11 @@ const LeadsPage = () => {
         lead.assignedTo === currentUserName
       ).length;
     }
-  }, [leads, allFilteredLeads]);
+  }, [leads, allFilteredLeads, leadsUpdateCounter]);
 
   const allLeadsCount = useMemo(() => {
     return leads.length;
-  }, [leads]);
+  }, [leads, leadsUpdateCounter]);
 
   // Handle tab change
   const handleTabChange = async (tab: 'all' | 'callback') => {
@@ -1202,6 +1124,177 @@ const LeadsPage = () => {
     setIsEditingCallback(false);
     setEditingCallbackInfo(null);
     setShowCallbackModal(true);
+  };
+
+  // Update lead handler
+  const updateLead = async (id: any, data: any) => {
+    try {
+      const leadRef = doc(crmDb, 'crm_leads', id);
+      
+      // Add timestamp
+      const updateData = {
+        ...data,
+        lastModified: serverTimestamp()
+      };
+      
+      await updateDoc(leadRef, updateData);
+      
+      // Update UI state - update both leads and allFilteredLeads
+      const updateLeadsInState = (currentLeads: Lead[]) => 
+        currentLeads.map(lead => 
+          lead.id === id ? { ...lead, ...data, lastModified: new Date() } : lead
+        );
+      
+      setLeads(prevLeads => updateLeadsInState(prevLeads));
+      
+      // Re-apply filters to allFilteredLeads to ensure it reflects the current filter criteria
+      setAllFilteredLeads(prevLeads => {
+        const updatedLeads = updateLeadsInState(prevLeads);
+        return reapplyFiltersToLeads(updatedLeads);
+      });
+      
+      // Increment counter to trigger count recalculation
+      setLeadsUpdateCounter(prev => prev + 1);
+      
+      // Close edit modal if open
+      if (editingLead && editingLead.id === id) {
+        setEditingLead(null);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating lead: ", error);
+      toast.error("Failed to update lead", {
+        position: "top-right",
+        autoClose: 3000
+      });
+      return false;
+    }
+  };
+
+  // Assign lead to salesperson
+  const assignLeadToSalesperson = async (leadId: any, salesPersonName: any, salesPersonId: any) => {
+    try {
+      const leadRef = doc(crmDb, 'crm_leads', leadId);
+      
+      // Create assignment history entry
+      const historyRef = collection(crmDb, 'crm_leads', leadId, 'history');
+      await addDoc(historyRef, {
+        assignmentChange: true,
+        previousAssignee: leads.find(l => l.id === leadId)?.assignedTo || 'Unassigned',
+        newAssignee: salesPersonName,
+        timestamp: serverTimestamp(),
+        assignedById: localStorage.getItem('userName') || '',
+        editor: {
+          id: currentUser?.uid || 'unknown'
+        }
+      });
+      
+      // Update the lead
+      await updateDoc(leadRef, {
+        assignedTo: salesPersonName,
+        assignedToId: salesPersonId,
+        lastModified: serverTimestamp()
+      });
+      
+      // Update UI state
+      const updateLeadsInState = (currentLeads: Lead[]) => 
+        currentLeads.map(lead => 
+          lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } : lead
+        );
+      
+      setLeads(prevLeads => updateLeadsInState(prevLeads));
+      
+      // Re-apply filters to allFilteredLeads to ensure it reflects the current filter criteria
+      setAllFilteredLeads(prevLeads => {
+        const updatedLeads = updateLeadsInState(prevLeads);
+        return reapplyFiltersToLeads(updatedLeads);
+      });
+      
+      // Increment counter to trigger count recalculation
+      setLeadsUpdateCounter(prev => prev + 1);
+      
+      toast.success(
+        <div>
+          <p className="font-medium">Lead Assigned</p>
+          <p className="text-sm">Lead assigned to {salesPersonName}</p>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 3000
+        }
+      );
+    } catch (error) {
+      console.error("Error assigning lead: ", error);
+      toast.error("Failed to assign lead", {
+        position: "top-right",
+        autoClose: 3000
+      });
+    }
+  };
+
+  // Fetch lead history for modal
+  const fetchNotesHistory = async (leadId: string) => {
+    try {
+      setShowHistoryModal(true);
+      
+      const historyCollectionRef = collection(crmDb, 'crm_leads', leadId, 'history');
+      const historySnapshot = await getDocs(historyCollectionRef);
+      
+      if (historySnapshot.empty) {
+        setCurrentHistory([]);
+        return;
+      }
+      
+      // Convert to array of objects
+      const historyData = historySnapshot.docs.map(doc => {
+        const data = doc.data();
+        
+        // Convert Firestore timestamps to Date objects
+        let timestamp = data.timestamp;
+        if (timestamp && typeof timestamp.toDate === 'function') {
+          timestamp = timestamp.toDate();
+        } else if (timestamp) {
+          // If it's not a Firestore timestamp but still a valid date format
+          timestamp = new Date(timestamp);
+        } else {
+          timestamp = new Date(); // Fallback
+        }
+        
+        return {
+          id: doc.id,
+          ...data,
+          timestamp
+        };
+      });
+      
+      // Sort by timestamp (newest first)
+      historyData.sort((a, b) => b.timestamp - a.timestamp);
+      
+      // Transform the history data to match HistoryItem interface
+      const formattedHistoryData = historyData.map(item => {
+        // Extract properties or set defaults for all required fields
+        const entry: HistoryItem = {
+          content: (item as any).content ? (item as any).content : 
+                  ((item as any).assignmentChange ? `Assigned to ${(item as any).newAssignee || 'someone'}` : "Note updated"),
+          createdAt: item.timestamp,
+          createdBy: (item as any).createdBy || ((item as any).editor?.name) || "",
+          createdById: (item as any).createdById || ((item as any).editor?.id) || item.id,
+          leadId: leadId,
+          displayDate: (item as any).displayDate || '',
+          assignedById: (item as any).assignedById || 'unknown'
+        };
+        return entry;
+      });
+      
+      // Sort if needed
+      formattedHistoryData.sort((a, b) => (b.createdAt as any) - (a.createdAt as any));
+      
+      setCurrentHistory(formattedHistoryData);
+    } catch (error) {
+      console.error("Error fetching history: ", error);
+      toast.error("Failed to load history");
+    }
   };
 
   return (
