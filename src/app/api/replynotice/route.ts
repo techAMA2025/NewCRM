@@ -14,12 +14,13 @@ export async function POST(request: Request) {
       bankEmail,
       noticeDate,
       referenceNumber,
-      clientMobile
+      clientMobile,
+      accountType
     } = body;
 
     // Input validation
-    if (!clientName || !bankName || !bankAddress || !lawyerEmail || !bankEmail || !noticeDate || !referenceNumber || !clientMobile) {
-      console.log("Missing form data:", { clientName, bankName, bankAddress, lawyerEmail, bankEmail, noticeDate, referenceNumber, clientMobile });
+    if (!clientName || !bankName || !bankAddress || !lawyerEmail || !bankEmail || !noticeDate || !referenceNumber || !clientMobile || !accountType) {
+      console.log("Missing form data:", { clientName, bankName, bankAddress, lawyerEmail, bankEmail, noticeDate, referenceNumber, clientMobile, accountType });
       return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
 
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
       noticeDate: formattedDate,
       referenceNumber,
       clientMobile,
-      currentDate: getCurrentDate() // Add today's date for the document
+      currentDate: getCurrentDate(), // Add today's date for the document
+      accountType
     };
 
     // Use storage to fetch template

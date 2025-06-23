@@ -68,6 +68,7 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
     referenceNumber: "",
     clientMobile: "",
     selectedBank: "", // For bank selection dropdown
+    accountType: "", // New field for account type
   });
 
 
@@ -171,7 +172,7 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
       // Call the API to generate the document
       const response = await fetch('/api/replynotice', {
         method: 'POST',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
@@ -304,6 +305,22 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             required
           />
+        </div>
+        
+        {/* Account Type Dropdown */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Account Type</label>
+          <select
+            name="accountType"
+            value={formData.accountType}
+            onChange={handleChange}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            required
+          >
+            <option value="">Select account type...</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Loan Account">Loan Account</option>
+          </select>
         </div>
         
         {/* Bank Selection Dropdown */}
