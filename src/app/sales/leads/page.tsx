@@ -79,6 +79,7 @@ const LeadsPage = () => {
   const [callbackLeadName, setCallbackLeadName] = useState('');
   const [isEditingCallback, setIsEditingCallback] = useState(false);
   const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null);
+  const [isLoadingCallbackInfo, setIsLoadingCallbackInfo] = useState(false);
 
   // Performance optimization refs
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -529,9 +530,12 @@ const LeadsPage = () => {
 
   // Optimized filter function with memoization
   const filterLeads = useCallback(() => {
-    if (!leads) return [];
+    // Use allFilteredLeads when on callback tab to ensure we have all callback leads
+    const sourceLeads = activeTab === 'callback' ? allFilteredLeads : leads;
     
-    let result = [...leads];
+    if (!sourceLeads || sourceLeads.length === 0) return [];
+    
+    let result = [...sourceLeads];
     
     // Apply tab-based filtering first
     if (activeTab === 'callback') {
@@ -684,7 +688,7 @@ const LeadsPage = () => {
     }
     
     return result;
-  }, [leads, activeTab, sourceFilter, statusFilter, salesPersonFilter, searchQuery, convertedFilter, fromDate, toDate, sortConfig]);
+  }, [leads, allFilteredLeads, activeTab, sourceFilter, statusFilter, salesPersonFilter, searchQuery, convertedFilter, fromDate, toDate, sortConfig]);
 
   // Apply filters on data change - OPTIMIZED with debouncing
   useEffect(() => {
@@ -705,7 +709,7 @@ const LeadsPage = () => {
         clearTimeout(filterTimeoutRef.current);
       }
     };
-  }, [leads, filterLeads, activeTab]);
+  }, [leads, allFilteredLeads, filterLeads, activeTab]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -1041,11 +1045,42 @@ const LeadsPage = () => {
   }, [leads]);
 
   // Handle tab change
-  const handleTabChange = (tab: 'all' | 'callback') => {
+  const handleTabChange = async (tab: 'all' | 'callback') => {
     setActiveTab(tab);
     // Reset status filter when switching to callback tab
     if (tab === 'callback') {
       setStatusFilter('all');
+      
+      // Fetch callback information for all callback leads
+      if (allFilteredLeads.length > 0) {
+        setIsLoadingCallbackInfo(true);
+        try {
+          const callbackLeads = allFilteredLeads.filter(lead => lead.status === 'Callback');
+          if (callbackLeads.length > 0) {
+            // Fetch callback info for all callback leads
+            const leadsWithCallbackInfo = await fetchCallbackInfoBatch(callbackLeads);
+            
+            // Update both leads and allFilteredLeads with callback info
+            const updateLeadsWithCallbackInfo = (currentLeads: Lead[]) => {
+              const updatedLeads = [...currentLeads];
+              leadsWithCallbackInfo.forEach(leadWithInfo => {
+                const existingIndex = updatedLeads.findIndex(l => l.id === leadWithInfo.id);
+                if (existingIndex !== -1) {
+                  updatedLeads[existingIndex] = { ...updatedLeads[existingIndex], callbackInfo: leadWithInfo.callbackInfo };
+                }
+              });
+              return updatedLeads;
+            };
+            
+            setLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
+            setAllFilteredLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
+          }
+        } catch (error) {
+          console.error('Error fetching callback info:', error);
+        } finally {
+          setIsLoadingCallbackInfo(false);
+        }
+      }
     }
   };
 
@@ -1212,6 +1247,16 @@ const LeadsPage = () => {
             toDate={toDate}
             setToDate={setToDate}
           />
+          
+          {/* Callback info loading indicator */}
+          {isLoadingCallbackInfo && activeTab === 'callback' && (
+            <div className="flex justify-center items-center py-4">
+              <div className="flex items-center space-x-2 text-blue-400">
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500"></div>
+                <span className="text-sm">Loading callback information...</span>
+              </div>
+            </div>
+          )}
           
           {/* Debug info - only show in development */}
           {process.env.NODE_ENV === 'development' && debugInfo && (
