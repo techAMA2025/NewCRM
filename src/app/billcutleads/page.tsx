@@ -110,6 +110,57 @@ const formatDateForInput = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Function to parse debt range and convert to numeric value for sorting
+const parseDebtRange = (remarks: string): number => {
+  if (!remarks) return 0;
+  
+  // Extract debt range from remarks (format: "Debt Range: 2 Lakhs- 3 Lakhs")
+  const debtRangeMatch = remarks.match(/Debt Range:\s*([^-]+)(?:\s*-\s*([^-]+))?/i);
+  if (!debtRangeMatch) {
+    console.log('No debt range found in:', remarks);
+    return 0;
+  }
+  
+  // Get the first value (lower bound)
+  const firstValue = debtRangeMatch[1]?.trim();
+  if (!firstValue) {
+    console.log('No first value found in debt range:', remarks);
+    return 0;
+  }
+  
+  // Convert to numeric value
+  const numericValue = convertDebtToNumeric(firstValue);
+  console.log('Parsed debt range:', { remarks, firstValue, numericValue });
+  return numericValue;
+};
+
+// Function to convert debt string to numeric value
+const convertDebtToNumeric = (debtString: string): number => {
+  const cleanString = debtString.toLowerCase().trim();
+  
+  // Extract number and unit
+  const numberMatch = cleanString.match(/(\d+(?:\.\d+)?)\s*(lakh|lac|crore|cr|thousand|k)/i);
+  if (!numberMatch) return 0;
+  
+  const number = parseFloat(numberMatch[1]);
+  const unit = numberMatch[2].toLowerCase();
+  
+  // Convert to lakhs (base unit)
+  switch (unit) {
+    case 'lakh':
+    case 'lac':
+      return number;
+    case 'crore':
+    case 'cr':
+      return number * 100; // 1 crore = 100 lakhs
+    case 'thousand':
+    case 'k':
+      return number / 100; // 1 lakh = 100 thousand
+    default:
+      return number;
+  }
+};
+
 // Set default date range to current month to avoid loading all leads initially
 const getDefaultFromDate = () => {
   const now = new Date();
@@ -154,6 +205,9 @@ const BillCutLeadsPage = () => {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [bulkAssignTarget, setBulkAssignTarget] = useState('');
+
+  // Add debt range sort state
+  const [debtRangeSort, setDebtRangeSort] = useState<'none' | 'low-to-high' | 'high-to-low'>('none');
 
   // Handle URL parameters on component mount (client-side only)
   useEffect(() => {
@@ -454,11 +508,25 @@ const BillCutLeadsPage = () => {
       }
     }
     
+    // Apply debt range sorting
+    if (debtRangeSort !== 'none') {
+      result = result.sort((a, b) => {
+        const debtA = parseDebtRange(a.remarks || '');
+        const debtB = parseDebtRange(b.remarks || '');
+        
+        if (debtRangeSort === 'low-to-high') {
+          return debtA - debtB;
+        } else {
+          return debtB - debtA;
+        }
+      });
+    }
+    
     setFilteredLeads(result);
     
     // Clear selected leads when filters change to prevent stale selections
     setSelectedLeads(prev => prev.filter(leadId => result.some(lead => lead.id === leadId)));
-  }, [leads, searchQuery, showMyLeads, activeTab]);
+  }, [leads, searchQuery, showMyLeads, activeTab, debtRangeSort]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
@@ -912,6 +980,8 @@ const BillCutLeadsPage = () => {
             selectedLeads={selectedLeads}
             onBulkAssign={handleBulkAssign}
             onClearSelection={() => setSelectedLeads([])}
+            debtRangeSort={debtRangeSort}
+            setDebtRangeSort={setDebtRangeSort}
           />
           
           {isLoading ? (

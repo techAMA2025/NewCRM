@@ -26,6 +26,9 @@ type BillcutLeadsFiltersProps = {
   selectedLeads: string[];
   onBulkAssign: () => void;
   onClearSelection: () => void;
+  // Debt range filter props
+  debtRangeSort: 'none' | 'low-to-high' | 'high-to-low';
+  setDebtRangeSort: (sort: 'none' | 'low-to-high' | 'high-to-low') => void;
 };
 
 const BillcutLeadsFilters = ({
@@ -49,7 +52,10 @@ const BillcutLeadsFilters = ({
   // Bulk assignment props
   selectedLeads,
   onBulkAssign,
-  onClearSelection
+  onClearSelection,
+  // Debt range filter props
+  debtRangeSort,
+  setDebtRangeSort
 }: BillcutLeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -209,13 +215,14 @@ const BillcutLeadsFilters = ({
     setFromDate('');
     setToDate('');
     setShowMyLeads(false);
+    setDebtRangeSort('none');
     if (setSalesPersonFilter) {
       setSalesPersonFilter('all');
     }
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery || statusFilter !== 'all' || fromDate || toDate || showMyLeads || (salesPersonFilter && salesPersonFilter !== 'all');
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || fromDate || toDate || showMyLeads || debtRangeSort !== 'none' || (salesPersonFilter && salesPersonFilter !== 'all');
 
   return (
     <div className="space-y-4 mb-8">
@@ -314,7 +321,7 @@ const BillcutLeadsFilters = ({
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Status Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-gray-400">Status</label>
@@ -385,6 +392,20 @@ const BillcutLeadsFilters = ({
             />
           </div>
           
+          {/* Debt Range Filter */}
+          <div className="space-y-1">
+            <label className="block text-xs text-gray-400">Debt Range</label>
+            <select
+              value={debtRangeSort}
+              onChange={(e) => setDebtRangeSort(e.target.value as 'none' | 'low-to-high' | 'high-to-low')}
+              className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
+            >
+              <option value="none">No Sort</option>
+              <option value="low-to-high">Low to High</option>
+              <option value="high-to-low">High to Low</option>
+            </select>
+          </div>
+          
           {/* My Leads Toggle */}
           <div className="space-y-1 flex flex-col justify-end">
             <button
@@ -398,26 +419,10 @@ const BillcutLeadsFilters = ({
               <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              {showMyLeads ? 'All Leads' : 'Show My Leads'}
+              {showMyLeads ? 'All Leads' : 'My Leads'}
             </button>
           </div>
         </div>
-        
-        {/* Date range clear button */}
-        {/* {(fromDate || toDate) && (
-          <div className="mt-4 flex justify-start">
-            <button 
-              onClick={clearDateFilters}
-              className="inline-flex items-center px-3 py-2 border border-gray-600/50 text-sm leading-4 font-medium rounded-lg text-gray-300 bg-gray-700/50 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
-              type="button"
-            >
-              <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Clear date filters
-            </button>
-          </div>
-        )} */}
       </div>
     </div>
   );
