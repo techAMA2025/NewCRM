@@ -39,7 +39,7 @@ const statusOptions = [
 
 // Pagination constants
 const LEADS_PER_PAGE = 50;
-const CALLBACK_INFO_BATCH_SIZE = 10;
+const CALLBACK_INFO_BATCH_SIZE = 100;
 
 const LeadsPage = () => {
   // State Management
@@ -705,7 +705,7 @@ const LeadsPage = () => {
         clearTimeout(filterTimeoutRef.current);
       }
     };
-  }, [leads, filterLeads]);
+  }, [leads, filterLeads, activeTab]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
