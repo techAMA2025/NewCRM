@@ -1028,17 +1028,20 @@ const LeadsPage = () => {
     const currentUserName = localStorage.getItem('userName');
     const currentUserRole = localStorage.getItem('userRole');
     
+    // Use allFilteredLeads to get the correct count of all callback leads
+    const sourceLeads = allFilteredLeads.length > 0 ? allFilteredLeads : leads;
+    
     // Admin and overlord users can see count of all callback data
     if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
-      return leads.filter(lead => lead.status === 'Callback').length;
+      return sourceLeads.filter(lead => lead.status === 'Callback').length;
     } else {
       // Sales users can only see count of their own callback data
-      return leads.filter(lead => 
+      return sourceLeads.filter(lead => 
         lead.status === 'Callback' && 
         lead.assignedTo === currentUserName
       ).length;
     }
-  }, [leads]);
+  }, [leads, allFilteredLeads]);
 
   const allLeadsCount = useMemo(() => {
     return leads.length;
