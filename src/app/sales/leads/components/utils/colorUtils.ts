@@ -6,6 +6,7 @@ export const getStatusColor = (status: string) => {
     case 'Not Interested': return 'bg-red-900 text-red-100 border-red-700';
     case 'Not Answering': return 'bg-orange-900 text-orange-100 border-orange-700';
     case 'Callback': return 'bg-yellow-900 text-yellow-100 border-yellow-700';
+    case 'Future Potential': return 'bg-blue-900 text-blue-100 border-blue-700';
     case 'Converted': return 'bg-emerald-900 text-emerald-100 border-emerald-700';
     case 'Loan Required': return 'bg-purple-900 text-purple-100 border-purple-700';
     case 'Cibil Issue': return 'bg-rose-900 text-rose-100 border-rose-700';

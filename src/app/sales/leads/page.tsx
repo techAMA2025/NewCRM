@@ -30,6 +30,7 @@ const statusOptions = [
   'Not Interested', 
   'Not Answering', 
   'Callback', 
+  'Future Potential', 
   'Converted', 
   'Loan Required', 
   'Cibil Issue', 
