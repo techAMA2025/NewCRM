@@ -6,9 +6,16 @@ type StatusCellProps = {
   updateLead: (id: string, data: any) => Promise<boolean>;
   statusOptions: string[];
   onStatusChangeToCallback?: (leadId: string, leadName: string) => void;
+  onStatusChangeToLanguageBarrier?: (leadId: string, leadName: string) => void;
 };
 
-const StatusCell = ({ lead, updateLead, statusOptions, onStatusChangeToCallback }: StatusCellProps) => {
+const StatusCell = ({ 
+  lead, 
+  updateLead, 
+  statusOptions, 
+  onStatusChangeToCallback,
+  onStatusChangeToLanguageBarrier 
+}: StatusCellProps) => {
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
     
@@ -47,6 +54,47 @@ const StatusCell = ({ lead, updateLead, statusOptions, onStatusChangeToCallback 
           pauseOnHover: true,
           draggable: true,
           className: "bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 border-2 border-blue-400 shadow-xl",
+        }
+      );
+      
+      return; // Don't update the status yet, let the modal handle it
+    }
+    
+    // If status is being changed to "Language Barrier", trigger the language barrier modal
+    if (newStatus === 'Language Barrier' && onStatusChangeToLanguageBarrier) {
+      onStatusChangeToLanguageBarrier(lead.id, lead.name || 'Unknown Lead');
+      
+      // Show a toast notification
+      toast.info(
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-3 h-3 bg-indigo-400 rounded-full animate-pulse shadow-lg"></div>
+            </div>
+            <div className="ml-3 flex-1">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">🌐</span>
+                <p className="text-sm font-bold text-white">
+                  Language Barrier
+                </p>
+              </div>
+              <p className="mt-2 text-sm text-indigo-100 font-medium">
+                {lead.name || 'Unknown Lead'}
+              </p>
+              <p className="mt-1 text-sm text-indigo-200">
+                Please select the preferred language for this lead
+              </p>
+            </div>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          className: "bg-gradient-to-r from-indigo-600 via-purple-500 to-pink-600 border-2 border-indigo-400 shadow-xl",
         }
       );
       

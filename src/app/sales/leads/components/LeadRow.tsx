@@ -27,6 +27,7 @@ type LeadRowProps = {
   activeTab: 'all' | 'callback';
   refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
   onStatusChangeToCallback: (leadId: string, leadName: string) => void;
+  onStatusChangeToLanguageBarrier: (leadId: string, leadName: string) => void;
   onEditCallback: (lead: Lead) => void;
 };
 
@@ -47,6 +48,7 @@ const LeadRow = ({
   activeTab,
   refreshLeadCallbackInfo,
   onStatusChangeToCallback,
+  onStatusChangeToLanguageBarrier,
   onEditCallback
 }: LeadRowProps) => {
   // Helper function for safer data access with case-insensitive matching
@@ -275,7 +277,9 @@ const LeadRow = ({
         updateLead={handleUpdateLead} 
         statusOptions={statusOptions} 
         onStatusChangeToCallback={onStatusChangeToCallback}
+        onStatusChangeToLanguageBarrier={onStatusChangeToLanguageBarrier}
       />
+      
       
       {/* Salesperson Cell Component */}
       <SalespersonCell 
