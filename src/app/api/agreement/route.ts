@@ -10,7 +10,7 @@ import os from 'os';
 export async function POST(request: Request) {
   try {
     // Get template from Firebase Storage
-    const templateRef = ref(storage, 'templates/template9.docx');
+    const templateRef = ref(storage, 'templates/ama_agreement.docx');
     let templateBuffer;
     
     try {
@@ -121,6 +121,7 @@ export async function POST(request: Request) {
       startdate: formattedStartDate,
       startDateFormatted: formattedStartDate,
       tenure,
+      monthlyFees: formatIndianNumber(parseFloat(monthlyFees)),
       totalfees: formatIndianNumber(totalFees),
       totaldebt: formatIndianNumber(totalDebt),
       bankRecords,
@@ -138,7 +139,7 @@ export async function POST(request: Request) {
     
     // Save to temporary file (needed for verification)
     const tempDir = os.tmpdir();
-    const tempFilePath = path.join(tempDir, `${name}_agreement_${Date.now()}.docx`);
+    const tempFilePath = path.join(tempDir, `${name}_ama_agreement_${Date.now()}.docx`);
     fs.writeFileSync(tempFilePath, buffer);
     console.log('Temporary file created at:', tempFilePath);
     
