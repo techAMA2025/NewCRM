@@ -5,7 +5,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-import OverlordSidebar, { SidebarProvider, useSidebar } from '@/components/navigation/OverlordSidebar';
+import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import BillcutSidebar from '@/components/navigation/BillcutSidebar';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import {
@@ -154,8 +154,8 @@ const BillcutLeadReportContent = () => {
     startDate: '',
     endDate: ''
   });
+  const [isExpanded, setIsExpanded] = useState(true);
   const router = useRouter();
-  const { isExpanded } = useSidebar();
 
   // Function to navigate to billcut leads page with filters
   const navigateToLeadsWithFilters = (salesperson: string, status: string) => {
@@ -1439,9 +1439,7 @@ const BillcutLeadReportContent = () => {
 
 const BillcutLeadReportPage = () => {
   return (
-    <SidebarProvider>
-      <BillcutLeadReportContent />
-    </SidebarProvider>
+    <BillcutLeadReportContent />
   );
 };
 
