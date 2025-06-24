@@ -117,7 +117,7 @@ const OverlordSidebar: React.FC = () => {
   return (
     <div className="fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 bg-gray-900 shadow-xl"
          style={{ 
-           width: isExpanded ? '250px' : '80px',
+           width: isExpanded ? '250px' : '50px',
          }}>
       <div className="sticky top-0 z-10 bg-gray-900">
         <div className="flex items-center justify-between px-2 py-5">

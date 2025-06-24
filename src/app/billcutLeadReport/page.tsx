@@ -348,6 +348,16 @@ const BillcutLeadReportContent = () => {
     return days;
   };
 
+  // Function to create a date string in local timezone
+  const createLocalDateString = (year: number, month: number, day: number) => {
+    // Create date in local timezone to avoid timezone conversion issues
+    const date = new Date(year, month, day, 12, 0, 0, 0); // Use noon to avoid timezone edge cases
+    const yearStr = date.getFullYear();
+    const monthStr = String(date.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(date.getDate()).padStart(2, '0');
+    return `${yearStr}-${monthStr}-${dayStr}`;
+  };
+
   // Check user role and theme preference on component mount
   useEffect(() => {
     const storedRole = localStorage.getItem('userRole');
@@ -754,8 +764,8 @@ const BillcutLeadReportContent = () => {
                                 const month = parseInt(e.target.value);
                                 const year = customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year;
                                 const day = customDateRange.startDate ? new Date(customDateRange.startDate).getDate() : 1;
-                                const newDate = new Date(year, month, day);
-                                handleCustomDateChange('startDate', newDate.toISOString().split('T')[0]);
+                                const newDateString = createLocalDateString(year, month, day);
+                                handleCustomDateChange('startDate', newDateString);
                               }}
                               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
                             >
@@ -774,8 +784,8 @@ const BillcutLeadReportContent = () => {
                                 const year = parseInt(e.target.value);
                                 const month = customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month;
                                 const day = customDateRange.startDate ? new Date(customDateRange.startDate).getDate() : 1;
-                                const newDate = new Date(year, month, day);
-                                handleCustomDateChange('startDate', newDate.toISOString().split('T')[0]);
+                                const newDateString = createLocalDateString(year, month, day);
+                                handleCustomDateChange('startDate', newDateString);
                               }}
                               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
                             >
@@ -808,8 +818,8 @@ const BillcutLeadReportContent = () => {
                                   if (!isEmpty && typeof day === 'number') {
                                     const year = customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year;
                                     const month = customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month;
-                                    const newDate = new Date(year, month, day);
-                                    handleCustomDateChange('startDate', newDate.toISOString().split('T')[0]);
+                                    const newDateString = createLocalDateString(year, month, day);
+                                    handleCustomDateChange('startDate', newDateString);
                                   }
                                 }}
                                 className={`p-1 text-xs rounded hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
@@ -848,8 +858,8 @@ const BillcutLeadReportContent = () => {
                                 const month = parseInt(e.target.value);
                                 const year = customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year;
                                 const day = customDateRange.endDate ? new Date(customDateRange.endDate).getDate() : 1;
-                                const newDate = new Date(year, month, day);
-                                handleCustomDateChange('endDate', newDate.toISOString().split('T')[0]);
+                                const newDateString = createLocalDateString(year, month, day);
+                                handleCustomDateChange('endDate', newDateString);
                               }}
                               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
                             >
@@ -868,8 +878,8 @@ const BillcutLeadReportContent = () => {
                                 const year = parseInt(e.target.value);
                                 const month = customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month;
                                 const day = customDateRange.endDate ? new Date(customDateRange.endDate).getDate() : 1;
-                                const newDate = new Date(year, month, day);
-                                handleCustomDateChange('endDate', newDate.toISOString().split('T')[0]);
+                                const newDateString = createLocalDateString(year, month, day);
+                                handleCustomDateChange('endDate', newDateString);
                               }}
                               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
                             >
@@ -902,8 +912,8 @@ const BillcutLeadReportContent = () => {
                                   if (!isEmpty && typeof day === 'number') {
                                     const year = customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year;
                                     const month = customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month;
-                                    const newDate = new Date(year, month, day);
-                                    handleCustomDateChange('endDate', newDate.toISOString().split('T')[0]);
+                                    const newDateString = createLocalDateString(year, month, day);
+                                    handleCustomDateChange('endDate', newDateString);
                                   }
                                 }}
                                 className={`p-1 text-xs rounded hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
