@@ -17,6 +17,7 @@ import EditModal from './components/EditModal';
 import HistoryModal from './components/HistoryModal';
 import CallbackSchedulingModal from './components/CallbackSchedulingModal';
 import LanguageBarrierModal from './components/LanguageBarrierModal';
+import ConversionConfirmationModal from './components/ConversionConfirmationModal';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 
@@ -90,6 +91,12 @@ const LeadsPage = () => {
   const [languageBarrierLeadName, setLanguageBarrierLeadName] = useState('');
   const [isEditingLanguageBarrier, setIsEditingLanguageBarrier] = useState(false);
   const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState<string>('');
+
+  // Conversion confirmation modal state
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [conversionLeadId, setConversionLeadId] = useState('');
+  const [conversionLeadName, setConversionLeadName] = useState('');
+  const [isConvertingLead, setIsConvertingLead] = useState(false);
 
   // Performance optimization refs
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1251,6 +1258,80 @@ const LeadsPage = () => {
     setShowLanguageBarrierModal(true);
   };
 
+  // Handle status change to converted
+  const handleStatusChangeToConverted = (leadId: string, leadName: string) => {
+    setConversionLeadId(leadId);
+    setConversionLeadName(leadName);
+    setShowConversionModal(true);
+  };
+
+  // Handle conversion modal confirmation
+  const handleConversionConfirm = async () => {
+    setIsConvertingLead(true);
+    
+    try {
+      // Update the lead status to "Converted" and add conversion timestamp
+      const dbData = { 
+        status: 'Converted',
+        convertedAt: serverTimestamp()
+      };
+      
+      const success = await updateLead(conversionLeadId, dbData);
+      
+      if (success) {
+        // Show success toast
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">🎉</span>
+                  <p className="text-sm font-bold text-white">
+                    Lead Converted Successfully
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">
+                  {conversionLeadName}
+                </p>
+                <p className="mt-1 text-sm text-green-200">
+                  Lead status updated to "Converted" with conversion timestamp
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error converting lead:', error);
+      toast.error('Failed to convert lead. Please try again.');
+    } finally {
+      setIsConvertingLead(false);
+      setShowConversionModal(false);
+      setConversionLeadId('');
+      setConversionLeadName('');
+    }
+  };
+
+  // Handle conversion modal close
+  const handleConversionClose = () => {
+    setShowConversionModal(false);
+    setConversionLeadId('');
+    setConversionLeadName('');
+    setIsConvertingLead(false);
+  };
+
   // Update lead handler
   const updateLead = async (id: any, data: any) => {
     try {
@@ -1427,8 +1508,8 @@ const LeadsPage = () => {
       {/* Sidebar based on user role */}
       {SidebarComponent && <SidebarComponent />}
       
-      <div className="flex-1 overflow-auto px-3">
-        <div className="w-[98%] mx-auto">
+      <div className={`flex-1 overflow-auto px-3 ${userRole === 'overlord' ? 'ml-[250px] sm:ml-[250px] md:ml-[250px] lg:ml-[250px] xl:ml-[250px]' : ''}`}>
+        <div className="w-full max-w-none mx-auto">
           {/* Header with title and actions */}
           <LeadsHeader 
             isLoading={isLoading} 
@@ -1513,6 +1594,7 @@ const LeadsPage = () => {
                 refreshLeadCallbackInfo={refreshLeadCallbackInfo}
                 onStatusChangeToCallback={handleStatusChangeToCallback}
                 onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
+                onStatusChangeToConverted={handleStatusChangeToConverted}
                 onEditCallback={handleEditCallback}
                 hasMoreLeads={hasMoreLeads}
                 isLoadingMore={isLoadingMore}
@@ -1570,6 +1652,15 @@ const LeadsPage = () => {
                 leadId={languageBarrierLeadId}
                 leadName={languageBarrierLeadName}
                 existingLanguage={editingLanguageBarrierInfo}
+              />
+              
+              {/* Conversion Confirmation Modal */}
+              <ConversionConfirmationModal
+                isOpen={showConversionModal}
+                onClose={handleConversionClose}
+                onConfirm={handleConversionConfirm}
+                leadName={conversionLeadName}
+                isLoading={isConvertingLead}
               />
             </>
           )}
