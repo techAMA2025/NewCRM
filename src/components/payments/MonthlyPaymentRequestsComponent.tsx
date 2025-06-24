@@ -227,8 +227,6 @@ export default function MonthlyPaymentRequestsComponent() {
         const clientId = clientDoc.id;
         const clientName = clientDoc.data().clientName || 'Unknown Client';
         
-
-        
         // Limit and sort the payment history
         const historyQuery = query(
           collection(db, `clients_payments/${clientId}/payment_history`),
@@ -245,10 +243,6 @@ export default function MonthlyPaymentRequestsComponent() {
           ...doc.data()
         })) as PaymentRequest[];
         
-        // Log each request's payment status
-        requests.forEach(req => {
-        });
-        
         return requests;
       });
       
@@ -262,7 +256,7 @@ export default function MonthlyPaymentRequestsComponent() {
       );
       
       if (invalidRequests.length > 0) {
-        console.warn("Found requests with missing critical fields:", invalidRequests);
+        console.warn('Found invalid payment requests:', invalidRequests.length);
       }
       
       setPaymentRequests(allRequests);
@@ -291,12 +285,8 @@ export default function MonthlyPaymentRequestsComponent() {
 
   // Add more debug logs to the filtering logic
   const pendingRequests = useMemo(() => {
-
     const filtered = paymentRequests.filter(req => {
       const isPending = req.payment_status !== 'approved' && req.payment_status !== 'Approved';
-      if (isPending) {
-
-      }
       return isPending;
     });
     
@@ -304,12 +294,8 @@ export default function MonthlyPaymentRequestsComponent() {
   }, [paymentRequests]);
   
   const approvedRequests = useMemo(() => {
-
-    
     const filtered = paymentRequests.filter(req => {
       const isApproved = req.payment_status === 'approved' || req.payment_status === 'Approved';
-      if (isApproved) {
-      }
       return isApproved;
     });
     
@@ -501,8 +487,6 @@ export default function MonthlyPaymentRequestsComponent() {
       </ThemeProvider>
     );
   }
-
-
 
   return (
     <StyledEngineProvider injectFirst>
