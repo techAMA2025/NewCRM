@@ -3,6 +3,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
 import BillcutLeadNotesCell from './BillcutLeadNotesCell';
 import CallbackSchedulingModal from './CallbackSchedulingModal';
+import { Lead } from '../types';
 
 // Add color mapping interface and function
 interface ColorMap {
@@ -28,28 +29,6 @@ const getRandomColor = (name: string): string => {
   const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[index % colors.length];
 };
-
-interface Lead {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  city: string;
-  status: string;
-  assignedTo: string;
-  assignedToId?: string;
-  monthlyIncome: string;
-  remarks: string;
-  salesNotes: string;
-  lastModified: Date;
-  date: number;
-  callbackInfo?: {
-    id: string;
-    scheduled_dt: Date;
-    scheduled_by: string;
-    created_at: any;
-  } | null;
-}
 
 interface SalesPerson {
   id: string;
@@ -79,6 +58,9 @@ interface BillcutLeadsTableProps {
   onSelectAll: () => void;
   activeTab: 'all' | 'callback';
   refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
+  onStatusChangeToLanguageBarrier?: (leadId: string, leadName: string) => void;
+  onStatusChangeToConverted?: (leadId: string, leadName: string) => void;
+  onEditLanguageBarrier?: (lead: Lead) => void;
 }
 
 const BillcutLeadsTable = ({
@@ -95,6 +77,9 @@ const BillcutLeadsTable = ({
   onSelectAll,
   activeTab,
   refreshLeadCallbackInfo,
+  onStatusChangeToLanguageBarrier,
+  onStatusChangeToConverted,
+  onEditLanguageBarrier,
 }: BillcutLeadsTableProps) => {
   const [editingData, setEditingData] = useState<{ [key: string]: Partial<Lead> }>({});
   const [salesPeople, setSalesPeople] = useState<User[]>([]);
@@ -167,6 +152,8 @@ const BillcutLeadsTable = ({
         return 'bg-purple-900 text-purple-100 border-purple-700';
       case 'cibil issue':
         return 'bg-rose-900 text-rose-100 border-rose-700';
+      case 'language barrier':
+        return 'bg-indigo-900 text-indigo-100 border-indigo-700';
       case 'closed lead':
         return 'bg-gray-500 text-white border-gray-700';
       case 'select status':
@@ -297,6 +284,16 @@ const BillcutLeadsTable = ({
         }
         
         setShowCallbackModal(true);
+        return; // Don't update status yet
+      } else if (value === 'Language Barrier' && onStatusChangeToLanguageBarrier) {
+        // Show language barrier modal
+        const lead = leads.find(l => l.id === id);
+        onStatusChangeToLanguageBarrier(id, lead?.name || 'Unknown Lead');
+        return; // Don't update status yet
+      } else if (value === 'Converted' && onStatusChangeToConverted) {
+        // Show conversion confirmation modal
+        const lead = leads.find(l => l.id === id);
+        onStatusChangeToConverted(id, lead?.name || 'Unknown Lead');
         return; // Don't update status yet
       } else {
         // For other status changes, immediately save to database

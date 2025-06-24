@@ -17,6 +17,7 @@ export type Lead = {
   status: string;
   source_database: string;
   assignedTo: string;
+  assignedToId?: string;
   personalLoanDues: string;
   creditCardDues: string;
   monthlyIncome: string;
@@ -29,6 +30,8 @@ export type Lead = {
   totalEmi: string;
   occupation: string;
   loanTypes: string[];
+  language_barrier?: string;
+  convertedAt?: any;
   callbackInfo?: {
     id: string;
     scheduled_dt: Date;

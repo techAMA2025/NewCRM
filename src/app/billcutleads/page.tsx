@@ -13,6 +13,8 @@ import BillcutLeadsTable from './components/BillcutLeadsTable';
 import BillcutLeadsTabs from './components/BillcutLeadsTabs';
 import EditModal from '../sales/leads/components/EditModal';
 import HistoryModal from '../sales/leads/components/HistoryModal';
+import LanguageBarrierModal from '../sales/leads/components/LanguageBarrierModal';
+import ConversionConfirmationModal from '../sales/leads/components/ConversionConfirmationModal';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
@@ -32,6 +34,7 @@ const statusOptions = [
   'Converted', 
   'Loan Required', 
   'Cibil Issue', 
+  'Language Barrier',
   'Closed Lead'
 ];
 
@@ -207,6 +210,19 @@ const BillCutLeadsPage = () => {
 
   // Add debt range sort state
   const [debtRangeSort, setDebtRangeSort] = useState<'none' | 'low-to-high' | 'high-to-low'>('none');
+
+  // Language barrier modal state
+  const [showLanguageBarrierModal, setShowLanguageBarrierModal] = useState(false);
+  const [languageBarrierLeadId, setLanguageBarrierLeadId] = useState('');
+  const [languageBarrierLeadName, setLanguageBarrierLeadName] = useState('');
+  const [isEditingLanguageBarrier, setIsEditingLanguageBarrier] = useState(false);
+  const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState<string>('');
+
+  // Conversion confirmation modal state
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [conversionLeadId, setConversionLeadId] = useState('');
+  const [conversionLeadName, setConversionLeadName] = useState('');
+  const [isConvertingLead, setIsConvertingLead] = useState(false);
 
   // Handle URL parameters on component mount (client-side only)
   useEffect(() => {
@@ -916,6 +932,196 @@ const BillCutLeadsPage = () => {
     }
   };
 
+  // Handle status change to language barrier
+  const handleStatusChangeToLanguageBarrier = (leadId: string, leadName: string) => {
+    setLanguageBarrierLeadId(leadId);
+    setLanguageBarrierLeadName(leadName);
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo('');
+    setShowLanguageBarrierModal(true);
+  };
+
+  // Handle language barrier modal confirmation
+  const handleLanguageBarrierConfirm = async (language: string) => {
+    if (isEditingLanguageBarrier) {
+      // For editing, update the language barrier field
+      const success = await updateLead(languageBarrierLeadId, { language_barrier: language });
+      if (success) {
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">✅</span>
+                  <p className="text-sm font-bold text-white">
+                    Language Updated
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">
+                  {languageBarrierLeadName}
+                </p>
+                <p className="mt-1 text-sm text-green-200">
+                  Preferred language updated to {language}
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          }
+        );
+      }
+    } else {
+      // For new language barrier, update the lead status and language barrier field
+      const dbData = { 
+        status: 'Language Barrier',
+        language_barrier: language 
+      };
+      const success = await updateLead(languageBarrierLeadId, dbData);
+      if (success) {
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">✅</span>
+                  <p className="text-sm font-bold text-white">
+                    Language Barrier Set
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">
+                  {languageBarrierLeadName}
+                </p>
+                <p className="mt-1 text-sm text-green-200">
+                  Lead status updated to "Language Barrier" with preferred language: {language}
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          }
+        );
+      }
+    }
+    
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId('');
+    setLanguageBarrierLeadName('');
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo('');
+  };
+
+  // Handle language barrier modal close
+  const handleLanguageBarrierClose = () => {
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId('');
+    setLanguageBarrierLeadName('');
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo('');
+  };
+
+  // Handle editing language barrier details
+  const handleEditLanguageBarrier = (lead: Lead) => {
+    setLanguageBarrierLeadId(lead.id);
+    setLanguageBarrierLeadName(lead.name || 'Unknown Lead');
+    setIsEditingLanguageBarrier(true);
+    setEditingLanguageBarrierInfo(lead.language_barrier || '');
+    setShowLanguageBarrierModal(true);
+  };
+
+  // Handle status change to converted
+  const handleStatusChangeToConverted = (leadId: string, leadName: string) => {
+    setConversionLeadId(leadId);
+    setConversionLeadName(leadName);
+    setShowConversionModal(true);
+  };
+
+  // Handle conversion modal confirmation
+  const handleConversionConfirm = async () => {
+    setIsConvertingLead(true);
+    
+    try {
+      // Update the lead status to "Converted" and add conversion timestamp
+      const dbData = { 
+        status: 'Converted',
+        convertedAt: serverTimestamp()
+      };
+      
+      const success = await updateLead(conversionLeadId, dbData);
+      
+      if (success) {
+        // Show success toast
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">🎉</span>
+                  <p className="text-sm font-bold text-white">
+                    Lead Converted Successfully
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">
+                  {conversionLeadName}
+                </p>
+                <p className="mt-1 text-sm text-green-200">
+                  Lead status updated to "Converted" with conversion timestamp
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error converting lead:', error);
+      toast.error('Failed to convert lead. Please try again.');
+    } finally {
+      setIsConvertingLead(false);
+      setShowConversionModal(false);
+      setConversionLeadId('');
+      setConversionLeadName('');
+    }
+  };
+
+  // Handle conversion modal close
+  const handleConversionClose = () => {
+    setShowConversionModal(false);
+    setConversionLeadId('');
+    setConversionLeadName('');
+    setIsConvertingLead(false);
+  };
+
   // Render sidebar based on user role
   const SidebarComponent = useMemo(() => {
     if (userRole === 'admin') {
@@ -993,6 +1199,9 @@ const BillCutLeadsPage = () => {
                 onSelectAll={handleSelectAll}
                 activeTab={activeTab}
                 refreshLeadCallbackInfo={refreshLeadCallbackInfo}
+                onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
+                onStatusChangeToConverted={handleStatusChangeToConverted}
+                onEditLanguageBarrier={handleEditLanguageBarrier}
               />
               
               {/* Bulk Assignment Modal */}
@@ -1073,6 +1282,25 @@ const BillCutLeadsPage = () => {
                 showHistoryModal={showHistoryModal}
                 setShowHistoryModal={setShowHistoryModal}
                 currentHistory={currentHistory}
+              />
+              
+              {/* Language Barrier Modal */}
+              <LanguageBarrierModal
+                isOpen={showLanguageBarrierModal}
+                onClose={handleLanguageBarrierClose}
+                onConfirm={handleLanguageBarrierConfirm}
+                leadId={languageBarrierLeadId}
+                leadName={languageBarrierLeadName}
+                existingLanguage={editingLanguageBarrierInfo}
+              />
+              
+              {/* Conversion Confirmation Modal */}
+              <ConversionConfirmationModal
+                isOpen={showConversionModal}
+                onClose={handleConversionClose}
+                onConfirm={handleConversionConfirm}
+                leadName={conversionLeadName}
+                isLoading={isConvertingLead}
               />
             </>
           )}
