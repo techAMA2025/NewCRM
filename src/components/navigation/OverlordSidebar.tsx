@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut, FiUserPlus, FiShare2, FiBriefcase, FiCalendar, FiCheckSquare, FiBarChart, FiPieChart } from 'react-icons/fi';
@@ -6,38 +6,6 @@ import { FaBalanceScale, FaMoneyBillWave, FaUserFriends, FaFolder, FaFileAlt, Fa
 import { getAuth, signOut } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 import { app } from '@/firebase/firebase';
-
-// Context for sidebar state
-interface SidebarContextType {
-  isExpanded: boolean;
-  toggleSidebar: () => void;
-}
-
-const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
-
-// Hook to use sidebar context
-export const useSidebar = () => {
-  const context = useContext(SidebarContext);
-  if (context === undefined) {
-    throw new Error('useSidebar must be used within a SidebarProvider');
-  }
-  return context;
-};
-
-// Sidebar Provider Component
-export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const toggleSidebar = () => {
-    setIsExpanded(!isExpanded);
-  };
-
-  return (
-    <SidebarContext.Provider value={{ isExpanded, toggleSidebar }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-};
 
 interface NavItemProps {
   href: string;
@@ -69,7 +37,7 @@ const NavItem: React.FC<NavItemProps> = ({ href, icon, label, isActive }) => {
 const OverlordSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { isExpanded, toggleSidebar } = useSidebar();
+  const [isExpanded, setIsExpanded] = useState(true);
   const [username, setUsername] = useState<string>('');
 
   useEffect(() => {
@@ -79,6 +47,10 @@ const OverlordSidebar: React.FC = () => {
       setUsername(storedUsername || 'User');
     }
   }, []);
+
+  const toggleSidebar = () => {
+    setIsExpanded(!isExpanded);
+  };
 
   const navItems = [
     { href: '/dashboard', icon: <FiHome />, label: 'Dashboard' },
