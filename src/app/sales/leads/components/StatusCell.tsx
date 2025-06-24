@@ -7,6 +7,7 @@ type StatusCellProps = {
   statusOptions: string[];
   onStatusChangeToCallback?: (leadId: string, leadName: string) => void;
   onStatusChangeToLanguageBarrier?: (leadId: string, leadName: string) => void;
+  onStatusChangeToConverted?: (leadId: string, leadName: string) => void;
 };
 
 const StatusCell = ({ 
@@ -14,10 +15,12 @@ const StatusCell = ({
   updateLead, 
   statusOptions, 
   onStatusChangeToCallback,
-  onStatusChangeToLanguageBarrier 
+  onStatusChangeToLanguageBarrier,
+  onStatusChangeToConverted
 }: StatusCellProps) => {
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
+    const currentStatus = lead.status || 'Select Status';
     
     // If status is being changed to "Callback", trigger the callback modal
     if (newStatus === 'Callback' && onStatusChangeToCallback) {
@@ -101,8 +104,91 @@ const StatusCell = ({
       return; // Don't update the status yet, let the modal handle it
     }
     
+    // If status is being changed to "Converted", trigger the conversion confirmation modal
+    if (newStatus === 'Converted' && onStatusChangeToConverted) {
+      onStatusChangeToConverted(lead.id, lead.name || 'Unknown Lead');
+      
+      // Show a toast notification
+      toast.info(
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-lg"></div>
+            </div>
+            <div className="ml-3 flex-1">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">✅</span>
+                <p className="text-sm font-bold text-white">
+                  Confirm Conversion
+                </p>
+              </div>
+              <p className="mt-2 text-sm text-emerald-100 font-medium">
+                {lead.name || 'Unknown Lead'}
+              </p>
+              <p className="mt-1 text-sm text-emerald-200">
+                Please confirm the lead conversion
+              </p>
+            </div>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          className: "bg-gradient-to-r from-emerald-600 via-green-500 to-teal-600 border-2 border-emerald-400 shadow-xl",
+        }
+      );
+      
+      return; // Don't update the status yet, let the modal handle it
+    }
+    
     // For other status changes, update immediately
-    await updateLead(lead.id, { status: newStatus });
+    // If changing from "Converted" to any other status, delete the convertedAt field
+    const updateData: any = { status: newStatus };
+    
+    if (currentStatus === 'Converted' && newStatus !== 'Converted') {
+      // Delete the convertedAt field when changing from Converted to any other status
+      updateData.convertedAt = null;
+      
+      // Show a toast notification about the conversion being removed
+      toast.info(
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-lg"></div>
+            </div>
+            <div className="ml-3 flex-1">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">⚠️</span>
+                <p className="text-sm font-bold text-white">
+                  Conversion Removed
+                </p>
+              </div>
+              <p className="mt-2 text-sm text-orange-100 font-medium">
+                {lead.name || 'Unknown Lead'}
+              </p>
+              <p className="mt-1 text-sm text-orange-200">
+                Lead status changed from "Converted" to "{newStatus}". Conversion timestamp has been removed.
+              </p>
+            </div>
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          className: "bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-600 border-2 border-orange-400 shadow-xl",
+        }
+      );
+    }
+    
+    await updateLead(lead.id, updateData);
   };
 
   return (

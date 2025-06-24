@@ -22,6 +22,7 @@ type LeadsTableProps = {
   refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
   onStatusChangeToCallback: (leadId: string, leadName: string) => void;
   onStatusChangeToLanguageBarrier: (leadId: string, leadName: string) => void;
+  onStatusChangeToConverted: (leadId: string, leadName: string) => void;
   onEditCallback: (lead: any) => void;
   hasMoreLeads?: boolean;
   isLoadingMore?: boolean;
@@ -48,6 +49,7 @@ const LeadsTable = ({
   refreshLeadCallbackInfo,
   onStatusChangeToCallback,
   onStatusChangeToLanguageBarrier,
+  onStatusChangeToConverted,
   onEditCallback,
   hasMoreLeads = false,
   isLoadingMore = false,
@@ -184,6 +186,7 @@ const LeadsTable = ({
         refreshLeadCallbackInfo={refreshLeadCallbackInfo}
         onStatusChangeToCallback={onStatusChangeToCallback}
         onStatusChangeToLanguageBarrier={onStatusChangeToLanguageBarrier}
+        onStatusChangeToConverted={onStatusChangeToConverted}
         onEditCallback={onEditCallback}
       />
     ));
