@@ -6,7 +6,13 @@ import { db, auth } from '@/firebase/firebase';
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
 import { FaEnvelope, FaPaperclip, FaCheck, FaTimes, FaFile, FaDownload, FaSearch, FaEye, FaTimes as FaTimesCircle } from 'react-icons/fa';
 import { format } from 'date-fns';
-import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import OverlordSidebar, { SidebarProvider } from '@/components/navigation/OverlordSidebar';
+import dynamic from 'next/dynamic';
+
+// Dynamically import components that use localStorage to prevent SSR issues
+const EmailHistoryContent = dynamic(() => Promise.resolve(EmailHistoryContentComponent), {
+  ssr: false
+});
 
 interface Attachment {
   name: string;
@@ -35,7 +41,7 @@ interface EmailHistory {
   userId: string;
 }
 
-export default function EmailHistoryPage() {
+function EmailHistoryContentComponent() {
   const [emailHistory, setEmailHistory] = useState<EmailHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -367,5 +373,13 @@ export default function EmailHistoryPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function EmailHistoryPage() {
+  return (
+    <SidebarProvider>
+      <EmailHistoryContent />
+    </SidebarProvider>
   );
 }

@@ -25,7 +25,13 @@ import { Toaster, toast } from "react-hot-toast";
 import { httpsCallable } from "firebase/functions";
 import { functions, auth, db } from "@/firebase/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import OverlordSidebar from "@/components/navigation/OverlordSidebar";
+import OverlordSidebar, { SidebarProvider } from "@/components/navigation/OverlordSidebar";
+import dynamic from 'next/dynamic';
+
+// Dynamically import components that use localStorage to prevent SSR issues
+const EmailComposeContent = dynamic(() => Promise.resolve(EmailComposeContentComponent), {
+  ssr: false
+});
 
 // Define interfaces for types
 interface Attachment {
@@ -74,7 +80,7 @@ interface Client {
   tenure?: string;
 }
 
-export default function EmailComposePage() {
+function EmailComposeContentComponent() {
   // States for form elements
   const [selectedDraft, setSelectedDraft] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
@@ -1652,5 +1658,13 @@ Below is a draft email you can send to your bank or financial institution to ini
         />
       </div>
     </div>
+  );
+}
+
+export default function EmailComposePage() {
+  return (
+    <SidebarProvider>
+      <EmailComposeContent />
+    </SidebarProvider>
   );
 }
