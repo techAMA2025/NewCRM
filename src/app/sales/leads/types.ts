@@ -28,6 +28,7 @@ export interface Lead {
   convertedToClient?: boolean;
   synced_at?: any;
   timestamp?: any;
+  language_barrier?: string;
   callbackInfo?: {
     id: string;
     scheduled_dt: Date;

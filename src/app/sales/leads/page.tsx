@@ -16,6 +16,7 @@ import LeadsTabs from './components/LeadsTabs';
 import EditModal from './components/EditModal';
 import HistoryModal from './components/HistoryModal';
 import CallbackSchedulingModal from './components/CallbackSchedulingModal';
+import LanguageBarrierModal from './components/LanguageBarrierModal';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 
@@ -34,6 +35,7 @@ const statusOptions = [
   'Converted', 
   'Loan Required', 
   'Cibil Issue', 
+  'Language Barrier',
   'Closed Lead'
 ];
 
@@ -81,6 +83,13 @@ const LeadsPage = () => {
   const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null);
   const [isLoadingCallbackInfo, setIsLoadingCallbackInfo] = useState(false);
   const [leadsUpdateCounter, setLeadsUpdateCounter] = useState(0);
+
+  // Language barrier modal state
+  const [showLanguageBarrierModal, setShowLanguageBarrierModal] = useState(false);
+  const [languageBarrierLeadId, setLanguageBarrierLeadId] = useState('');
+  const [languageBarrierLeadName, setLanguageBarrierLeadName] = useState('');
+  const [isEditingLanguageBarrier, setIsEditingLanguageBarrier] = useState(false);
+  const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState<string>('');
 
   // Performance optimization refs
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1126,6 +1135,122 @@ const LeadsPage = () => {
     setShowCallbackModal(true);
   };
 
+  // Handle status change to language barrier
+  const handleStatusChangeToLanguageBarrier = (leadId: string, leadName: string) => {
+    setLanguageBarrierLeadId(leadId);
+    setLanguageBarrierLeadName(leadName);
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo('');
+    setShowLanguageBarrierModal(true);
+  };
+
+  // Handle language barrier modal confirmation
+  const handleLanguageBarrierConfirm = async (language: string) => {
+    if (isEditingLanguageBarrier) {
+      // For editing, update the language barrier field
+      const success = await updateLead(languageBarrierLeadId, { language_barrier: language });
+      if (success) {
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">✅</span>
+                  <p className="text-sm font-bold text-white">
+                    Language Updated
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">
+                  {languageBarrierLeadName}
+                </p>
+                <p className="mt-1 text-sm text-green-200">
+                  Preferred language updated to {language}
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          }
+        );
+      }
+    } else {
+      // For new language barrier, update the lead status and language barrier field
+      const dbData = { 
+        status: 'Language Barrier',
+        language_barrier: language 
+      };
+      const success = await updateLead(languageBarrierLeadId, dbData);
+      if (success) {
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">✅</span>
+                  <p className="text-sm font-bold text-white">
+                    Language Barrier Set
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">
+                  {languageBarrierLeadName}
+                </p>
+                <p className="mt-1 text-sm text-green-200">
+                  Lead status updated to "Language Barrier" with preferred language: {language}
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          }
+        );
+      }
+    }
+    
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId('');
+    setLanguageBarrierLeadName('');
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo('');
+  };
+
+  // Handle language barrier modal close
+  const handleLanguageBarrierClose = () => {
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId('');
+    setLanguageBarrierLeadName('');
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo('');
+  };
+
+  // Handle editing language barrier details
+  const handleEditLanguageBarrier = (lead: Lead) => {
+    setLanguageBarrierLeadId(lead.id);
+    setLanguageBarrierLeadName(lead.name || 'Unknown Lead');
+    setIsEditingLanguageBarrier(true);
+    setEditingLanguageBarrierInfo(lead.language_barrier || '');
+    setShowLanguageBarrierModal(true);
+  };
+
   // Update lead handler
   const updateLead = async (id: any, data: any) => {
     try {
@@ -1387,6 +1512,7 @@ const LeadsPage = () => {
                 activeTab={activeTab}
                 refreshLeadCallbackInfo={refreshLeadCallbackInfo}
                 onStatusChangeToCallback={handleStatusChangeToCallback}
+                onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
                 onEditCallback={handleEditCallback}
                 hasMoreLeads={hasMoreLeads}
                 isLoadingMore={isLoadingMore}
@@ -1434,6 +1560,16 @@ const LeadsPage = () => {
                 crmDb={crmDb}
                 isEditing={isEditingCallback}
                 existingCallbackInfo={editingCallbackInfo}
+              />
+              
+              {/* Language Barrier Modal */}
+              <LanguageBarrierModal
+                isOpen={showLanguageBarrierModal}
+                onClose={handleLanguageBarrierClose}
+                onConfirm={handleLanguageBarrierConfirm}
+                leadId={languageBarrierLeadId}
+                leadName={languageBarrierLeadName}
+                existingLanguage={editingLanguageBarrierInfo}
               />
             </>
           )}

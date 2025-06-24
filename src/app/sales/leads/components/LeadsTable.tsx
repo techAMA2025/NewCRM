@@ -21,6 +21,7 @@ type LeadsTableProps = {
   activeTab: 'all' | 'callback';
   refreshLeadCallbackInfo: (leadId: string) => Promise<void>;
   onStatusChangeToCallback: (leadId: string, leadName: string) => void;
+  onStatusChangeToLanguageBarrier: (leadId: string, leadName: string) => void;
   onEditCallback: (lead: any) => void;
   hasMoreLeads?: boolean;
   isLoadingMore?: boolean;
@@ -46,6 +47,7 @@ const LeadsTable = ({
   activeTab,
   refreshLeadCallbackInfo,
   onStatusChangeToCallback,
+  onStatusChangeToLanguageBarrier,
   onEditCallback,
   hasMoreLeads = false,
   isLoadingMore = false,
@@ -151,9 +153,11 @@ const LeadsTable = ({
 
   const renderTableBody = () => {
     if (filteredLeads.length === 0) {
+      const totalColumns = activeTab === 'callback' ? 11 : 10;
+      
       return (
         <tr>
-          <td colSpan={activeTab === 'callback' ? 10 : 9} className="px-4 py-4 text-center text-sm text-gray-400">
+          <td colSpan={totalColumns} className="px-4 py-4 text-center text-sm text-gray-400">
             No leads found matching the current filters.
           </td>
         </tr>
@@ -179,6 +183,7 @@ const LeadsTable = ({
         activeTab={activeTab}
         refreshLeadCallbackInfo={refreshLeadCallbackInfo}
         onStatusChangeToCallback={onStatusChangeToCallback}
+        onStatusChangeToLanguageBarrier={onStatusChangeToLanguageBarrier}
         onEditCallback={onEditCallback}
       />
     ));
