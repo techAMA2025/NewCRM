@@ -48,7 +48,32 @@ const DashboardPage = () => {
       case 'sales':
         return <SalesSidebar />
       case 'overlord':
-        return <OverlordSidebar />
+        return (
+          <OverlordSidebar>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Header */}
+              <header className="bg-white shadow">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                  <h1 className="text-xl font-bold text-gray-900">AMA Workspace</h1>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-gray-600">Welcome, {userName}</span>
+                    <button 
+                      onClick={logout}
+                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              {/* Dashboard Content */}
+              <main className="flex-1 overflow-y-auto bg-gray-100">
+                {renderDashboard()}
+              </main>
+            </div>
+          </OverlordSidebar>
+        )
       default:
         return null
     }
@@ -70,6 +95,15 @@ const DashboardPage = () => {
       default:
         return <div>Unknown role</div>
     }
+  }
+
+  // For overlord users, the sidebar already includes the content
+  if (userRole === 'overlord') {
+    return (
+      <div className="flex h-screen bg-gray-100">
+        {renderSidebar()}
+      </div>
+    )
   }
 
   return (

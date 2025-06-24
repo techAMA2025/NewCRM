@@ -1414,7 +1414,7 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="p-4 min-h-screen bg-gray-900 text-white" style={{ transform: 'scale(0.8)', transformOrigin: 'top left', width: '125%', height: '125%' }}>
+    <div className="p-4 min-h-screen bg-gray-900 text-white w-full">
       <h1 className="text-2xl font-bold mb-4">Super Admin Dashboard</h1>
 
       <div className="flex flex-col gap-4">

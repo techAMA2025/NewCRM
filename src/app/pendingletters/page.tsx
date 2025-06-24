@@ -56,9 +56,7 @@ export default function PendingLettersPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
-      <OverlordSidebar />
-      
+    <OverlordSidebar>
       <div className="flex-1 overflow-auto bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <div className="p-8">
           <div className="mb-8 flex justify-between items-center">
@@ -173,6 +171,6 @@ export default function PendingLettersPage() {
           )}
         </div>
       </div>
-    </div>
+    </OverlordSidebar>
   );
 }

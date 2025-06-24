@@ -425,8 +425,7 @@ export default function TargetsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900" style={{ transform: 'scale(0.9)', transformOrigin: 'top left', width: '111.11%', height: '111.11%' }}>
-      <OverlordSidebar />
+    <OverlordSidebar>
       <div className="flex-1 overflow-auto p-7">
         <div className="container mx-auto">
           <h1 className="text-xl font-bold mb-5 text-white">Sales Targets</h1>
@@ -624,69 +623,43 @@ export default function TargetsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
-                      {salesUsers.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-3 text-center text-gray-400 text-sm">
-                            No sales personnel found
+                      {salesUsers.map((salesUser) => (
+                        <tr key={salesUser.id}>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-200">{salesUser.firstName} {salesUser.lastName}</div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="text-sm text-gray-400">{salesUser.email}</div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <input
+                              type="number"
+                              min="0"
+                              value={targets[salesUser.id]?.convertedLeads || ''}
+                              onChange={(e) => handleInputChange(salesUser.id, 'convertedLeads', e.target.value)}
+                              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 w-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <input
+                              type="number"
+                              min="0"
+                              value={targets[salesUser.id]?.amountCollected || ''}
+                              onChange={(e) => handleInputChange(salesUser.id, 'amountCollected', e.target.value)}
+                              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 w-24 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                           </td>
                         </tr>
-                      ) : (
-                        salesUsers.map((salesUser) => (
-                          <tr key={salesUser.id}>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="text-xs font-medium text-gray-200">{salesUser.firstName}</div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="text-xs text-gray-400">{salesUser.email}</div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  className="bg-gray-700 border border-gray-600 text-gray-200 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                                  value={targets[salesUser.id]?.convertedLeads || 0}
-                                  onChange={(e) => handleInputChange(salesUser.id, 'convertedLeads', e.target.value)}
-                                  aria-label="Converted leads target"
-                                />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                  <span className="text-gray-400 text-xs">₹</span>
-                                </div>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  className="bg-gray-700 border border-gray-600 text-gray-200 rounded pl-6 pr-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                                  value={targets[salesUser.id]?.amountCollected || 0}
-                                  onChange={(e) => handleInputChange(salesUser.id, 'amountCollected', e.target.value)}
-                                  aria-label="Amount collected target in rupees"
-                                />
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
+                      ))}
                     </tbody>
                   </table>
                 </div>
-                
-                <div className="mt-5">
+                <div className="mt-4 flex justify-end">
                   <button
                     type="submit"
-                    disabled={submitting}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded shadow disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {submitting ? 'Saving...' : 'Set Targets'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="ml-3 bg-gray-600 hover:bg-gray-700 text-white font-medium py-1 px-3 rounded shadow focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm"
-                  >
-                    Cancel
+                    Update Targets
                   </button>
                 </div>
               </form>
@@ -694,6 +667,6 @@ export default function TargetsPage() {
           )}
         </div>
       </div>
-    </div>
+    </OverlordSidebar>
   );
 }
