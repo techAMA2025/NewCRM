@@ -123,6 +123,10 @@ export default function SalesDashboard() {
   const [leadAnalytics, setLeadAnalytics] = useState<LeadAnalytics | null>(null);
   const [allLeads, setAllLeads] = useState<any[]>([]);
 
+  // Add state for Billcut analytics
+  const [billcutAnalytics, setBillcutAnalytics] = useState<LeadAnalytics | null>(null);
+  const [allBillcutLeads, setAllBillcutLeads] = useState<any[]>([]);
+
   // Create a mapping of status to color based on your application's color scheme
   const statusColors = useMemo(() => ({
     'Interested': '#059669', // green-600
@@ -139,6 +143,9 @@ export default function SalesDashboard() {
 
   // Add state for tasks
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
+
+  // Add state for analytics source selection
+  const [analyticsSource, setAnalyticsSource] = useState<'AMA' | 'Billcut'>('AMA');
 
   useEffect(() => {
     // Get user details from localStorage
@@ -161,6 +168,7 @@ export default function SalesDashboard() {
     if (userName) {
       fetchTargetDataByUserName(userName);
       fetchLeadData(userName);
+      fetchBillcutLeadData(userName);
     }
   }, [currentMonth, currentYear, userName]);
 
@@ -174,6 +182,9 @@ export default function SalesDashboard() {
       
       // Fetch lead data
       await fetchLeadData(userName);
+      
+      // Fetch Billcut lead data
+      await fetchBillcutLeadData(userName);
       
       // Fetch tasks assigned to this user
       await fetchTaskData(userName);
@@ -190,25 +201,59 @@ export default function SalesDashboard() {
   // New function to get available months with lead data
   const fetchAvailableMonths = async (userName: string) => {
     try {
-      // Query all leads assigned to the current user
+      // Query all leads assigned to the current user (AMA leads)
       const leadsQuery = query(
         collection(db, "crm_leads"),
         where("assignedTo", "==", userName)
       );
       
-      const querySnapshot = await getDocs(leadsQuery);
+      // Query all Billcut leads assigned to the current user
+      const billcutLeadsQuery = query(
+        collection(db, "billcutLeads"),
+        where("assigned_to", "==", userName)
+      );
+      
+      const [leadsSnapshot, billcutSnapshot] = await Promise.all([
+        getDocs(leadsQuery),
+        getDocs(billcutLeadsQuery)
+      ]);
       
       // Track unique month/year combinations
       const monthsSet = new Set<string>();
       const monthsArray: {month: string, year: number}[] = [];
       
-      querySnapshot.forEach(doc => {
+      // Process AMA leads
+      leadsSnapshot.forEach(doc => {
         const leadData = doc.data();
         
         // Get month from timestamp
         let date;
         if (leadData.timestamp) {
           date = leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp);
+        } else {
+          date = new Date(); // Fallback
+        }
+        
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+        const key = `${month}_${year}`;
+        
+        if (!monthsSet.has(key)) {
+          monthsSet.add(key);
+          monthsArray.push({ month, year });
+        }
+      });
+      
+      // Process Billcut leads
+      billcutSnapshot.forEach(doc => {
+        const leadData = doc.data();
+        
+        // Get month from date or synced_date
+        let date;
+        if (leadData.date) {
+          date = new Date(leadData.date);
+        } else if (leadData.synced_date) {
+          date = leadData.synced_date.toDate ? leadData.synced_date.toDate() : new Date(leadData.synced_date);
         } else {
           date = new Date(); // Fallback
         }
@@ -667,6 +712,200 @@ export default function SalesDashboard() {
     setCurrentYear(parseInt(year));
   };
 
+  // New function to fetch Billcut leads data
+  const fetchBillcutLeadData = async (userName: string) => {
+    try {
+      // Query billcut leads assigned to the current user
+      const billcutLeadsQuery = query(
+        collection(db, "billcutLeads"),
+        where("assigned_to", "==", userName)
+      );
+      
+      const querySnapshot = await getDocs(billcutLeadsQuery);
+      
+      if (!querySnapshot.empty) {
+        // Store all billcut leads for analytics
+        const allBillcutLeadsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setAllBillcutLeads(allBillcutLeadsData);
+        
+        // Filter leads for the selected month and year
+        const filteredLeads = allBillcutLeadsData.filter((lead: any) => {
+          let date;
+          if (lead.date) {
+            date = new Date(lead.date);
+          } else if (lead.synced_date) {
+            date = lead.synced_date.toDate ? lead.synced_date.toDate() : new Date(lead.synced_date);
+          } else {
+            date = new Date();
+          }
+          
+          const leadMonth = date.toLocaleString('default', { month: 'short' });
+          const leadYear = date.getFullYear();
+          
+          return leadMonth === currentMonth && leadYear === currentYear;
+        });
+        
+        // Calculate detailed analytics for Billcut leads (filtered by month)
+        calculateBillcutDetailedAnalytics(filteredLeads);
+        
+      } else {
+        setAllBillcutLeads([]);
+        setBillcutAnalytics(null);
+      }
+    } catch (error) {
+      console.error("Error fetching billcut lead data:", error);
+    }
+  };
+
+  // New function to calculate detailed analytics for Billcut leads
+  const calculateBillcutDetailedAnalytics = (leads: any[]) => {
+    if (!leads || leads.length === 0) {
+      setBillcutAnalytics(null);
+      return;
+    }
+
+    const totalLeads = leads.length;
+    
+    // Status counts (using category field for Billcut leads)
+    const statusCounts: { [key: string]: number } = {};
+    const sourceCounts: { [key: string]: number } = {};
+    const cityCounts: { [key: string]: number } = {};
+    const monthlyTrend: { [key: string]: { total: number; converted: number } } = {};
+    
+    let convertedLeads = 0;
+    let callbackLeads = 0;
+    let interestedLeads = 0;
+    let notInterestedLeads = 0;
+    let notAnsweringLeads = 0;
+    let loanRequiredLeads = 0;
+    let cibilIssueLeads = 0;
+    let closedLeads = 0;
+    let leadsNeedingWork = 0;
+
+    leads.forEach((lead: any) => {
+      const status = lead.category || 'No Status';
+      const source = 'Bill Cut Campaign';
+      const city = lead.address || 'Unknown';
+      
+      // Count statuses
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+      sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+      cityCounts[city] = (cityCounts[city] || 0) + 1;
+      
+      // Count specific statuses
+      if (status === 'Converted') {
+        convertedLeads++;
+      }
+      if (status === 'Callback') {
+        callbackLeads++;
+      }
+      if (status === 'Interested') {
+        interestedLeads++;
+      }
+      if (status === 'Not Interested') {
+        notInterestedLeads++;
+      }
+      if (status === 'Not Answering') {
+        notAnsweringLeads++;
+      }
+      if (status === 'Loan Required') {
+        loanRequiredLeads++;
+      }
+      if (status === 'Cibil Issue') {
+        cibilIssueLeads++;
+      }
+      if (status === 'Closed Lead') {
+        closedLeads++;
+      }
+      if (status === 'No Status' || !status || status === '') {
+        leadsNeedingWork++;
+      }
+      
+      // Monthly trend (for the filtered data, this will only be current month)
+      let date;
+      if (lead.date) {
+        date = new Date(lead.date);
+      } else if (lead.synced_date) {
+        date = lead.synced_date.toDate ? lead.synced_date.toDate() : new Date(lead.synced_date);
+      } else {
+        date = new Date();
+      }
+      
+      const monthKey = date.toLocaleString('default', { month: 'short' });
+      if (!monthlyTrend[monthKey]) {
+        monthlyTrend[monthKey] = { total: 0, converted: 0 };
+      }
+      monthlyTrend[monthKey].total++;
+      
+      if (status === 'Converted') {
+        monthlyTrend[monthKey].converted++;
+      }
+    });
+
+    // Transform to arrays and sort
+    const statusDistribution = Object.entries(statusCounts)
+      .map(([status, count]) => ({
+        status,
+        count,
+        percentage: Math.round((count / totalLeads) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const sourceDistribution = Object.entries(sourceCounts)
+      .map(([source, count]) => ({
+        source,
+        count,
+        percentage: Math.round((count / totalLeads) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const cityDistribution = Object.entries(cityCounts)
+      .map(([city, count]) => ({
+        city,
+        count,
+        percentage: Math.round((count / totalLeads) * 100)
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 cities
+
+    const monthlyTrendArray = Object.entries(monthlyTrend)
+      .map(([month, data]) => ({
+        month,
+        total: data.total,
+        converted: data.converted
+      }))
+      .sort((a, b) => {
+        const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
+      });
+
+    const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+    const analytics: LeadAnalytics = {
+      totalLeads,
+      leadsNeedingWork,
+      convertedLeads,
+      callbackLeads,
+      interestedLeads,
+      notInterestedLeads,
+      notAnsweringLeads,
+      loanRequiredLeads,
+      cibilIssueLeads,
+      closedLeads,
+      statusDistribution,
+      sourceDistribution,
+      cityDistribution,
+      monthlyTrend: monthlyTrendArray,
+      conversionRate,
+      averageResponseTime: 0 // TODO: Calculate based on timestamps
+    };
+
+    setBillcutAnalytics(analytics);
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
       <div className="animate-pulse flex flex-col items-center">
@@ -702,6 +941,11 @@ export default function SalesDashboard() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
             Sales Dashboard for {targetData?.userName}
+            {(leadAnalytics || billcutAnalytics) && (
+              <span className="text-lg text-gray-400 ml-2">
+                ({analyticsSource} Data)
+              </span>
+            )}
           </h1>
           
           {/* Month selector */}
@@ -764,50 +1008,85 @@ export default function SalesDashboard() {
         </div>
 
         {/* Comprehensive Analytics Section */}
-        {leadAnalytics && (
+        {(leadAnalytics || billcutAnalytics) && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-100 mb-6">Lead Analytics Overview</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-100">
+                Lead Analytics Overview
+                <span className="text-sm text-gray-400 ml-2">
+                  ({analyticsSource})
+                </span>
+              </h2>
+              
+              {/* Analytics Source Selector */}
+              <div className="flex items-center space-x-2">
+                <label htmlFor="analyticsSource" className="text-sm text-gray-400">
+                  Data Source:
+                </label>
+                <select
+                  id="analyticsSource"
+                  className="bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm"
+                  value={analyticsSource}
+                  onChange={(e) => setAnalyticsSource(e.target.value as 'AMA' | 'Billcut')}
+                >
+                  <option value="AMA" disabled={!leadAnalytics}>AMA</option>
+                  <option value="Billcut" disabled={!billcutAnalytics}>Billcut</option>
+                </select>
+              </div>
+            </div>
             
             {/* Key Metrics Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
               <Card className="border-0 bg-gradient-to-br from-red-800 to-red-900 shadow-xl">
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-red-400">{leadAnalytics.leadsNeedingWork}</div>
+                  <div className="text-2xl font-bold text-red-400">
+                    {analyticsSource === 'AMA' ? (leadAnalytics?.leadsNeedingWork || 0) : (billcutAnalytics?.leadsNeedingWork || 0)}
+                  </div>
                   <p className="text-sm text-gray-300">Need To Work On</p>
                 </CardContent>
               </Card>
               
               <Card className="border-0 bg-gradient-to-br from-yellow-800 to-yellow-900 shadow-xl">
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-yellow-400">{leadAnalytics.callbackLeads}</div>
+                  <div className="text-2xl font-bold text-yellow-400">
+                    {analyticsSource === 'AMA' ? (leadAnalytics?.callbackLeads || 0) : (billcutAnalytics?.callbackLeads || 0)}
+                  </div>
                   <p className="text-sm text-gray-300">Callbacks</p>
                 </CardContent>
               </Card>
               
               <Card className="border-0 bg-gradient-to-br from-green-800 to-green-900 shadow-xl">
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-green-400">{leadAnalytics.interestedLeads}</div>
+                  <div className="text-2xl font-bold text-green-400">
+                    {analyticsSource === 'AMA' ? (leadAnalytics?.interestedLeads || 0) : (billcutAnalytics?.interestedLeads || 0)}
+                  </div>
                   <p className="text-sm text-gray-300">Interested</p>
                 </CardContent>
               </Card>
               
               <Card className="border-0 bg-gradient-to-br from-emerald-800 to-emerald-900 shadow-xl">
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-emerald-400">{leadAnalytics.convertedLeads}</div>
+                  <div className="text-2xl font-bold text-emerald-400">
+                    {analyticsSource === 'AMA' ? (leadAnalytics?.convertedLeads || 0) : (billcutAnalytics?.convertedLeads || 0)}
+                  </div>
                   <p className="text-sm text-gray-300">Converted</p>
                 </CardContent>
               </Card>
               
               <Card className="border-0 bg-gradient-to-br from-purple-800 to-purple-900 shadow-xl">
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-purple-400">{leadAnalytics.loanRequiredLeads}</div>
+                  <div className="text-2xl font-bold text-purple-400">
+                    {analyticsSource === 'AMA' ? (leadAnalytics?.loanRequiredLeads || 0) : (billcutAnalytics?.loanRequiredLeads || 0)}
+                  </div>
                   <p className="text-sm text-gray-300">Loan Required</p>
                 </CardContent>
               </Card>
               
               <Card className="border-0 bg-gradient-to-br from-blue-800 to-blue-900 shadow-xl">
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-blue-400">{leadAnalytics.conversionRate}%</div>
+                  <div className="text-2xl font-bold text-blue-400">
+                    {analyticsSource === 'AMA' ? (leadAnalytics?.conversionRate || 0) : (billcutAnalytics?.conversionRate || 0)}%
+                  </div>
                   <p className="text-sm text-gray-300">Conversion Rate</p>
                 </CardContent>
               </Card>
@@ -838,15 +1117,15 @@ export default function SalesDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                      {leadAnalytics.statusDistribution.map((item, index) => (
+                      {(analyticsSource === 'AMA' ? (leadAnalytics?.statusDistribution || []) : (billcutAnalytics?.statusDistribution || [])).map((item, index) => (
                         <tr key={index} className="hover:bg-gray-750 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div 
                                 className="w-3 h-3 rounded-full mr-3"
-                                style={{ backgroundColor: statusColors[item.status as keyof typeof statusColors] || statusColors['Unknown'] }}
+                                style={{ backgroundColor: statusColors[(item.status || 'Unknown') as keyof typeof statusColors] || statusColors['Unknown'] }}
                               ></div>
-                              <span className="text-sm font-medium text-gray-200">{item.status}</span>
+                              <span className="text-sm font-medium text-gray-200">{item.status || 'Unknown'}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -861,7 +1140,7 @@ export default function SalesDashboard() {
                                 className="h-2 rounded-full transition-all duration-300"
                                 style={{ 
                                   width: `${item.percentage}%`,
-                                  backgroundColor: statusColors[item.status as keyof typeof statusColors] || statusColors['Unknown']
+                                  backgroundColor: statusColors[(item.status || 'Unknown') as keyof typeof statusColors] || statusColors['Unknown']
                                 }}
                               ></div>
                             </div>
@@ -879,7 +1158,7 @@ export default function SalesDashboard() {
         )}
 
         {/* Additional Analytics Sections */}
-        {leadAnalytics && (
+        {(leadAnalytics || billcutAnalytics) && (
           <div className="mb-8">
             {/* Performance Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -891,22 +1170,34 @@ export default function SalesDashboard() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Total Leads</span>
-                      <span className="text-lg font-bold text-blue-400">{leadAnalytics.totalLeads}</span>
+                      <span className="text-lg font-bold text-blue-400">
+                        {analyticsSource === 'AMA' ? (leadAnalytics?.totalLeads || 0) : (billcutAnalytics?.totalLeads || 0)}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Conversion Rate</span>
-                      <span className="text-lg font-bold text-green-400">{leadAnalytics.conversionRate}%</span>
+                      <span className="text-lg font-bold text-green-400">
+                        {analyticsSource === 'AMA' ? (leadAnalytics?.conversionRate || 0) : (billcutAnalytics?.conversionRate || 0)}%
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Active Pipeline</span>
                       <span className="text-lg font-bold text-yellow-400">
-                        {leadAnalytics.interestedLeads + leadAnalytics.callbackLeads + leadAnalytics.leadsNeedingWork}
+                        {analyticsSource === 'AMA' 
+                          ? ((leadAnalytics?.interestedLeads || 0) + (leadAnalytics?.callbackLeads || 0) + (leadAnalytics?.leadsNeedingWork || 0))
+                          : ((billcutAnalytics?.interestedLeads || 0) + (billcutAnalytics?.callbackLeads || 0) + (billcutAnalytics?.leadsNeedingWork || 0))
+                        }
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Success Rate</span>
                       <span className="text-lg font-bold text-purple-400">
-                        {leadAnalytics.totalLeads > 0 ? Math.round(((leadAnalytics.convertedLeads + leadAnalytics.interestedLeads) / leadAnalytics.totalLeads) * 100) : 0}%
+                        {(() => {
+                          const totalLeads = analyticsSource === 'AMA' ? (leadAnalytics?.totalLeads || 0) : (billcutAnalytics?.totalLeads || 0);
+                          const convertedLeads = analyticsSource === 'AMA' ? (leadAnalytics?.convertedLeads || 0) : (billcutAnalytics?.convertedLeads || 0);
+                          const interestedLeads = analyticsSource === 'AMA' ? (leadAnalytics?.interestedLeads || 0) : (billcutAnalytics?.interestedLeads || 0);
+                          return totalLeads > 0 ? Math.round(((convertedLeads + interestedLeads) / totalLeads) * 100) : 0;
+                        })()}%
                       </span>
                     </div>
                   </div>
@@ -922,25 +1213,37 @@ export default function SalesDashboard() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">High Quality</span>
                       <span className="text-lg font-bold text-emerald-400">
-                        {leadAnalytics.interestedLeads + leadAnalytics.convertedLeads}
+                        {analyticsSource === 'AMA' 
+                          ? ((leadAnalytics?.interestedLeads || 0) + (leadAnalytics?.convertedLeads || 0))
+                          : ((billcutAnalytics?.interestedLeads || 0) + (billcutAnalytics?.convertedLeads || 0))
+                        }
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Needs Follow-up</span>
                       <span className="text-lg font-bold text-orange-400">
-                        {leadAnalytics.callbackLeads + leadAnalytics.leadsNeedingWork}
+                        {analyticsSource === 'AMA' 
+                          ? ((leadAnalytics?.callbackLeads || 0) + (leadAnalytics?.leadsNeedingWork || 0))
+                          : ((billcutAnalytics?.callbackLeads || 0) + (billcutAnalytics?.leadsNeedingWork || 0))
+                        }
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Requires Action</span>
                       <span className="text-lg font-bold text-red-400">
-                        {leadAnalytics.loanRequiredLeads + leadAnalytics.cibilIssueLeads}
+                        {analyticsSource === 'AMA' 
+                          ? ((leadAnalytics?.loanRequiredLeads || 0) + (leadAnalytics?.cibilIssueLeads || 0))
+                          : ((billcutAnalytics?.loanRequiredLeads || 0) + (billcutAnalytics?.cibilIssueLeads || 0))
+                        }
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Closed/Rejected</span>
                       <span className="text-lg font-bold text-gray-400">
-                        {leadAnalytics.notInterestedLeads + leadAnalytics.closedLeads}
+                        {analyticsSource === 'AMA' 
+                          ? ((leadAnalytics?.notInterestedLeads || 0) + (leadAnalytics?.closedLeads || 0))
+                          : ((billcutAnalytics?.notInterestedLeads || 0) + (billcutAnalytics?.closedLeads || 0))
+                        }
                       </span>
                     </div>
                   </div>
@@ -955,19 +1258,27 @@ export default function SalesDashboard() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Immediate Action</span>
-                      <span className="text-lg font-bold text-red-400">{leadAnalytics.leadsNeedingWork}</span>
+                      <span className="text-lg font-bold text-red-400">
+                        {analyticsSource === 'AMA' ? (leadAnalytics?.leadsNeedingWork || 0) : (billcutAnalytics?.leadsNeedingWork || 0)}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Scheduled Callbacks</span>
-                      <span className="text-lg font-bold text-yellow-400">{leadAnalytics.callbackLeads}</span>
+                      <span className="text-lg font-bold text-yellow-400">
+                        {analyticsSource === 'AMA' ? (leadAnalytics?.callbackLeads || 0) : (billcutAnalytics?.callbackLeads || 0)}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">In Progress</span>
-                      <span className="text-lg font-bold text-blue-400">{leadAnalytics.interestedLeads}</span>
+                      <span className="text-lg font-bold text-blue-400">
+                        {analyticsSource === 'AMA' ? (leadAnalytics?.interestedLeads || 0) : (billcutAnalytics?.interestedLeads || 0)}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-300">Completed</span>
-                      <span className="text-lg font-bold text-green-400">{leadAnalytics.convertedLeads}</span>
+                      <span className="text-lg font-bold text-green-400">
+                        {analyticsSource === 'AMA' ? (leadAnalytics?.convertedLeads || 0) : (billcutAnalytics?.convertedLeads || 0)}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -986,18 +1297,27 @@ export default function SalesDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-3 bg-gray-750 rounded-lg">
                         <span className="text-sm text-gray-300">Total Callbacks</span>
-                        <span className="text-xl font-bold text-yellow-400">{leadAnalytics.callbackLeads}</span>
+                        <span className="text-xl font-bold text-yellow-400">
+                          {analyticsSource === 'AMA' ? (leadAnalytics?.callbackLeads || 0) : (billcutAnalytics?.callbackLeads || 0)}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gray-750 rounded-lg">
                         <span className="text-sm text-gray-300">Callback Rate</span>
                         <span className="text-xl font-bold text-blue-400">
-                          {leadAnalytics.totalLeads > 0 ? Math.round((leadAnalytics.callbackLeads / leadAnalytics.totalLeads) * 100) : 0}%
+                          {(() => {
+                            const totalLeads = analyticsSource === 'AMA' ? (leadAnalytics?.totalLeads || 0) : (billcutAnalytics?.totalLeads || 0);
+                            const callbackLeads = analyticsSource === 'AMA' ? (leadAnalytics?.callbackLeads || 0) : (billcutAnalytics?.callbackLeads || 0);
+                            return totalLeads > 0 ? Math.round((callbackLeads / totalLeads) * 100) : 0;
+                          })()}%
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gray-750 rounded-lg">
                         <span className="text-sm text-gray-300">Pending Follow-ups</span>
                         <span className="text-xl font-bold text-orange-400">
-                          {leadAnalytics.callbackLeads + leadAnalytics.leadsNeedingWork}
+                          {analyticsSource === 'AMA' 
+                            ? ((leadAnalytics?.callbackLeads || 0) + (leadAnalytics?.leadsNeedingWork || 0))
+                            : ((billcutAnalytics?.callbackLeads || 0) + (billcutAnalytics?.leadsNeedingWork || 0))
+                          }
                         </span>
                       </div>
                     </div>
@@ -1006,13 +1326,13 @@ export default function SalesDashboard() {
                     <h4 className="text-lg font-semibold text-gray-200 mb-4">Quick Actions</h4>
                     <div className="space-y-3">
                       <div className="w-full p-3 bg-yellow-600/20 border border-yellow-500/30 text-yellow-300 rounded-lg font-medium">
-                        View All Callbacks ({leadAnalytics.callbackLeads})
+                        View All Callbacks ({analyticsSource === 'AMA' ? (leadAnalytics?.callbackLeads || 0) : (billcutAnalytics?.callbackLeads || 0)})
                       </div>
                       <div className="w-full p-3 bg-red-600/20 border border-red-500/30 text-red-300 rounded-lg font-medium">
-                        Leads Needing Work ({leadAnalytics.leadsNeedingWork})
+                        Leads Needing Work ({analyticsSource === 'AMA' ? (leadAnalytics?.leadsNeedingWork || 0) : (billcutAnalytics?.leadsNeedingWork || 0)})
                       </div>
                       <div className="w-full p-3 bg-green-600/20 border border-green-500/30 text-green-300 rounded-lg font-medium">
-                        High Priority Leads ({leadAnalytics.interestedLeads})
+                        High Priority Leads ({analyticsSource === 'AMA' ? (leadAnalytics?.interestedLeads || 0) : (billcutAnalytics?.interestedLeads || 0)})
                       </div>
                     </div>
                   </div>
@@ -1048,12 +1368,20 @@ export default function SalesDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                      {leadAnalytics.sourceDistribution.slice(0, 5).map((item, index) => {
-                        const sourceLeads = allLeads.filter(lead => (lead.source_database || 'Unknown') === item.source);
+                      {(analyticsSource === 'AMA' ? (leadAnalytics?.sourceDistribution || []) : (billcutAnalytics?.sourceDistribution || [])).slice(0, 5).map((item, index) => {
+                        const sourceLeads = analyticsSource === 'AMA' 
+                          ? (allLeads.filter(lead => (lead.source_database || 'Unknown') === item.source))
+                          : (allBillcutLeads.filter(lead => 'Bill Cut Campaign' === item.source));
                         const convertedCount = sourceLeads.filter(lead => 
-                          lead.status === 'Converted' || lead.convertedToClient === true
+                          analyticsSource === 'AMA' 
+                            ? (lead.status === 'Converted' || lead.convertedToClient === true)
+                            : (lead.category === 'Converted')
                         ).length;
-                        const interestedCount = sourceLeads.filter(lead => lead.status === 'Interested').length;
+                        const interestedCount = sourceLeads.filter(lead => 
+                          analyticsSource === 'AMA' 
+                            ? lead.status === 'Interested'
+                            : lead.category === 'Interested'
+                        ).length;
                         const conversionRate = item.count > 0 ? Math.round((convertedCount / item.count) * 100) : 0;
                         const qualityScore = item.count > 0 ? Math.round(((convertedCount + interestedCount) / item.count) * 100) : 0;
                         
@@ -1188,28 +1516,28 @@ export default function SalesDashboard() {
 
           {/* Monthly Trend Chart */}
           {leadAnalytics && (
-            <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-purple-500/10 transition-all duration-300">
+            <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-purple-500/10 transition-all duration-300">
               <CardHeader className="pb-2">
                 <CardTitle className="text-gray-100">Monthly Lead Trend</CardTitle>
-              </CardHeader>
-              <CardContent className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={leadAnalytics.monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                    <XAxis dataKey="month" stroke={chartColors.text} />
-                    <YAxis stroke={chartColors.text} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
-                      itemStyle={{ color: '#e5e5e5' }}
-                    />
-                    <Legend wrapperStyle={{ color: chartColors.text }} />
-                    <Bar dataKey="total" fill={chartColors.primary} name="Total Leads" />
-                    <Bar dataKey="converted" fill={chartColors.secondary} name="Converted" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
+                </CardHeader>
+                <CardContent className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={leadAnalytics.monthlyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                      <XAxis dataKey="month" stroke={chartColors.text} />
+                      <YAxis stroke={chartColors.text} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
+                        itemStyle={{ color: '#e5e5e5' }}
+                      />
+                      <Legend wrapperStyle={{ color: chartColors.text }} />
+                      <Bar dataKey="total" fill={chartColors.primary} name="Total Leads" />
+                      <Bar dataKey="converted" fill={chartColors.secondary} name="Converted" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
         </div>
         
         <div className="mt-6 text-center text-xs text-gray-600">
