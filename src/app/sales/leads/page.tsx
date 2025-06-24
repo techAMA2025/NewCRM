@@ -1508,7 +1508,7 @@ const LeadsPage = () => {
       {/* Sidebar based on user role */}
       {SidebarComponent && <SidebarComponent />}
       
-      <div className={`flex-1 overflow-auto px-3 ${userRole === 'overlord' ? 'ml-[250px] sm:ml-[250px] md:ml-[250px] lg:ml-[250px] xl:ml-[250px]' : ''}`}>
+      <div className={`flex-1 overflow-auto px-3 `}>
         <div className="w-full max-w-none mx-auto">
           {/* Header with title and actions */}
           <LeadsHeader 
