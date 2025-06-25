@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
+import SalesSidebar from "@/components/navigation/SalesSidebar";
 import {
   FaEnvelope,
   FaPaperPlane,
@@ -715,7 +716,7 @@ export default function SendAgreementPage() {
   return (
     <>
       <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-        {userRole === 'advocate' ? <AdvocateSidebar /> : <OverlordSidebar />}
+        {userRole === 'advocate' ? <AdvocateSidebar /> : userRole === 'sales' ? <SalesSidebar /> : <OverlordSidebar />}
 
         <div className="flex-1 p-8">
           <div className="max-w-5xl mx-auto">
