@@ -1876,26 +1876,61 @@ function ClientsList() {
               </button>
             </div>
             <div className="flex-1 bg-white rounded overflow-hidden">
-              {viewingDocumentUrl.includes('firebasestorage.googleapis.com') ? (
-                // For Firebase Storage URLs (like BillCut documents), try direct viewing first
-                <iframe
-                  src={viewingDocumentUrl}
-                  className="w-full h-full border-0"
-                  title="Document Viewer"
-                  onError={(e) => {
-                    // Fallback to Google Docs viewer if direct viewing fails
-                    const iframe = e.target as HTMLIFrameElement;
-                    iframe.src = `https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`;
-                  }}
-                />
-              ) : (
-                // For other URLs, use Google Docs viewer
-                <iframe
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
-                  className="w-full h-full border-0"
-                  title="Document Viewer"
-                />
-              )}
+              {(() => {
+                // Validate and sanitize the URL
+                const allowedHosts = [
+                  'firebasestorage.googleapis.com',
+                  'docs.google.com'
+                ];
+                
+                try {
+                  const url = new URL(viewingDocumentUrl);
+                  const isAllowedHost = allowedHosts.some(host => 
+                    url.hostname === host || url.hostname.endsWith('.' + host)
+                  );
+                  
+                  if (!isAllowedHost) {
+                    console.warn('Blocked access to untrusted URL:', viewingDocumentUrl);
+                    return (
+                      <div className="flex items-center justify-center h-full text-gray-600">
+                        <p>Access to this document type is not allowed for security reasons.</p>
+                      </div>
+                    );
+                  }
+                  
+                  if (url.hostname === 'firebasestorage.googleapis.com') {
+                    // For Firebase Storage URLs (like BillCut documents), try direct viewing first
+                    return (
+                      <iframe
+                        src={viewingDocumentUrl}
+                        className="w-full h-full border-0"
+                        title="Document Viewer"
+                        onError={(e) => {
+                          // Fallback to Google Docs viewer if direct viewing fails
+                          const iframe = e.target as HTMLIFrameElement;
+                          iframe.src = `https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`;
+                        }}
+                      />
+                    );
+                  } else {
+                    // For other allowed URLs, use Google Docs viewer
+                    return (
+                      <iframe
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                        className="w-full h-full border-0"
+                        title="Document Viewer"
+                      />
+                    );
+                  }
+                } catch (error) {
+                  console.error('Invalid URL:', viewingDocumentUrl, error);
+                  return (
+                    <div className="flex items-center justify-center h-full text-gray-600">
+                      <p>Invalid document URL provided.</p>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         </div>
