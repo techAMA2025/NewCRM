@@ -110,7 +110,7 @@ export default function SendAgreementPage() {
 
   const subjectTemplate = {
     id: "agreement-draft-subject",
-    text: "Agreement Draft - [CLIENT_NAME]"
+    text: "Consultancy Agreement - AMA LEGAL SOLUTIONS"
   };
 
   // Fetch clients from Firestore
@@ -762,7 +762,7 @@ export default function SendAgreementPage() {
                         className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         disabled={editingSubject}
                       >
-                        <option value="agreement-draft-subject">Agreement Draft - [CLIENT_NAME]</option>
+                        <option value="agreement-draft-subject">Consultancy Agreement - AMA LEGAL SOLUTIONS</option>
                         <option value="custom">Custom Subject...</option>
                       </select>
 
