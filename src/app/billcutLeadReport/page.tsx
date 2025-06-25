@@ -628,7 +628,7 @@ const BillcutLeadReportContent = () => {
         <div 
           className="flex-1 flex items-center justify-center transition-all duration-300"
           style={{ 
-            marginLeft: userRole === 'overlord' ? (isExpanded ? '250px' : '80px') : '0'
+            marginLeft: userRole === 'overlord' ? (isExpanded ? '0px' : '0px') : '0'
           }}
         >
           <div className="text-center">
@@ -647,7 +647,7 @@ const BillcutLeadReportContent = () => {
         <div 
           className="flex-1 flex items-center justify-center transition-all duration-300"
           style={{ 
-            marginLeft: userRole === 'overlord' ? (isExpanded ? '250px' : '80px') : '0'
+            marginLeft: userRole === 'overlord' ? (isExpanded ? '0px' : '0px') : '0'
           }}
         >
           <div className="text-center">
@@ -659,15 +659,15 @@ const BillcutLeadReportContent = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 w-full" >
       {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
       <div 
         className="flex-1 p-8 transition-all duration-300"
         style={{ 
-          marginLeft: userRole === 'overlord' ? (isExpanded ? '250px' : '80px') : '0'
+          marginLeft: userRole === 'overlord' ? (isExpanded ? '0px' : '0px') : '0'
         }}
       >
-        <div className="max-w-7xl mx-auto">
+        <div className="w-[60%]" >
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billcut Leads Dashboard</h1>
