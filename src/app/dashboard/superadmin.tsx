@@ -1414,15 +1414,15 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="p-4 min-h-screen bg-gray-900 text-white w-full" >
-      <h1 className="text-2xl font-bold mb-4">Super Admin Dashboard</h1>
+    <div className="p-2 min-h-screen bg-gray-900 text-white w-full" >
+      <h1 className="text-xl font-bold mb-3">Super Admin Dashboard</h1>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {/* Sales Analytics Section */}
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-white text-lg">
+              <CardTitle className="text-white text-base">
                 {selectedSalesperson && individualSalesData
                   ? `${individualSalesData.name}'s Sales Performance`
                   : 'Overall Sales Analytics'
@@ -1430,11 +1430,11 @@ export default function SuperAdminDashboard() {
               </CardTitle>
               
               {/* Add Month/Year Filters alongside Salesperson Dropdown */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {/* Month-Year Filter */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <select
-                    className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="bg-gray-700 border border-gray-600 text-white px-2 py-1 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={selectedAnalyticsMonth !== null ? selectedAnalyticsMonth : new Date().getMonth()}
                     onChange={(e) => setSelectedAnalyticsMonth(parseInt(e.target.value))}
                   >
@@ -1453,7 +1453,7 @@ export default function SuperAdminDashboard() {
                   </select>
                   
                   <select
-                    className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="bg-gray-700 border border-gray-600 text-white px-2 py-1 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={selectedAnalyticsYear !== null ? selectedAnalyticsYear : new Date().getFullYear()}
                     onChange={(e) => setSelectedAnalyticsYear(parseInt(e.target.value))}
                   >
@@ -1468,7 +1468,7 @@ export default function SuperAdminDashboard() {
                         setSelectedAnalyticsMonth(null);
                         setSelectedAnalyticsYear(null);
                       }}
-                      className="text-xs text-blue-400 hover:text-blue-300 bg-blue-900/30 px-2 py-1 rounded-md"
+                      className="text-xs text-blue-400 hover:text-blue-300 bg-blue-900/30 px-1 py-1 rounded-md"
                     >
                       Reset
                     </button>
@@ -1477,10 +1477,10 @@ export default function SuperAdminDashboard() {
                 
                 {/* Existing Salesperson Dropdown */}
                 <div className="flex items-center">
-                  <label htmlFor="salesperson" className="mr-2 text-gray-300">View:</label>
+                  <label htmlFor="salesperson" className="mr-1 text-gray-300 text-xs">View:</label>
                   <select
                     id="salesperson"
-                    className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="bg-gray-700 border border-gray-600 text-white px-2 py-1 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={selectedSalesperson || "all"}
                     onChange={handleSalespersonChange}
                   >
@@ -1496,16 +1496,16 @@ export default function SuperAdminDashboard() {
             </CardHeader>
             <CardContent>
               {/* Fixed metric cards with better alignments */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                 {/* Revenue Card */}
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
-                  <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="text-blue-300 font-medium text-sm uppercase tracking-wider mb-2">
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-3 flex-1 flex flex-col">
+                    <h3 className="text-blue-300 font-medium text-xs uppercase tracking-wider mb-1">
                       {selectedSalesperson ? 'Revenue Collected' : 'Total Revenue'}
                     </h3>
-                    <div className="flex items-baseline space-x-2 mb-3">
-                      <p className="text-3xl font-bold text-white">₹{(analyticsStats.totalCollectedAmount).toLocaleString('en-IN')}</p>
-                      <p className="text-sm text-gray-400">
+                    <div className="flex items-baseline space-x-1 mb-2">
+                      <p className="text-xl font-bold text-white">₹{(analyticsStats.totalCollectedAmount).toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-gray-400">
                         {selectedSalesperson ? 'collected' : 'total'}
                       </p>
                     </div>
@@ -1516,7 +1516,7 @@ export default function SuperAdminDashboard() {
                         <span>Progress</span>
                         <span>{analyticsStats.revenueAchievementPercentage}%</span>
                       </div>
-                      <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-gray-700 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-blue-400 to-teal-400 rounded-full" 
                           style={{ width: `${analyticsStats.revenueAchievementPercentage}%` }}
@@ -1528,23 +1528,23 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Target Card */}
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
-                  <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="text-purple-300 font-medium text-sm uppercase tracking-wider mb-2">
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-3 flex-1 flex flex-col">
+                    <h3 className="text-purple-300 font-medium text-xs uppercase tracking-wider mb-1">
                       {selectedSalesperson ? 'Personal Target' : 'Total Target'}
                     </h3>
-                    <div className="flex items-baseline space-x-2 mb-3">
-                      <p className="text-3xl font-bold text-white">₹{(analyticsStats.totalTargetAmount).toLocaleString('en-IN')}</p>
-                      <p className="text-sm text-gray-400">
+                    <div className="flex items-baseline space-x-1 mb-2">
+                      <p className="text-xl font-bold text-white">₹{(analyticsStats.totalTargetAmount).toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-gray-400">
                         {selectedSalesperson ? 'assigned' : 'total'}
                       </p>
                     </div>
                     
                     {/* Metric visualization */}
                     <div className="mt-auto flex items-center justify-center">
-                      <div className="inline-flex items-center justify-center p-2 bg-gray-700/50 rounded-full">
-                        <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="inline-flex items-center justify-center p-1.5 bg-gray-700/50 rounded-full">
+                        <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           </svg>
                         </div>
@@ -1555,40 +1555,40 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Conversion Rate Card */}
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
-                  <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="text-green-300 font-medium text-sm uppercase tracking-wider mb-2">Conversion Rate</h3>
-                    <div className="flex items-baseline space-x-2 mb-3">
-                      <p className="text-3xl font-bold text-white">{analyticsStats.conversionRate}%</p>
-                      <p className="text-sm text-gray-400">of target</p>
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-3 flex-1 flex flex-col">
+                    <h3 className="text-green-300 font-medium text-xs uppercase tracking-wider mb-1">Conversion Rate</h3>
+                    <div className="flex items-baseline space-x-1 mb-2">
+                      <p className="text-xl font-bold text-white">{analyticsStats.conversionRate}%</p>
+                      <p className="text-xs text-gray-400">of target</p>
                     </div>
                     
                     {/* Circular progress indicator */}
                     <div className="mt-auto flex justify-center">
                       <div className="relative inline-flex items-center justify-center">
-                        <svg className="w-16 h-16 transform -rotate-90">
+                        <svg className="w-12 h-12 transform -rotate-90">
                           <circle 
-                            cx="32" 
-                            cy="32" 
-                            r="28"
+                            cx="24" 
+                            cy="24" 
+                            r="20"
                             stroke="currentColor"
-                            strokeWidth="6"
+                            strokeWidth="4"
                             fill="transparent"
                             className="text-gray-700"
                           />
                           <circle 
-                            cx="32" 
-                            cy="32" 
-                            r="28"
+                            cx="24" 
+                            cy="24" 
+                            r="20"
                             stroke="currentColor"
-                            strokeWidth="6"
+                            strokeWidth="4"
                             fill="transparent"
-                            strokeDasharray={`${28 * 2 * Math.PI}`}
-                            strokeDashoffset={`${28 * 2 * Math.PI * (1 - analyticsStats.conversionRate / 100)}`}
+                            strokeDasharray={`${20 * 2 * Math.PI}`}
+                            strokeDashoffset={`${20 * 2 * Math.PI * (1 - analyticsStats.conversionRate / 100)}`}
                             className="text-green-500"
                           />
                         </svg>
-                        <span className="absolute text-sm font-bold text-white">{analyticsStats.conversionRate}%</span>
+                        <span className="absolute text-xs font-bold text-white">{analyticsStats.conversionRate}%</span>
                       </div>
                     </div>
                   </div>
@@ -1596,23 +1596,23 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Avg Deal Size Card */}
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
-                  <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="text-amber-300 font-medium text-sm uppercase tracking-wider mb-2">
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full">
+                  <div className="p-3 flex-1 flex flex-col">
+                    <h3 className="text-amber-300 font-medium text-xs uppercase tracking-wider mb-1">
                       {selectedSalesperson ? 'Total Collections' : 'Avg. Deal Size'}
                     </h3>
-                    <div className="flex items-baseline space-x-2 mb-3">
-                      <p className="text-3xl font-bold text-white">₹{(analyticsStats.avgDealSize).toLocaleString('en-IN')}</p>
-                      <p className="text-sm text-gray-400">
+                    <div className="flex items-baseline space-x-1 mb-2">
+                      <p className="text-xl font-bold text-white">₹{(analyticsStats.avgDealSize).toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-gray-400">
                         {selectedSalesperson ? 'per client' : 'average'}
                       </p>
                     </div>
                     
                     {/* Removed the deal size visualization */}
                     <div className="mt-auto flex justify-center">
-                      <div className="inline-flex items-center justify-center p-2 bg-gray-700/50 rounded-full">
-                        <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="inline-flex items-center justify-center p-1.5 bg-gray-700/50 rounded-full">
+                        <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
@@ -1624,18 +1624,18 @@ export default function SuperAdminDashboard() {
               </div>
 
               {/* CRM Leads Analytics Section with Table and Pie Chart */}
-              <div className="mt-6 flex flex-col md:flex-row gap-4">
+              <div className="mt-4 flex flex-col lg:flex-row gap-3">
                 {/* Left side: Table with filters */}
-                <div className="md:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-xl">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold text-blue-100">CRM Leads Analytics</h3>
+                <div className="lg:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold text-blue-100">CRM Leads Analytics</h3>
                     
                     {/* Add salesperson filter dropdown */}
                     <div className="flex items-center">
-                      <label htmlFor="lead-salesperson" className="mr-2 text-gray-300">Salesperson:</label>
+                      <label htmlFor="lead-salesperson" className="mr-1 text-gray-300 text-xs">Salesperson:</label>
                       <select
                         id="lead-salesperson"
-                        className="bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="bg-gray-700 border border-gray-600 text-white px-2 py-1 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={selectedLeadsSalesperson || "all"}
                         onChange={handleLeadsSalespersonChange}
                       >
@@ -1650,13 +1650,13 @@ export default function SuperAdminDashboard() {
                   </div>
                   
                   {/* Date range filter */}
-                  <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-800/70 rounded-lg border border-gray-700">
+                  <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-gray-800/70 rounded-lg border border-gray-700">
                     <div>
                       <label htmlFor="start-date" className="block text-xs text-blue-200 mb-1">From Date</label>
                       <input
                         id="start-date"
                         type="date"
-                        className="bg-gray-700 text-white px-2 py-1.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        className="bg-gray-700 text-white px-2 py-1 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                       />
@@ -1667,16 +1667,16 @@ export default function SuperAdminDashboard() {
                       <input
                         id="end-date"
                         type="date"
-                        className="bg-gray-700 text-white px-2 py-1.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        className="bg-gray-700 text-white px-2 py-1 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                       />
                     </div>
                     
-                    <div className="flex gap-2 self-end mb-0.5">
+                    <div className="flex gap-1 self-end mb-0.5">
                       <button
                         onClick={applyDateFilter}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors text-sm"
+                        className="px-2 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors text-xs"
                         disabled={isLoading}
                       >
                         Apply Filter
@@ -1684,7 +1684,7 @@ export default function SuperAdminDashboard() {
                       
                       <button
                         onClick={clearDateFilter}
-                        className="px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors text-sm"
+                        className="px-2 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors text-xs"
                         disabled={isLoading || (!startDate && !endDate)}
                       >
                         Clear Filter
@@ -1692,91 +1692,91 @@ export default function SuperAdminDashboard() {
                     </div>
                     
                     {isFilterApplied && (
-                      <div className="ml-auto text-sm text-blue-200">
+                      <div className="ml-auto text-xs text-blue-200">
                         Showing data from: {startDate || 'all time'} to {endDate || 'present'}
                       </div>
                     )}
                   </div>
                   
                   {isLoading ? (
-                    <div className="flex justify-center items-center h-60 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <div className="flex justify-center items-center h-48 bg-gray-800/50 rounded-lg border border-gray-700">
                       <div className="text-blue-200">Loading lead data...</div>
                     </div>
                   ) : (
                     <>
-                      <div className="overflow-x-auto rounded-lg border border-gray-700 mb-6">
+                      <div className="overflow-x-auto rounded-lg border border-gray-700 mb-4">
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="bg-gradient-to-r from-blue-900/80 to-purple-900/80">
-                              <th className="p-3 text-left font-semibold text-blue-100">Source / Status</th>
+                              <th className="p-2 text-left font-semibold text-blue-100 text-xs">Source / Status</th>
                               {leadsBySourceData.datasets.map((dataset, idx) => (
-                                <th key={idx} className="p-3 text-center font-semibold text-blue-100">
+                                <th key={idx} className="p-2 text-center font-semibold text-blue-100 text-xs">
                                   {dataset.label}
                                 </th>
                               ))}
-                              <th className="p-3 text-center font-semibold text-blue-100">Total</th>
+                              <th className="p-2 text-center font-semibold text-blue-100 text-xs">Total</th>
                             </tr>
                           </thead>
                           <tbody>
                             {/* Settleloans Row */}
                             <tr className="bg-gray-800/40 hover:bg-gray-700/40 transition-colors">
-                              <td className="p-3 border-t border-gray-700 font-medium text-teal-300">
+                              <td className="p-2 border-t border-gray-700 font-medium text-teal-300 text-xs">
                                 Settleloans
                               </td>
                               {leadsBySourceData.datasets.map((dataset, idx) => (
-                                <td key={idx} className="p-3 text-center border-t border-gray-700 text-gray-100">
+                                <td key={idx} className="p-2 text-center border-t border-gray-700 text-gray-100 text-xs">
                                   {dataset.data[0]}
                                 </td>
                               ))}
-                              <td className="p-3 text-center border-t border-gray-700 font-semibold text-white">
+                              <td className="p-2 text-center border-t border-gray-700 font-semibold text-white text-xs">
                                 {sourceTotals.settleloans}
                               </td>
                             </tr>
                             
                             {/* Credsettlee Row */}
                             <tr className="bg-gray-800/60 hover:bg-gray-700/40 transition-colors">
-                              <td className="p-3 border-t border-gray-700 font-medium text-indigo-300">
+                              <td className="p-2 border-t border-gray-700 font-medium text-indigo-300 text-xs">
                                 Credsettlee
                               </td>
                               {leadsBySourceData.datasets.map((dataset, idx) => (
-                                <td key={idx} className="p-3 text-center border-t border-gray-700 text-gray-100">
+                                <td key={idx} className="p-2 text-center border-t border-gray-700 text-gray-100 text-xs">
                                   {dataset.data[1]}
                                 </td>
                               ))}
-                              <td className="p-3 text-center border-t border-gray-700 font-semibold text-white">
+                              <td className="p-2 text-center border-t border-gray-700 font-semibold text-white text-xs">
                                 {sourceTotals.credsettlee}
                               </td>
                             </tr>
                             
                             {/* AMA Row */}
                             <tr className="bg-gray-800/40 hover:bg-gray-700/40 transition-colors">
-                              <td className="p-3 border-t border-gray-700 font-medium text-orange-300">
+                              <td className="p-2 border-t border-gray-700 font-medium text-orange-300 text-xs">
                                 AMA
                               </td>
                               {leadsBySourceData.datasets.map((dataset, idx) => (
-                                <td key={idx} className="p-3 text-center border-t border-gray-700 text-gray-100">
+                                <td key={idx} className="p-2 text-center border-t border-gray-700 text-gray-100 text-xs">
                                   {dataset.data[2]}
                                 </td>
                               ))}
-                              <td className="p-3 text-center border-t border-gray-700 font-semibold text-white">
+                              <td className="p-2 text-center border-t border-gray-700 font-semibold text-white text-xs">
                                 {sourceTotals.ama}
                               </td>
                             </tr>
                             
                             {/* Total Row */}
                             <tr className="bg-gradient-to-r from-blue-900/90 to-purple-900/90">
-                              <td className="p-3 font-bold text-blue-100 border-t border-gray-600">
+                              <td className="p-2 font-bold text-blue-100 border-t border-gray-600 text-xs">
                                 Total
                               </td>
                               {leadsBySourceData.datasets.map((dataset, idx) => {
                                 const statusTotal = dataset.data.reduce((sum, val) => sum + val, 0);
                                 return (
-                                  <td key={idx} className="p-3 text-center font-bold text-blue-100 border-t border-gray-600">
+                                  <td key={idx} className="p-2 text-center font-bold text-blue-100 border-t border-gray-600 text-xs">
                                     {statusTotal}
                                   </td>
                                 );
                               })}
-                              <td className="p-3 text-center font-bold text-white border-t border-gray-600">
+                              <td className="p-2 text-center font-bold text-white border-t border-gray-600 text-xs">
                                 {sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama}
                               </td>
                             </tr>
@@ -1785,50 +1785,50 @@ export default function SuperAdminDashboard() {
                       </div>
                       
                       {/* Horizontal Bar Chart for Converted Leads */}
-                      <div className="mt-6 bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                        <h4 className="text-blue-200 font-medium mb-2">Conversion Analytics</h4>
-                        <div className="h-40">
+                      <div className="mt-4 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+                        <h4 className="text-blue-200 font-medium mb-2 text-sm">Conversion Analytics</h4>
+                        <div className="h-32">
                           <Bar data={convertedLeadsData} options={horizontalBarOptions} />
                         </div>
                         
                         {/* Conversion rate cards */}
-                        <div className="grid grid-cols-3 gap-3 mt-4">
-                          <div className="bg-gradient-to-r from-teal-900/50 to-teal-800/30 p-3 rounded-lg border border-teal-700/20">
+                        <div className="grid grid-cols-3 gap-2 mt-3">
+                          <div className="bg-gradient-to-r from-teal-900/50 to-teal-800/30 p-2 rounded-lg border border-teal-700/20">
                             <div className="flex justify-between items-center">
-                              <span className="text-teal-300">Settleloans</span>
-                              <span className="text-white font-semibold">
+                              <span className="text-teal-300 text-xs">Settleloans</span>
+                              <span className="text-white font-semibold text-xs">
                                 {convertedLeadsData.datasets[0].data[0]} Converted
                               </span>
                             </div>
-                            <div className="mt-1 text-sm text-right text-teal-100">
+                            <div className="mt-1 text-xs text-right text-teal-100">
                               {sourceTotals.settleloans > 0 
                                 ? `${Math.round((convertedLeadsData.datasets[0].data[0] / sourceTotals.settleloans) * 100)}% Rate` 
                                 : '0% Rate'}
                             </div>
                           </div>
                           
-                          <div className="bg-gradient-to-r from-indigo-900/50 to-indigo-800/30 p-3 rounded-lg border border-indigo-700/20">
+                          <div className="bg-gradient-to-r from-indigo-900/50 to-indigo-800/30 p-2 rounded-lg border border-indigo-700/20">
                             <div className="flex justify-between items-center">
-                              <span className="text-indigo-300">Credsettlee</span>
-                              <span className="text-white font-semibold">
+                              <span className="text-indigo-300 text-xs">Credsettlee</span>
+                              <span className="text-white font-semibold text-xs">
                                 {convertedLeadsData.datasets[0].data[1]} Converted
                               </span>
                             </div>
-                            <div className="mt-1 text-sm text-right text-indigo-100">
+                            <div className="mt-1 text-xs text-right text-indigo-100">
                               {sourceTotals.credsettlee > 0 
                                 ? `${Math.round((convertedLeadsData.datasets[0].data[1] / sourceTotals.credsettlee) * 100)}% Rate` 
                                 : '0% Rate'}
                             </div>
                           </div>
                           
-                          <div className="bg-gradient-to-r from-orange-900/50 to-orange-800/30 p-3 rounded-lg border border-orange-700/20">
+                          <div className="bg-gradient-to-r from-orange-900/50 to-orange-800/30 p-2 rounded-lg border border-orange-700/20">
                             <div className="flex justify-between items-center">
-                              <span className="text-orange-300">AMA</span>
-                              <span className="text-white font-semibold">
+                              <span className="text-orange-300 text-xs">AMA</span>
+                              <span className="text-white font-semibold text-xs">
                                 {convertedLeadsData.datasets[0].data[2]} Converted
                               </span>
                             </div>
-                            <div className="mt-1 text-sm text-right text-orange-100">
+                            <div className="mt-1 text-xs text-right text-orange-100">
                               {sourceTotals.ama > 0 
                                 ? `${Math.round((convertedLeadsData.datasets[0].data[2] / sourceTotals.ama) * 100)}% Rate` 
                                 : '0% Rate'}
@@ -1841,7 +1841,7 @@ export default function SuperAdminDashboard() {
                 </div>
                 
                 {/* Right side: Pie chart */}
-                <div className="md:w-1/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 shadow-xl flex flex-col">
+                <div className="lg:w-1/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex flex-col">
                   {isLoading ? (
                     <div className="flex-1 flex justify-center items-center bg-gray-800/50 rounded-lg border border-gray-700">
                       <div className="text-blue-200">Loading lead data...</div>
@@ -1849,50 +1849,50 @@ export default function SuperAdminDashboard() {
                   ) : (
                     <>
                       <div className="flex-1 flex items-center justify-center">
-                        <div className="h-64 w-full">
+                        <div className="h-48 w-full">
                           <Pie data={sourceTotalsPieData} options={sourceTotalsPieOptions} />
                         </div>
                       </div>
-                      <div className="mt-4 grid grid-cols-1 gap-3">
-                        <div className="bg-gradient-to-br from-teal-900/70 to-teal-800/50 p-3 rounded-lg border border-teal-700/30 shadow-md flex justify-between items-center">
+                      <div className="mt-3 grid grid-cols-1 gap-2">
+                        <div className="bg-gradient-to-br from-teal-900/70 to-teal-800/50 p-2 rounded-lg border border-teal-700/30 shadow-md flex justify-between items-center">
                           <div>
-                            <p className="text-teal-300 font-medium">Settleloans</p>
-                            <p className="text-xl font-bold text-white">{sourceTotals.settleloans}</p>
+                            <p className="text-teal-300 font-medium text-xs">Settleloans</p>
+                            <p className="text-lg font-bold text-white">{sourceTotals.settleloans}</p>
                           </div>
-                          <div className="text-white text-sm bg-teal-800/60 rounded-md px-2 py-1 font-medium">
+                          <div className="text-white text-xs bg-teal-800/60 rounded-md px-2 py-1 font-medium">
                             {sourceTotals.settleloans > 0 ? 
                               `${Math.round((sourceTotals.settleloans / 
                                 (sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama)) * 100)}%` : 
                               '0%'}
                           </div>
                         </div>
-                        <div className="bg-gradient-to-br from-indigo-900/70 to-indigo-800/50 p-3 rounded-lg border border-indigo-700/30 shadow-md flex justify-between items-center">
+                        <div className="bg-gradient-to-br from-indigo-900/70 to-indigo-800/50 p-2 rounded-lg border border-indigo-700/30 shadow-md flex justify-between items-center">
                           <div>
-                            <p className="text-indigo-300 font-medium">Credsettlee</p>
-                            <p className="text-xl font-bold text-white">{sourceTotals.credsettlee}</p>
+                            <p className="text-indigo-300 font-medium text-xs">Credsettlee</p>
+                            <p className="text-lg font-bold text-white">{sourceTotals.credsettlee}</p>
                           </div>
-                          <div className="text-white text-sm bg-indigo-800/60 rounded-md px-2 py-1 font-medium">
+                          <div className="text-white text-xs bg-indigo-800/60 rounded-md px-2 py-1 font-medium">
                             {sourceTotals.credsettlee > 0 ? 
                               `${Math.round((sourceTotals.credsettlee / 
                                 (sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama)) * 100)}%` : 
                               '0%'}
                           </div>
                         </div>
-                        <div className="bg-gradient-to-br from-orange-900/70 to-orange-800/50 p-3 rounded-lg border border-orange-700/30 shadow-md flex justify-between items-center">
+                        <div className="bg-gradient-to-br from-orange-900/70 to-orange-800/50 p-2 rounded-lg border border-orange-700/30 shadow-md flex justify-between items-center">
                           <div>
-                            <p className="text-orange-300 font-medium">AMA</p>
-                            <p className="text-xl font-bold text-white">{sourceTotals.ama}</p>
+                            <p className="text-orange-300 font-medium text-xs">AMA</p>
+                            <p className="text-lg font-bold text-white">{sourceTotals.ama}</p>
                           </div>
-                          <div className="text-white text-sm bg-orange-800/60 rounded-md px-2 py-1 font-medium">
+                          <div className="text-white text-xs bg-orange-800/60 rounded-md px-2 py-1 font-medium">
                             {sourceTotals.ama > 0 ? 
                               `${Math.round((sourceTotals.ama / 
                                 (sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama)) * 100)}%` : 
                               '0%'}
                           </div>
                         </div>
-                        <div className="bg-gradient-to-r from-blue-900/70 to-purple-900/70 p-3 rounded-lg border border-blue-700/30 shadow-md">
-                          <p className="text-blue-200 font-medium">Total Leads</p>
-                          <p className="text-2xl font-bold text-white">
+                        <div className="bg-gradient-to-r from-blue-900/70 to-purple-900/70 p-2 rounded-lg border border-blue-700/30 shadow-md">
+                          <p className="text-blue-200 font-medium text-xs">Total Leads</p>
+                          <p className="text-xl font-bold text-white">
                             {sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama}
                           </p>
                         </div>
@@ -1908,14 +1908,14 @@ export default function SuperAdminDashboard() {
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-white">Client & Advocate Analytics</CardTitle>
+              <CardTitle className="text-white text-base">Client & Advocate Analytics</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Left column: Client status distribution */}
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-200 mb-4">Client Status Distribution</h3>
-                  <div className="h-64">
+                  <h3 className="text-base font-semibold text-blue-200 mb-3">Client Status Distribution</h3>
+                  <div className="h-48">
                     <Bar data={adminChartData} options={{
                       ...options,
                       indexAxis: 'y' as const,
@@ -1931,30 +1931,30 @@ export default function SuperAdminDashboard() {
                   </div>
                   
                   {/* Client stats cards */}
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-3 rounded-lg border border-blue-700/30 shadow-md">
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-2 rounded-lg border border-blue-700/30 shadow-md">
                       <p className="text-blue-300 text-xs font-medium">Total Clients</p>
-                      <p className="text-xl font-bold text-white">{clientAnalytics.totalClients}</p>
+                      <p className="text-lg font-bold text-white">{clientAnalytics.totalClients}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-3 rounded-lg border border-green-700/30 shadow-md">
+                    <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-2 rounded-lg border border-green-700/30 shadow-md">
                       <p className="text-green-300 text-xs font-medium">Active Clients</p>
-                      <p className="text-xl font-bold text-white">{clientAnalytics.statusDistribution.Active || 0}</p>
+                      <p className="text-lg font-bold text-white">{clientAnalytics.statusDistribution.Active || 0}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-3 rounded-lg border border-purple-700/30 shadow-md">
+                    <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-2 rounded-lg border border-purple-700/30 shadow-md">
                       <p className="text-purple-300 text-xs font-medium">Avg. Loan Amount</p>
-                      <p className="text-xl font-bold text-white">₹{clientAnalytics.avgLoanAmount.toLocaleString('en-IN')}</p>
+                      <p className="text-lg font-bold text-white">₹{clientAnalytics.avgLoanAmount.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-3 rounded-lg border border-amber-700/30 shadow-md">
+                    <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-2 rounded-lg border border-amber-700/30 shadow-md">
                       <p className="text-amber-300 text-xs font-medium">Total Loan Amount</p>
-                      <p className="text-xl font-bold text-white">₹{clientAnalytics.totalLoanAmount.toLocaleString('en-IN')}</p>
+                      <p className="text-lg font-bold text-white">₹{clientAnalytics.totalLoanAmount.toLocaleString('en-IN')}</p>
                     </div>
                   </div>
                 </div>
                 
                 {/* Right column: Loan type distribution and top advocates */}
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-200 mb-4">Loan Type Distribution</h3>
-                  <div className="h-64">
+                  <h3 className="text-base font-semibold text-blue-200 mb-3">Loan Type Distribution</h3>
+                  <div className="h-48">
                     <Pie data={loanTypeData} options={{
                       ...pieOptions,
                       plugins: {
@@ -1969,21 +1969,21 @@ export default function SuperAdminDashboard() {
                   </div>
                   
                   {/* Top advocates section */}
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-blue-200 mb-3">Top Advocates</h3>
+                  <div className="mt-4">
+                    <h3 className="text-base font-semibold text-blue-200 mb-2">Top Advocates</h3>
                     <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
                       <table className="min-w-full">
                         <thead>
                           <tr className="bg-gradient-to-r from-blue-900/80 to-purple-900/80">
-                            <th className="py-3 px-4 text-left text-sm font-semibold text-blue-100">Advocate Name</th>
-                            <th className="py-3 px-4 text-right text-sm font-semibold text-blue-100">Clients</th>
+                            <th className="py-2 px-3 text-left text-xs font-semibold text-blue-100">Advocate Name</th>
+                            <th className="py-2 px-3 text-right text-xs font-semibold text-blue-100">Clients</th>
                           </tr>
                         </thead>
                         <tbody>
                           {clientAnalytics.topAdvocates.map((advocate, index) => (
                             <tr key={index} className={index % 2 === 0 ? "bg-gray-800/40" : "bg-gray-800/60"}>
-                              <td className="py-2.5 px-4 text-sm text-gray-200">{advocate.name}</td>
-                              <td className="py-2.5 px-4 text-sm text-right text-gray-200">
+                              <td className="py-2 px-3 text-xs text-gray-200">{advocate.name}</td>
+                              <td className="py-2 px-3 text-xs text-right text-gray-200">
                                 <span className="px-2 py-1 bg-blue-900/40 rounded-md text-blue-200">
                                   {advocate.clientCount}
                                 </span>
@@ -2004,29 +2004,29 @@ export default function SuperAdminDashboard() {
         <div className="w-full">
           <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-white text-lg">Payment Analytics</CardTitle>
+              <CardTitle className="text-white text-base">Payment Analytics</CardTitle>
             </CardHeader>
             <CardContent>
               {/* Payment metrics row */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-                <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-3 rounded-lg border border-blue-700/30 shadow-md">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+                <div className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 p-2 rounded-lg border border-blue-700/30 shadow-md">
                   <p className="text-blue-300 text-xs font-medium">Total Clients</p>
-                  <p className="text-xl font-bold text-white">{paymentAnalytics.clientCount}</p>
+                  <p className="text-lg font-bold text-white">{paymentAnalytics.clientCount}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-3 rounded-lg border border-green-700/30 shadow-md">
+                <div className="bg-gradient-to-br from-green-900/80 to-green-800/60 p-2 rounded-lg border border-green-700/30 shadow-md">
                   <p className="text-green-300 text-xs font-medium">This Month's Collection</p>
-                  <p className="text-xl font-bold text-white">₹{currentMonthPayments.collected.toLocaleString('en-IN')}</p>
+                  <p className="text-lg font-bold text-white">₹{currentMonthPayments.collected.toLocaleString('en-IN')}</p>
                   <p className="text-[10px] text-green-300 mt-0.5">Total: ₹{paymentAnalytics.totalPaidAmount.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-3 rounded-lg border border-amber-700/30 shadow-md">
+                <div className="bg-gradient-to-br from-amber-900/80 to-amber-800/60 p-2 rounded-lg border border-amber-700/30 shadow-md">
                   <p className="text-amber-300 text-xs font-medium">This Month's Pending</p>
-                  <p className="text-xl font-bold text-white">₹{currentMonthPayments.pending.toLocaleString('en-IN')}</p>
+                  <p className="text-lg font-bold text-white">₹{currentMonthPayments.pending.toLocaleString('en-IN')}</p>
                   <p className="text-[10px] text-amber-300 mt-0.5">Total: ₹{paymentAnalytics.totalPendingAmount.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-3 rounded-lg border border-purple-700/30 shadow-md">
+                <div className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 p-2 rounded-lg border border-purple-700/30 shadow-md">
                   <p className="text-purple-300 text-xs font-medium">Collection Rate</p>
                   <div className="flex items-center">
-                    <p className="text-xl font-bold text-white">{paymentAnalytics.completionRate}%</p>
+                    <p className="text-lg font-bold text-white">{paymentAnalytics.completionRate}%</p>
                     <div className="ml-2 h-1 w-12 bg-gray-700 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full" 
@@ -2037,11 +2037,11 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col lg:flex-row gap-3">
                 {/* Monthly payment trends */}
-                <div className="md:w-1/2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl">
-                  <h3 className="text-lg font-semibold text-blue-200 mb-2">Monthly Collection Trends</h3>
-                  <div className="h-56">
+                <div className="lg:w-1/2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl">
+                  <h3 className="text-base font-semibold text-blue-200 mb-2">Monthly Collection Trends</h3>
+                  <div className="h-44">
                     <Line 
                       data={monthlyPaymentData} 
                       options={{
@@ -2063,10 +2063,10 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Payment methods and types */}
-                <div className="md:w-1/2 flex flex-col gap-4">
+                <div className="lg:w-1/2 flex flex-col gap-3">
                   <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl flex-1">
-                    <h3 className="text-lg font-semibold text-blue-200 mb-2">Payment Methods</h3>
-                    <div className="h-40">
+                    <h3 className="text-base font-semibold text-blue-200 mb-2">Payment Methods</h3>
+                    <div className="h-32">
                       <Pie 
                         data={paymentMethodData} 
                         options={{
@@ -2088,9 +2088,9 @@ export default function SuperAdminDashboard() {
                   </div>
                   
                   <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl flex-1">
-                    <h3 className="text-lg font-semibold text-blue-200 mb-2">Payment Types</h3>
+                    <h3 className="text-base font-semibold text-blue-200 mb-2">Payment Types</h3>
                     <div className="flex">
-                      <div className="h-32 w-32">
+                      <div className="h-24 w-24">
                         <Pie 
                           data={paymentTypesData} 
                           options={{
@@ -2106,18 +2106,18 @@ export default function SuperAdminDashboard() {
                         />
                       </div>
                       <div className="flex-1 flex items-center justify-center">
-                        <div className="grid grid-cols-1 gap-2 w-full">
-                          <div className="flex items-center justify-between bg-blue-900/30 p-2 rounded-lg">
+                        <div className="grid grid-cols-1 gap-1 w-full">
+                          <div className="flex items-center justify-between bg-blue-900/30 p-1.5 rounded-lg">
                             <span className="text-blue-300 text-xs">Full Payments:</span>
-                            <span className="font-semibold text-white text-sm">{paymentAnalytics.paymentTypeDistribution.full}</span>
+                            <span className="font-semibold text-white text-xs">{paymentAnalytics.paymentTypeDistribution.full}</span>
                           </div>
-                          <div className="flex items-center justify-between bg-yellow-900/30 p-2 rounded-lg">
+                          <div className="flex items-center justify-between bg-yellow-900/30 p-1.5 rounded-lg">
                             <span className="text-yellow-300 text-xs">Partial Payments:</span>
-                            <span className="font-semibold text-white text-sm">{paymentAnalytics.paymentTypeDistribution.partial}</span>
+                            <span className="font-semibold text-white text-xs">{paymentAnalytics.paymentTypeDistribution.partial}</span>
                           </div>
-                          <div className="flex items-center justify-between bg-gray-700/50 p-2 rounded-lg">
+                          <div className="flex items-center justify-between bg-gray-700/50 p-1.5 rounded-lg">
                             <span className="text-gray-300 text-xs">Total Transactions:</span>
-                            <span className="font-semibold text-white text-sm">
+                            <span className="font-semibold text-white text-xs">
                               {paymentAnalytics.paymentTypeDistribution.full + paymentAnalytics.paymentTypeDistribution.partial}
                             </span>
                           </div>
