@@ -426,7 +426,7 @@ export default function TargetsPage() {
 
   return (
     <OverlordSidebar>
-      <div className="flex-1 overflow-auto p-7">
+      <div className="flex-1 min-h-screen p-7 bg-gray-900">
         <div className="container mx-auto">
           <h1 className="text-xl font-bold mb-5 text-white">Sales Targets</h1>
           
