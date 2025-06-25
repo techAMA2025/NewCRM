@@ -50,6 +50,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Search, AlertCircle, CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
+import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import { ClientDetailsModal } from '@/app/paymentreminder/components/modals/ClientDetailsModal';
 import { PaymentRecordModal } from './components/modals/PaymentRecordModal';
 import { ClientEditModal } from '@/app/paymentreminder/components/modals/ClientEditModal';
@@ -79,6 +80,8 @@ type Client = {
   tenure: number;
   createdAt?: Timestamp;
   allocationType?: 'primary' | 'secondary';
+  primaryAdvocate?: string;
+  secondaryAdvocate?: string;
 }
 
 type MonthlyPayment = {
@@ -147,6 +150,7 @@ export default function PaymentReminderPage() {
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [clientPaymentRequests, setClientPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [userRole, setUserRole] = useState<string>('advocate');
 
   // New state variables for enhanced filtering
   const [filterPaid, setFilterPaid] = useState<string | null>(null);
@@ -171,27 +175,43 @@ export default function PaymentReminderPage() {
 
   const [expectedPaymentDates, setExpectedPaymentDates] = useState<Record<string, Date | undefined>>({});
 
+  // Get user role on component mount
+  useEffect(() => {
+    const storedRole = localStorage.getItem('userRole');
+    if (storedRole) {
+      setUserRole(storedRole);
+    }
+  }, []);
+
   // Move fetchClients outside useEffect and make it memoized with useCallback
   const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Get current advocate username from localStorage
+      // Get current advocate username and role from localStorage
       const currentAdvocate = localStorage.getItem('userName');
-      if (!currentAdvocate) {
+      
+      if (!currentAdvocate && userRole !== 'overlord') {
         setClients([]);
         setLoading(false);
         return;
       }
       
-      // First, query the clients collection to find allocated clients
-      const clientsQuery = query(
-        collection(db, 'clients'),
-        or(
-          where('alloc_adv', '==', currentAdvocate),
-          where('alloc_adv_secondary', '==', currentAdvocate)
-        )
-      );
+      let clientsQuery;
+      
+      // If user is overlord, fetch all clients
+      if (userRole === 'overlord') {
+        clientsQuery = query(collection(db, 'clients'));
+      } else {
+        // For regular advocates, query only allocated clients
+        clientsQuery = query(
+          collection(db, 'clients'),
+          or(
+            where('alloc_adv', '==', currentAdvocate),
+            where('alloc_adv_secondary', '==', currentAdvocate)
+          )
+        );
+      }
       
       const clientsSnapshot = await getDocs(clientsQuery);
       const allocatedClients = clientsSnapshot.docs.map(doc => ({
@@ -226,7 +246,25 @@ export default function PaymentReminderPage() {
         paymentsSnapshot.forEach((doc) => {
           // Find the allocation type for this client
           const clientAllocation = allocatedClients.find(client => client.id === doc.id);
-          const allocationType = clientAllocation?.alloc_adv === currentAdvocate ? 'primary' : 'secondary';
+          let allocationType: 'primary' | 'secondary' = 'primary';
+          
+          if (userRole === 'overlord') {
+            // For overlord, show the actual allocation type based on the client's allocation
+            if (clientAllocation?.alloc_adv && clientAllocation?.alloc_adv_secondary) {
+              // If both are set, we need to determine which one to show
+              // For now, show as primary if there's a primary allocation
+              allocationType = 'primary';
+            } else if (clientAllocation?.alloc_adv) {
+              allocationType = 'primary';
+            } else if (clientAllocation?.alloc_adv_secondary) {
+              allocationType = 'secondary';
+            } else {
+              allocationType = 'primary'; // Default
+            }
+          } else {
+            // For regular advocates, determine their allocation type
+            allocationType = clientAllocation?.alloc_adv === currentAdvocate ? 'primary' : 'secondary';
+          }
           
           const data = doc.data();
           // Get expected payment date if it exists
@@ -237,7 +275,9 @@ export default function PaymentReminderPage() {
           clientsList.push({ 
             clientId: doc.id, 
             ...data,
-            allocationType // Add allocation type to client data
+            allocationType, // Add allocation type to client data
+            primaryAdvocate: clientAllocation?.alloc_adv,
+            secondaryAdvocate: clientAllocation?.alloc_adv_secondary
           } as Client);
         });
       }
@@ -250,7 +290,7 @@ export default function PaymentReminderPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userRole]);
 
   // Remove the duplicate implementation inside useEffect
   useEffect(() => {
@@ -261,12 +301,21 @@ export default function PaymentReminderPage() {
   const fetchPaymentRequests = useCallback(async () => {
     try {
       const currentUser = localStorage.getItem('userName');
-      if (!currentUser) return;
+      
+      if (!currentUser && userRole !== 'overlord') return;
 
-      const q = query(
-        collection(db, 'monthly_pay_req'),
-        where('requestedBy', '==', currentUser)
-      );
+      let q;
+      
+      // If user is overlord, fetch all payment requests
+      if (userRole === 'overlord') {
+        q = query(collection(db, 'monthly_pay_req'));
+      } else {
+        // For regular users, fetch only their own requests
+        q = query(
+          collection(db, 'monthly_pay_req'),
+          where('requestedBy', '==', currentUser)
+        );
+      }
       
       const querySnapshot = await getDocs(q);
       const requests = querySnapshot.docs.map(doc => ({
@@ -278,7 +327,7 @@ export default function PaymentReminderPage() {
     } catch (error) {
       console.error('Error fetching payment requests:', error);
     }
-  }, []);
+  }, [userRole]);
 
   // Add the payment requests fetch to your useEffect
   useEffect(() => {
@@ -659,11 +708,13 @@ export default function PaymentReminderPage() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
-      <AdvocateSidebar />
+      {userRole === 'overlord' ? <OverlordSidebar /> : <AdvocateSidebar />}
       
       <div className="flex-1 overflow-auto">
         <div className="container mx-auto py-8 px-4 md:px-6">
-          <h1 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Payment Reminder System</h1>
+          <h1 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+            Payment Reminder System {userRole === 'overlord' ? '(All Clients)' : '(My Clients)'}
+          </h1>
           
           <FilterBar
             searchQuery={searchQuery}
@@ -702,9 +753,11 @@ export default function PaymentReminderPage() {
                 <TabsContent value="overview">
                   <Card className="border-0 bg-gray-800/80 backdrop-blur-sm shadow-lg rounded-xl overflow-hidden">
                     <CardHeader className="bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border-b border-gray-700">
-                      <CardTitle className="text-blue-300">All Clients ({sortedClients.length})</CardTitle>
+                      <CardTitle className="text-blue-300">
+                        {userRole === 'overlord' ? 'All Clients' : 'My Clients'} ({sortedClients.length})
+                      </CardTitle>
                       <CardDescription className="text-gray-400">
-                        Overview of all client payment statuses
+                        {userRole === 'overlord' ? 'Overview of all client payment statuses' : 'Overview of your allocated client payment statuses'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -751,12 +804,39 @@ export default function PaymentReminderPage() {
                                   </td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">{client.clientPhone}</td>
                                   <td className="p-4 border-b border-gray-800">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium inline-block
-                                      ${client.allocationType === 'primary' 
-                                        ? 'bg-indigo-900/30 text-indigo-300 border border-indigo-700/50' 
-                                        : 'bg-pink-900/30 text-pink-300 border border-pink-700/50'}`}>
-                                      {client.allocationType === 'primary' ? 'Primary' : 'Secondary'}
-                                    </span>
+                                    {userRole === 'overlord' ? (
+                                      <div className="text-xs">
+                                        {client.primaryAdvocate && (
+                                          <div className="mb-1">
+                                            <span className="px-2 py-1 rounded-full text-xs font-medium inline-block bg-indigo-900/30 text-indigo-300 border border-indigo-700/50">
+                                              Primary: {client.primaryAdvocate}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {client.secondaryAdvocate && (
+                                          <div>
+                                            <span className="px-2 py-1 rounded-full text-xs font-medium inline-block bg-pink-900/30 text-pink-300 border border-pink-700/50">
+                                              Secondary: {client.secondaryAdvocate}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {!client.primaryAdvocate && !client.secondaryAdvocate && (
+                                          <span className="text-gray-500">Not allocated</span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium inline-block
+                                        ${client.allocationType === 'primary' 
+                                          ? 'bg-indigo-900/30 text-indigo-300 border border-indigo-700/50' 
+                                          : 'bg-pink-900/30 text-pink-300 border border-pink-700/50'}`}>
+                                        {userRole === 'overlord' ? 
+                                          (client.primaryAdvocate ? `Primary: ${client.primaryAdvocate}` : 
+                                           client.secondaryAdvocate ? `Secondary: ${client.secondaryAdvocate}` : 
+                                           'Not allocated') :
+                                          (client.allocationType === 'primary' ? 'Primary' : 'Secondary')
+                                        }
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">Week {client.weekOfMonth}</td>
                                   <td className="p-4 border-b border-gray-800 text-right font-medium text-gray-200">₹{(client.monthlyFees || 0).toLocaleString()}</td>
@@ -960,7 +1040,12 @@ export default function PaymentReminderPage() {
                                           ${client.allocationType === 'primary' 
                                             ? 'bg-indigo-900/30 text-indigo-300 border border-indigo-700/50' 
                                             : 'bg-pink-900/30 text-pink-300 border border-pink-700/50'}`}>
-                                          {client.allocationType === 'primary' ? 'Primary' : 'Secondary'}
+                                          {userRole === 'overlord' ? 
+                                            (client.primaryAdvocate ? `Primary: ${client.primaryAdvocate}` : 
+                                             client.secondaryAdvocate ? `Secondary: ${client.secondaryAdvocate}` : 
+                                             'Not allocated') :
+                                            (client.allocationType === 'primary' ? 'Primary' : 'Secondary')
+                                          }
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-400 mt-1">{client.clientPhone}</p>
