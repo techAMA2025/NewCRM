@@ -117,4 +117,28 @@ export const getCallbackDateColor = (scheduledDate: Date) => {
       textColor: 'text-red-300'
     };
   }
+};
+
+// Callback priority function for sorting (red=1, yellow=2, green=3, rest=4)
+export const getCallbackPriority = (scheduledDate: Date) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const scheduledDay = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+  
+  if (scheduledDay.getTime() === today.getTime()) {
+    // Today - Red (highest priority)
+    return 1;
+  } else if (scheduledDay.getTime() === tomorrow.getTime()) {
+    // Tomorrow - Yellow (second priority)
+    return 2;
+  } else if (scheduledDate > now) {
+    // Future dates - Green (third priority)
+    return 3;
+  } else {
+    // Past due - Rest (lowest priority)
+    return 4;
+  }
 }; 
