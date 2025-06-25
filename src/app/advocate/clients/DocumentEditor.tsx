@@ -39,10 +39,10 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
       const parsedUrl = new URL(url);
       
       // Check if it's a Firebase Storage URL
-      if (!parsedUrl.hostname.includes('firebasestorage.googleapis.com')) {
-        console.warn("Not a Firebase Storage URL");
-        return null;
-      }
+      // if (!parsedUrl.hostname.includes('firebasestorage.googleapis.com')) {
+      //   console.warn("Not a Firebase Storage URL");
+      //   return null;
+      // }
       
       // Extract the path from the 'o' parameter in the URL
       const path = parsedUrl.pathname.split('/o/')[1];
