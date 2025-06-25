@@ -176,6 +176,32 @@ const getDefaultToDate = () => {
   return formatDateForInput(now);
 };
 
+// Function to get callback priority for sorting (red=1, yellow=2, green=3, gray=4)
+const getCallbackPriority = (scheduledDate: Date): number => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dayAfterTomorrow = new Date(today);
+  dayAfterTomorrow.setDate(today.getDate() + 2);
+
+  // Reset time to compare only dates
+  const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+  const dayAfterTomorrowOnly = new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate());
+
+  if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
+    return 1; // Red - highest priority
+  } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
+    return 2; // Yellow - second priority
+  } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
+    return 3; // Green - third priority
+  } else {
+    return 4; // Gray - lowest priority (past dates)
+  }
+};
+
 const BillCutLeadsPage = () => {
   // State Management
   const [isLoading, setIsLoading] = useState(true);
@@ -488,6 +514,33 @@ const BillCutLeadsPage = () => {
           );
         }
       }
+      
+      // Sort callback leads by priority: red, yellow, green, gray
+      result = result.sort((a, b) => {
+        // If both leads have callback info, sort by priority
+        if (a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
+          const priorityA = getCallbackPriority(new Date(a.callbackInfo.scheduled_dt));
+          const priorityB = getCallbackPriority(new Date(b.callbackInfo.scheduled_dt));
+          
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
+          
+          // If same priority, sort by scheduled date (earlier first)
+          return new Date(a.callbackInfo.scheduled_dt).getTime() - new Date(b.callbackInfo.scheduled_dt).getTime();
+        }
+        
+        // If only one has callback info, prioritize the one with info
+        if (a.callbackInfo?.scheduled_dt && !b.callbackInfo?.scheduled_dt) {
+          return -1;
+        }
+        if (!a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
+          return 1;
+        }
+        
+        // If neither has callback info, sort by date
+        return (b.date || 0) - (a.date || 0);
+      });
     }
     
     // Apply search query filter
@@ -516,8 +569,8 @@ const BillCutLeadsPage = () => {
       }
     }
     
-    // Apply debt range sorting
-    if (debtRangeSort !== 'none') {
+    // Apply debt range sorting (only for non-callback tab)
+    if (debtRangeSort !== 'none' && activeTab !== 'callback') {
       result = result.sort((a, b) => {
         const debtA = parseDebtRange(a.remarks || '');
         const debtB = parseDebtRange(b.remarks || '');

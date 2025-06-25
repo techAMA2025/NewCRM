@@ -662,12 +662,12 @@ const BillcutLeadReportContent = () => {
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 w-full" >
       {userRole === 'overlord' ? <OverlordSidebar /> : userRole === 'admin' ? <AdminSidebar /> : <BillcutSidebar />}
       <div 
-        className="flex-1 p-8 transition-all duration-300"
+        className="flex-1 p-4 lg:p-8 transition-all duration-300 overflow-x-hidden"
         style={{ 
           marginLeft: userRole === 'overlord' ? (isExpanded ? '0px' : '0px') : '0'
         }}
       >
-        <div className="w-[60%]" >
+        <div className="w-[75%]" >
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billcut Leads Dashboard</h1>
@@ -687,7 +687,7 @@ const BillcutLeadReportContent = () => {
           </div>
           
           {/* Date Range Filter - New User-Friendly Design */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               {/* Date Range Display and Controls */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -746,8 +746,8 @@ const BillcutLeadReportContent = () => {
 
               {/* Custom Date Range Picker */}
               {showDatePicker && (
-                <div className="lg:ml-4 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="lg:ml-4 p-4 lg:p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 w-full lg:w-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                     {/* Start Date Picker */}
                     <div className="space-y-4">
                       <h4 className="font-medium text-gray-900 dark:text-white">Start Date</h4>
@@ -976,7 +976,7 @@ const BillcutLeadReportContent = () => {
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <MetricCard
               title="Total Leads"
               value={analytics.totalLeads.toLocaleString()}
@@ -1004,9 +1004,9 @@ const BillcutLeadReportContent = () => {
           </div>
 
           {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
             {/* Category Distribution */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiPieChart className="mr-2" />
                 Lead Status Distribution
@@ -1072,7 +1072,7 @@ const BillcutLeadReportContent = () => {
             </div>
 
             {/* Sales Performance */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiActivity className="mr-2" />
                 Sales Rep Performance
@@ -1106,9 +1106,9 @@ const BillcutLeadReportContent = () => {
           </div>
 
           {/* Additional Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
             {/* Debt Range Distribution */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiDollarSign className="mr-2" />
                 Debt Range Distribution
@@ -1144,7 +1144,7 @@ const BillcutLeadReportContent = () => {
             </div>
 
             {/* Income Distribution */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiTrendingUp className="mr-2" />
                 Income Range Distribution
@@ -1178,9 +1178,9 @@ const BillcutLeadReportContent = () => {
           </div>
 
           {/* Time-based and Geographic Analysis */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 mb-6 lg:mb-8">
             {/* Monthly Trend */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiCalendar className="mr-2" />
                 Monthly Lead Trend
@@ -1207,7 +1207,7 @@ const BillcutLeadReportContent = () => {
             </div>
 
             {/* Geographic Distribution */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                 <FiMapPin className="mr-2" />
                 Top States Distribution
@@ -1238,7 +1238,7 @@ const BillcutLeadReportContent = () => {
           </div>
 
           {/* Conversion Rate Analysis */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               <FiTarget className="mr-2" />
               Sales Rep Conversion Rates
@@ -1278,14 +1278,14 @@ const BillcutLeadReportContent = () => {
           </div>
 
           {/* Salesperson-wise Lead Status Analytics */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               <FiUsers className="mr-2" />
               Salesperson-wise Lead Status Analytics
             </h3>
             
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {analytics.salesPerformance.map((rep, index) => (
                 <div key={rep.name} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">{rep.name}</h4>
@@ -1316,18 +1316,18 @@ const BillcutLeadReportContent = () => {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
+                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
                       Salesperson
                     </th>
                     {analytics.categoryDistribution.map(category => (
-                      <th key={category.name} className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${getStatusColor(category.name)}`}>
+                      <th key={category.name} className={`px-3 lg:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${getStatusColor(category.name)}`}>
                         {category.name}
                       </th>
                     ))}
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
+                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
                       Total
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
+                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
                       Conversion Rate
                     </th>
                   </tr>
@@ -1343,11 +1343,11 @@ const BillcutLeadReportContent = () => {
 
                     return (
                       <tr key={rep.name} className="hover:opacity-80 transition-opacity duration-200">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
+                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
                           {rep.name}
                         </td>
                         {analytics.categoryDistribution.map(category => (
-                          <td key={category.name} className={`px-6 py-4 whitespace-nowrap text-sm ${getStatusColor(category.name)}`}>
+                          <td key={category.name} className={`px-3 lg:px-6 py-4 whitespace-nowrap text-sm ${getStatusColor(category.name)}`}>
                             <div className="flex items-center">
                               <span 
                                 className={`mr-2 px-2 py-1 rounded-md text-xs font-medium border ${getStatusBadgeColor(category.name)} cursor-pointer hover:opacity-80 transition-opacity duration-200`}
@@ -1364,10 +1364,10 @@ const BillcutLeadReportContent = () => {
                             </div>
                           </td>
                         ))}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
+                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
                           {rep.totalLeads}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white bg-gray-800">
+                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-white bg-gray-800">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             rep.conversionRate >= 20 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                             rep.conversionRate >= 10 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
