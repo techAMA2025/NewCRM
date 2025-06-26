@@ -449,7 +449,7 @@ const BillCutLeadsPage = () => {
     };
 
     fetchBillcutLeads();
-  }, [fromDate, toDate, statusFilter, salesPersonFilter]);
+  }, []);
 
   // Fetch team members
   useEffect(() => {
