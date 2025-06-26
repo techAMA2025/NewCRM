@@ -164,14 +164,38 @@ const BillcutLeadReportContent = () => {
     // Add salesperson filter
     if (salesperson && salesperson !== 'Unassigned') {
       params.append('salesPerson', salesperson);
+    } else if (salesperson === 'Unassigned') {
+      // For unassigned leads, pass empty string to match the billcut leads page logic
+      params.append('salesPerson', '');
     }
     
-    // Add status filter
+    // Add status filter - map to exact case-sensitive values expected by billcut leads page
     if (status && status !== 'No Status') {
-      params.append('status', status);
+      // Map status values to match the exact case-sensitive values in billcut leads page
+      const statusMapping: { [key: string]: string } = {
+        'interested': 'Interested',
+        'not interested': 'Not Interested',
+        'not answering': 'Not Answering',
+        'callback': 'Callback',
+        'converted': 'Converted',
+        'loan required': 'Loan Required',
+        'cibil issue': 'Cibil Issue',
+        'closed lead': 'Closed Lead',
+        '-': 'No Status'
+      };
+      
+      const mappedStatus = statusMapping[status.toLowerCase()] || status;
+      params.append('status', mappedStatus);
     } else if (status === 'No Status') {
       params.append('status', 'No Status');
     }
+    
+    // Debug logging
+    console.log('Navigating to billcut leads with filters:', {
+      originalSalesperson: salesperson,
+      originalStatus: status,
+      finalParams: params.toString()
+    });
     
     // Navigate to billcut leads page with filters (without date restrictions)
     router.push(`/billcutleads?${params.toString()}`);
