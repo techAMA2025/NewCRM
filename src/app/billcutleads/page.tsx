@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, deleteDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
@@ -250,6 +250,12 @@ const BillCutLeadsPage = () => {
   const [conversionLeadName, setConversionLeadName] = useState('');
   const [isConvertingLead, setIsConvertingLead] = useState(false);
 
+  // Add state to track if we need to fetch all data for search
+  const [allLeadsLoaded, setAllLeadsLoaded] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResultsCount, setSearchResultsCount] = useState(0);
+  const [searchCoverageInfo, setSearchCoverageInfo] = useState('');
+
   // Handle URL parameters on component mount (client-side only)
   useEffect(() => {
     // Only run on client side
@@ -352,88 +358,338 @@ const BillCutLeadsPage = () => {
       try {
         const billcutLeadsRef = collection(crmDb, 'billcutLeads');
         
-        // Fetch all leads without complex queries to avoid index requirements
-        const querySnapshot = await getDocs(billcutLeadsRef);
-        
-        const fetchedLeads = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          const address = data.address || '';
-          const pincode = extractPincodeFromAddress(address);
-          const state = pincode ? getStateFromPincode(pincode) : 'Unknown State';
+        // If there's a search query, search across all data without other filters
+        if (searchQuery && searchQuery.trim().length >= 2) {
+          setIsSearching(true);
+          const searchTerm = searchQuery.toLowerCase().trim();
           
-          return {
-            id: doc.id,
-            name: data.name || '',
-            email: data.email || '',
-            phone: data.mobile || '',
-            city: state,
-            status: data.category === '-' || data.category === '' || data.category === null || data.category === undefined ? 'No Status' : (data.category || 'No Status'),
-            source_database: 'Bill Cut Campaign',
-            assignedTo: data.assigned_to || '',
-            personalLoanDues: '',
-            creditCardDues: '',
-            monthlyIncome: data.income || '',
-            remarks: `Debt Range: ${data.debt_range || ''}`,
-            salesNotes: data.sales_notes || '',
-            lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
-            date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
-            convertedToClient: false,
-            bankNames: [],
-            totalEmi: '',
-            occupation: '',
-            loanTypes: [],
-            callbackInfo: null // Will be populated later for callback leads
-          } as Lead;
-        });
-
-        // Apply filters in memory instead of in the query
-        let filteredLeads = fetchedLeads;
-
-        // Date filters only - status and salesperson filters will be applied in the secondary filtering effect
-        if (fromDate) {
-          const fromDateStart = new Date(fromDate);
-          fromDateStart.setHours(0, 0, 0, 0);
-          filteredLeads = filteredLeads.filter(lead => 
-            lead.date >= fromDateStart.getTime()
+          // For search, we'll use multiple queries and combine results
+          const searchQueries = [];
+          
+          // 1. Name search - increased limit for better coverage
+          searchQueries.push(
+            query(
+              billcutLeadsRef, 
+              where('name', '>=', searchTerm), 
+              where('name', '<=', searchTerm + '\uf8ff'),
+              limit(500)
+            )
           );
-        }
-        
-        if (toDate) {
-          const toDateEnd = new Date(toDate);
-          toDateEnd.setHours(23, 59, 59, 999);
-          filteredLeads = filteredLeads.filter(lead => 
-            lead.date <= toDateEnd.getTime()
+          
+          // 2. Email search - increased limit for better coverage
+          searchQueries.push(
+            query(
+              billcutLeadsRef,
+              where('email', '>=', searchTerm),
+              where('email', '<=', searchTerm + '\uf8ff'),
+              limit(300)
+            )
           );
-        }
+          
+          // 3. Phone search - exact match with higher limit
+          if (searchTerm.length >= 3 && /^\d+$/.test(searchTerm)) {
+            searchQueries.push(
+              query(
+                billcutLeadsRef,
+                where('mobile', '==', searchTerm),
+                limit(100)
+              )
+            );
+          }
+          
+          // 4. Partial phone search - for partial phone numbers
+          if (searchTerm.length >= 3 && /^\d+$/.test(searchTerm)) {
+            // Search for phone numbers that contain the search term
+            searchQueries.push(
+              query(
+                billcutLeadsRef,
+                where('mobile', '>=', searchTerm),
+                where('mobile', '<=', searchTerm + '\uf8ff'),
+                limit(200)
+              )
+            );
+          }
+          
+          // 5. Address search - search in address field
+          searchQueries.push(
+            query(
+              billcutLeadsRef,
+              where('address', '>=', searchTerm),
+              where('address', '<=', searchTerm + '\uf8ff'),
+              limit(200)
+            )
+          );
+          
+          // 6. Debt range search - search in debt_range field
+          searchQueries.push(
+            query(
+              billcutLeadsRef,
+              where('debt_range', '>=', searchTerm),
+              where('debt_range', '<=', searchTerm + '\uf8ff'),
+              limit(100)
+            )
+          );
+          
+          // 7. Sales notes search - search in sales_notes field
+          searchQueries.push(
+            query(
+              billcutLeadsRef,
+              where('sales_notes', '>=', searchTerm),
+              where('sales_notes', '<=', searchTerm + '\uf8ff'),
+              limit(200)
+            )
+          );
+          
+          // Execute search queries
+          const querySnapshots = await Promise.all(
+            searchQueries.map(q => getDocs(q).catch(err => {
+              console.warn('Search query failed:', err);
+              return { docs: [] };
+            }))
+          );
+          
+          // Combine and deduplicate results
+          const allDocs = new Map();
+          querySnapshots.forEach(snapshot => {
+            snapshot.docs.forEach(doc => {
+              if (!allDocs.has(doc.id)) {
+                allDocs.set(doc.id, doc);
+              }
+            });
+          });
+          
+          // If we have a reasonable number of results, use them
+          // If we have too few results, try a broader search
+          let searchResults = Array.from(allDocs.values());
+          
+          // If we have very few results and the search term is longer than 3 characters,
+          // try a broader search by removing the last character
+          if (searchResults.length < 10 && searchTerm.length > 3) {
+            const broaderSearchTerm = searchTerm.slice(0, -1);
+            
+            // Perform broader searches
+            const broaderQueries = [
+              query(
+                billcutLeadsRef, 
+                where('name', '>=', broaderSearchTerm), 
+                where('name', '<=', broaderSearchTerm + '\uf8ff'),
+                limit(300)
+              ),
+              query(
+                billcutLeadsRef,
+                where('email', '>=', broaderSearchTerm),
+                where('email', '<=', broaderSearchTerm + '\uf8ff'),
+                limit(200)
+              )
+            ];
+            
+            const broaderSnapshots = await Promise.all(
+              broaderQueries.map(q => getDocs(q).catch(err => {
+                console.warn('Broader search query failed:', err);
+                return { docs: [] };
+              }))
+            );
+            
+            // Add broader results to our map
+            broaderSnapshots.forEach(snapshot => {
+              snapshot.docs.forEach(doc => {
+                if (!allDocs.has(doc.id)) {
+                  allDocs.set(doc.id, doc);
+                }
+              });
+            });
+            
+            searchResults = Array.from(allDocs.values());
+          }
+          
+          const fetchedLeads = searchResults.map(doc => {
+            const data = doc.data();
+            const address = data.address || '';
+            const pincode = extractPincodeFromAddress(address);
+            const state = pincode ? getStateFromPincode(pincode) : 'Unknown State';
+            
+            return {
+              id: doc.id,
+              name: data.name || '',
+              email: data.email || '',
+              phone: data.mobile || '',
+              city: state,
+              status: data.category === '-' || data.category === '' || data.category === null || data.category === undefined ? 'No Status' : (data.category || 'No Status'),
+              source_database: 'Bill Cut Campaign',
+              assignedTo: data.assigned_to || '',
+              personalLoanDues: '',
+              creditCardDues: '',
+              monthlyIncome: data.income || '',
+              remarks: `Debt Range: ${data.debt_range || ''}`,
+              salesNotes: data.sales_notes || '',
+              lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+              date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
+              convertedToClient: false,
+              bankNames: [],
+              totalEmi: '',
+              occupation: '',
+              loanTypes: [],
+              callbackInfo: null
+            } as Lead;
+          });
+          
+          // Set search results information
+          setSearchResultsCount(fetchedLeads.length);
+          
+          // Provide feedback about search coverage
+          if (fetchedLeads.length === 0) {
+            setSearchCoverageInfo('No results found. Try a different search term or check spelling.');
+          } else if (fetchedLeads.length < 5) {
+            setSearchCoverageInfo(`Found ${fetchedLeads.length} result${fetchedLeads.length > 1 ? 's' : ''}. Consider trying a broader search term.`);
+          } else if (fetchedLeads.length >= 500) {
+            setSearchCoverageInfo(`Found ${fetchedLeads.length}+ results. Showing first 500 matches. Try a more specific search term for better results.`);
+          } else {
+            setSearchCoverageInfo(`Found ${fetchedLeads.length} result${fetchedLeads.length > 1 ? 's' : ''}.`);
+          }
+          
+          setLeads(fetchedLeads);
+          setFilteredLeads(fetchedLeads);
+          setAllLeadsLoaded(true);
+          setIsSearching(false);
+        } else {
+          // Regular filtered query (non-search) - only apply filters when not searching
+          let baseQuery = query(billcutLeadsRef);
+          const queryConstraints = [];
+          
+          // Clear search info when not searching
+          setSearchResultsCount(0);
+          setSearchCoverageInfo('');
+          
+          // Add date filters
+          if (fromDate) {
+            const fromDateStart = new Date(fromDate);
+            fromDateStart.setHours(0, 0, 0, 0);
+            queryConstraints.push(where('date', '>=', fromDateStart.getTime()));
+          }
+          
+          if (toDate) {
+            const toDateEnd = new Date(toDate);
+            toDateEnd.setHours(23, 59, 59, 999);
+            queryConstraints.push(where('date', '<=', toDateEnd.getTime()));
+          }
+          
+          // Add status filter
+          if (statusFilter !== 'all') {
+            if (statusFilter === 'No Status') {
+              // For "No Status", we need to query for empty category values
+              // Firestore doesn't support null in 'in' queries, so we'll use 'in' for empty strings
+              queryConstraints.push(where('category', 'in', ['', '-']));
+            } else {
+              queryConstraints.push(where('category', '==', statusFilter));
+            }
+          }
+          
+          // Add salesperson filter
+          if (salesPersonFilter !== 'all') {
+            if (salesPersonFilter === '-') {
+              // For unassigned leads
+              queryConstraints.push(where('assigned_to', '==', ''));
+            } else {
+              queryConstraints.push(where('assigned_to', '==', salesPersonFilter));
+            }
+          }
+          
+          // Add "My Leads" filter
+          if (showMyLeads && typeof window !== 'undefined') {
+            const currentUserName = localStorage.getItem('userName');
+            if (currentUserName) {
+              queryConstraints.push(where('assigned_to', '==', currentUserName));
+            }
+          }
+          
+          // Add callback tab filter
+          if (activeTab === 'callback') {
+            queryConstraints.push(where('category', '==', 'Callback'));
+            
+            // For callback tab, also filter by user if not admin/overlord
+            if (typeof window !== 'undefined') {
+              const currentUserName = localStorage.getItem('userName');
+              const currentUserRole = localStorage.getItem('userRole');
+              
+              if (currentUserRole !== 'admin' && currentUserRole !== 'overlord' && currentUserName) {
+                queryConstraints.push(where('assigned_to', '==', currentUserName));
+              }
+            }
+          }
+          
+          // Add constraints to base query
+          if (queryConstraints.length > 0) {
+            queryConstraints.forEach(constraint => {
+              baseQuery = query(baseQuery, constraint);
+            });
+          }
+          
+          // Add ordering and limit
+          baseQuery = query(baseQuery, orderBy('date', 'desc'), limit(500));
+          
+          const querySnapshot = await getDocs(baseQuery);
+          
+          const fetchedLeads = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            const address = data.address || '';
+            const pincode = extractPincodeFromAddress(address);
+            const state = pincode ? getStateFromPincode(pincode) : 'Unknown State';
+            
+            return {
+              id: doc.id,
+              name: data.name || '',
+              email: data.email || '',
+              phone: data.mobile || '',
+              city: state,
+              status: data.category === '-' || data.category === '' || data.category === null || data.category === undefined ? 'No Status' : (data.category || 'No Status'),
+              source_database: 'Bill Cut Campaign',
+              assignedTo: data.assigned_to || '',
+              personalLoanDues: '',
+              creditCardDues: '',
+              monthlyIncome: data.income || '',
+              remarks: `Debt Range: ${data.debt_range || ''}`,
+              salesNotes: data.sales_notes || '',
+              lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+              date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
+              convertedToClient: false,
+              bankNames: [],
+              totalEmi: '',
+              occupation: '',
+              loanTypes: [],
+              callbackInfo: null
+            } as Lead;
+          });
 
-        const sortedLeads = filteredLeads.sort((a, b) => {
-          const dateA = a.date || 0;
-          const dateB = b.date || 0;
-          return dateB - dateA;
-        });
-
-        // Fetch callback information for callback leads
-        const leadsWithCallbackInfo = await Promise.all(
-          sortedLeads.map(async (lead) => {
-            if (lead.status === 'Callback') {
+          // Fetch callback information for callback leads
+          const callbackLeads = fetchedLeads.filter(lead => lead.status === 'Callback').slice(0, 50);
+          const regularLeads = fetchedLeads.filter(lead => lead.status !== 'Callback');
+          
+          const leadsWithCallbackInfo = await Promise.all([
+            ...regularLeads.map(lead => Promise.resolve(lead)),
+            ...callbackLeads.map(async (lead) => {
               const callbackInfo = await fetchCallbackInfo(lead.id);
               return { ...lead, callbackInfo };
-            }
-            return lead;
-          })
-        );
+            })
+          ]);
 
-        setLeads(leadsWithCallbackInfo);
-        setFilteredLeads(leadsWithCallbackInfo);
+          setLeads(leadsWithCallbackInfo);
+          setFilteredLeads(leadsWithCallbackInfo);
+          setAllLeadsLoaded(false);
+        }
         
-        console.log('Data loaded, current filters:', {
+        console.log('Data loaded with direct database queries:', {
           statusFilter,
           salesPersonFilter,
-          leadsCount: leadsWithCallbackInfo.length
+          leadsCount: leads.length,
+          searchQuery,
+          allLeadsLoaded,
+          activeTab,
+          showMyLeads
         });
         
+        const currentLeads = leads;
         const initialEditingState: EditingLeadsState = {};
-        leadsWithCallbackInfo.forEach(lead => {
+        currentLeads.forEach(lead => {
           initialEditingState[lead.id] = {
             ...lead,
             salesNotes: lead.salesNotes || ''
@@ -445,11 +701,12 @@ const BillCutLeadsPage = () => {
         toast.error("Failed to load billcut leads");
       } finally {
         setIsLoading(false);
+        setIsSearching(false);
       }
     };
 
     fetchBillcutLeads();
-  }, []);
+  }, [searchQuery, statusFilter, salesPersonFilter, fromDate, toDate, showMyLeads, activeTab, debtRangeSort]);
 
   // Fetch team members
   useEffect(() => {
@@ -483,149 +740,108 @@ const BillCutLeadsPage = () => {
     fetchTeamMembers();
   }, []);
 
-  // Apply filters
+  // Apply client-side sorting and set filtered leads
   useEffect(() => {
     if (!leads) return;
     
-    console.log('Secondary filtering effect triggered with:', {
-      leadsCount: leads.length,
-      statusFilter,
-      salesPersonFilter,
-      activeTab
-    });
-    
     let result = [...leads];
     
-    // Apply tab-based filtering first
-    if (activeTab === 'callback') {
-      if (typeof window !== 'undefined') {
-        const currentUserName = localStorage.getItem('userName');
-        const currentUserRole = localStorage.getItem('userRole');
-        
-        // Admin and overlord users can see all callback data
-        if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
-          result = result.filter(lead => lead.status === 'Callback');
-        } else {
-          // Sales users can only see their own callback data
-          result = result.filter(lead => 
-            lead.status === 'Callback' && 
-            lead.assignedTo === currentUserName
-          );
-        }
-      }
-      
-      // Sort callback leads by priority: red, yellow, green, gray
-      result = result.sort((a, b) => {
-        // If both leads have callback info, sort by priority
-        if (a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
-          const priorityA = getCallbackPriority(new Date(a.callbackInfo.scheduled_dt));
-          const priorityB = getCallbackPriority(new Date(b.callbackInfo.scheduled_dt));
-          
-          if (priorityA !== priorityB) {
-            return priorityA - priorityB;
+    // If there's a search query, don't apply additional filters - show all search results
+    if (searchQuery && searchQuery.trim().length >= 2) {
+      // Only apply sorting, no additional filtering for search results
+      if (activeTab === 'callback') {
+        // Sort callback leads by priority: red, yellow, green, gray
+        result = result.sort((a, b) => {
+          // If both leads have callback info, sort by priority
+          if (a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
+            const priorityA = getCallbackPriority(new Date(a.callbackInfo.scheduled_dt));
+            const priorityB = getCallbackPriority(new Date(b.callbackInfo.scheduled_dt));
+            
+            if (priorityA !== priorityB) {
+              return priorityA - priorityB;
+            }
+            
+            // If same priority, sort by scheduled date (earlier first)
+            return new Date(a.callbackInfo.scheduled_dt).getTime() - new Date(b.callbackInfo.scheduled_dt).getTime();
           }
           
-          // If same priority, sort by scheduled date (earlier first)
-          return new Date(a.callbackInfo.scheduled_dt).getTime() - new Date(b.callbackInfo.scheduled_dt).getTime();
-        }
-        
-        // If only one has callback info, prioritize the one with info
-        if (a.callbackInfo?.scheduled_dt && !b.callbackInfo?.scheduled_dt) {
-          return -1;
-        }
-        if (!a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
-          return 1;
-        }
-        
-        // If neither has callback info, sort by date
-        return (b.date || 0) - (a.date || 0);
-      });
-    }
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      console.log('Applying status filter:', statusFilter);
-      console.log('Total leads before status filter:', result.length);
-      console.log('Sample leads before status filter:', result.slice(0, 3).map(l => ({ name: l.name, status: l.status })));
-      
-      if (statusFilter === 'No Status') {
-        result = result.filter(lead => 
-          lead.status === undefined || 
-          lead.status === null || 
-          lead.status === '' || 
-          lead.status === '-' ||
-          lead.status === 'No Status'
-        );
-      } else {
-        result = result.filter(lead => lead.status === statusFilter);
+          // If only one has callback info, prioritize the one with info
+          if (a.callbackInfo?.scheduled_dt && !b.callbackInfo?.scheduled_dt) {
+            return -1;
+          }
+          if (!a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
+            return 1;
+          }
+          
+          // If neither has callback info, sort by date
+          return (b.date || 0) - (a.date || 0);
+        });
       }
       
-      console.log('Leads after status filter:', result.length);
-      console.log('Sample leads after status filter:', result.slice(0, 3).map(l => ({ name: l.name, status: l.status })));
-    }
-    
-    // Apply salesperson filter
-    if (salesPersonFilter !== 'all') {
-      console.log('Applying salesperson filter:', salesPersonFilter);
-      console.log('Total leads before salesperson filter:', result.length);
-      console.log('Sample leads before salesperson filter:', result.slice(0, 3).map(l => ({ name: l.name, assignedTo: l.assignedTo })));
-      
-      if (salesPersonFilter === '') {
-        // For unassigned leads
-        result = result.filter(lead => lead.assignedTo === '');
-      } else {
-        result = result.filter(lead => lead.assignedTo === salesPersonFilter);
+      // Apply debt range sorting (client-side since it requires parsing)
+      if (debtRangeSort !== 'none' && activeTab !== 'callback') {
+        result = result.sort((a, b) => {
+          const debtA = parseDebtRange(a.remarks || '');
+          const debtB = parseDebtRange(b.remarks || '');
+          
+          if (debtRangeSort === 'low-to-high') {
+            return debtA - debtB;
+          } else {
+            return debtB - debtA;
+          }
+        });
+      }
+    } else {
+      // Apply callback tab sorting (client-side since it requires complex logic)
+      if (activeTab === 'callback') {
+        // Sort callback leads by priority: red, yellow, green, gray
+        result = result.sort((a, b) => {
+          // If both leads have callback info, sort by priority
+          if (a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
+            const priorityA = getCallbackPriority(new Date(a.callbackInfo.scheduled_dt));
+            const priorityB = getCallbackPriority(new Date(b.callbackInfo.scheduled_dt));
+            
+            if (priorityA !== priorityB) {
+              return priorityA - priorityB;
+            }
+            
+            // If same priority, sort by scheduled date (earlier first)
+            return new Date(a.callbackInfo.scheduled_dt).getTime() - new Date(b.callbackInfo.scheduled_dt).getTime();
+          }
+          
+          // If only one has callback info, prioritize the one with info
+          if (a.callbackInfo?.scheduled_dt && !b.callbackInfo?.scheduled_dt) {
+            return -1;
+          }
+          if (!a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
+            return 1;
+          }
+          
+          // If neither has callback info, sort by date
+          return (b.date || 0) - (a.date || 0);
+        });
       }
       
-      console.log('Leads after salesperson filter:', result.length);
-      console.log('Sample leads after salesperson filter:', result.slice(0, 3).map(l => ({ name: l.name, assignedTo: l.assignedTo })));
-    }
-    
-    // Apply search query filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(lead => 
-        lead.name?.toLowerCase().includes(query) ||
-        lead.email?.toLowerCase().includes(query) ||
-        lead.phone?.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply "My Leads" filter
-    if (showMyLeads) {
-      if (typeof window !== 'undefined') {
-        const currentUserName = localStorage.getItem('userName');
-
-        
-        if (currentUserName) {
-          result = result.filter(lead => {
-            const assignedTo = lead.assignedTo || '';
-            const isMatch = assignedTo === currentUserName;
-            return isMatch;
-          });
-        }
+      // Apply debt range sorting (client-side since it requires parsing)
+      if (debtRangeSort !== 'none' && activeTab !== 'callback') {
+        result = result.sort((a, b) => {
+          const debtA = parseDebtRange(a.remarks || '');
+          const debtB = parseDebtRange(b.remarks || '');
+          
+          if (debtRangeSort === 'low-to-high') {
+            return debtA - debtB;
+          } else {
+            return debtB - debtA;
+          }
+        });
       }
-    }
-    
-    // Apply debt range sorting (only for non-callback tab)
-    if (debtRangeSort !== 'none' && activeTab !== 'callback') {
-      result = result.sort((a, b) => {
-        const debtA = parseDebtRange(a.remarks || '');
-        const debtB = parseDebtRange(b.remarks || '');
-        
-        if (debtRangeSort === 'low-to-high') {
-          return debtA - debtB;
-        } else {
-          return debtB - debtA;
-        }
-      });
     }
     
     setFilteredLeads(result);
     
     // Clear selected leads when filters change to prevent stale selections
     setSelectedLeads(prev => prev.filter(leadId => result.some(lead => lead.id === leadId)));
-  }, [leads, searchQuery, showMyLeads, activeTab, debtRangeSort, statusFilter, salesPersonFilter]);
+  }, [leads, activeTab, debtRangeSort, searchQuery]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
@@ -636,9 +852,10 @@ const BillCutLeadsPage = () => {
       salesPersonFilter,
       activeTab,
       searchQuery,
-      showMyLeads
+      showMyLeads,
+      allLeadsLoaded
     });
-  }, [leads, filteredLeads, statusFilter, salesPersonFilter, activeTab, searchQuery, showMyLeads]);
+  }, [leads, filteredLeads, statusFilter, salesPersonFilter, activeTab, searchQuery, showMyLeads, allLeadsLoaded]);
 
   // Calculate counts for tabs
   const callbackCount = useMemo(() => {
@@ -1277,6 +1494,10 @@ const BillCutLeadsPage = () => {
             onClearSelection={() => setSelectedLeads([])}
             debtRangeSort={debtRangeSort}
             setDebtRangeSort={setDebtRangeSort}
+            allLeadsLoaded={allLeadsLoaded}
+            isSearching={isSearching}
+            searchResultsCount={searchResultsCount}
+            searchCoverageInfo={searchCoverageInfo}
           />
           
           {isLoading ? (
@@ -1370,10 +1591,24 @@ const BillCutLeadsPage = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-200">No leads found</h3>
-                  <p className="mt-2 text-sm text-gray-400">
-                    There are no bill cut leads in the system yet.
-                  </p>
+                  <h3 className="mt-4 text-lg font-medium text-gray-200">
+                    {searchQuery && searchQuery.trim().length >= 2 ? 'No search results found' : 'No leads found'}
+                  </h3>
+                  <div className="mt-2 text-sm text-gray-400">
+                    {searchQuery && searchQuery.trim().length >= 2 ? (
+                      <>
+                        <p>No leads match your search for "{searchQuery}". Try:</p>
+                        <ul className="mt-2 text-xs text-gray-500 space-y-1">
+                          <li>• Using a different search term</li>
+                          <li>• Checking spelling</li>
+                          <li>• Using partial names or phone numbers</li>
+                          <li>• Searching by email address</li>
+                        </ul>
+                      </>
+                    ) : (
+                      <p>There are no bill cut leads in the system yet.</p>
+                    )}
+                  </div>
                 </div>
               )}
 
