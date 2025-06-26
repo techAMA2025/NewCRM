@@ -68,8 +68,11 @@ export default function ClientsTable({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
+    <div className="space-y-1">
+      <div className="flex justify-between items-center">
+        <div className={`text-[10px] ${isDark ? 'text-red-500' : 'text-red-500'}`}>
+          {clients.length} clients
+        </div>
         <Button
           onClick={toggleTheme}
           variant="outline"
@@ -78,17 +81,17 @@ export default function ClientsTable({
             isDark 
               ? 'border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700' 
               : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50'
-          } h-8 w-8 p-0`}
+          } h-6 w-6 p-0`}
         >
           {isDark ? (
-            <Sun className="h-4 w-4" />
+            <Sun className="h-3 w-3" />
           ) : (
-            <Moon className="h-4 w-4" />
+            <Moon className="h-3 w-3" />
           )}
         </Button>
       </div>
 
-      <div className={`rounded-lg border overflow-hidden text-xs ${
+      <div className={`rounded-md border overflow-hidden text-[10px] ${
         isDark 
           ? 'border-gray-700 bg-gray-900 text-gray-200' 
           : 'border-gray-300 bg-white text-gray-800'
@@ -96,25 +99,25 @@ export default function ClientsTable({
         <Table>
           <TableHeader className={isDark ? 'bg-gray-800' : 'bg-gray-50'}>
             <TableRow className={isDark ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-100'}>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} w-[32px] p-1.5`}>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} w-[24px] p-1`}>
                 <input
                   type="checkbox"
                   className={`rounded ${
                     isDark 
                       ? 'border-gray-600 text-blue-400 focus:ring-blue-400 bg-gray-700' 
                       : 'border-gray-300 text-blue-500 focus:ring-blue-500 bg-white'
-                  } h-3 w-3`}
+                  } h-2.5 w-2.5`}
                   checked={selectedClients.size === clients.length && clients.length > 0}
                   onChange={(e) => onSelectAll(e.target.checked)}
                 />
               </TableHead>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1.5`}>Name</TableHead>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1.5`}>Phone</TableHead>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1.5`}>City</TableHead>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1.5`}>Advocate</TableHead>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1.5`}>Status</TableHead>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1.5`}>Sales By</TableHead>
-              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-right p-1.5`}>Actions</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Name</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Phone</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>City</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Advocate</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Status</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Sales By</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-right p-1`}>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -123,46 +126,46 @@ export default function ClientsTable({
                 key={client.id} 
                 className={isDark ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-50'}
               >
-                <TableCell className="p-1.5">
+                <TableCell className="p-1">
                   <input
                     type="checkbox"
                     className={`rounded ${
                       isDark 
                         ? 'border-gray-600 text-blue-400 focus:ring-blue-400 bg-gray-700' 
                         : 'border-gray-300 text-blue-500 focus:ring-blue-500 bg-white'
-                    } h-3 w-3`}
+                    } h-2.5 w-2.5`}
                     checked={selectedClients.has(client.id)}
                     onChange={(e) => onSelectClient(client.id, e.target.checked)}
                   />
                 </TableCell>
-                <TableCell className={`font-medium p-1.5 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                <TableCell className={`font-medium p-1 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                   <div className="flex flex-col">
-                    <span className="font-medium">{client.name.toUpperCase()}</span>
-                    <span className={`text-[10px] ${formatSourceName(client.source_database || '').color}`}>
+                    <span className="font-medium text-[10px]">{client.name.toUpperCase()}</span>
+                    <span className={`text-[8px] ${formatSourceName(client.source_database || '').color}`}>
                       {formatSourceName(client.source_database || '').name}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="p-1.5">{client.phone}</TableCell>
-                <TableCell className="p-1.5">{client.city}</TableCell>
-                <TableCell className="p-1.5">
+                <TableCell className="p-1 text-[10px]">{client.phone}</TableCell>
+                <TableCell className="p-1 text-[10px]">{client.city}</TableCell>
+                <TableCell className="p-1">
                   <div className="flex flex-col">
-                    <span className={isDark ? 'text-blue-400' : 'text-blue-600'}>
+                    <span className={`text-[10px] ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                       {client.alloc_adv || 'Unassigned'}
                     </span>
                     {client.alloc_adv_secondary && (
-                      <span className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <span className={`text-[8px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                         Secondary: {client.alloc_adv_secondary}
                       </span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="p-1.5">
+                <TableCell className="p-1">
                   <Select 
                     value={client.adv_status || 'Pending'} 
                     onValueChange={(value) => onAdvocateStatusChange(client.id, value)}
                   >
-                    <SelectTrigger className={`w-[90px] h-5 px-1.5 py-0 text-[10px] border ${
+                    <SelectTrigger className={`w-[75px] h-4 px-1 py-0 text-[8px] border ${
                       client.adv_status === 'Active' 
                         ? isDark
                           ? 'bg-green-900/50 text-green-400 border-green-700'
@@ -184,31 +187,31 @@ export default function ClientsTable({
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell className="p-1.5">
-                  <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>
+                <TableCell className="p-1">
+                  <span className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                     {client.assignedTo || 'Unassigned'}
                   </span>
                 </TableCell>
-                <TableCell className="p-1.5">
-                  <div className="flex items-center justify-end space-x-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewDetails(client)}>
-                      <Eye className="h-3.5 w-3.5" />
+                <TableCell className="p-1">
+                  <div className="flex items-center justify-end space-x-0.5">
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onViewDetails(client)}>
+                      <Eye className="h-2.5 w-2.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditClient(client)}>
-                      <Edit className="h-3.5 w-3.5" />
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onEditClient(client)}>
+                      <Edit className="h-2.5 w-2.5" />
                     </Button>
                     {client.documentUrl && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-purple-500 hover:text-purple-600"
+                        className="h-5 w-5 text-purple-500 hover:text-purple-600"
                         onClick={() => openDocumentViewer(client.documentUrl as string, client.documentName || 'Client Document')}
                       >
-                        <FileText className="h-3.5 w-3.5" />
+                        <FileText className="h-2.5 w-2.5" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => onDeleteClient(client)}>
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button variant="ghost" size="icon" className="h-5 w-5 text-red-500 hover:text-red-600" onClick={() => onDeleteClient(client)}>
+                      <Trash2 className="h-2.5 w-2.5" />
                     </Button>
                   </div>
                 </TableCell>
