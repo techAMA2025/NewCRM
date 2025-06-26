@@ -366,7 +366,7 @@ const BillCutLeadsPage = () => {
           // For search, we'll use multiple queries and combine results
           const searchQueries = [];
           
-          // 1. Name search - increased limit for better coverage
+          // 1. Name search - remove orderBy to avoid index requirement
           searchQueries.push(
             query(
               billcutLeadsRef, 
@@ -376,7 +376,7 @@ const BillCutLeadsPage = () => {
             )
           );
           
-          // 2. Email search - increased limit for better coverage
+          // 2. Email search - remove orderBy to avoid index requirement
           searchQueries.push(
             query(
               billcutLeadsRef,
@@ -552,80 +552,29 @@ const BillCutLeadsPage = () => {
           setAllLeadsLoaded(true);
           setIsSearching(false);
         } else {
-          // Regular filtered query (non-search) - only apply filters when not searching
+          // Regular filtered query (non-search) - simplify to avoid index requirements
+          // Fetch data with minimal filtering and apply complex filters on client side
           let baseQuery = query(billcutLeadsRef);
-          const queryConstraints = [];
           
           // Clear search info when not searching
           setSearchResultsCount(0);
           setSearchCoverageInfo('');
           
-          // Add date filters
-          if (fromDate) {
-            const fromDateStart = new Date(fromDate);
-            fromDateStart.setHours(0, 0, 0, 0);
-            queryConstraints.push(where('date', '>=', fromDateStart.getTime()));
-          }
-          
-          if (toDate) {
-            const toDateEnd = new Date(toDate);
-            toDateEnd.setHours(23, 59, 59, 999);
-            queryConstraints.push(where('date', '<=', toDateEnd.getTime()));
-          }
-          
-          // Add status filter
-          if (statusFilter !== 'all') {
-            if (statusFilter === 'No Status') {
-              // For "No Status", we need to query for empty category values
-              // Firestore doesn't support null in 'in' queries, so we'll use 'in' for empty strings
-              queryConstraints.push(where('category', 'in', ['', '-']));
-            } else {
-              queryConstraints.push(where('category', '==', statusFilter));
-            }
-          }
-          
-          // Add salesperson filter
-          if (salesPersonFilter !== 'all') {
-            if (salesPersonFilter === '-') {
-              // For unassigned leads
-              queryConstraints.push(where('assigned_to', '==', ''));
-            } else {
-              queryConstraints.push(where('assigned_to', '==', salesPersonFilter));
-            }
-          }
-          
-          // Add "My Leads" filter
-          if (showMyLeads && typeof window !== 'undefined') {
-            const currentUserName = localStorage.getItem('userName');
-            if (currentUserName) {
-              queryConstraints.push(where('assigned_to', '==', currentUserName));
-            }
-          }
-          
-          // Add callback tab filter
+          // Only apply the most essential filter to avoid compound queries
           if (activeTab === 'callback') {
-            queryConstraints.push(where('category', '==', 'Callback'));
-            
-            // For callback tab, also filter by user if not admin/overlord
-            if (typeof window !== 'undefined') {
-              const currentUserName = localStorage.getItem('userName');
-              const currentUserRole = localStorage.getItem('userRole');
-              
-              if (currentUserRole !== 'admin' && currentUserRole !== 'overlord' && currentUserName) {
-                queryConstraints.push(where('assigned_to', '==', currentUserName));
-              }
+            // For callback tab, only filter by category
+            baseQuery = query(baseQuery, where('category', '==', 'Callback'));
+          } else if (statusFilter !== 'all') {
+            // For status filter, only filter by category
+            if (statusFilter === 'No Status') {
+              baseQuery = query(baseQuery, where('category', 'in', ['', '-']));
+            } else {
+              baseQuery = query(baseQuery, where('category', '==', statusFilter));
             }
           }
           
-          // Add constraints to base query
-          if (queryConstraints.length > 0) {
-            queryConstraints.forEach(constraint => {
-              baseQuery = query(baseQuery, constraint);
-            });
-          }
-          
-          // Add ordering and limit
-          baseQuery = query(baseQuery, orderBy('date', 'desc'), limit(500));
+          // Add limit only - no orderBy to avoid index requirements
+          baseQuery = query(baseQuery, limit(1000));
           
           const querySnapshot = await getDocs(baseQuery);
           
@@ -660,9 +609,67 @@ const BillCutLeadsPage = () => {
             } as Lead;
           });
 
+          // Sort by date on client side (descending - newest first)
+          fetchedLeads.sort((a, b) => (b.date || 0) - (a.date || 0));
+
+          // Apply additional filters on client side
+          let filteredResults = fetchedLeads;
+          
+          // Apply date filters on client side
+          if (fromDate) {
+            const fromDateStart = new Date(fromDate);
+            fromDateStart.setHours(0, 0, 0, 0);
+            filteredResults = filteredResults.filter(lead => 
+              lead.date >= fromDateStart.getTime()
+            );
+          }
+          
+          if (toDate) {
+            const toDateEnd = new Date(toDate);
+            toDateEnd.setHours(23, 59, 59, 999);
+            filteredResults = filteredResults.filter(lead => 
+              lead.date <= toDateEnd.getTime()
+            );
+          }
+          
+          // Apply salesperson filter on client side
+          if (salesPersonFilter !== 'all') {
+            if (salesPersonFilter === '-') {
+              filteredResults = filteredResults.filter(lead => 
+                !lead.assignedTo || lead.assignedTo === ''
+              );
+            } else {
+              filteredResults = filteredResults.filter(lead => 
+                lead.assignedTo === salesPersonFilter
+              );
+            }
+          }
+          
+          // Apply "My Leads" filter on client side
+          if (showMyLeads && typeof window !== 'undefined') {
+            const currentUserName = localStorage.getItem('userName');
+            if (currentUserName) {
+              filteredResults = filteredResults.filter(lead => 
+                lead.assignedTo === currentUserName
+              );
+            }
+          }
+          
+          // Apply callback tab user filter on client side
+          if (activeTab === 'callback' && typeof window !== 'undefined') {
+            const currentUserName = localStorage.getItem('userName');
+            const currentUserRole = localStorage.getItem('userRole');
+            
+            if (currentUserRole !== 'admin' && currentUserRole !== 'overlord' && currentUserName) {
+              filteredResults = filteredResults.filter(lead => 
+                lead.assignedTo === currentUserName
+              );
+            }
+          }
+
           // Fetch callback information for callback leads
-          const callbackLeads = fetchedLeads.filter(lead => lead.status === 'Callback').slice(0, 50);
-          const regularLeads = fetchedLeads.filter(lead => lead.status !== 'Callback');
+          const callbackLeads = filteredResults.filter(lead => lead.status === 'Callback').slice(0, 50);
+          const regularLeads = filteredResults.filter(lead => lead.status !== 'Callback');
           
           const leadsWithCallbackInfo = await Promise.all([
             ...regularLeads.map(lead => Promise.resolve(lead)),
