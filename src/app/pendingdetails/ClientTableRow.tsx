@@ -40,27 +40,28 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
         // For AMA, use timestamp field
         const timestamp = lead.timestamp;
         const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       } 
       
       if (lead.source_database === 'credsettlee' && lead.date) {
         // For CredSettle, use date field directly
         const date = lead.date instanceof Date ? lead.date : 
                     (lead.date?.toDate ? lead.date.toDate() : new Date(lead.date));
-        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       } 
       
       if (lead.source_database === 'settleloans' && lead.created) {
         // For SettleLoans, use created field
         const date = lead.created instanceof Date ? lead.created : 
                     (lead.created?.toDate ? lead.created.toDate() : new Date(lead.created));
-        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       }
 
-      if (lead.source_database === 'billcut' && lead.synced_at) {
-        // For BillCut, use synced_at field
-        const date = lead.synced_at?.toDate ? lead.synced_at.toDate() : new Date();
-        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      if (lead.source_database === 'billcut' && lead.date) {
+        // For BillCut, use date field instead of synced_at
+        const date = lead.date instanceof Date ? lead.date : 
+                    (lead.date?.toDate ? lead.date.toDate() : new Date(lead.date));
+        return date;
       }
       
       // Fall back to lastModified if source-specific field is not available
@@ -80,8 +81,7 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
         return date.toLocaleDateString('en-IN', { 
           day: '2-digit', 
           month: 'short', 
-          hour: '2-digit', 
-          minute: '2-digit' 
+          year: 'numeric'
         });
       }
       
