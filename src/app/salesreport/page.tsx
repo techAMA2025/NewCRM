@@ -584,10 +584,10 @@ export default function SalesReport() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div className="flex max-w-8xl mx-auto min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       {userRole === 'billcut' ? <BillcutSidebar /> : <OverlordSidebar />}
-      <div className="flex-1">
-        <div>
+      <div className="flex-1 scale-86 origin-top-left">
+        <div className="pb-6">
           <div className="mb-3 p-3 relative">
             <div className="flex items-center gap-2 mb-2">
               <ChartBarIcon className="h-7 w-7 text-indigo-500" />
@@ -802,9 +802,8 @@ export default function SalesReport() {
           ) : (
             <>
               {/* City-wise Charts Section */}
-              {cityData.length > 0 && (
+              {/* {cityData.length > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-3 px-1.5">
-                  {/* City-wise Distribution Chart */}
                   <div className="bg-white shadow-xl p-3 col-span-2">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <FunnelIcon className="h-5 w-5 text-purple-500" />
@@ -813,7 +812,7 @@ export default function SalesReport() {
                     <CityWiseBarChart cityData={cityData} />
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* City-wise Table Section */}
               {cityData.length > 0 && (
