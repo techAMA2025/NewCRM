@@ -764,54 +764,54 @@ export default function ClientsPage() {
     <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
       {renderSidebar()}
       
-      <div className={`flex-1 p-4 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-white text-gray-800'}`}>
+      <div className={`flex-1 p-3 ${theme === 'dark' ? 'bg-gray-900 text-gray-200' : 'bg-white text-gray-800'}`}>
         {/* Header Section */}
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2">
-            <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-1.5">
+            <h1 className={`text-base font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
               Clients Management
             </h1>
             {selectedClients.size > 0 && (
               <div className="flex gap-1">
                 <Button
                   onClick={() => setIsBulkAssignModalOpen(true)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs py-0.5 px-2 h-6"
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] py-0.5 px-1.5 h-5"
                 >
                   Assign Primary ({selectedClients.size} selected)
                 </Button>
                 <Button
                   onClick={() => setIsBulkSecondaryAssignModalOpen(true)}
-                  className="bg-green-500 hover:bg-green-600 text-white text-xs py-0.5 px-2 h-6"
+                  className="bg-green-500 hover:bg-green-600 text-white text-[10px] py-0.5 px-1.5 h-5"
                 >
                   Assign Secondary ({selectedClients.size} selected)
                 </Button>
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Input
               placeholder="Search clients..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-44 ${
+              className={`w-40 ${
                 theme === 'dark' 
                   ? 'bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400' 
                   : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500'
-              } text-xs h-6`}
+              } text-[10px] h-5`}
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className={`w-[120px] ${
+              <SelectTrigger className={`w-[100px] ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-gray-200'
                   : 'bg-white border-gray-300 text-gray-800'
-              } text-xs h-6`}>
+              } text-[10px] h-5`}>
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent className={`${
                 theme === 'dark'
                   ? 'bg-gray-800 text-gray-200 border-gray-700'
                   : 'bg-white text-gray-800 border-gray-300'
-              } text-xs`}>
+              } text-[10px]`}>
                 <SelectItem value="all">All Statuses</SelectItem>
                 {allStatuses.map(status => (
                   <SelectItem key={status} value={status}>{status}</SelectItem>
@@ -819,18 +819,18 @@ export default function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={primaryAdvocateFilter} onValueChange={setPrimaryAdvocateFilter}>
-              <SelectTrigger className={`w-[140px] ${
+              <SelectTrigger className={`w-[120px] ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-gray-200'
                   : 'bg-white border-gray-300 text-gray-800'
-              } text-xs h-6`}>
+              } text-[10px] h-5`}>
                 <SelectValue placeholder="Primary advocate" />
               </SelectTrigger>
               <SelectContent className={`${
                 theme === 'dark'
                   ? 'bg-gray-800 text-gray-200 border-gray-700'
                   : 'bg-white text-gray-800 border-gray-300'
-              } text-xs`}>
+              } text-[10px]`}>
                 <SelectItem value="all">All Primary Advocates</SelectItem>
                 {allAdvocates.map(advocate => (
                   <SelectItem key={advocate} value={advocate}>{advocate}</SelectItem>
@@ -838,18 +838,18 @@ export default function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={secondaryAdvocateFilter} onValueChange={setSecondaryAdvocateFilter}>
-              <SelectTrigger className={`w-[140px] ${
+              <SelectTrigger className={`w-[120px] ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-gray-200'
                   : 'bg-white border-gray-300 text-gray-800'
-              } text-xs h-6`}>
+              } text-[10px] h-5`}>
                 <SelectValue placeholder="Secondary advocate" />
               </SelectTrigger>
               <SelectContent className={`${
                 theme === 'dark'
                   ? 'bg-gray-800 text-gray-200 border-gray-700'
                   : 'bg-white text-gray-800 border-gray-300'
-              } text-xs`}>
+              } text-[10px]`}>
                 <SelectItem value="all">All Secondary Advocates</SelectItem>
                 {allAdvocates.map(advocate => (
                   <SelectItem key={advocate} value={advocate}>{advocate}</SelectItem>
@@ -857,18 +857,18 @@ export default function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className={`w-[120px] ${
+              <SelectTrigger className={`w-[100px] ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-gray-200'
                   : 'bg-white border-gray-300 text-gray-800'
-              } text-xs h-6`}>
+              } text-[10px] h-5`}>
                 <SelectValue placeholder="Filter by source" />
               </SelectTrigger>
               <SelectContent className={`${
                 theme === 'dark'
                   ? 'bg-gray-800 text-gray-200 border-gray-700'
                   : 'bg-white text-gray-800 border-gray-300'
-              } text-xs`}>
+              } text-[10px]`}>
                 <SelectItem value="all">All Sources</SelectItem>
                 {allSources.map(source => (
                   <SelectItem key={source} value={source}>{formatSourceName(source)}</SelectItem>
@@ -882,7 +882,7 @@ export default function ClientsPage() {
                 theme === 'dark'
                   ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
                   : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-              } text-xs h-6 px-2`}
+              } text-[10px] h-5 px-1.5`}
             >
               Reset Filters
             </Button>
