@@ -667,7 +667,7 @@ const BillcutLeadReportContent = () => {
           marginLeft: userRole === 'overlord' ? (isExpanded ? '0px' : '0px') : '0'
         }}
       >
-        <div className="w-[75%]" >
+        <div className="max-w-8xl mx-auto" >
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billcut Leads Dashboard</h1>
