@@ -48,33 +48,6 @@ const LeadsTabs: React.FC<LeadsTabsProps> = ({
           </button>
         </nav>
       </div>
-      
-      {/* Color Legend for Callback Tab */}
-      {activeTab === 'callback' && (
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-400">
-          <span className="font-medium text-gray-300">Priority Colors:</span>
-          
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-900/20 border border-red-700/50 rounded"></div>
-            <span className="text-red-400">Today (High Priority)</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-yellow-900/20 border border-yellow-700/50 rounded"></div>
-            <span className="text-yellow-400">Tomorrow (Medium Priority)</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-900/20 border border-green-700/50 rounded"></div>
-            <span className="text-green-400">Future (Low Priority)</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-950/30 border border-red-800/50 rounded"></div>
-            <span className="text-red-300">Past Due</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

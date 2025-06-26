@@ -25,9 +25,6 @@ import SalesSidebar from '@/components/navigation/SalesSidebar';
 import { Lead, User, HistoryItem, EditingLeadsState, SortDirection } from './types';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 
-// Import utility functions
-import { getCallbackPriority } from './components/utils/colorUtils';
-
 // Status options
 const statusOptions = [
   'No Status', 
@@ -703,38 +700,6 @@ const LeadsPage = () => {
         if (aValue > bValue) {
           return sortConfig.direction === 'ascending' ? 1 : -1;
         }
-        return 0;
-      });
-    }
-    
-    // Special sorting for callback tab - sort by callback priority (red, yellow, green, past)
-    if (activeTab === 'callback') {
-      result.sort((a, b) => {
-        // If both leads have callback info, sort by priority
-        if (a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
-          const aPriority = getCallbackPriority(new Date(a.callbackInfo.scheduled_dt));
-          const bPriority = getCallbackPriority(new Date(b.callbackInfo.scheduled_dt));
-          
-          // Sort by priority (lower number = higher priority)
-          if (aPriority !== bPriority) {
-            return aPriority - bPriority;
-          }
-          
-          // If same priority, sort by scheduled time (earlier first)
-          const aTime = new Date(a.callbackInfo.scheduled_dt).getTime();
-          const bTime = new Date(b.callbackInfo.scheduled_dt).getTime();
-          return aTime - bTime;
-        }
-        
-        // If only one has callback info, prioritize the one with info
-        if (a.callbackInfo?.scheduled_dt && !b.callbackInfo?.scheduled_dt) {
-          return -1;
-        }
-        if (!a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
-          return 1;
-        }
-        
-        // If neither has callback info, maintain current order
         return 0;
       });
     }

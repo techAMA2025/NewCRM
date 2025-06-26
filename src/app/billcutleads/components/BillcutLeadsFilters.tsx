@@ -29,12 +29,6 @@ type BillcutLeadsFiltersProps = {
   // Debt range filter props
   debtRangeSort: 'none' | 'low-to-high' | 'high-to-low';
   setDebtRangeSort: (sort: 'none' | 'low-to-high' | 'high-to-low') => void;
-  // Search state prop
-  allLeadsLoaded?: boolean;
-  isSearching?: boolean;
-  // Search results info
-  searchResultsCount?: number;
-  searchCoverageInfo?: string;
 };
 
 const BillcutLeadsFilters = ({
@@ -61,13 +55,7 @@ const BillcutLeadsFilters = ({
   onClearSelection,
   // Debt range filter props
   debtRangeSort,
-  setDebtRangeSort,
-  // Search state prop
-  allLeadsLoaded = false,
-  isSearching = false,
-  // Search results info
-  searchResultsCount,
-  searchCoverageInfo
+  setDebtRangeSort
 }: BillcutLeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -170,35 +158,6 @@ const BillcutLeadsFilters = ({
     setSearchQuery('');
   };
 
-  // Handle status filter change
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value);
-  };
-
-  // Handle salesperson filter change
-  const handleSalesPersonFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSalesPersonFilter && setSalesPersonFilter(e.target.value);
-  };
-
-  // Handle date filter changes
-  const handleFromDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFromDate(e.target.value);
-  };
-
-  const handleToDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setToDate(e.target.value);
-  };
-
-  // Handle debt range sort change
-  const handleDebtRangeSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setDebtRangeSort(e.target.value as 'none' | 'low-to-high' | 'high-to-low');
-  };
-
-  // Handle "My Leads" toggle
-  const handleMyLeadsToggle = () => {
-    setShowMyLeads(!showMyLeads);
-  };
-
   // Fetch sales users
   useEffect(() => {
     const fetchSalesUsers = async () => {
@@ -278,10 +237,9 @@ const BillcutLeadsFilters = ({
           <input
             type="text"
             className="block w-full pl-10 pr-10 py-3 border border-gray-600/50 bg-gray-800/50 text-gray-100 rounded-xl focus:outline-none focus:ring-blue-500 focus:border-blue-400 transition-all duration-200 placeholder-gray-500"
-            placeholder="Search by name, email, or phone (min 2 characters)..."
+            placeholder="Search by name, email, or phone number..."
             value={searchInput}
             onChange={handleSearchInputChange}
-            minLength={2}
           />
           {searchInput && (
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -303,29 +261,7 @@ const BillcutLeadsFilters = ({
         {searchQuery && (
           <div className="mt-2 flex items-center">
             <span className="text-sm text-gray-400">
-              {searchQuery.length < 2 ? (
-                <span className="text-yellow-400">Type at least 2 characters to search</span>
-              ) : isSearching ? (
-                <span className="text-blue-400 flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
-                  Searching...
-                </span>
-              ) : (
-                <>
-                  {searchCoverageInfo ? (
-                    <span className="text-blue-400">{searchCoverageInfo}</span>
-                  ) : (
-                    <>
-                      Found <span className="text-blue-400 font-medium">{filteredLeads.length}</span> results for "{searchQuery}"
-                      {allLeadsLoaded && (
-                        <span className="ml-2 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-md">
-                          🔍 Searching entire database
-                        </span>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
+              Found <span className="text-blue-400 font-medium">{filteredLeads.length}</span> results for "{searchQuery}"
             </span>
             <button 
               onClick={clearSearch}
@@ -349,25 +285,7 @@ const BillcutLeadsFilters = ({
           {/* Results counter and clear filters */}
           <div className="flex items-center gap-4">
             <p className="text-sm text-gray-400">
-              {searchQuery && searchQuery.length >= 2 ? (
-                <>
-                  Search results: <span className="text-blue-400 font-medium">{filteredLeads.length}</span> found
-                  {allLeadsLoaded && (
-                    <span className="ml-2 text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded-md">
-                      📊 From entire database
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
-                  {allLeadsLoaded && !searchQuery && (
-                    <span className="ml-2 text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded-md">
-                      📊 All data loaded
-                    </span>
-                  )}
-                </>
-              )}
+              Showing <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{leads.length}</span> leads
             </p>
             
             {/* Bulk Assignment Button */}
@@ -409,7 +327,7 @@ const BillcutLeadsFilters = ({
             <label className="block text-xs text-gray-400">Status</label>
             <select
               value={statusFilter}
-              onChange={handleStatusFilterChange}
+              onChange={e => setStatusFilter(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
             >
               <option value="all">All Status</option>
@@ -428,7 +346,7 @@ const BillcutLeadsFilters = ({
             <div className="relative">
               <select
                 value={salesPersonFilter}
-                onChange={handleSalesPersonFilterChange}
+                onChange={e => setSalesPersonFilter && setSalesPersonFilter(e.target.value)}
                 className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
               >
                 <option value="all">All Salesperson</option>
@@ -454,7 +372,7 @@ const BillcutLeadsFilters = ({
               key={`from-date-${dateKey}`}
               type="date"
               value={fromDate}
-              onChange={handleFromDateChange}
+              onChange={(e) => setFromDate(e.target.value)}
               max={toDate || getCurrentDate()}
               className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
             />
@@ -467,7 +385,7 @@ const BillcutLeadsFilters = ({
               key={`to-date-${dateKey}`}
               type="date"
               value={toDate}
-              onChange={handleToDateChange}
+              onChange={(e) => setToDate(e.target.value)}
               min={fromDate}
               max={getCurrentDate()}
               className="block w-full pl-3 pr-3 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
@@ -479,7 +397,7 @@ const BillcutLeadsFilters = ({
             <label className="block text-xs text-gray-400">Debt Range</label>
             <select
               value={debtRangeSort}
-              onChange={handleDebtRangeSortChange}
+              onChange={(e) => setDebtRangeSort(e.target.value as 'none' | 'low-to-high' | 'high-to-low')}
               className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
             >
               <option value="none">No Sort</option>
@@ -491,7 +409,7 @@ const BillcutLeadsFilters = ({
           {/* My Leads Toggle */}
           <div className="space-y-1 flex flex-col justify-end">
             <button
-              onClick={handleMyLeadsToggle}
+              onClick={() => setShowMyLeads(!showMyLeads)}
               className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${
                 showMyLeads
                   ? 'bg-blue-500 text-white hover:bg-blue-600 border border-blue-400'
