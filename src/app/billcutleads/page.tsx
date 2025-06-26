@@ -262,6 +262,15 @@ const BillCutLeadsPage = () => {
     const toDateParam = urlParams.get('toDate');
     const tabParam = urlParams.get('tab');
 
+    // Debug logging
+    console.log('URL Parameters received:', {
+      statusParam,
+      salesPersonParam,
+      fromDateParam,
+      toDateParam,
+      tabParam
+    });
+
     // Apply tab parameter
     if (tabParam === 'callback') {
       setActiveTab('callback');
@@ -269,11 +278,13 @@ const BillCutLeadsPage = () => {
 
     // Apply status filter
     if (statusParam) {
+      console.log('Setting status filter to:', statusParam);
       setStatusFilter(statusParam);
     }
 
     // Apply salesperson filter
     if (salesPersonParam) {
+      console.log('Setting salesperson filter to:', salesPersonParam);
       setSalesPersonFilter(salesPersonParam);
     }
 
@@ -356,7 +367,7 @@ const BillCutLeadsPage = () => {
             email: data.email || '',
             phone: data.mobile || '',
             city: state,
-            status: data.category || 'No Status',
+            status: data.category === '-' || data.category === '' || data.category === null || data.category === undefined ? 'No Status' : (data.category || 'No Status'),
             source_database: 'Bill Cut Campaign',
             assignedTo: data.assigned_to || '',
             personalLoanDues: '',
@@ -378,7 +389,7 @@ const BillCutLeadsPage = () => {
         // Apply filters in memory instead of in the query
         let filteredLeads = fetchedLeads;
 
-        // Date filters
+        // Date filters only - status and salesperson filters will be applied in the secondary filtering effect
         if (fromDate) {
           const fromDateStart = new Date(fromDate);
           fromDateStart.setHours(0, 0, 0, 0);
@@ -393,31 +404,6 @@ const BillCutLeadsPage = () => {
           filteredLeads = filteredLeads.filter(lead => 
             lead.date <= toDateEnd.getTime()
           );
-        }
-        
-        // Status filter
-        if (statusFilter !== 'all') {
-          if (statusFilter === 'No Status') {
-            filteredLeads = filteredLeads.filter(lead => 
-              lead.status === undefined || 
-              lead.status === null || 
-              lead.status === '' || 
-              lead.status === '-' ||
-              lead.status === 'No Status'
-            );
-          } else {
-            filteredLeads = filteredLeads.filter(lead => lead.status === statusFilter);
-          }
-        }
-        
-        // Salesperson filter
-        if (salesPersonFilter !== 'all') {
-          if (salesPersonFilter === '') {
-            // For unassigned leads
-            filteredLeads = filteredLeads.filter(lead => lead.assignedTo === '');
-          } else {
-            filteredLeads = filteredLeads.filter(lead => lead.assignedTo === salesPersonFilter);
-          }
         }
 
         const sortedLeads = filteredLeads.sort((a, b) => {
@@ -439,6 +425,12 @@ const BillCutLeadsPage = () => {
 
         setLeads(leadsWithCallbackInfo);
         setFilteredLeads(leadsWithCallbackInfo);
+        
+        console.log('Data loaded, current filters:', {
+          statusFilter,
+          salesPersonFilter,
+          leadsCount: leadsWithCallbackInfo.length
+        });
         
         const initialEditingState: EditingLeadsState = {};
         leadsWithCallbackInfo.forEach(lead => {
@@ -495,6 +487,13 @@ const BillCutLeadsPage = () => {
   useEffect(() => {
     if (!leads) return;
     
+    console.log('Secondary filtering effect triggered with:', {
+      leadsCount: leads.length,
+      statusFilter,
+      salesPersonFilter,
+      activeTab
+    });
+    
     let result = [...leads];
     
     // Apply tab-based filtering first
@@ -543,6 +542,45 @@ const BillCutLeadsPage = () => {
       });
     }
     
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      console.log('Applying status filter:', statusFilter);
+      console.log('Total leads before status filter:', result.length);
+      console.log('Sample leads before status filter:', result.slice(0, 3).map(l => ({ name: l.name, status: l.status })));
+      
+      if (statusFilter === 'No Status') {
+        result = result.filter(lead => 
+          lead.status === undefined || 
+          lead.status === null || 
+          lead.status === '' || 
+          lead.status === '-' ||
+          lead.status === 'No Status'
+        );
+      } else {
+        result = result.filter(lead => lead.status === statusFilter);
+      }
+      
+      console.log('Leads after status filter:', result.length);
+      console.log('Sample leads after status filter:', result.slice(0, 3).map(l => ({ name: l.name, status: l.status })));
+    }
+    
+    // Apply salesperson filter
+    if (salesPersonFilter !== 'all') {
+      console.log('Applying salesperson filter:', salesPersonFilter);
+      console.log('Total leads before salesperson filter:', result.length);
+      console.log('Sample leads before salesperson filter:', result.slice(0, 3).map(l => ({ name: l.name, assignedTo: l.assignedTo })));
+      
+      if (salesPersonFilter === '') {
+        // For unassigned leads
+        result = result.filter(lead => lead.assignedTo === '');
+      } else {
+        result = result.filter(lead => lead.assignedTo === salesPersonFilter);
+      }
+      
+      console.log('Leads after salesperson filter:', result.length);
+      console.log('Sample leads after salesperson filter:', result.slice(0, 3).map(l => ({ name: l.name, assignedTo: l.assignedTo })));
+    }
+    
     // Apply search query filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -587,11 +625,20 @@ const BillCutLeadsPage = () => {
     
     // Clear selected leads when filters change to prevent stale selections
     setSelectedLeads(prev => prev.filter(leadId => result.some(lead => lead.id === leadId)));
-  }, [leads, searchQuery, showMyLeads, activeTab, debtRangeSort]);
+  }, [leads, searchQuery, showMyLeads, activeTab, debtRangeSort, statusFilter, salesPersonFilter]);
 
   // Add debug effect to monitor leads data
   useEffect(() => {
-  }, [leads, filteredLeads, showMyLeads]);
+    console.log('Debug - Current state:', {
+      leadsCount: leads.length,
+      filteredLeadsCount: filteredLeads.length,
+      statusFilter,
+      salesPersonFilter,
+      activeTab,
+      searchQuery,
+      showMyLeads
+    });
+  }, [leads, filteredLeads, statusFilter, salesPersonFilter, activeTab, searchQuery, showMyLeads]);
 
   // Calculate counts for tabs
   const callbackCount = useMemo(() => {
