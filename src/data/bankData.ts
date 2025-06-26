@@ -503,8 +503,37 @@ export const bankData: Record<string, BankData> = {
     address: "Danish Mirza, Indiqube Sigma No.3/B, Nexus Koramangala 3rd Block SBI Colony, Koramangala, Bengaluru, Karnataka 560034",
     email: "gro@uni.club, care@uni.club"
   },
+  
+  "LAZY PAY": {
+    address: "PayU Finance India Private Limited, Empresa Building, Office No. 102, First Floor, Second Road, Khar West, Mumbai – 400052",
+    email: "wecare@lazypay.in, grievanceredressalofficer@lazypay.in, carehead@lazypay.in, Ridhi.mehta@payufin.com"
+  },
+  "FREOPAY": {
+    address: "Anjali Panwar, G-405, 4th Floor – Gamma Block, Sigma Soft Tech Park Varthur, Kodi Whitefield Post Bangalore – 560066",
+    email: "hello@freo.money"
+  },
+  "EDGRO": {
+    address: "The Customer Service Department, EGRO Finance Private Limited, 2nd Floor, No:1614/1615, Enzyme, 7th Cross, 19th Main Road, Sector 1, HSR Layout, Bengaluru, Karnataka, 5601012",
+    email: "info@edgrofin.com"
+  },
+  "UPMOVE": {
+    address: "Principal Nodal Officer Ms. Apeksha Gudhaka Indiqube Gamma, No.293/154/172, 3rd Floor, Outer Ring Road, Kadubeesanahalli. Bangalore KA 560103",
+    email: "grievanceredressalofficer@upmove.in, principal.nodal.officer@upmove.in, contact@upmove.in"
+  },
+  "KISSHT": {
+    address: "ZAFFAR KHAN, OnEMI Technology Solutions Private Limited, 10th Floor, Tower 4, Equinox Park, LBS Marg, Kurla West, Mumbai, Maharashtra 400070",
+    email: "escalation@kissht.com"
+  },
+  "JUPITER MONEY": {
+    address: "Mr Vivek Agarwal : Grievance Officer of the Company (Amica Financial Technologies Private Limited), Jupiter Money Changers Private Limited registered address is 39/4518, IInd Floor Haltrust Building, Karimpatta Cross Road, Pallimuk Kochi Ernakulam KL 682016 IN",
+    email: "alert@jupiter.money, grievance@jupiter.money, info@mmtcpamp.com, privacy@jupiter.money, nodalofficer@jupiter.money"
+  },
+  "OXYZO": {
+    address: "OXYZO Financial Services Limited, 1st Floor, Tower-A, Global Business Park, Mehrauli-Gurgaon Road, Sector 26, Gurugram, Haryana 122002",
+    email: "getsupport@oxyzo.in, grievanceredressal@oxyzo.in, bhubnesh.jha@oxyzo.in"
+  },
   "Other": {
     address: "Other",
     email: "Other"
-  }
+  },
 }; 
