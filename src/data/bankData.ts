@@ -532,6 +532,18 @@ export const bankData: Record<string, BankData> = {
     address: "OXYZO Financial Services Limited, 1st Floor, Tower-A, Global Business Park, Mehrauli-Gurgaon Road, Sector 26, Gurugram, Haryana 122002",
     email: "getsupport@oxyzo.in, grievanceredressal@oxyzo.in, bhubnesh.jha@oxyzo.in"
   },
+  "MAS Financial": {
+    address: "Mr. Kamlesh Chimanlal Gandhi, Chairman & Managing Director, 6, Ground Floor, Narayan Chambers, B/H. Patang Hotel, Nehru Bridge Corner, Ashram Road, Ahmedabad-380009. Mr. Ankit Jain, Chief Financial Officer, 6, Ground Floor, Narayan Chambers, B/H. Patang Hotel, Nehru Bridge Corner, Ashram Road, Ahmedabad-380009. Ms. Riddhi Bhayani, Company Secretary and Compliance Officer, 6, Ground Floor, Narayan Chambers, B/H. Patang Hotel, Nehru Bridge Corner, Ashram Road, Ahmedabad-380009",
+    email: "mfsl@mas.co.in, ankit_jain@mas.co.in, riddhi_bhayani@mas.co.in"
+  },
+  "Punjab National Bank": {
+    address: "Principal Nodal Officer, Sh. Pulin Kumar Pattanaik, General Manager, Customer Care Centre Plot No. 5, Institutional Area, Sector-32, Gurugram (Haryana)- 122001 Tel.No: +91-124-4126244",
+    email: "pno.pnb.co.in, care@pnb.co.in"
+  },
+  "Fincfriends": {
+    address: "Mr. Ram Prasad Aryal Address: Fincfriends Private Limited, 7th Floor, Vatika Triangle, Mehrauli-Gurgaon Road, Block B, Sushant Lok Phase I, Gurugram, Haryana – 122002",
+    email: "GRO@fincfriends.in, info@fincfriends.in"
+  },
   "Other": {
     address: "Other",
     email: "Other"
