@@ -49,6 +49,7 @@ export async function POST(request: Request) {
 
     // Format the input date
     const formattedDate = formatDate(new Date(date));
+    const totalPercentage = parseFloat(feePercentage) + 2;
     
     // Calculate total loan amount
     const totalLoanAmount = banks.reduce((total: number, bank: any) => {
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
     // Calculate fees for each bank using the provided fee percentage
     const banksWithFees = banks.map((bank: any) => {
       const loanAmount = parseFloat(bank.loanAmount) || 0;
-      const feeForThisLoan = loanAmount * (parseFloat(feePercentage) / 100); // Use provided fee percentage
+      const feeForThisLoan = parseFloat((loanAmount * (parseFloat(feePercentage) / 100)).toFixed(2)); // Use provided fee percentage with 2 decimal places
       
       return {
         bankName: bank.bankName,
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
       email,
       panNumber,
       feePercentage: `${feePercentage}%`,
+      totalPercentage: `${totalPercentage}%`,
       totalLoanAmount: formatIndianNumber(totalLoanAmount),
       totalFees: formatIndianNumber(totalFees),
       banksWithFees,
