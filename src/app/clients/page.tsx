@@ -159,7 +159,7 @@ export default function ClientsPage() {
         setFilteredClients(clientsData);
         
         const advocates = Array.from(new Set(clientsData.map(client => client.alloc_adv).filter(Boolean) as string[]));
-        setAllAdvocates(advocates);
+
       } catch (err) {
         console.error('Detailed error fetching clients:', err);
         if (err instanceof Error) {
