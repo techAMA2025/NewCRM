@@ -135,7 +135,7 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
             onClick={handleViewHistory}
             className="flex items-center justify-center px-3 py-1 text-xs bg-gray-600 hover:bg-gray-700 rounded text-white transition-colors"
           >
-            {showHistory ? 'Hide History' : 'Show History'}
+            Show History
           </button>
         </div>
       </div>
