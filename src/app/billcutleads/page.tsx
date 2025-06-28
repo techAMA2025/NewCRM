@@ -208,7 +208,6 @@ const BillCutLeadsPage = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sourceFilter] = useState('Bill Cut Campaign');
   const [statusFilter, setStatusFilter] = useState('all');
   const [salesPersonFilter, setSalesPersonFilter] = useState('all');
   const [showMyLeads, setShowMyLeads] = useState(false);
@@ -227,7 +226,6 @@ const BillCutLeadsPage = () => {
   const [editingLeads, setEditingLeads] = useState<EditingLeadsState>({});
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([]);
-  const [debugInfo, setDebugInfo] = useState('');
 
   // Add bulk selection state
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
@@ -357,20 +355,13 @@ const BillCutLeadsPage = () => {
             phone: data.mobile || '',
             city: state,
             status: data.category || 'No Status',
-            source_database: 'Bill Cut Campaign',
+            source_database: 'Bill Cut',
             assignedTo: data.assigned_to || '',
-            personalLoanDues: '',
-            creditCardDues: '',
             monthlyIncome: data.income || '',
-            remarks: `Debt Range: ${data.debt_range || ''}`,
             salesNotes: data.sales_notes || '',
             lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
             date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
             convertedToClient: false,
-            bankNames: [],
-            totalEmi: '',
-            occupation: '',
-            loanTypes: [],
             callbackInfo: null // Will be populated later for callback leads
           } as Lead;
         });
@@ -629,19 +620,6 @@ const BillCutLeadsPage = () => {
     setActiveTab('callback');
   };
 
-  const handleDismissAlert = () => {
-    // Alert is dismissed, no action needed
-  };
-
-  // Request sort handler
-  const requestSort = (key: string) => {
-    let direction: SortDirection = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  };
-
   // Update lead handler
   const updateLead = async (id: string, data: any) => {
     try {
@@ -693,54 +671,6 @@ const BillCutLeadsPage = () => {
         autoClose: 3000
       });
       return false;
-    }
-  };
-
-  // Assign lead to salesperson
-  const assignLeadToSalesperson = async (leadId: string, salesPersonName: string, salesPersonId: string) => {
-    try {
-      const leadRef = doc(crmDb, 'billcutLeads', leadId);
-      
-      const historyRef = collection(crmDb, 'billcutLeads', leadId, 'history');
-      await addDoc(historyRef, {
-        assignmentChange: true,
-        previousAssignee: leads.find(l => l.id === leadId)?.assignedTo || 'Unassigned',
-        newAssignee: salesPersonName,
-        timestamp: serverTimestamp(),
-        assignedById: typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '',
-        editor: {
-          id: currentUser?.uid || 'unknown'
-        }
-      });
-      
-      await updateDoc(leadRef, {
-        assigned_to: salesPersonName,
-        assignedToId: salesPersonId,
-        lastModified: serverTimestamp()
-      });
-      
-      const updatedLeads = leads.map(lead => 
-        lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId, lastModified: new Date() } : lead
-      );
-      
-      setLeads(updatedLeads);
-      
-      toast.success(
-        <div>
-          <p className="font-medium">Lead Assigned</p>
-          <p className="text-sm">Lead assigned to {salesPersonName}</p>
-        </div>,
-        {
-          position: "top-right",
-          autoClose: 3000
-        }
-      );
-    } catch (error) {
-      console.error("Error assigning lead: ", error);
-      toast.error("Failed to assign lead", {
-        position: "top-right",
-        autoClose: 3000
-      });
     }
   };
 
@@ -892,10 +822,7 @@ const BillCutLeadsPage = () => {
         "Status": lead.status || "",
         "Source": lead.source_database || "",
         "Assigned To": lead.assignedTo || "Unassigned",
-        "Personal Loan": lead.personalLoanDues || "",
-        "Credit Card": lead.creditCardDues || "",
         "Monthly Income": lead.monthlyIncome || "",
-        "Customer Query": lead.remarks || "",
         "Sales Notes": lead.salesNotes || "",
         "Last Modified": lead.lastModified?.toLocaleString() || ""
       }));

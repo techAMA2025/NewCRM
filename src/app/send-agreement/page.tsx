@@ -101,6 +101,9 @@ export default function SendAgreementPage() {
   const [manualCcRecipientName, setManualCcRecipientName] = useState("");
   const [manualCcRecipientEmail, setManualCcRecipientEmail] = useState("");
 
+  // State for client search
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+
   // Single agreement template
   const agreementTemplate = {
     id: "agreement-draft",
@@ -112,6 +115,17 @@ export default function SendAgreementPage() {
     id: "agreement-draft-subject",
     text: "Consultancy Agreement - AMA LEGAL SOLUTIONS"
   };
+
+  // Filter clients based on search term
+  const filteredClients = clients.filter(client => {
+    if (!clientSearchTerm.trim()) return true;
+    
+    const searchLower = clientSearchTerm.toLowerCase();
+    return (
+      client.name?.toLowerCase().includes(searchLower) ||
+      client.email?.toLowerCase().includes(searchLower)
+    );
+  });
 
   // Fetch clients from Firestore
   useEffect(() => {
@@ -820,6 +834,26 @@ export default function SendAgreementPage() {
                       Add Client Recipient
                     </label>
                     <div className="flex flex-col gap-2">
+                      {/* Client Search Bar */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={clientSearchTerm}
+                          onChange={(e) => setClientSearchTerm(e.target.value)}
+                          placeholder="Search clients by name or email..."
+                          className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
+                        />
+                        {clientSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setClientSearchTerm("")}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-white"
+                            title="Clear search"
+                          >
+                            <FaTimes size={12} />
+                          </button>
+                        )}
+                      </div>
                       <select
                         value={tempClientId}
                         onChange={handleClientChange}
@@ -829,9 +863,11 @@ export default function SendAgreementPage() {
                         <option value="">
                           {loadingClients
                             ? "Loading clients..."
+                            : filteredClients.length === 0
+                            ? "No clients found"
                             : "Select a client"}
                         </option>
-                        {clients.map((client) => (
+                        {filteredClients.map((client) => (
                           <option key={client.id} value={client.id}>
                             {client.name} ({client.email})
                           </option>
