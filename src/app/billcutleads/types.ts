@@ -18,18 +18,11 @@ export type Lead = {
   source_database: string;
   assignedTo: string;
   assignedToId?: string;
-  personalLoanDues: string;
-  creditCardDues: string;
   monthlyIncome: string;
-  remarks: string;
   salesNotes: string;
   lastModified: Date;
   date: number;
-  convertedToClient: boolean;
-  bankNames: string[];
-  totalEmi: string;
-  occupation: string;
-  loanTypes: string[];
+  debtRange: string;
   language_barrier?: string;
   convertedAt?: any;
   callbackInfo?: {

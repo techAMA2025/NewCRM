@@ -28,13 +28,6 @@ const BillcutLeadsTabs: React.FC<BillcutLeadsTabsProps> = ({
             }`}
           >
             All Leads
-            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-              activeTab === 'all'
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-gray-700 text-gray-400'
-            }`}>
-              {allLeadsCount}
-            </span>
           </button>
           
           <button
@@ -46,13 +39,6 @@ const BillcutLeadsTabs: React.FC<BillcutLeadsTabsProps> = ({
             }`}
           >
             My Callbacks
-            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-              activeTab === 'callback'
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-gray-700 text-gray-400'
-            }`}>
-              {callbackCount}
-            </span>
           </button>
         </nav>
       </div>
