@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp, where, query, deleteDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { db as crmDb, auth } from '@/firebase/firebase';
@@ -1279,6 +1279,103 @@ const LeadsPage = () => {
       const success = await updateLead(conversionLeadId, dbData);
       
       if (success) {
+        // Get the assigned salesperson's information from the lead
+        const lead = leads.find(l => l.id === conversionLeadId);
+        const assignedSalesPerson = lead?.assignedTo;
+        const assignedSalesPersonId = lead?.assignedToId;
+        
+        if (assignedSalesPerson && assignedSalesPersonId) {
+          // Get current month and year for targets collection
+          const now = new Date();
+          const currentMonth = now.toLocaleString('default', { month: 'short' }); // "Jan", "Feb", etc.
+          const currentYear = now.getFullYear();
+          const monthDocId = `${currentMonth}_${currentYear}`;
+          
+          try {
+            console.log(`Updating targets for ${assignedSalesPerson} in ${monthDocId}`);
+            
+            // First, check if the monthly document exists
+            const monthlyDocRef = doc(crmDb, 'targets', monthDocId);
+            const monthlyDocSnap = await getDoc(monthlyDocRef);
+            
+            if (monthlyDocSnap.exists()) {
+              // Monthly document exists, now find the user's target document by userName
+              const salesTargetsRef = collection(crmDb, 'targets', monthDocId, 'sales_targets');
+              const salesTargetsSnap = await getDocs(salesTargetsRef);
+              
+              let userTargetDoc = null;
+              let userTargetId = null;
+              
+              // Find the document where userName matches assignedSalesPerson
+              salesTargetsSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.userName === assignedSalesPerson) {
+                  userTargetDoc = data;
+                  userTargetId = doc.id;
+                }
+              });
+              
+              if (userTargetDoc && userTargetId) {
+                // User's target document exists, increment the convertedLeads count
+                const targetRef = doc(crmDb, 'targets', monthDocId, 'sales_targets', userTargetId);
+                const currentConvertedLeads = (userTargetDoc as any).convertedLeads || 0;
+                const newCount = currentConvertedLeads + 1;
+                
+                console.log(`Incrementing convertedLeads from ${currentConvertedLeads} to ${newCount} for ${assignedSalesPerson}`);
+                
+                await updateDoc(targetRef, {
+                  convertedLeads: newCount,
+                  updatedAt: serverTimestamp()
+                });
+                
+                console.log(`Successfully updated targets for ${assignedSalesPerson}`);
+              } else {
+                // User's target document doesn't exist, create it with convertedLeads = 1
+                console.log(`Creating new target document for ${assignedSalesPerson} with convertedLeads = 1`);
+                
+                const newTargetRef = doc(collection(crmDb, 'targets', monthDocId, 'sales_targets'));
+                await setDoc(newTargetRef, {
+                  userId: assignedSalesPersonId,
+                  userName: assignedSalesPerson,
+                  convertedLeads: 1,
+                  convertedLeadsTarget: 0, // Default value
+                  amountCollected: 0, // Default value
+                  amountCollectedTarget: 0, // Default value
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                  createdBy: currentUser?.uid || assignedSalesPersonId
+                });
+                
+                console.log(`Successfully created new target document for ${assignedSalesPerson}`);
+              }
+            } else {
+              // Monthly document doesn't exist, create it with user's target
+              console.log(`Creating new monthly document ${monthDocId} with target for ${assignedSalesPerson}`);
+              
+              const newTargetRef = doc(collection(crmDb, 'targets', monthDocId, 'sales_targets'));
+              await setDoc(newTargetRef, {
+                userId: assignedSalesPersonId,
+                userName: assignedSalesPerson,
+                convertedLeads: 1,
+                convertedLeadsTarget: 0, // Default value
+                amountCollected: 0, // Default value
+                amountCollectedTarget: 0, // Default value
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                createdBy: currentUser?.uid || assignedSalesPersonId
+              });
+              
+              console.log(`Successfully created new monthly document and target for ${assignedSalesPerson}`);
+            }
+          } catch (targetError) {
+            console.error('Error updating targets collection:', targetError);
+            // Don't fail the entire conversion if targets update fails
+            // Just log the error and continue
+          }
+        } else {
+          console.warn(`Lead ${conversionLeadId} is not assigned to any salesperson, skipping targets update`);
+        }
+        
         // Show success toast
         toast.success(
           <div className="min-w-0 flex-1">
@@ -1298,6 +1395,7 @@ const LeadsPage = () => {
                 </p>
                 <p className="mt-1 text-sm text-green-200">
                   Lead status updated to "Converted" with conversion timestamp
+                  {assignedSalesPerson && ` • Target updated for ${assignedSalesPerson}`}
                 </p>
               </div>
             </div>
@@ -1332,10 +1430,88 @@ const LeadsPage = () => {
     setIsConvertingLead(false);
   };
 
+  // Function to decrement convertedLeads count in targets
+  const decrementTargetsCount = async (leadId: string) => {
+    try {
+      // Get the assigned salesperson's information from the lead
+      const lead = leads.find(l => l.id === leadId);
+      const assignedSalesPerson = lead?.assignedTo;
+      const assignedSalesPersonId = lead?.assignedToId;
+      
+      if (assignedSalesPerson && assignedSalesPersonId) {
+        // Get current month and year for targets collection
+        const now = new Date();
+        const currentMonth = now.toLocaleString('default', { month: 'short' }); // "Jan", "Feb", etc.
+        const currentYear = now.getFullYear();
+        const monthDocId = `${currentMonth}_${currentYear}`;
+        
+        try {
+          console.log(`Decrementing targets for ${assignedSalesPerson} in ${monthDocId}`);
+          
+          // First, check if the monthly document exists
+          const monthlyDocRef = doc(crmDb, 'targets', monthDocId);
+          const monthlyDocSnap = await getDoc(monthlyDocRef);
+          
+          if (monthlyDocSnap.exists()) {
+            // Monthly document exists, now find the user's target document by userName
+            const salesTargetsRef = collection(crmDb, 'targets', monthDocId, 'sales_targets');
+            const salesTargetsSnap = await getDocs(salesTargetsRef);
+            
+            let userTargetDoc = null;
+            let userTargetId = null;
+            
+            // Find the document where userName matches assignedSalesPerson
+            salesTargetsSnap.forEach(doc => {
+              const data = doc.data();
+              if (data.userName === assignedSalesPerson) {
+                userTargetDoc = data;
+                userTargetId = doc.id;
+              }
+            });
+            
+            if (userTargetDoc && userTargetId) {
+              // User's target document exists, decrement the convertedLeads count
+              const targetRef = doc(crmDb, 'targets', monthDocId, 'sales_targets', userTargetId);
+              const currentConvertedLeads = (userTargetDoc as any).convertedLeads || 0;
+              
+              // Ensure we don't go below 0
+              const newCount = Math.max(0, currentConvertedLeads - 1);
+              
+              console.log(`Decrementing convertedLeads from ${currentConvertedLeads} to ${newCount} for ${assignedSalesPerson}`);
+              
+              await updateDoc(targetRef, {
+                convertedLeads: newCount,
+                updatedAt: serverTimestamp()
+              });
+              
+              console.log(`Successfully decremented targets for ${assignedSalesPerson}`);
+            } else {
+              console.warn(`No target document found for ${assignedSalesPerson} in ${monthDocId}, nothing to decrement`);
+            }
+          } else {
+            console.warn(`No monthly document found for ${monthDocId}, nothing to decrement`);
+          }
+        } catch (error) {
+          console.error('Error decrementing targets count:', error);
+          // Don't fail the status update if targets update fails
+        }
+      } else {
+        console.warn(`Lead ${leadId} is not assigned to any salesperson, skipping targets decrement`);
+      }
+    } catch (error) {
+      console.error('Error decrementing targets count:', error);
+      // Don't fail the status update if targets update fails
+    }
+  };
+
   // Update lead handler
   const updateLead = async (id: any, data: any) => {
     try {
       const leadRef = doc(crmDb, 'crm_leads', id);
+      
+      // Check if we're changing from "Converted" to another status
+      const currentLead = leads.find(lead => lead.id === id);
+      const isChangingFromConverted = currentLead?.status === 'Converted' && data.status && data.status !== 'Converted';
       
       // Add timestamp
       const updateData = {
@@ -1344,6 +1520,11 @@ const LeadsPage = () => {
       };
       
       await updateDoc(leadRef, updateData);
+      
+      // If changing from "Converted" to another status, decrement the targets count
+      if (isChangingFromConverted) {
+        await decrementTargetsCount(id);
+      }
       
       // Update UI state - update both leads and allFilteredLeads
       const updateLeadsInState = (currentLeads: Lead[]) => 

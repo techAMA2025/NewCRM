@@ -171,7 +171,7 @@ const StatusCell = ({
                 {lead.name || 'Unknown Lead'}
               </p>
               <p className="mt-1 text-sm text-orange-200">
-                Lead status changed from "Converted" to "{newStatus}". Conversion timestamp has been removed.
+                Lead status changed from "Converted" to "{newStatus}". Conversion timestamp has been removed and targets count will be updated.
               </p>
             </div>
           </div>

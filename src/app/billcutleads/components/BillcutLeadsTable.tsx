@@ -5,6 +5,7 @@ import { collection, getDocs, query, where } from "firebase/firestore"
 import BillcutLeadNotesCell from "./BillcutLeadNotesCell"
 import CallbackSchedulingModal from "./CallbackSchedulingModal"
 import type { Lead } from "../types"
+import { toast } from "react-toastify"
 
 // Color mapping interface and function
 interface ColorMap {
@@ -261,6 +262,9 @@ const BillcutLeadsTableOptimized = React.memo(
     const handleChange = useCallback(
       async (id: string, field: keyof Lead, value: any) => {
         if (field === "status") {
+          const currentLead = leads.find((l) => l.id === id);
+          const currentStatus = currentLead?.status || 'Select Status';
+          
           if (value === "Callback") {
             setCallbackLeadId(id)
             const lead = leads.find((l) => l.id === id)
@@ -284,6 +288,43 @@ const BillcutLeadsTableOptimized = React.memo(
             onStatusChangeToConverted(id, lead?.name || "Unknown Lead")
             return
           } else {
+            // Check if changing from "Converted" to another status
+            if (currentStatus === 'Converted' && value !== 'Converted') {
+              // Show a toast notification about the conversion being removed
+              toast.info(
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-lg"></div>
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">⚠️</span>
+                        <p className="text-sm font-bold text-white">
+                          Conversion Removed
+                        </p>
+                      </div>
+                      <p className="mt-2 text-sm text-orange-100 font-medium">
+                        {currentLead?.name || 'Unknown Lead'}
+                      </p>
+                      <p className="mt-1 text-sm text-orange-200">
+                        Lead status changed from "Converted" to "{value}". Conversion timestamp has been removed and targets count will be updated.
+                      </p>
+                    </div>
+                  </div>
+                </div>,
+                {
+                  position: "top-right",
+                  autoClose: 4000,
+                  hideProgressBar: false,
+                  closeOnClick: true,
+                  pauseOnHover: true,
+                  draggable: true,
+                  className: "bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-600 border-2 border-orange-400 shadow-xl",
+                }
+              );
+            }
+            
             const dbData = { status: value }
             updateLead(id, dbData)
               .then((success) => {
