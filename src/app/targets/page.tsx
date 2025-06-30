@@ -209,22 +209,7 @@ export default function TargetsPage() {
       const monthDocId = `${selectedMonth}_${selectedYear}`;
       
       for (const user of users) {
-        // Fetch lead conversion data
-        const leadsQuery = query(
-          collection(db, 'crm_leads'),
-          where('assignedTo', '==', user.firstName + (user.lastName ? ' ' + user.lastName : ''))
-          // Add filters for month/year if your leads have timestamp fields
-        );
-        const leadsSnapshot = await getDocs(leadsQuery);
-        
         let convertedLeadsCount = 0;
-        leadsSnapshot.forEach(doc => {
-          const leadData = doc.data();
-          if (leadData.status === 'Converted' || leadData.convertedToClient === true) {
-            convertedLeadsCount++;
-          }
-        });
-        
         let amountCollected = 0;
         
         // Check if we have a monthly document with subcollections
@@ -238,6 +223,8 @@ export default function TargetsPage() {
           
           if (userTargetSnap.exists()) {
             const targetData = userTargetSnap.data();
+            // Read convertedLeads from the targets collection
+            convertedLeadsCount = targetData.convertedLeads || 0;
             amountCollected = targetData.amountCollected || 0;
           }
         }
@@ -342,6 +329,7 @@ export default function TargetsPage() {
             userName: salesUser.firstName + (salesUser.lastName ? ' ' + salesUser.lastName : ''),
             convertedLeadsTarget: Number(targets[salesUser.id].convertedLeads) || 0,
             amountCollectedTarget: Number(targets[salesUser.id].amountCollected) || 0,
+            convertedLeads: 0, // Initialize convertedLeads with zero
             amountCollected: 0, // Initialize with zero
             createdAt: new Date(),
             updatedAt: new Date(),

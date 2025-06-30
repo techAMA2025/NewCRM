@@ -228,13 +228,13 @@ const AdminDashboard = () => {
             userName: data.userName,
             amountCollected: data.amountCollected || 0,
             amountCollectedTarget: data.amountCollectedTarget || 0,
-            convertedLeads: data.convertedLeads || 0, // This might not exist in your structure
+            convertedLeads: data.convertedLeads || 0, // This is the actual converted leads count from targets
             convertedLeadsTarget: data.convertedLeadsTarget || 0
           });
           
           totalAmount += data.amountCollected || 0;
           totalTarget += data.amountCollectedTarget || 0;
-          // Note: actual converted leads will be calculated from leads data
+          totalLeadsConverted += data.convertedLeads || 0; // Sum up actual converted leads from targets
           totalLeadsTargetCount += data.convertedLeadsTarget || 0;
         });
       } else {
@@ -256,6 +256,7 @@ const AdminDashboard = () => {
           
           totalAmount += data.amountCollected || 0;
           totalTarget += data.amountCollectedTarget || 0;
+          totalLeadsConverted += data.convertedLeads || 0; // Sum up actual converted leads from targets
           totalLeadsTargetCount += data.convertedLeadsTarget || 0;
         });
       }
@@ -263,9 +264,8 @@ const AdminDashboard = () => {
       setTargetData(targetsData);
       setTotalAmountCollected(totalAmount);
       setTotalAmountTarget(totalTarget);
+      setTotalConvertedLeads(totalLeadsConverted); // Set the actual converted leads count
       setTotalLeadsTarget(totalLeadsTargetCount);
-      
-      // Actual converted leads count will be set from leadsData
       
     } catch (error) {
       console.error('Error fetching targets data:', error);
@@ -398,17 +398,13 @@ const AdminDashboard = () => {
   // Filter data based on selected user
   const filteredData = useMemo(() => {
     if (selectedUser === 'all') {
-      // Count actual converted leads from the lead data
-      const actualConvertedLeads = leadsData.filter(lead => 
-        lead.convertedToClient === true || lead.status === "Converted"
-      ).length
-      
+      // Use converted leads from targets collection instead of calculating from leadsData
       return {
         statusData,
         monthlyLeadsData,
         amountCollected: totalAmountCollected,
         amountTarget: totalAmountTarget,
-        convertedLeads: actualConvertedLeads,
+        convertedLeads: totalConvertedLeads, // Use the actual converted leads from targets
         leadsTarget: totalLeadsTarget
       }
     } else {
@@ -496,21 +492,17 @@ const AdminDashboard = () => {
       const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
       filteredMonthlyData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name))
       
-      // Count actual converted leads for this user
-      const actualUserConvertedLeads = userLeads.filter(lead => 
-        lead.convertedToClient === true || lead.status === "Converted"
-      ).length
-      
+      // Use converted leads from user's target data instead of calculating from leadsData
       return {
         statusData: filteredStatusData,
         monthlyLeadsData: filteredMonthlyData,
         amountCollected: userTarget?.amountCollected || 0,
         amountTarget: userTarget?.amountCollectedTarget || 0,
-        convertedLeads: actualUserConvertedLeads,
+        convertedLeads: userTarget?.convertedLeads || 0, // Use the actual converted leads from user's target
         leadsTarget: userTarget?.convertedLeadsTarget || 0
       }
     }
-  }, [selectedUser, leadsData, targetData, statusData, monthlyLeadsData, totalAmountCollected, totalAmountTarget, totalLeadsTarget, salesUsers])
+  }, [selectedUser, leadsData, targetData, statusData, monthlyLeadsData, totalAmountCollected, totalAmountTarget, totalConvertedLeads, totalLeadsTarget, salesUsers])
 
   if (loading) {
     return <div className="p-6">Loading dashboard data...</div>
@@ -529,6 +521,11 @@ const AdminDashboard = () => {
         <h2 className="text-xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
           Sales Analytics Dashboard
         </h2>
+        
+        {/* Current Month Display */}
+        <div className="mb-4 text-sm text-gray-400">
+          Showing data for: {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+        </div>
         
         {/* Sales User Selector */}
         <div className="mb-6">
@@ -572,7 +569,9 @@ const AdminDashboard = () => {
 
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Converted Leads Target</CardTitle>
+              <CardTitle className="text-gray-100">
+                Converted Leads Target ({new Date().toLocaleString('default', { month: 'short', year: 'numeric' })})
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold mb-3 text-emerald-400">{filteredData.convertedLeads} 
@@ -609,6 +608,9 @@ const AdminDashboard = () => {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Collected Amount
                     </th>
+                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Pending Amount
+                    </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Achievement %
                     </th>
@@ -627,6 +629,68 @@ const AdminDashboard = () => {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-300">
                           ₹{(target.amountCollected || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-300">
+                          ₹{((target.amountCollectedTarget || 0) - (target.amountCollected || 0) || 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                          <span 
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              percentage >= 100 ? 'bg-emerald-900 text-emerald-200' : 
+                              percentage >= 75 ? 'bg-indigo-900 text-indigo-200' :
+                              percentage >= 50 ? 'bg-amber-900 text-amber-200' : 
+                              'bg-rose-900 text-rose-200'
+                            }`}
+                          >
+                            {percentage}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Converted Leads Table */}
+        <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-gray-100">Sales Team Converted Leads</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-700">
+                <thead className="bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Sales Person
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Target Leads
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Converted Leads
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Achievement %
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {targetData.map((target) => {
+                    const percentage = Math.round((target.convertedLeads || 0) / (target.convertedLeadsTarget || 1) * 100);
+                    return (
+                      <tr key={target.id} className="hover:bg-gray-750 transition-colors duration-150">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">
+                          {target.userName || 'Unknown'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-300">
+                          {target.convertedLeadsTarget || 0}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-300">
+                          {target.convertedLeads || 0}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                           <span 

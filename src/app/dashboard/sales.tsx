@@ -27,6 +27,7 @@ interface TargetData {
   amountCollectedTarget: number;
   amountCollected: number;
   convertedLeadsTarget: number;
+  convertedLeads: number;
   userId: string;
   userName: string;
   createdAt: any;
@@ -932,8 +933,9 @@ export default function SalesDashboard() {
   const amountCollected = targetData.amountCollected || 0;
   const amountPercentage = Math.round((amountCollected / targetData.amountCollectedTarget) * 100);
   
-  // Calculate leads percentage using real data
-  const leadsPercentage = Math.round((convertedLeads / targetData.convertedLeadsTarget) * 100);
+  // Calculate leads percentage using target data
+  const actualConvertedLeads = targetData.convertedLeads || 0;
+  const leadsPercentage = Math.round((actualConvertedLeads / targetData.convertedLeadsTarget) * 100);
 
   return (
     <div className="p-6 bg-gray-900 text-gray-100 min-h-screen">
@@ -993,7 +995,7 @@ export default function SalesDashboard() {
               <CardTitle className="text-gray-100">Converted Leads Target ({currentMonth} {currentYear})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold mb-3 text-emerald-400">{convertedLeads} 
+              <div className="text-3xl font-bold mb-3 text-emerald-400">{actualConvertedLeads} 
                 <span className="text-gray-400 text-xl"> / {targetData.convertedLeadsTarget}</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5 mb-3">
