@@ -120,6 +120,7 @@ export default function BillcutDashboard() {
     },
     scales: {
       x: {
+        type: "linear" as const,
         ticks: {
           color: 'rgba(255, 255, 255, 0.7)',
         },
@@ -128,6 +129,7 @@ export default function BillcutDashboard() {
         },
       },
       y: {
+        type: "linear" as const,
         ticks: {
           color: 'rgba(255, 255, 255, 0.7)',
         },

@@ -52,6 +52,8 @@ const ConversionConfirmationModal = ({
                   </p>
                   <ul className="text-xs text-gray-400 mt-1 ml-4 list-disc">
                     <li>Change the lead status to "Converted"</li>
+                    <li>Add conversion timestamp</li>
+                    <li>Increment your converted leads count in targets</li>
                   </ul>
                 </div>
               </div>

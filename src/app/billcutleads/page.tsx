@@ -16,6 +16,8 @@ import {
   startAfter,
   or,
   type DocumentSnapshot,
+  getDoc,
+  setDoc,
 } from "firebase/firestore"
 import { toast } from "react-toastify"
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"
@@ -799,6 +801,10 @@ const BillCutLeadsPage = () => {
 
   // Update lead with optimistic updates
   const updateLead = async (id: string, data: any) => {
+    // Check if we're changing from "Converted" to another status
+    const currentLead = leads.find(lead => lead.id === id);
+    const isChangingFromConverted = currentLead?.status === 'Converted' && data.status && data.status !== 'Converted';
+    
     // Apply optimistic update immediately
     updateLeadOptimistic(id, data)
 
@@ -822,6 +828,11 @@ const BillCutLeadsPage = () => {
       }
 
       await updateDoc(leadRef, updateData)
+      
+      // If changing from "Converted" to another status, decrement the targets count
+      if (isChangingFromConverted) {
+        await decrementTargetsCount();
+      }
 
       if (editingLead && editingLead.id === id) {
         setEditingLead(null)
@@ -1247,6 +1258,85 @@ const BillCutLeadsPage = () => {
 
       const success = await updateLead(conversionLeadId, dbData)
       if (success) {
+        // Get the current user's information to update targets
+        const currentUserName = localStorage.getItem('userName');
+        const currentUserId = currentUser?.uid;
+        
+        if (currentUserName && currentUserId) {
+          // Get current month and year for targets collection
+          const now = new Date();
+          const currentMonth = now.toLocaleString('default', { month: 'short' }); // "Jan", "Feb", etc.
+          const currentYear = now.getFullYear();
+          const monthDocId = `${currentMonth}_${currentYear}`;
+          
+          try {
+            // First, check if the monthly document exists
+            const monthlyDocRef = doc(crmDb, 'targets', monthDocId);
+            const monthlyDocSnap = await getDoc(monthlyDocRef);
+            
+            if (monthlyDocSnap.exists()) {
+              // Monthly document exists, now find the user's target document by userName
+              const salesTargetsRef = collection(crmDb, 'targets', monthDocId, 'sales_targets');
+              const salesTargetsSnap = await getDocs(salesTargetsRef);
+              
+              let userTargetDoc = null;
+              let userTargetId = null;
+              
+              // Find the document where userName matches currentUserName
+              salesTargetsSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.userName === currentUserName) {
+                  userTargetDoc = data;
+                  userTargetId = doc.id;
+                }
+              });
+              
+              if (userTargetDoc && userTargetId) {
+                // User's target document exists, increment the convertedLeads count
+                const targetRef = doc(crmDb, 'targets', monthDocId, 'sales_targets', userTargetId);
+                const currentConvertedLeads = (userTargetDoc as any).convertedLeads || 0;
+                
+                await updateDoc(targetRef, {
+                  convertedLeads: currentConvertedLeads + 1,
+                  updatedAt: serverTimestamp()
+                });
+              } else {
+                // User's target document doesn't exist, create it with convertedLeads = 1
+                const newTargetRef = doc(collection(crmDb, 'targets', monthDocId, 'sales_targets'));
+                await setDoc(newTargetRef, {
+                  userId: currentUserId,
+                  userName: currentUserName,
+                  convertedLeads: 1,
+                  convertedLeadsTarget: 0, // Default value
+                  amountCollected: 0, // Default value
+                  amountCollectedTarget: 0, // Default value
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                  createdBy: currentUserId
+                });
+              }
+            } else {
+              // Monthly document doesn't exist, create it with user's target
+              const newTargetRef = doc(collection(crmDb, 'targets', monthDocId, 'sales_targets'));
+              await setDoc(newTargetRef, {
+                userId: currentUserId,
+                userName: currentUserName,
+                convertedLeads: 1,
+                convertedLeadsTarget: 0, // Default value
+                amountCollected: 0, // Default value
+                amountCollectedTarget: 0, // Default value
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                createdBy: currentUserId
+              });
+            }
+          } catch (targetError) {
+            console.error('Error updating targets collection:', targetError);
+            // Don't fail the entire conversion if targets update fails
+            // Just log the error and continue
+          }
+        }
+        
         toast.success(
           <div className="min-w-0 flex-1">
             <div className="flex items-start">
@@ -1295,6 +1385,61 @@ const BillCutLeadsPage = () => {
     setConversionLeadName("")
     setIsConvertingLead(false)
   }
+
+  // Function to decrement convertedLeads count in targets
+  const decrementTargetsCount = async () => {
+    try {
+      const currentUserName = localStorage.getItem('userName');
+      const currentUserId = currentUser?.uid;
+      
+      if (currentUserName && currentUserId) {
+        // Get current month and year for targets collection
+        const now = new Date();
+        const currentMonth = now.toLocaleString('default', { month: 'short' }); // "Jan", "Feb", etc.
+        const currentYear = now.getFullYear();
+        const monthDocId = `${currentMonth}_${currentYear}`;
+        
+        // First, check if the monthly document exists
+        const monthlyDocRef = doc(crmDb, 'targets', monthDocId);
+        const monthlyDocSnap = await getDoc(monthlyDocRef);
+        
+        if (monthlyDocSnap.exists()) {
+          // Monthly document exists, now find the user's target document by userName
+          const salesTargetsRef = collection(crmDb, 'targets', monthDocId, 'sales_targets');
+          const salesTargetsSnap = await getDocs(salesTargetsRef);
+          
+          let userTargetDoc = null;
+          let userTargetId = null;
+          
+          // Find the document where userName matches currentUserName
+          salesTargetsSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.userName === currentUserName) {
+              userTargetDoc = data;
+              userTargetId = doc.id;
+            }
+          });
+          
+          if (userTargetDoc && userTargetId) {
+            // User's target document exists, decrement the convertedLeads count
+            const targetRef = doc(crmDb, 'targets', monthDocId, 'sales_targets', userTargetId);
+            const currentConvertedLeads = (userTargetDoc as any).convertedLeads || 0;
+            
+            // Ensure we don't go below 0
+            const newCount = Math.max(0, currentConvertedLeads - 1);
+            
+            await updateDoc(targetRef, {
+              convertedLeads: newCount,
+              updatedAt: serverTimestamp()
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error decrementing targets count:', error);
+      // Don't fail the status update if targets update fails
+    }
+  };
 
   // Render sidebar based on user role
   const SidebarComponent = useMemo(() => {
