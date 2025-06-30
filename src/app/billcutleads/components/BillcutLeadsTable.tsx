@@ -710,7 +710,12 @@ const BillcutLeadsTableOptimized = React.memo(
             )}
 
             <BillcutLeadNotesCell
-              lead={lead}
+              lead={{
+                id: lead.id,
+                salesNotes: lead.salesNotes || '',
+                name: lead.name || '',
+                phone: lead.phone || ''
+              }}
               fetchNotesHistory={fetchNotesHistory}
               crmDb={crmDb}
               updateLead={updateLead}
