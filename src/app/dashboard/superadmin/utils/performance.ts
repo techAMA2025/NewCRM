@@ -21,7 +21,7 @@ class PerformanceMonitor {
   end(name: string): number {
     const startTime = this.timers.get(name);
     if (!startTime) {
-      console.warn(`No start time found for metric: ${name}`);
+      // Silently ignore missing timers to avoid console spam
       return 0;
     }
 
@@ -40,6 +40,19 @@ class PerformanceMonitor {
     }
 
     return duration;
+  }
+
+  // Safe end - only ends if timer exists
+  safeEnd(name: string): number {
+    if (this.timers.has(name)) {
+      return this.end(name);
+    }
+    return 0;
+  }
+
+  // Check if timer exists
+  hasTimer(name: string): boolean {
+    return this.timers.has(name);
   }
 
   // Get all metrics
@@ -106,7 +119,7 @@ export const usePerformanceTracking = (componentName: string) => {
     perfMonitor.start(`${componentName}-mount`);
     
     return () => {
-      perfMonitor.end(`${componentName}-mount`);
+      perfMonitor.safeEnd(`${componentName}-mount`);
     };
   }, [componentName]);
 };
@@ -122,41 +135,39 @@ export const measureAsync = async <T>(
     perfMonitor.end(name);
     return result;
   } catch (error) {
-    perfMonitor.end(name);
+    perfMonitor.safeEnd(name);
     throw error;
   }
 };
 
-// Preload critical resources
+// Lightweight preload critical resources (only what's actually needed immediately)
 export const preloadCriticalResources = () => {
-  // Preload fonts
-  const fonts = [
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
-  ];
+  // Only preload resources that will be used immediately
+  // Remove font preloading as it's causing warnings and fonts are loaded via CSS anyway
+  
+  // Preload critical API endpoints if needed (commented out to avoid unnecessary requests)
+  /*
+  if ('fetch' in window) {
+    // Only preload if we know these endpoints exist and will be called immediately
+    const criticalEndpoints = [
+      '/api/sales-analytics',
+    ];
 
-  fonts.forEach(font => {
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'style';
-    link.href = font;
-    document.head.appendChild(link);
-  });
-
-  // Preload critical API endpoints (if needed)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready.then(registration => {
-      // Cache critical API responses
-      const criticalEndpoints = [
-        '/api/sales-analytics',
-        '/api/leads-data'
-      ];
-
-      criticalEndpoints.forEach(endpoint => {
-        fetch(endpoint, { method: 'HEAD' }).catch(() => {
-          // Silently fail for preloading
-        });
+    criticalEndpoints.forEach(endpoint => {
+      // Use a very low priority fetch to warm up the connection
+      fetch(endpoint, { 
+        method: 'HEAD',
+        priority: 'low' as any
+      }).catch(() => {
+        // Silently fail for preloading
       });
     });
+  }
+  */
+  
+  // Log that preloading completed
+  if (process.env.NODE_ENV === 'development') {
+    console.log('⚡ Critical resources preload completed');
   }
 };
 

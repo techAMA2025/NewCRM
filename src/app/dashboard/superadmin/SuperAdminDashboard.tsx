@@ -84,12 +84,15 @@ const SuperAdminDashboard = React.memo(() => {
     perfMonitor.end('critical-resources-preload');
 
     return () => {
-      perfMonitor.end('dashboard-initial-load');
+      perfMonitor.safeEnd('dashboard-initial-load');
       
       // Log performance metrics in development
       if (process.env.NODE_ENV === 'development') {
         setTimeout(() => {
-          console.table(perfMonitor.getMetrics());
+          const metrics = perfMonitor.getMetrics();
+          if (metrics.length > 0) {
+            console.table(metrics);
+          }
         }, 1000);
       }
     };
@@ -101,10 +104,10 @@ const SuperAdminDashboard = React.memo(() => {
   // Get current month date range for default (memoized)
   const currentMonthRange = useMemo(() => getCurrentMonthDateRange(), []);
 
-  // Date filter state - Initialize with current month
-  const [startDate, setStartDate] = useState<string>(currentMonthRange.startDate);
-  const [endDate, setEndDate] = useState<string>(currentMonthRange.endDate);
-  const [isFilterApplied, setIsFilterApplied] = useState(true);
+  // Date filter state - Initialize empty (no default dates)
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [isFilterApplied, setIsFilterApplied] = useState(false);
   
   // Analytics filter state
   const [selectedAnalyticsMonth, setSelectedAnalyticsMonth] = useState<number | null>(null);
@@ -125,21 +128,17 @@ const SuperAdminDashboard = React.memo(() => {
     // Use requestIdleCallback for non-critical operations
     const loadComponents = () => {
       const timer1 = setTimeout(() => {
-        perfMonitor.start('charts-load');
         setShowCharts(true);
-        perfMonitor.end('charts-load');
       }, 50);
       
       const timer2 = setTimeout(() => {
-        perfMonitor.start('client-analytics-load');
         setShowClientAnalytics(true);
-        perfMonitor.end('client-analytics-load');
       }, 100);
       
       return () => {
         clearTimeout(timer1);
         clearTimeout(timer2);
-        perfMonitor.end('lazy-components-load');
+        perfMonitor.safeEnd('lazy-components-load');
       };
     };
 
@@ -148,6 +147,11 @@ const SuperAdminDashboard = React.memo(() => {
     } else {
       loadComponents();
     }
+  }, []);
+
+  // Start sales analytics timer when component mounts
+  useEffect(() => {
+    perfMonitor.start('sales-analytics-load');
   }, []);
 
   // Only load critical data initially (sales analytics)
@@ -162,16 +166,9 @@ const SuperAdminDashboard = React.memo(() => {
     enabled: true, // Always enabled for critical data
     onLoadComplete: useCallback(() => {
       setStageLoaded('salesAnalytics');
-      perfMonitor.end('sales-analytics-load');
+      perfMonitor.safeEnd('sales-analytics-load');
     }, [setStageLoaded])
   });
-
-  // Track sales analytics load time
-  useEffect(() => {
-    if (salesAnalytics) {
-      perfMonitor.start('sales-analytics-load');
-    }
-  }, [salesAnalytics]);
 
   // Delayed loading for non-critical data
   const {
