@@ -73,6 +73,48 @@ interface CityChartProps {
   cityData: CityData[];
 }
 
+interface ConversionTimeData {
+  leadId: string;
+  leadName: string;
+  createdDate: Date;
+  convertedDate: Date;
+  conversionTimeInDays: number;
+  assignedTo: string;
+  source: string;
+  city: string;
+}
+
+interface ConversionMetrics {
+  averageConversionTime: number;
+  medianConversionTime: number;
+  fastestConversion: number;
+  slowestConversion: number;
+  conversionsByTimeRange: {
+    '0-7days': number;
+    '8-30days': number;
+    '31-60days': number;
+    '60+days': number;
+  };
+}
+
+interface ConversionTimelineProps {
+  conversionData: ConversionTimeData[];
+}
+
+interface ConversionFunnelProps {
+  conversionMetrics: ConversionMetrics;
+  conversionData: ConversionTimeData[];
+}
+
+interface SimpleCityData {
+  city: string;
+  totalLeads: number;
+}
+
+interface SimpleCityChartProps {
+  cityData: SimpleCityData[];
+}
+
 const LEAD_STATUSES = [
   'No Status',
   'Interested',
@@ -130,13 +172,35 @@ export default function SalesReport() {
   const [selectedCity, setSelectedCity] = useState<string>('all');
   const [availableCities, setAvailableCities] = useState<string[]>([]);
 
-  const getDateRange = (range: string): DateRange => {
-    const today = new Date();
-    today.setHours(new Date().getHours(), new Date().getMinutes(), new Date().getSeconds(), new Date().getMilliseconds());
-    console.log(today);
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+  const [conversionTimeData, setConversionTimeData] = useState<ConversionTimeData[]>([]);
+  const [conversionMetrics, setConversionMetrics] = useState<ConversionMetrics>({
+    averageConversionTime: 0,
+    medianConversionTime: 0,
+    fastestConversion: 0,
+    slowestConversion: 0,
+    conversionsByTimeRange: {
+      '0-7days': 0,
+      '8-30days': 0,
+      '31-60days': 0,
+      '60+days': 0
+    }
+  });
 
+  // Add new state for simplified city data
+  const [simpleCityData, setSimpleCityData] = useState<SimpleCityData[]>([]);
+
+  // Helper function to get city name from lead data (handles both 'city' and 'City' fields)
+  const getCityName = (leadData: any): string => {
+    return leadData.city || leadData.City || 'Unknown';
+  };
+
+  const getDateRange = (range: string): DateRange => {
+    const now = new Date();
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0); // Start of today
 
     switch (range) {
       case 'all':
@@ -147,22 +211,27 @@ export default function SalesReport() {
       case 'today':
         return { startDate: startOfToday, endDate: today };
       case 'last7days':
-        const last7 = new Date(today);
+        const last7 = new Date();
         last7.setDate(last7.getDate() - 7);
         last7.setHours(0, 0, 0, 0);
         return { startDate: last7, endDate: today };
       case 'last30days':
-        const last30 = new Date(today);
+        const last30 = new Date();
         last30.setDate(last30.getDate() - 30);
         last30.setHours(0, 0, 0, 0);
         return { startDate: last30, endDate: today };
       case 'last60days':
-        const last60 = new Date(today);
+        const last60 = new Date();
         last60.setDate(last60.getDate() - 60);
         last60.setHours(0, 0, 0, 0);
         return { startDate: last60, endDate: today };
       case 'custom':
-        return customDateRange;
+        // Ensure custom date range end time is set to end of day
+        const customEnd = new Date(customDateRange.endDate);
+        customEnd.setHours(23, 59, 59, 999);
+        const customStart = new Date(customDateRange.startDate);
+        customStart.setHours(0, 0, 0, 0);
+        return { startDate: customStart, endDate: customEnd };
       default:
         return { startDate: startOfToday, endDate: today };
     }
@@ -183,6 +252,9 @@ export default function SalesReport() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true); // Set loading state when data fetching starts
+        console.log('Fetching data for range:', selectedRange, 'and source:', selectedSource, 'and city:', selectedCity);
+        
         const usersQuery = query(
           collection(db, 'users'),
           where('role', '==', 'sales'),
@@ -196,6 +268,7 @@ export default function SalesReport() {
         setSalesUsers(salesUsersData);
 
         const { startDate, endDate } = getDateRange(selectedRange);
+        console.log('Date range:', { startDate, endDate, selectedRange });
 
         let dateQuery;
         if (selectedRange === 'all') {
@@ -208,6 +281,7 @@ export default function SalesReport() {
           );
         }
         const leadsSnapshot = await getDocs(dateQuery);
+        console.log('Found leads:', leadsSnapshot.docs.length);
 
         const leadsDistribution: LeadStatusCount[] = [];
 
@@ -278,9 +352,120 @@ export default function SalesReport() {
 
         setCityData(cityDataArray);
         setAvailableCities(['all', ...Array.from(citiesSet).sort()]);
-        setLoading(false);
+
+        // Aggregate simplified city data for the new components
+        const simpleCityDataMap: { [key: string]: SimpleCityData } = {};
+
+        leadsSnapshot.docs.forEach(doc => {
+          const leadData = doc.data();
+          const cityName = getCityName(leadData);
+          
+          if (
+            (selectedSource === 'all' || leadData.source_database === selectedSource) &&
+            (selectedCity === 'all' || cityName === selectedCity)
+          ) {
+            if (!simpleCityDataMap[cityName]) {
+              simpleCityDataMap[cityName] = {
+                city: cityName,
+                totalLeads: 0
+              };
+            }
+            
+            simpleCityDataMap[cityName].totalLeads += 1;
+          }
+        });
+
+        // Convert to array and sort by total leads (descending)
+        const simpleCityDataArray = Object.values(simpleCityDataMap).sort((a, b) => b.totalLeads - a.totalLeads);
+        setSimpleCityData(simpleCityDataArray);
+        
+        // Calculate conversion time data for converted leads
+        const conversionDataArray: ConversionTimeData[] = [];
+        
+        leadsSnapshot.docs.forEach(doc => {
+          const leadData = doc.data();
+          const leadId = doc.id;
+          
+          // Only process converted leads with both timestamps
+          if (
+            leadData.status === 'Converted' &&
+            leadData.synced_at &&
+            leadData.convertedAt &&
+            (selectedSource === 'all' || leadData.source_database === selectedSource) &&
+            (selectedCity === 'all' || leadData.city === selectedCity)
+          ) {
+            const createdDate = leadData.synced_at.toDate();
+            const convertedDate = leadData.convertedAt.toDate();
+            const conversionTimeInDays = Math.ceil((convertedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            // Find assigned user name
+            const assignedUser = salesUsersData.find(user => user.id === leadData.assignedToId);
+            const assignedUserName = assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : leadData.assignedTo || 'Unknown';
+            
+            conversionDataArray.push({
+              leadId,
+              leadName: leadData.name || 'Unknown',
+              createdDate,
+              convertedDate,
+              conversionTimeInDays,
+              assignedTo: assignedUserName,
+              source: leadData.source_database || 'Unknown',
+              city: leadData.city || 'Unknown'
+            });
+          }
+        });
+        
+        setConversionTimeData(conversionDataArray);
+        
+        // Calculate conversion metrics
+        if (conversionDataArray.length > 0) {
+          const conversionTimes = conversionDataArray.map(data => data.conversionTimeInDays);
+          
+          // Sort for median calculation
+          const sortedTimes = [...conversionTimes].sort((a, b) => a - b);
+          
+          const averageTime = conversionTimes.reduce((sum, time) => sum + time, 0) / conversionTimes.length;
+          const medianTime = sortedTimes.length % 2 === 0
+            ? (sortedTimes[sortedTimes.length / 2 - 1] + sortedTimes[sortedTimes.length / 2]) / 2
+            : sortedTimes[Math.floor(sortedTimes.length / 2)];
+          
+          const fastestTime = Math.min(...conversionTimes);
+          const slowestTime = Math.max(...conversionTimes);
+          
+          // Calculate time range buckets
+          const timeRangeCounts = {
+            '0-7days': conversionTimes.filter(time => time <= 7).length,
+            '8-30days': conversionTimes.filter(time => time > 7 && time <= 30).length,
+            '31-60days': conversionTimes.filter(time => time > 30 && time <= 60).length,
+            '60+days': conversionTimes.filter(time => time > 60).length
+          };
+          
+          setConversionMetrics({
+            averageConversionTime: averageTime,
+            medianConversionTime: medianTime,
+            fastestConversion: fastestTime,
+            slowestConversion: slowestTime,
+            conversionsByTimeRange: timeRangeCounts
+          });
+        } else {
+          // Reset metrics if no conversion data
+          setConversionMetrics({
+            averageConversionTime: 0,
+            medianConversionTime: 0,
+            fastestConversion: 0,
+            slowestConversion: 0,
+            conversionsByTimeRange: {
+              '0-7days': 0,
+              '8-30days': 0,
+              '31-60days': 0,
+              '60+days': 0
+            }
+          });
+        }
+        
       } catch (error) {
         console.error('Error fetching data:', error);
+      } finally {
         setLoading(false);
       }
     };
@@ -330,74 +515,83 @@ export default function SalesReport() {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // Add this new component for individual salesperson chart
-  const SalesPersonRadarChart: React.FC<ChartProps> = ({ distribution }) => {
-    const data = LEAD_STATUSES.map(status => ({
-      name: status,
-      value: distribution.statusCounts[status] || 0
-    })).filter(item => item.value > 0); // Only show statuses with values
-
-    // Calculate conversion rate
+  // Replace SalesPersonRadarChart with compact performance cards
+  const SalesPersonPerformanceCard: React.FC<ChartProps> = ({ distribution }) => {
     const totalLeads = Object.values(distribution.statusCounts).reduce((a, b) => a + b, 0);
     const convertedLeads = distribution.statusCounts['Converted'] || 0;
     const conversionRate = totalLeads ? (convertedLeads / totalLeads) * 100 : 0;
-
-    // Custom label renderer function
-    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, value }: any) => {
-      const RADIAN = Math.PI / 180;
-      // Increase the radius to push labels further out
-      const radius = outerRadius * 1.4;
-      const x = cx + radius * Math.cos(-midAngle * RADIAN);
-      const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-      // Adjust text anchor based on position
-      const textAnchor = x > cx ? 'start' : 'end';
-
-      return (
-        <text 
-          x={x} 
-          y={y} 
-          fill="#374151" 
-          textAnchor={textAnchor}
-          dominantBaseline="central"
-          fontSize="12"
-        >
-          {`${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
-        </text>
-      );
-    };
+    
+    // Priority statuses that should always be shown
+    const priorityStatuses = ['Converted', 'Interested', 'Not Interested', 'Not Answering', 'Callback'];
+    
+    // Get priority statuses first
+    const priorityStatusData = priorityStatuses.map(status => ({
+      status,
+      count: distribution.statusCounts[status] || 0,
+      percentage: totalLeads > 0 ? ((distribution.statusCounts[status] || 0) / totalLeads * 100) : 0
+    }));
+    
+    // Get remaining statuses with counts > 0
+    const remainingStatuses = LEAD_STATUSES
+      .filter(status => !priorityStatuses.includes(status))
+      .map(status => ({
+        status,
+        count: distribution.statusCounts[status] || 0,
+        percentage: totalLeads > 0 ? ((distribution.statusCounts[status] || 0) / totalLeads * 100) : 0
+      }))
+      .filter(item => item.count > 0)
+      .sort((a, b) => b.count - a.count);
+    
+    // Combine priority and remaining statuses, limit to 6 total
+    const displayStatuses = [...priorityStatusData, ...remainingStatuses].slice(0, 6);
 
     return (
-      <div className="flex flex-col items-center">
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                labelLine={true}
-                label={renderCustomizedLabel}
-              >
-                {data.map((entry, index) => (
-                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number) => [value, 'Leads']} />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
-          </ResponsiveContainer>
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="text-center mb-3">
+          <h4 className="text-sm font-bold text-gray-900 truncate">{distribution.userName}</h4>
+          <div className="flex justify-center space-x-4 mt-2">
+            <div className="text-center">
+              <p className="text-xs text-gray-500">Total</p>
+              <p className="text-lg font-bold text-gray-900">{totalLeads}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">Conv. Rate</p>
+              <p className="text-lg font-bold text-indigo-600">{conversionRate.toFixed(1)}%</p>
+            </div>
+          </div>
         </div>
-        <div className="mt-4 text-center">
-          <div className="bg-indigo-50 rounded-xl px-6 py-3 shadow-sm">
-            <p className="text-sm text-gray-600">Conversion Rate</p>
-            <p className="text-2xl font-bold text-indigo-600">{conversionRate.toFixed(1)}%</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {convertedLeads} out of {totalLeads} leads converted
-            </p>
+
+        {/* Status Breakdown */}
+        <div className="flex-1 space-y-1 max-h-48 overflow-y-auto">
+          {displayStatuses.map((item, index) => (
+            <div key={item.status} className="flex items-center justify-between p-2 bg-gray-50/50 rounded-lg">
+              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: COLORS[LEAD_STATUSES.indexOf(item.status) % COLORS.length] }}
+                ></div>
+                <span className="text-xs font-medium text-gray-700 truncate">{item.status}</span>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-sm font-bold text-gray-900">{item.count}</p>
+                <p className="text-xs text-gray-500">{item.percentage.toFixed(1)}%</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-600">Performance</span>
+            <span className="text-xs font-medium text-indigo-600">{conversionRate.toFixed(1)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(conversionRate * 2, 100)}%` }}
+            ></div>
           </div>
         </div>
       </div>
@@ -464,7 +658,7 @@ export default function SalesReport() {
                 <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+            <Tooltip formatter={(value: number) => [value, 'Leads']} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
@@ -583,446 +777,845 @@ export default function SalesReport() {
     );
   };
 
+  // Conversion Time Distribution Chart
+  const ConversionTimeDistributionChart: React.FC<ConversionFunnelProps> = ({ conversionMetrics }) => {
+    const data = Object.entries(conversionMetrics.conversionsByTimeRange).map(([range, count]) => ({
+      range,
+      count,
+      percentage: conversionTimeData.length > 0 ? (count / conversionTimeData.length) * 100 : 0
+    }));
+
+    return (
+      <div className="h-[300px] w-full">
+        <ResponsiveContainer>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="range" />
+            <YAxis />
+            <Tooltip formatter={(value: number, name: string) => [
+              name === 'count' ? value : `${value.toFixed(1)}%`,
+              name === 'count' ? 'Leads' : 'Percentage'
+            ]} />
+            <Legend />
+            <Bar dataKey="count" fill="#8884d8" name="Number of Leads" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // Conversion Timeline Scatter Chart
+  const ConversionTimelineChart: React.FC<ConversionTimelineProps> = ({ conversionData }) => {
+    const chartData = conversionData.map((data, index) => ({
+      index: index + 1,
+      conversionTime: data.conversionTimeInDays,
+      leadName: data.leadName,
+      assignedTo: data.assignedTo,
+      source: data.source,
+      createdDate: data.createdDate.toLocaleDateString(),
+      convertedDate: data.convertedDate.toLocaleDateString()
+    }));
+
+    return (
+      <div className="h-[400px] w-full">
+        <ResponsiveContainer>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="index" label={{ value: 'Lead Number', position: 'insideBottom', offset: -5 }} />
+            <YAxis label={{ value: 'Days to Convert', angle: -90, position: 'insideLeft' }} />
+            <Tooltip 
+              formatter={(value: number) => [`${value} days`, 'Conversion Time']}
+              labelFormatter={(label: number) => `Lead #${label}`}
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  const data = chartData[Number(label) - 1];
+                  return (
+                    <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
+                      <p className="font-semibold">{data.leadName}</p>
+                      <p className="text-sm text-gray-600">Assigned to: {data.assignedTo}</p>
+                      <p className="text-sm text-gray-600">Source: {data.source}</p>
+                      <p className="text-sm text-gray-600">Created: {data.createdDate}</p>
+                      <p className="text-sm text-gray-600">Converted: {data.convertedDate}</p>
+                      <p className="text-sm font-medium text-blue-600">
+                        Conversion Time: {payload[0].value} days
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Legend />
+            <Line 
+              type="monotone" 
+              dataKey="conversionTime" 
+              stroke="#8884d8" 
+              strokeWidth={2}
+              dot={{ fill: '#8884d8', strokeWidth: 2, r: 4 }}
+              name="Days to Convert"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // Conversion Funnel Chart
+  const ConversionFunnelChart: React.FC<ConversionFunnelProps> = ({ conversionMetrics, conversionData }) => {
+    const funnelData = [
+      { stage: 'Quick (0-7 days)', count: conversionMetrics.conversionsByTimeRange['0-7days'], color: '#00C49F' },
+      { stage: 'Medium (8-30 days)', count: conversionMetrics.conversionsByTimeRange['8-30days'], color: '#0088FE' },
+      { stage: 'Slow (31-60 days)', count: conversionMetrics.conversionsByTimeRange['31-60days'], color: '#FFBB28' },
+      { stage: 'Very Slow (60+ days)', count: conversionMetrics.conversionsByTimeRange['60+days'], color: '#FF8042' }
+    ];
+
+    return (
+      <div className="h-[300px] w-full">
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={funnelData}
+              dataKey="count"
+              nameKey="stage"
+              cx="50%"
+              cy="50%"
+              outerRadius={100}
+              label={({ stage, count, percent }: any) => `${stage}: ${count} (${(percent * 100).toFixed(1)}%)`}
+            >
+              {funnelData.map((entry, index) => (
+                <Cell key={entry.stage} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(value: number) => [value, 'Leads']} />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // Add new simplified chart component
+  const SimpleCityWiseBarChart: React.FC<SimpleCityChartProps> = ({ cityData }) => {
+    const data = cityData.map(city => ({
+      city: city.city,
+      totalLeads: city.totalLeads
+    }));
+
+    return (
+      <div className="h-[500px] w-full">
+        <ResponsiveContainer>
+          <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="city" 
+              angle={-45} 
+              textAnchor="end" 
+              height={100}
+              interval={0}
+              fontSize={12}
+            />
+            <YAxis />
+            <Tooltip 
+              formatter={(value: number) => [value, 'Total Leads']}
+              labelFormatter={(label: string) => `City: ${label}`}
+            />
+            <Legend />
+            <Bar 
+              dataKey="totalLeads" 
+              fill="#3B82F6" 
+              name="Total Leads"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex max-w-8xl mx-auto min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       {userRole === 'billcut' ? <BillcutSidebar /> : <OverlordSidebar />}
-      <div className="flex-1 scale-86 origin-top-left">
-        <div className="pb-6">
-          <div className="mb-3 p-3 relative">
-            <div className="flex items-center gap-2 mb-2">
-              <ChartBarIcon className="h-7 w-7 text-indigo-500" />
-              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-                Sales Team Report
-              </h1>
-            </div>
-            <p className="mt-1.5 text-base text-gray-600">
-              Track and analyze your team's performance across different lead sources and statuses
-            </p>
-            <div className="absolute top-0 right-0 w-56 h-56 bg-blue-100 rounded-full filter blur-3xl opacity-20 -z-10"></div>
-          </div>
-
-          {/* Summary Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1.5 mb-3 px-1.5">
-            {/* Total Leads Card */}
-            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-28 h-28 bg-teal-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Total Leads</p>
-                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">{summaryMetrics.totalLeads}</h3>
-                </div>
-                <div className="bg-teal-100 p-2.5 rounded-xl">
-                  <UserGroupIcon className="h-5 w-5 text-teal-600" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center text-sm">
-                <span className="flex items-center text-teal-600">
-                  <span className="font-medium">Active Pipeline</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Conversion Rate Card */}
-            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Conversion Rate</p>
-                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">
-                    {summaryMetrics.conversionRate.toFixed(1)}%
-                  </h3>
-                </div>
-                <div className="bg-emerald-100 p-2.5 rounded-xl">
-                  <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center text-sm">
-                <span className="flex items-center text-emerald-600">
-                  <span className="font-medium">Success Rate</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Active Leads Card */}
-            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Active Leads</p>
-                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">{summaryMetrics.activeLeads}</h3>
-                </div>
-                <div className="bg-blue-100 p-2.5 rounded-xl">
-                  <PhoneIcon className="h-5 w-5 text-black" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center text-sm">
-                <span className="flex items-center text-amber-600">
-                  <span className="font-medium text-black">In Progress</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Total Sales Card */}
-            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-100 relative overflow-hidden group hover:shadow-2xl transition-all duration-300">
-              <div className="absolute top-0 right-0 w-28 h-28 bg-fuchsia-500 rounded-full filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Total Sales</p>
-                  <h3 className="text-2xl font-bold text-gray-900 mt-1.5">{summaryMetrics.totalSales}</h3>
-                </div>
-                <div className="bg-fuchsia-100 p-2.5 rounded-xl">
-                  <ChartBarIcon className="h-5 w-5 text-fuchsia-600" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center text-sm">
-                <span className="flex items-center text-fuchsia-600">
-                  <span className="font-medium">Converted Leads</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters Section */}
-          <div className="bg-white shadow-xl p-3 mb-3 backdrop-blur-lg bg-opacity-90 border border-gray-100 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full filter blur-3xl opacity-20 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
+      
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          <div className="max-w-7xl mx-auto p-4 space-y-4">
             
-            <div className="flex flex-col md:flex-row gap-6 items-start md:items-center relative">
-              {/* Date Range Filter */}
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
-                  <CalendarDaysIcon className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm">Date Range</span>
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(DATE_RANGES).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        setSelectedRange(key);
-                        setShowCustomRange(key === 'custom');
-                      }}
-                      className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
-                        selectedRange === key
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
-                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:shadow-md'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom Date Range Picker */}
-                {showCustomRange && (
-                  <div className="mt-6 flex gap-4 animate-fadeIn">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                      <input
-                        type="date"
-                        value={customDateRange.startDate.toISOString().split('T')[0]}
-                        onChange={(e) => setCustomDateRange(prev => ({
-                          ...prev,
-                          startDate: new Date(e.target.value)
-                        }))}
-                        className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-200 hover:border-blue-400"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                      <input
-                        type="date"
-                        value={customDateRange.endDate.toISOString().split('T')[0]}
-                        onChange={(e) => setCustomDateRange(prev => ({
-                          ...prev,
-                          endDate: new Date(e.target.value)
-                        }))}
-                        className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-200 hover:border-blue-400"
-                      />
-                    </div>
+            {/* Header Section */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/5 to-indigo-600/10 rounded-2xl blur-2xl"></div>
+              <div className="relative bg-white/70 backdrop-blur-xl rounded-2xl border border-white/20 shadow-xl p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                    <ChartBarIcon className="h-6 w-6 text-white" />
                   </div>
-                )}
-              </div>
-
-              {/* Source Filter */}
-              <div className="min-w-[240px]">
-                <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                  <FunnelIcon className="h-5 w-5 text-blue-500" />
-                  <span className="text-base">Lead Source</span>
-                </label>
-                {userRole === 'billcut' ? (
-                  <div className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-200 hover:border-blue-400 cursor-not-allowed bg-gray-100 px-3 py-2">
-                    Billcut
-                  </div>
-                ) : (
-                  <select
-                    value={selectedSource}
-                    onChange={(e) => setSelectedSource(e.target.value)}
-                    className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition-all duration-200 hover:border-blue-400 cursor-pointer"
-                  >
-                    <option value="all">All Sources</option>
-                    {LEAD_SOURCES.map((source) => (
-                      <option key={source} value={source}>
-                        {source.charAt(0).toUpperCase() + source.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* City Filter */}
-              <div className="min-w-[240px]">
-                <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                  <FunnelIcon className="h-5 w-5 text-purple-500" />
-                  <span className="text-base">City</span>
-                </label>
-                <select
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm transition-all duration-200 hover:border-purple-400 cursor-pointer"
-                >
-                  <option value="all">All Cities</option>
-                  {availableCities.filter(city => city !== 'all').map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center h-96">
-              <div className="relative">
-                <div className="w-16 h-16 border-4 border-blue-200 rounded-full animate-spin"></div>
-                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-                <div className="w-16 h-16 border-4 border-transparent border-l-purple-500 rounded-full animate-spin absolute top-0 left-0 [animation-delay:0.2s]"></div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* City-wise Charts Section */}
-              {/* {cityData.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-3 px-1.5">
-                  <div className="bg-white shadow-xl p-3 col-span-2">
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <FunnelIcon className="h-5 w-5 text-purple-500" />
-                      City-wise Lead Distribution
-                    </h3>
-                    <CityWiseBarChart cityData={cityData} />
+                  <div>
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
+                      Sales Analytics Dashboard
+                    </h1>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Comprehensive insights into your team's performance and conversion metrics
+                    </p>
                   </div>
                 </div>
-              )} */}
+              </div>
+            </div>
 
-              {/* City-wise Table Section */}
-              {cityData.length > 0 && (
-                <div className="bg-white shadow-xl overflow-hidden backdrop-blur-lg bg-opacity-90 border border-gray-100 transition-all duration-300 hover:shadow-2xl mb-3">
-                  <div className="px-5 py-3 bg-gradient-to-r from-purple-50 to-purple-100">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <FunnelIcon className="h-5 w-5 text-purple-500" />
-                      City-wise Lead Analysis
-                    </h3>
+            {/* Summary Metrics Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Leads Card */}
+              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-cyan-500/5"></div>
+                <div className="relative p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg shadow-md">
+                      <UserGroupIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Total Leads</p>
+                      <h3 className="text-xl font-bold text-gray-900">{summaryMetrics.totalLeads}</h3>
+                    </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
-                          <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            City
-                          </th>
-                          <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Total Leads
-                          </th>
-                          {LEAD_STATUSES.map((status) => (
-                            <th key={status} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              <div className="flex flex-col">
-                                <span>{status}</span>
-                                <span className="text-[9px] text-gray-400 font-normal normal-case">
-                                  {cityData.reduce((sum, city) => sum + (city.statusCounts[status] || 0), 0)} leads
-                                </span>
-                              </div>
-                            </th>
+                  <div className="flex items-center text-xs text-teal-600">
+                    <span className="font-medium">Active Pipeline</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conversion Rate Card */}
+              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-green-500/5"></div>
+                <div className="relative p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg shadow-md">
+                      <CheckCircleIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Conversion Rate</p>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {summaryMetrics.conversionRate.toFixed(1)}%
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-xs text-emerald-600">
+                    <span className="font-medium">Success Rate</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Leads Card */}
+              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/5"></div>
+                <div className="relative p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                      <PhoneIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Active Leads</p>
+                      <h3 className="text-xl font-bold text-gray-900">{summaryMetrics.activeLeads}</h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-xs text-blue-600">
+                    <span className="font-medium">In Progress</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Sales Card */}
+              <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-violet-500/5"></div>
+                <div className="relative p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="p-2 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg shadow-md">
+                      <ChartBarIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Total Sales</p>
+                      <h3 className="text-xl font-bold text-gray-900">{summaryMetrics.totalSales}</h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-xs text-purple-600">
+                    <span className="font-medium">Converted Leads</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Conversion Time Metrics Cards */}
+            {conversionTimeData.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Average Conversion Time Card */}
+                <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-sky-500/5"></div>
+                  <div className="relative p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="p-2 bg-gradient-to-br from-blue-500 to-sky-600 rounded-lg shadow-md">
+                        <CalendarDaysIcon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Avg. Conv.</p>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {conversionMetrics.averageConversionTime.toFixed(1)}d
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-xs text-blue-600">
+                      <span className="font-medium">Average Time</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Median Conversion Time Card */}
+                <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-blue-500/5"></div>
+                  <div className="relative p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg shadow-md">
+                        <ChartBarIcon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Median</p>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {conversionMetrics.medianConversionTime.toFixed(1)}d
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-xs text-indigo-600">
+                      <span className="font-medium">Median Time</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fastest Conversion Card */}
+                <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/5"></div>
+                  <div className="relative p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow-md">
+                        <CheckCircleIcon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Fastest</p>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {conversionMetrics.fastestConversion}d
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-xs text-green-600">
+                      <span className="font-medium">Best Time</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slowest Conversion Card */}
+                <div className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-rose-500/5"></div>
+                  <div className="relative p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="p-2 bg-gradient-to-br from-red-500 to-rose-600 rounded-lg shadow-md">
+                        <XCircleIcon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Slowest</p>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {conversionMetrics.slowestConversion}d
+                        </h3>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-xs text-red-600">
+                      <span className="font-medium">Longest Time</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filters Section */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 via-purple-600/5 to-pink-600/5 rounded-2xl blur-lg"></div>
+              <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Date Range Filter */}
+                  <div className="lg:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <CalendarDaysIcon className="h-4 w-4 text-indigo-500" />
+                      Date Range
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(DATE_RANGES).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            console.log('Date range button clicked:', key, label);
+                            setSelectedRange(key);
+                            setShowCustomRange(key === 'custom');
+                          }}
+                          className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                            selectedRange === key
+                              ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                              : 'bg-gray-50/80 text-gray-700 hover:bg-gray-100/80 border border-gray-200/50'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Custom Date Range Picker */}
+                    {showCustomRange && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Start Date</label>
+                          <input
+                            type="date"
+                            value={customDateRange.startDate.toISOString().split('T')[0]}
+                            onChange={(e) => setCustomDateRange(prev => ({
+                              ...prev,
+                              startDate: new Date(e.target.value)
+                            }))}
+                            className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">End Date</label>
+                          <input
+                            type="date"
+                            value={customDateRange.endDate.toISOString().split('T')[0]}
+                            onChange={(e) => setCustomDateRange(prev => ({
+                              ...prev,
+                              endDate: new Date(e.target.value)
+                            }))}
+                            className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Source and City Filters */}
+                  <div className="space-y-4">
+                    {/* Source Filter */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <FunnelIcon className="h-4 w-4 text-purple-500" />
+                        Lead Source
+                      </label>
+                      {userRole === 'billcut' ? (
+                        <div className="block w-full rounded-lg border-gray-200/50 bg-gray-50/80 backdrop-blur-sm px-3 py-2 text-sm text-gray-600 cursor-not-allowed">
+                          Billcut
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedSource}
+                          onChange={(e) => setSelectedSource(e.target.value)}
+                          className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                        >
+                          <option value="all">All Sources</option>
+                          {LEAD_SOURCES.map((source) => (
+                            <option key={source} value={source}>
+                              {source.charAt(0).toUpperCase() + source.slice(1)}
+                            </option>
                           ))}
-                          <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Conversion Rate
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {cityData.map((city, index) => (
-                          <tr 
-                            key={index} 
-                            className="transition-colors duration-200 hover:bg-purple-50/50"
-                          >
-                            <td className="px-5 py-3 whitespace-nowrap">
-                              <div className="text-sm font-semibold text-gray-900">{city.city}</div>
-                            </td>
-                            <td className="px-5 py-3 whitespace-nowrap">
-                              <span className="text-sm font-bold text-gray-900 bg-purple-50 px-3 py-1 rounded-full">
-                                {city.totalLeads}
-                              </span>
-                            </td>
-                            {LEAD_STATUSES.map((status) => (
-                              <td key={status} className="px-5 py-3 whitespace-nowrap">
-                                <div className="flex flex-col items-center">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} transition-all duration-200 hover:scale-110`}>
-                                    {city.statusCounts[status] || 0}
-                                  </span>
-                                  <div className="text-[9px] text-gray-400 mt-1">
-                                    {((city.statusCounts[status] || 0) / city.totalLeads * 100).toFixed(1)}%
-                                  </div>
-                                </div>
-                              </td>
-                            ))}
-                            <td className="px-5 py-3 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="text-sm font-bold text-purple-600">
-                                  {city.conversionRate.toFixed(1)}%
-                                </div>
-                                <div className={`ml-2 h-2 w-16 rounded-full ${
-                                  city.conversionRate > 10 ? 'bg-emerald-200' : 
-                                  city.conversionRate > 5 ? 'bg-yellow-200' : 'bg-red-200'
-                                }`}>
-                                  <div 
-                                    className={`h-2 rounded-full ${
-                                      city.conversionRate > 10 ? 'bg-emerald-500' : 
-                                      city.conversionRate > 5 ? 'bg-yellow-500' : 'bg-red-500'
-                                    }`}
-                                    style={{ width: `${Math.min(city.conversionRate * 2, 100)}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
+                        </select>
+                      )}
+                    </div>
+
+                    {/* City Filter */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <FunnelIcon className="h-4 w-4 text-emerald-500" />
+                        City
+                      </label>
+                      <select
+                        value={selectedCity}
+                        onChange={(e) => setSelectedCity(e.target.value)}
+                        className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
+                      >
+                        <option value="all">All Cities</option>
+                        {availableCities.filter(city => city !== 'all').map((city) => (
+                          <option key={city} value={city}>
+                            {city}
+                          </option>
                         ))}
-                      </tbody>
-                    </table>
+                      </select>
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Sales Team Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-3 px-1.5">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-blue-200/50 rounded-full animate-spin"></div>
+                  <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                  <div className="w-16 h-16 border-4 border-transparent border-l-purple-500 rounded-full animate-spin absolute top-0 left-0 animate-pulse"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Individual Performance Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {leadStatusDistribution.map((distribution) => (
+                    <div key={distribution.userId} className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 rounded-xl blur-lg"></div>
+                      <div className="relative bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg p-4 h-96">
+                        <SalesPersonPerformanceCard distribution={distribution} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 {/* Team Performance Chart */}
-                <div className="bg-white shadow-xl p-3 col-span-2">
-                  <h3 className="text-lg font-semibold mb-3">Team Performance Overview</h3>
-                  <TeamPerformanceChart leadStatusDistribution={leadStatusDistribution} />
-                </div>
-
-                {/* Conversion Rate Pie Chart */}
-                <div className="bg-white shadow-xl p-3">
-                  <h3 className="text-lg font-semibold mb-3">Team Conversion Rates</h3>
-                  <ConversionPieChart leadStatusDistribution={leadStatusDistribution} />
-                </div>
-
-                {/* Individual Performance Charts */}
-                {leadStatusDistribution.map((distribution) => (
-                  <div key={distribution.userId} className="bg-white shadow-xl p-3">
-                    <h3 className="text-lg font-semibold mb-3">{distribution.userName}'s Lead Distribution</h3>
-                    <SalesPersonRadarChart distribution={distribution} />
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-teal-600/5 rounded-2xl blur-lg"></div>
+                  <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg">
+                        <UserGroupIcon className="h-5 w-5 text-white" />
+                      </div>
+                      Team Performance Overview
+                    </h3>
+                    <div className="h-80">
+                      <TeamPerformanceChart leadStatusDistribution={leadStatusDistribution} />
+                    </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Original Sales Table Section */}
-              <div className="bg-white shadow-xl overflow-hidden backdrop-blur-lg bg-opacity-90 border border-gray-100 transition-all duration-300 hover:shadow-2xl">
-                <div className="px-5 py-3 bg-gradient-to-r from-blue-50 to-blue-100">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <UserGroupIcon className="h-5 w-5 text-blue-500" />
-                    Sales Team Performance Analysis
-                  </h3>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
-                        <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Sales Person
-                        </th>
-                        {LEAD_STATUSES.map((status) => (
-                          <th key={status} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            <div className="flex flex-col">
-                              <span>{status}</span>
-                              <span className="text-[9px] text-gray-400 font-normal normal-case">
-                                {leadStatusDistribution.reduce((sum, dist) => sum + (dist.statusCounts[status] || 0), 0)} leads
-                              </span>
+
+                {/* Team Conversion Rates Chart */}
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-600/5 to-purple-600/5 rounded-2xl blur-lg"></div>
+                  <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
+                        <ChartBarIcon className="h-5 w-5 text-white" />
+                      </div>
+                      Team Conversion Rates
+                    </h3>
+                    <div className="h-64">
+                      <ConversionPieChart leadStatusDistribution={leadStatusDistribution} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* City-wise Analytics Section */}
+                {cityData.length > 0 && (
+                  <>
+                    {/* City-wise Lead Distribution Bar Chart */}
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-teal-600/5 to-cyan-600/5 rounded-2xl blur-lg"></div>
+                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
+                          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg">
+                            <ChartBarIcon className="h-5 w-5 text-white" />
+                          </div>
+                          City-wise Lead Distribution & Status Breakdown
+                        </h3>
+                        <CityWiseBarChart cityData={cityData} />
+                      </div>
+                    </div>
+
+                    {/* City-wise Charts Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* City Lead Distribution Pie Chart */}
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-green-600/5 rounded-2xl blur-lg"></div>
+                        <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                          <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg">
+                              <UserGroupIcon className="h-5 w-5 text-white" />
                             </div>
-                          </th>
-                        ))}
-                        <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Total Leads
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {leadStatusDistribution.map((distribution, index) => {
-                        const total = Object.values(distribution.statusCounts).reduce((a, b) => a + b, 0);
-                        return (
-                          <tr 
-                            key={index} 
-                            className="transition-colors duration-200 hover:bg-blue-50/50"
-                          >
-                            <td className="px-5 py-3 whitespace-nowrap">
-                              <div className="text-sm font-semibold text-gray-900">{distribution.userName}</div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {((distribution.statusCounts['Converted'] || 0) / total * 100).toFixed(1)}% conversion
-                              </div>
-                            </td>
+                            City-wise Lead Volume
+                          </h3>
+                          <CityWisePieChart cityData={cityData} />
+                        </div>
+                      </div>
+
+                      {/* City Conversion Rates Chart */}
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-orange-600/5 to-red-600/5 rounded-2xl blur-lg"></div>
+                        <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                          <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg">
+                              <CheckCircleIcon className="h-5 w-5 text-white" />
+                            </div>
+                            City-wise Conversion Rates
+                          </h3>
+                          <CityConversionChart cityData={cityData} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* City Performance Summary Table */}
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 to-blue-600/5 rounded-2xl blur-lg"></div>
+                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
+                        <div className="bg-gradient-to-r from-indigo-500/10 to-blue-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
+                          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg">
+                              <ChartBarIcon className="h-5 w-5 text-white" />
+                            </div>
+                            City-wise Performance Summary
+                          </h3>
+                        </div>
+                        <div className="p-6">
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full">
+                              <thead>
+                                <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
+                                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    City
+                                  </th>
+                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Total Leads
+                                  </th>
+                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Converted
+                                  </th>
+                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Interested
+                                  </th>
+                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Not Interested
+                                  </th>
+                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Conversion Rate
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100/50">
+                                {cityData
+                                  .sort((a, b) => b.totalLeads - a.totalLeads)
+                                  .map((city, index) => (
+                                  <tr 
+                                    key={city.city} 
+                                    className="hover:bg-indigo-50/30 transition-colors duration-200"
+                                  >
+                                    <td className="px-4 py-3">
+                                      <div className="text-sm font-bold text-gray-900">{city.city}</div>
+                                      <div className="text-xs text-gray-500">
+                                        {((city.totalLeads / summaryMetrics.totalLeads) * 100).toFixed(1)}% of total
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                      <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm">
+                                        {city.totalLeads}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm">
+                                        {city.statusCounts['Converted'] || 0}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 shadow-sm">
+                                        {city.statusCounts['Interested'] || 0}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 shadow-sm">
+                                        {city.statusCounts['Not Interested'] || 0}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                      <div className="flex flex-col items-center space-y-1">
+                                        <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold shadow-sm ${
+                                          city.conversionRate >= 20 ? 'bg-emerald-100 text-emerald-800' :
+                                          city.conversionRate >= 10 ? 'bg-yellow-100 text-yellow-800' :
+                                          'bg-red-100 text-red-800'
+                                        }`}>
+                                          {city.conversionRate.toFixed(1)}%
+                                        </span>
+                                        <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                                          <div 
+                                            className={`h-1.5 rounded-full transition-all duration-500 ${
+                                              city.conversionRate >= 20 ? 'bg-emerald-500' :
+                                              city.conversionRate >= 10 ? 'bg-yellow-500' :
+                                              'bg-red-500'
+                                            }`}
+                                            style={{ width: `${Math.min(city.conversionRate * 3, 100)}%` }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Sales Team Performance Table */}
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-2xl blur-lg"></div>
+                  <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
+                    <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                          <UserGroupIcon className="h-5 w-5 text-white" />
+                        </div>
+                        Sales Team Performance Analysis
+                      </h3>
+                    </div>
+                    <div className="p-6">
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
+                            <th scope="col" className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                              Sales Person
+                            </th>
                             {LEAD_STATUSES.map((status) => (
-                              <td key={status} className="px-5 py-3 whitespace-nowrap">
-                                <div className="flex flex-col items-center">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} transition-all duration-200 hover:scale-110`}>
-                                    {distribution.statusCounts[status] || 0}
+                              <th key={status} scope="col" className="px-2 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                <div className="flex flex-col">
+                                  <span className="truncate">{status.split(' ')[0]}</span>
+                                  <span className="text-[9px] text-gray-400 font-normal normal-case mt-1">
+                                    {leadStatusDistribution.reduce((sum, dist) => sum + (dist.statusCounts[status] || 0), 0)}
                                   </span>
-                                  <div className="text-[9px] text-gray-400 mt-1">
-                                    {((distribution.statusCounts[status] || 0) / total * 100).toFixed(1)}%
-                                  </div>
                                 </div>
-                              </td>
+                              </th>
                             ))}
-                            <td className="px-5 py-3 whitespace-nowrap">
-                              <div className="flex flex-col items-center">
-                                <span className="text-sm font-bold text-gray-900 bg-blue-50 px-4 py-1 rounded-full">
-                                  {total}
-                                </span>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {((total / summaryMetrics.totalLeads) * 100).toFixed(1)}% of total
-                                </div>
-                              </div>
+                            <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                              Total
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100/50">
+                          {leadStatusDistribution.map((distribution, index) => {
+                            const total = Object.values(distribution.statusCounts).reduce((a, b) => a + b, 0);
+                            return (
+                              <tr 
+                                key={index} 
+                                className="hover:bg-blue-50/30 transition-colors duration-200"
+                              >
+                                <td className="px-3 py-3">
+                                  <div className="text-sm font-bold text-gray-900 truncate">{distribution.userName}</div>
+                                  <div className="text-xs text-gray-500 font-medium">
+                                    {((distribution.statusCounts['Converted'] || 0) / total * 100).toFixed(1)}%
+                                  </div>
+                                </td>
+                                {LEAD_STATUSES.map((status) => (
+                                  <td key={status} className="px-2 py-3 text-center">
+                                    <div className="flex flex-col items-center space-y-1">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-sm`}>
+                                        {distribution.statusCounts[status] || 0}
+                                      </span>
+                                      <div className="text-[9px] text-gray-400">
+                                        {((distribution.statusCounts[status] || 0) / total * 100).toFixed(1)}%
+                                      </div>
+                                    </div>
+                                  </td>
+                                ))}
+                                <td className="px-3 py-3 text-center">
+                                  <div className="flex flex-col items-center space-y-1">
+                                    <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm">
+                                      {total}
+                                    </span>
+                                    <div className="text-xs text-gray-500 font-medium">
+                                      {((total / summaryMetrics.totalLeads) * 100).toFixed(1)}%
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {/* Total Row */}
+                          <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm border-t-2 border-gray-200">
+                            <td className="px-3 py-3 text-sm font-bold text-gray-900">Total</td>
+                            {LEAD_STATUSES.map((status) => {
+                              const statusTotal = leadStatusDistribution.reduce((sum, dist) => sum + (dist.statusCounts[status] || 0), 0);
+                              return (
+                                <td key={status} className="px-2 py-3 text-center">
+                                  <div className="flex flex-col items-center space-y-1">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-md border border-white/50`}>
+                                      {statusTotal}
+                                    </span>
+                                    <div className="text-[9px] text-gray-400 font-medium">
+                                      {((statusTotal / summaryMetrics.totalLeads) * 100).toFixed(1)}%
+                                    </div>
+                                  </div>
+                                </td>
+                              );
+                            })}
+                            <td className="px-3 py-3 text-center">
+                              <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-100 to-indigo-100 border-2 border-blue-300 shadow-md">
+                                {summaryMetrics.totalLeads}
+                              </span>
                             </td>
                           </tr>
-                        );
-                      })}
-                      {/* Total Row */}
-                      <tr className="bg-gradient-to-r from-gray-50 to-gray-100 font-semibold">
-                        <td className="px-5 py-3 whitespace-nowrap text-sm text-gray-900">Total</td>
-                        {LEAD_STATUSES.map((status) => {
-                          const statusTotal = leadStatusDistribution.reduce((sum, dist) => sum + (dist.statusCounts[status] || 0), 0);
-                          return (
-                            <td key={status} className="px-5 py-3 whitespace-nowrap">
-                              <div className="flex flex-col items-center">
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(status)} transition-all duration-200 hover:scale-110`}>
-                                  {statusTotal}
-                                </span>
-                                <div className="text-[9px] text-gray-400 mt-1">
-                                  {((statusTotal / summaryMetrics.totalLeads) * 100).toFixed(1)}%
-                                </div>
-                              </div>
-                            </td>
-                          );
-                        })}
-                        <td className="px-5 py-3 whitespace-nowrap">
-                          <span className="text-sm font-bold text-gray-900 bg-blue-100 px-4 py-1 rounded-full">
-                            {summaryMetrics.totalLeads}
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
+
+                
+
+                {/* NEW: Simplified City-wise Lead Distribution Section */}
+                {simpleCityData.length > 0 && (
+                  <>
+                    {/* Section Divider */}
+                    <div className="relative my-8">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gradient-to-r from-indigo-300 to-purple-300"></div>
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-gradient-to-r from-slate-50 via-blue-50/30 to-indigo-50/20 px-6 py-2 text-lg font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
+                          Simplified City Distribution
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Summary Card */}
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-600/5 to-gray-600/5 rounded-2xl blur-lg"></div>
+                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Total Cities</p>
+                            <p className="text-2xl font-bold text-gray-900">{simpleCityData.length}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Total Leads</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {simpleCityData.reduce((sum, city) => sum + city.totalLeads, 0)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Top City</p>
+                            <p className="text-lg font-bold text-emerald-600">
+                              {simpleCityData.length > 0 ? simpleCityData[0].city : 'N/A'}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {simpleCityData.length > 0 ? `${simpleCityData[0].totalLeads} leads` : ''}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Simplified City-wise Lead Distribution Bar Chart */}
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-600/5 to-gray-600/5 rounded-2xl blur-lg"></div>
+                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                        <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
+                          <div className="p-2 bg-gradient-to-br from-slate-500 to-gray-600 rounded-lg">
+                            <ChartBarIcon className="h-5 w-5 text-white" />
+                          </div>
+                          Simplified Lead Distribution by City
+                        </h3>
+                        <SimpleCityWiseBarChart cityData={simpleCityData} />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
