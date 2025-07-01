@@ -191,7 +191,55 @@ export default function SalesReport() {
 
   // Helper function to get city name from lead data (handles both 'city' and 'City' fields)
   const getCityName = (leadData: any): string => {
-    return leadData.city || leadData.City || 'Unknown';
+    const city = leadData.city || leadData.City || '';
+    // Normalize city names and treat empty, unknown, or other as redistributable
+    const normalizedCity = city.toLowerCase().trim();
+    if (!normalizedCity || normalizedCity === 'unknown' || normalizedCity === 'other' || normalizedCity === 'n/a' || normalizedCity === 'na') {
+      return 'REDISTRIBUTE';
+    }
+    return city;
+  };
+
+  // Helper function to redistribute unknown/other leads proportionally
+  const redistributeUnknownLeads = (cityDataMap: { [key: string]: any }, redistributeCount: number) => {
+    // Get actual cities (excluding REDISTRIBUTE)
+    const actualCities = Object.keys(cityDataMap).filter(city => city !== 'REDISTRIBUTE');
+    
+    if (actualCities.length === 0 || redistributeCount === 0) {
+      return cityDataMap;
+    }
+
+    // Calculate total leads from actual cities
+    const totalActualLeads = actualCities.reduce((sum, city) => sum + cityDataMap[city].totalLeads, 0);
+    
+    if (totalActualLeads === 0) {
+      return cityDataMap;
+    }
+
+    // Redistribute proportionally
+    actualCities.forEach(city => {
+      const cityRatio = cityDataMap[city].totalLeads / totalActualLeads;
+      const redistributedLeads = Math.round(redistributeCount * cityRatio);
+      
+      cityDataMap[city].totalLeads += redistributedLeads;
+      
+      // For detailed city data with status counts, distribute proportionally across statuses
+      if (cityDataMap[city].statusCounts) {
+        const cityTotalOriginal = Object.values(cityDataMap[city].statusCounts as { [key: string]: number }).reduce((a: number, b: number) => a + b, 0);
+        if (cityTotalOriginal > 0) {
+          Object.keys(cityDataMap[city].statusCounts).forEach(status => {
+            const statusRatio = (cityDataMap[city].statusCounts[status] || 0) / cityTotalOriginal;
+            const redistributedStatusLeads = Math.round(redistributedLeads * statusRatio);
+            cityDataMap[city].statusCounts[status] = (cityDataMap[city].statusCounts[status] || 0) + redistributedStatusLeads;
+          });
+        }
+      }
+    });
+
+    // Remove the REDISTRIBUTE entry
+    delete cityDataMap['REDISTRIBUTE'];
+    
+    return cityDataMap;
   };
 
   const getDateRange = (range: string): DateRange => {
@@ -321,7 +369,7 @@ export default function SalesReport() {
             (selectedSource === 'all' || leadData.source_database === selectedSource) &&
             (selectedCity === 'all' || leadData.city === selectedCity)
           ) {
-            const city = leadData.city || 'Unknown';
+            const city = getCityName(leadData);
             citiesSet.add(city);
             
             if (!cityDataMap[city]) {
@@ -342,8 +390,12 @@ export default function SalesReport() {
           }
         });
 
+        // Redistribute unknown/other leads
+        const redistributeCount = cityDataMap['REDISTRIBUTE']?.totalLeads || 0;
+        const redistributedCityDataMap = redistributeUnknownLeads(cityDataMap, redistributeCount);
+
         // Calculate conversion rates for each city
-        const cityDataArray = Object.values(cityDataMap).map(cityData => ({
+        const cityDataArray = Object.values(redistributedCityDataMap).map(cityData => ({
           ...cityData,
           conversionRate: cityData.totalLeads > 0 
             ? (cityData.statusCounts['Converted'] || 0) / cityData.totalLeads * 100 
@@ -351,7 +403,7 @@ export default function SalesReport() {
         }));
 
         setCityData(cityDataArray);
-        setAvailableCities(['all', ...Array.from(citiesSet).sort()]);
+        setAvailableCities(['all', ...Object.keys(redistributedCityDataMap).sort()]);
 
         // Aggregate simplified city data for the new components
         const simpleCityDataMap: { [key: string]: SimpleCityData } = {};
@@ -375,8 +427,12 @@ export default function SalesReport() {
           }
         });
 
+        // Redistribute unknown/other leads for simplified data
+        const redistributeCountSimple = simpleCityDataMap['REDISTRIBUTE']?.totalLeads || 0;
+        const redistributedSimpleCityDataMap = redistributeUnknownLeads(simpleCityDataMap, redistributeCountSimple);
+
         // Convert to array and sort by total leads (descending)
-        const simpleCityDataArray = Object.values(simpleCityDataMap).sort((a, b) => b.totalLeads - a.totalLeads);
+        const simpleCityDataArray = Object.values(redistributedSimpleCityDataMap).sort((a, b) => b.totalLeads - a.totalLeads);
         setSimpleCityData(simpleCityDataArray);
         
         // Calculate conversion time data for converted leads
@@ -1267,188 +1323,9 @@ export default function SalesReport() {
                   ))}
                 </div>
 
-                {/* Team Performance Chart */}
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-teal-600/5 rounded-2xl blur-lg"></div>
-                  <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg">
-                        <UserGroupIcon className="h-5 w-5 text-white" />
-                      </div>
-                      Team Performance Overview
-                    </h3>
-                    <div className="h-80">
-                      <TeamPerformanceChart leadStatusDistribution={leadStatusDistribution} />
-                    </div>
-                  </div>
-                </div>
+              
 
-                {/* Team Conversion Rates Chart */}
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-600/5 to-purple-600/5 rounded-2xl blur-lg"></div>
-                  <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
-                        <ChartBarIcon className="h-5 w-5 text-white" />
-                      </div>
-                      Team Conversion Rates
-                    </h3>
-                    <div className="h-64">
-                      <ConversionPieChart leadStatusDistribution={leadStatusDistribution} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* City-wise Analytics Section */}
-                {cityData.length > 0 && (
-                  <>
-                    {/* City-wise Lead Distribution Bar Chart */}
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-teal-600/5 to-cyan-600/5 rounded-2xl blur-lg"></div>
-                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
-                          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg">
-                            <ChartBarIcon className="h-5 w-5 text-white" />
-                          </div>
-                          City-wise Lead Distribution & Status Breakdown
-                        </h3>
-                        <CityWiseBarChart cityData={cityData} />
-                      </div>
-                    </div>
-
-                    {/* City-wise Charts Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* City Lead Distribution Pie Chart */}
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-green-600/5 rounded-2xl blur-lg"></div>
-                        <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
-                          <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
-                            <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg">
-                              <UserGroupIcon className="h-5 w-5 text-white" />
-                            </div>
-                            City-wise Lead Volume
-                          </h3>
-                          <CityWisePieChart cityData={cityData} />
-                        </div>
-                      </div>
-
-                      {/* City Conversion Rates Chart */}
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-r from-orange-600/5 to-red-600/5 rounded-2xl blur-lg"></div>
-                        <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
-                          <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
-                            <div className="p-2 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg">
-                              <CheckCircleIcon className="h-5 w-5 text-white" />
-                            </div>
-                            City-wise Conversion Rates
-                          </h3>
-                          <CityConversionChart cityData={cityData} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* City Performance Summary Table */}
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 to-blue-600/5 rounded-2xl blur-lg"></div>
-                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
-                        <div className="bg-gradient-to-r from-indigo-500/10 to-blue-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
-                          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
-                            <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg">
-                              <ChartBarIcon className="h-5 w-5 text-white" />
-                            </div>
-                            City-wise Performance Summary
-                          </h3>
-                        </div>
-                        <div className="p-6">
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full">
-                              <thead>
-                                <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
-                                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                    City
-                                  </th>
-                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                    Total Leads
-                                  </th>
-                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                    Converted
-                                  </th>
-                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                    Interested
-                                  </th>
-                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                    Not Interested
-                                  </th>
-                                  <th scope="col" className="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                    Conversion Rate
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100/50">
-                                {cityData
-                                  .sort((a, b) => b.totalLeads - a.totalLeads)
-                                  .map((city, index) => (
-                                  <tr 
-                                    key={city.city} 
-                                    className="hover:bg-indigo-50/30 transition-colors duration-200"
-                                  >
-                                    <td className="px-4 py-3">
-                                      <div className="text-sm font-bold text-gray-900">{city.city}</div>
-                                      <div className="text-xs text-gray-500">
-                                        {((city.totalLeads / summaryMetrics.totalLeads) * 100).toFixed(1)}% of total
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-3 text-center">
-                                      <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm">
-                                        {city.totalLeads}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-3 text-center">
-                                      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 shadow-sm">
-                                        {city.statusCounts['Converted'] || 0}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-3 text-center">
-                                      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 shadow-sm">
-                                        {city.statusCounts['Interested'] || 0}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-3 text-center">
-                                      <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 shadow-sm">
-                                        {city.statusCounts['Not Interested'] || 0}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-3 text-center">
-                                      <div className="flex flex-col items-center space-y-1">
-                                        <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold shadow-sm ${
-                                          city.conversionRate >= 20 ? 'bg-emerald-100 text-emerald-800' :
-                                          city.conversionRate >= 10 ? 'bg-yellow-100 text-yellow-800' :
-                                          'bg-red-100 text-red-800'
-                                        }`}>
-                                          {city.conversionRate.toFixed(1)}%
-                                        </span>
-                                        <div className="w-12 bg-gray-200 rounded-full h-1.5">
-                                          <div 
-                                            className={`h-1.5 rounded-full transition-all duration-500 ${
-                                              city.conversionRate >= 20 ? 'bg-emerald-500' :
-                                              city.conversionRate >= 10 ? 'bg-yellow-500' :
-                                              'bg-red-500'
-                                            }`}
-                                            style={{ width: `${Math.min(city.conversionRate * 3, 100)}%` }}
-                                          ></div>
-                                        </div>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
+               
 
                 {/* Sales Team Performance Table */}
                 <div className="relative">
@@ -1553,7 +1430,7 @@ export default function SalesReport() {
                   </div>
                 </div>
 
-                
+               
 
                 {/* NEW: Simplified City-wise Lead Distribution Section */}
                 {simpleCityData.length > 0 && (
