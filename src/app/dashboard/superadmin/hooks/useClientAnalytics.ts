@@ -81,10 +81,10 @@ const processClientsBatch = (clientsBatch: any[], analytics: any) => {
 
 // Progressive client analytics loading with immediate results
 const loadClientAnalyticsProgressive = async (onProgress?: (partial: ClientAnalytics) => void): Promise<ClientAnalytics> => {
-  const timerId = `progressive-client-analytics-${Date.now()}`;
+  const timerId = `client-analytics-${Date.now()}`;
   perfMonitor.start(timerId);
   
-  console.log('⚡ Loading client analytics with FAST progressive strategy...');
+  console.log('⚡ Loading all client analytics in one go...');
   
   // Initialize analytics object
   const analytics = {
@@ -98,98 +98,23 @@ const loadClientAnalyticsProgressive = async (onProgress?: (partial: ClientAnaly
     loanCount: 0
   };
   
-  // Aggressive optimization settings
-  const INITIAL_BATCH = 100; // Show results after first 100 clients
-  const PAGE_SIZE = 150; // Larger batches for faster loading
-  let processedCount = 0;
-  let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
-  let isFirstBatch = true;
-  
   const clientsCollection = collection(db, 'clients');
   
-  // Load data progressively
-  while (true) {
-    const batchSize = isFirstBatch ? INITIAL_BATCH : PAGE_SIZE;
-    let clientsQuery;
-    
-    if (lastDoc) {
-      clientsQuery = query(
-        clientsCollection, 
-        orderBy('__name__'),
-        startAfter(lastDoc),
-        limit(batchSize)
-      );
-    } else {
-      clientsQuery = query(
-        clientsCollection, 
-        orderBy('__name__'),
-        limit(batchSize)
-      );
-    }
-    
-    const clientsSnapshot: QuerySnapshot<DocumentData> = await getDocs(clientsQuery);
-    
-    if (clientsSnapshot.empty) {
-      break; // No more documents
-    }
-    
-    // Process this batch
-    const clientsBatch: any[] = [];
-    clientsSnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
-      clientsBatch.push(doc.data());
-    });
-    
-    processClientsBatch(clientsBatch, analytics);
-    processedCount += clientsBatch.length;
-    
-    // Update last document for pagination
-    lastDoc = clientsSnapshot.docs[clientsSnapshot.docs.length - 1];
-    
-    // Calculate current results
-    const avgLoanAmount = analytics.loanCount > 0 
-      ? Math.round(analytics.totalLoanAmount / analytics.loanCount) 
-      : 0;
-    
-    const advocateEntries = Object.entries(analytics.advocateCount);
-    advocateEntries.sort((a, b) => b[1] - a[1]);
-    const topAdvocates = advocateEntries.slice(0, 10).map(([name, clientCount]) => ({ name, clientCount }));
-    
-    const currentResult: ClientAnalytics = {
-      totalClients: analytics.totalClients,
-      statusDistribution: { ...analytics.statusDistribution },
-      topAdvocates,
-      loanTypeDistribution: { ...analytics.loanTypeDistribution },
-      sourceDistribution: { ...analytics.sourceDistribution },
-      cityDistribution: { ...analytics.cityDistribution },
-      totalLoanAmount: analytics.totalLoanAmount,
-      avgLoanAmount
-    };
-    
-    // Show immediate results after first batch
-    if (isFirstBatch) {
-      console.log(`🚀 FAST PREVIEW: Showing results with first ${processedCount} clients...`);
-      onProgress?.(currentResult);
-      isFirstBatch = false;
-    }
-    
-    // Log progress for remaining batches
-    if (processedCount % 300 === 0) {
-      console.log(`📊 Background loading: ${processedCount} clients processed...`);
-    }
-    
-    // Break if we got fewer results than requested (reached end)
-    if (clientsBatch.length < batchSize) {
-      console.log(`✅ Completed: ${processedCount} total clients processed`);
-      break;
-    }
-    
-    // Minimal delay to keep UI responsive
-    if (processedCount % 300 === 0) {
-      await new Promise(resolve => setTimeout(resolve, 1));
-    }
-  }
+  // Fetch all clients at once
+  const clientsQuery = query(clientsCollection, orderBy('__name__'));
+  const clientsSnapshot: QuerySnapshot<DocumentData> = await getDocs(clientsQuery);
   
-  // Final result
+  console.log(`📊 Fetched ${clientsSnapshot.size} clients in one go`);
+  
+  // Process all clients at once
+  const allClients: any[] = [];
+  clientsSnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+    allClients.push(doc.data());
+  });
+  
+  processClientsBatch(allClients, analytics);
+  
+  // Calculate final results
   const avgLoanAmount = analytics.loanCount > 0 
     ? Math.round(analytics.totalLoanAmount / analytics.loanCount) 
     : 0;
@@ -215,6 +140,9 @@ const loadClientAnalyticsProgressive = async (onProgress?: (partial: ClientAnaly
   // Cache the result
   cachedResult = finalAnalytics;
   cacheTimestamp = Date.now();
+  
+  // Call progress callback with final result
+  onProgress?.(finalAnalytics);
   
   return finalAnalytics;
 };
