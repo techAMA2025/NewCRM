@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Lead } from './types/lead'
 // import firebase from '../../firebase/firebase'
 import  {db, storage}  from '../../firebase/firebase'
-import { collection, doc, setDoc, writeBatch } from 'firebase/firestore'
+import { collection, doc, setDoc, writeBatch, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { bankData } from '../../data/bankData'
+import { getBankDataSync } from '../../data/bankData'
 
 // Define Indian states array
 const indianStates = [
@@ -1158,6 +1158,25 @@ interface BankFormProps {
 
 const BankForm = ({ bank, onUpdate, onRemove }: BankFormProps) => {
   const [isEditingBankName, setIsEditingBankName] = useState(false);
+  const [bankData, setBankData] = useState<Record<string, any>>({});
+  const [isLoadingBanks, setIsLoadingBanks] = useState(true);
+
+  // Load bank data dynamically
+  useEffect(() => {
+    const loadBankData = async () => {
+      try {
+        const data = getBankDataSync();
+        setBankData(data);
+      } catch (error) {
+        console.error('Error loading bank data:', error);
+      } finally {
+        setIsLoadingBanks(false);
+      }
+    };
+    
+    loadBankData();
+  }, []);
+
   const bankNames = Object.keys(bankData);
 
   return (

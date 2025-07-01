@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
-import { bankData as banks } from "@/data/bankData";
+import { useBankDataSimple } from "@/components/BankDataProvider";
 import {
   FaEnvelope,
   FaPaperPlane,
@@ -99,6 +99,9 @@ export default function EmailComposePage() {
   const [manualRecipientEmail, setManualRecipientEmail] = useState("");
   const [manualCcRecipientName, setManualCcRecipientName] = useState("");
   const [manualCcRecipientEmail, setManualCcRecipientEmail] = useState("");
+
+  // Add dynamic bank loading
+  const { bankData: banks, isLoading: isLoadingBanks } = useBankDataSimple();
 
   // Sample data (in a real app, these would come from an API)
   const draftTemplates = [
@@ -439,13 +442,12 @@ Below is a draft email you can send to your bank or financial institution to ini
 
   // Add bank emails as recipients
   const handleAddBankRecipient = () => {
-    if (!selectedBank || !banks[selectedBank as keyof typeof banks]) {
+    if (!selectedBank || !banks[selectedBank]) {
       toast.error("Please select a bank");
       return;
     }
 
-    const bankEmails =
-      banks[selectedBank as keyof typeof banks].email.split(", ");
+    const bankEmails = banks[selectedBank].email.split(", ");
 
     let newRecipients = [...recipients];
     let addedCount = 0;
@@ -474,13 +476,12 @@ Below is a draft email you can send to your bank or financial institution to ini
 
   // Add bank emails as CC recipients
   const handleAddBankCcRecipient = () => {
-    if (!selectedBank || !banks[selectedBank as keyof typeof banks]) {
+    if (!selectedBank || !banks[selectedBank]) {
       toast.error("Please select a bank");
       return;
     }
 
-    const bankEmails =
-      banks[selectedBank as keyof typeof banks].email.split(", ");
+    const bankEmails = banks[selectedBank].email.split(", ");
 
     let newCcRecipients = [...ccRecipients];
     let addedCount = 0;
@@ -1066,8 +1067,11 @@ Below is a draft email you can send to your bank or financial institution to ini
                       value={selectedBank}
                       onChange={handleBankChange}
                       className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      disabled={isLoadingBanks}
                     >
-                      <option value="">Select a bank</option>
+                      <option value="">
+                        {isLoadingBanks ? "Loading banks..." : "Select a bank"}
+                      </option>
                       {Object.keys(banks).map((bankName) => (
                         <option key={bankName} value={bankName}>
                           {bankName}
@@ -1079,7 +1083,7 @@ Below is a draft email you can send to your bank or financial institution to ini
                         type="button"
                         onClick={handleAddBankRecipient}
                         className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center justify-center"
-                        disabled={!selectedBank}
+                        disabled={!selectedBank || isLoadingBanks}
                       >
                         <FaPlus size={12} className="mr-1" />
                         Add as Recipient
@@ -1088,16 +1092,21 @@ Below is a draft email you can send to your bank or financial institution to ini
                         type="button"
                         onClick={handleAddBankCcRecipient}
                         className="flex-1 px-3 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-md transition-colors flex items-center justify-center"
-                        disabled={!selectedBank}
+                        disabled={!selectedBank || isLoadingBanks}
                       >
                         <FaPlus size={12} className="mr-1" />
                         Add as CC
                       </button>
                     </div>
                   </div>
-                  {selectedBank && (
+                  {selectedBank && !isLoadingBanks && (
                     <p className="mt-1 text-xs text-gray-400">
                       All emails from {selectedBank} will be added
+                    </p>
+                  )}
+                  {isLoadingBanks && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Loading bank list...
                     </p>
                   )}
                 </div>

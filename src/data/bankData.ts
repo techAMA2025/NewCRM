@@ -1,9 +1,12 @@
+import { getAllBanks } from '../lib/bankService';
+
 export interface BankData {
   address: string;
   email: string;
 }
 
-export const bankData: Record<string, BankData> = {
+// Static data as absolute fallback only
+const staticBankData: Record<string, BankData> = {
   "Axis Bank": {
     address:
       "Mr. Sandeep Dam, Nodal officer Axis Bank Ltd, Axis House, Tower 3, 4th Floor, Sector128, Noida, UP- 201304. Landline No: 0120-6210005. Mr. Caesar Pinto, Nodal Officer, Axis Bank LTD. NPC1, 5th Floor \"Gigaplex\", Plot No .I.T 5, MIDC Airoli Knowledge Park, Airoli, Navi Mumbai – 400708. Mrs. Neeta Bhatt Principal Nodal Officer, Axis Bank LTD. 4th Floor, Axis House, Wadia International Center, P.B. Marg, Worli, Mumbai – 400 025. Axis Bank Limited, 'Axis House', C-2, Wadia International Centre, Pandurang Budhkar Marg, Worli, Mumbai - 400 025. Axis Bank Limited, 'Trishul', 3rd Floor, Opp. Samartheshwar Temple, Near Law Garden, Ellisbridge, Ahmedabad - 380 006",
@@ -548,4 +551,136 @@ export const bankData: Record<string, BankData> = {
     address: "Other",
     email: "Other"
   },
-}; 
+};
+
+// Main bankData variable that will be used throughout the application
+export let bankData: Record<string, BankData> = { ...staticBankData };
+
+// Dynamic bank data management
+let cachedBankData: Record<string, BankData> | null = null;
+let isLoading = false;
+let lastFetchTime: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+
+// Initialize bank data on module load
+let initializationPromise: Promise<Record<string, BankData>> | null = null;
+
+const initializeBankData = async (): Promise<Record<string, BankData>> => {
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  initializationPromise = (async () => {
+    try {
+      console.log('Loading banks from Firebase...');
+      const firebaseData = await getAllBanks();
+      
+      if (Object.keys(firebaseData).length > 0) {
+        console.log(`Successfully loaded ${Object.keys(firebaseData).length} banks from Firebase`);
+        cachedBankData = firebaseData;
+        lastFetchTime = Date.now();
+        // Update the main bankData variable
+        Object.assign(bankData, firebaseData);
+        return firebaseData;
+      } else {
+        console.warn('No banks found in Firebase, using static data as fallback');
+        cachedBankData = staticBankData;
+        lastFetchTime = Date.now();
+        // bankData is already initialized with static data
+        return staticBankData;
+      }
+    } catch (error) {
+      console.error('Failed to load banks from Firebase, using static data as fallback:', error);
+      cachedBankData = staticBankData;
+      lastFetchTime = Date.now();
+      // bankData is already initialized with static data
+      return staticBankData;
+    }
+  })();
+
+  return initializationPromise;
+};
+
+// Get bank data with automatic initialization and caching
+export const getBankData = async (): Promise<Record<string, BankData>> => {
+  // Check if we have valid cached data
+  const now = Date.now();
+  if (cachedBankData && (now - lastFetchTime) < CACHE_DURATION) {
+    return cachedBankData;
+  }
+
+  // If already loading, wait for the current load
+  if (isLoading) {
+    return cachedBankData || staticBankData;
+  }
+
+  try {
+    isLoading = true;
+    console.log('Refreshing bank data from Firebase...');
+    
+    const firebaseData = await getAllBanks();
+    
+    if (Object.keys(firebaseData).length > 0) {
+      console.log(`Successfully refreshed ${Object.keys(firebaseData).length} banks from Firebase`);
+      cachedBankData = firebaseData;
+      lastFetchTime = now;
+      // Update the main bankData variable
+      Object.assign(bankData, firebaseData);
+      return firebaseData;
+    } else {
+      console.warn('No banks found in Firebase during refresh, keeping existing cache or using static data');
+      return cachedBankData || staticBankData;
+    }
+  } catch (error) {
+    console.error('Error refreshing bank data from Firebase:', error);
+    // Return cached data if available, otherwise static data
+    return cachedBankData || staticBankData;
+  } finally {
+    isLoading = false;
+  }
+};
+
+// Force refresh cache from Firebase
+export const refreshBankData = async (): Promise<Record<string, BankData>> => {
+  console.log('Force refreshing bank data...');
+  cachedBankData = null;
+  lastFetchTime = 0;
+  initializationPromise = null;
+  const newData = await getBankData();
+  // Update the main bankData variable
+  Object.assign(bankData, newData);
+  return newData;
+};
+
+// Get bank data synchronously (returns cached data or static data immediately)
+export const getBankDataSync = (): Record<string, BankData> => {
+  if (cachedBankData) {
+    return cachedBankData;
+  }
+  
+  // If no cached data, start loading in background and return current bankData
+  if (!isLoading) {
+    getBankData().catch(console.error);
+  }
+  
+  return bankData;
+};
+
+// Check if bank data is loaded from Firebase
+export const isBankDataFromFirebase = (): boolean => {
+  return cachedBankData !== null && cachedBankData !== staticBankData;
+};
+
+// Get cache status
+export const getBankDataCacheStatus = () => {
+  return {
+    isCached: cachedBankData !== null,
+    isFromFirebase: isBankDataFromFirebase(),
+    lastFetchTime: lastFetchTime,
+    cacheAge: lastFetchTime ? Date.now() - lastFetchTime : 0,
+    isLoading: isLoading
+  };
+};
+
+// Initialize on module load
+initializeBankData().catch(console.error); 
