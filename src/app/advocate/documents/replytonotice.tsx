@@ -4,7 +4,7 @@ import { useState, useEffect, FormEvent } from "react";
 import toast from "react-hot-toast";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import { bankData } from "@/data/bankData";
+import { useBankDataSimple } from "@/components/BankDataProvider";
 
 interface Bank {
   id: string;
@@ -50,6 +50,7 @@ interface FirestoreClient {
 }
 
 const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
+  const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   const [clients, setClients] = useState<FirestoreClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -134,34 +135,31 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
     }
   };
 
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    // If bank selection changes, update bank address and email fields
-    if (name === "selectedBank" && value) {
-      const selectedBankData = bankData[value as keyof typeof bankData];
+  const handleBankSelect = (value: string) => {
+    const bankName = value;
+    if (bankName && bankData[bankName]) {
+      const selectedBankData = bankData[bankName];
+
       if (selectedBankData) {
-        setFormData({
-          ...formData,
-          selectedBank: value,
-          bankName: value,
+        setFormData(prev => ({
+          ...prev,
+          bankName,
           bankAddress: selectedBankData.address,
           bankEmail: selectedBankData.email
-        });
-      } else {
-        setFormData({
-          ...formData,
-          selectedBank: value,
-          bankName: value,
-        });
+        }));
       }
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
     }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -327,32 +325,22 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-400 mb-1">Select Bank</label>
           <select
-            name="selectedBank"
-            value={formData.selectedBank}
-            onChange={handleChange}
+            name="bankName"
+            value={formData.bankName}
+            onChange={(e) => handleBankSelect(e.target.value)}
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            disabled={isLoadingBanks}
+            required
           >
-            <option value="">Select a bank...</option>
+            <option value="">
+              {isLoadingBanks ? "Loading banks..." : "Select a bank..."}
+            </option>
             {Object.keys(bankData).map((bank) => (
               <option key={bank} value={bank}>
                 {bank}
               </option>
             ))}
           </select>
-        </div>
-        
-        {/* Bank Name - Filled automatically from dropdown but can be edited */}
-        <div className="md:col-span-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Bank Name</label>
-          <input
-            type="text"
-            name="bankName"
-            value={formData.bankName}
-            onChange={handleChange}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            required
-          />
-          {formData.selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from bank selection (editable)</p>}
         </div>
         
         {/* Bank Address */}
@@ -366,7 +354,7 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             required
           />
-          {formData.selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from bank selection (editable)</p>}
+          {formData.bankName && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from bank selection (editable)</p>}
         </div>
         
         {/* Bank Email */}
@@ -380,7 +368,7 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             required
           />
-          {formData.selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from bank selection (editable)</p>}
+          {formData.bankName && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from bank selection (editable)</p>}
         </div>
       </div>
       

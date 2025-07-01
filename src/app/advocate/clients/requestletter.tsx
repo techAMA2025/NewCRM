@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { ref, uploadBytes, getDownloadURL, uploadString } from "firebase/storage";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion } from "firebase/firestore";
 import { db, storage } from "@/firebase/firebase";
 import mammoth from 'mammoth';
-import { bankData } from "@/data/bankData";
+import { useBankDataSimple } from "@/components/BankDataProvider";
 
 interface Bank {
   id: string;
@@ -47,9 +47,11 @@ interface Client {
 
 // Request Letter Form Component
 function RequestLetterForm({ client, onClose }: { client: Client, onClose: () => void }) {
+  const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name1: client.name || "",
+    bankName: "",
     bankAddress: "",
     bankEmail: "",
     accountType: "Loan Account", // Default value
@@ -59,32 +61,32 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
     selectedBank: "", // New field for bank selection
   });
 
-  // Handler for form field changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    
-    // If bank selection changes, update bank address and email fields
-    if (name === "selectedBank" && value) {
-      const selectedBankData = bankData[value as keyof typeof bankData];
+  const handleBankSelect = (value: string) => {
+    if (value && bankData[value]) {
+      const selectedBankData = bankData[value];
       if (selectedBankData) {
-        setFormData({
-          ...formData,
+        setFormData(prev => ({
+          ...prev,
           selectedBank: value,
+          bankName: value,
           bankAddress: selectedBankData.address,
           bankEmail: selectedBankData.email
-        });
-      } else {
-        setFormData({
-          ...formData,
-          selectedBank: value,
-        });
+        }));
       }
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
     }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
   };
 
   // Handler for form submission
@@ -260,10 +262,13 @@ function RequestLetterForm({ client, onClose }: { client: Client, onClose: () =>
           <select
             name="selectedBank"
             value={formData.selectedBank}
-            onChange={handleChange}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            onChange={(e) => handleBankSelect(e.target.value)}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            disabled={isLoadingBanks}
           >
-            <option value="">Select a bank...</option>
+            <option value="">
+              {isLoadingBanks ? "Loading banks..." : "Select a bank..."}
+            </option>
             {Object.keys(bankData).map((bank) => (
               <option key={bank} value={bank}>
                 {bank}

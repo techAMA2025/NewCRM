@@ -88,6 +88,30 @@ function formatIndianCurrency(amount: string | number | undefined): string {
   // Convert to string if it's not already a string
   const amountStr = typeof amount === "string" ? amount : String(amount)
 
+  // Check if it's a range (contains hyphen)
+  if (amountStr.includes('-')) {
+    const parts = amountStr.split('-')
+    if (parts.length === 2) {
+      const firstAmount = parts[0].trim().replace(/[^\d.]/g, "")
+      const secondAmount = parts[1].trim().replace(/[^\d.]/g, "")
+      
+      // Format both parts if they are valid numbers
+      if (firstAmount && secondAmount) {
+        const formatter = new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        })
+        
+        const formattedFirst = formatter.format(Number(firstAmount))
+        const formattedSecond = formatter.format(Number(secondAmount))
+        
+        return `${formattedFirst} - ${formattedSecond}`
+      }
+    }
+  }
+
   // Remove any existing currency symbols or non-numeric characters except decimal point
   const numericValue = amountStr.replace(/[^\d.]/g, "")
 

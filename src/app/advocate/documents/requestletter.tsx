@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import { bankData } from "@/data/bankData";
+import { useBankDataSimple } from "@/components/BankDataProvider";
 
 interface Bank {
   id: string;
@@ -70,9 +70,11 @@ export default function RequestLetterForm({
   client,
   onClose,
 }: RequestLetterFormProps) {
+  const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<FirestoreClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedBank, setSelectedBank] = useState("");
   const [formData, setFormData] = useState({
     name1: client.name || "",
     bankAddress: "",
@@ -84,7 +86,6 @@ export default function RequestLetterForm({
         : "",
     reason: "Job Loss", // Default value
     email: client.email || "",
-    selectedBank: "", // New field for bank selection
   });
 
   // Fetch clients when component mounts
@@ -133,35 +134,32 @@ export default function RequestLetterForm({
     }
   };
 
+  const handleBankSelect = (value: string) => {
+    setSelectedBank(value);
+    if (value && bankData[value]) {
+      const selectedBankData = bankData[value];
+      if (selectedBankData) {
+        setFormData(prev => ({
+          ...prev,
+          bankName: value,
+          bankAddress: selectedBankData.address,
+          bankEmail: selectedBankData.email,
+        }));
+      }
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => {
     const { name, value } = e.target;
-
-    // If bank selection changes, update bank address and email fields
-    if (name === "selectedBank" && value) {
-      const selectedBankData = bankData[value as keyof typeof bankData];
-      if (selectedBankData) {
-        setFormData({
-          ...formData,
-          selectedBank: value,
-          bankAddress: selectedBankData.address,
-          bankEmail: selectedBankData.email,
-        });
-      } else {
-        setFormData({
-          ...formData,
-          selectedBank: value,
-        });
-      }
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
+    
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -292,12 +290,14 @@ export default function RequestLetterForm({
             Select Bank
           </label>
           <select
-            name="selectedBank"
-            value={formData.selectedBank}
-            onChange={handleChange}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            value={selectedBank}
+            onChange={(e) => handleBankSelect(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            disabled={isLoadingBanks}
           >
-            <option value="">Select a bank...</option>
+            <option value="">
+              {isLoadingBanks ? "Loading banks..." : "Select a bank"}
+            </option>
             {Object.keys(bankData).map((bank) => (
               <option key={bank} value={bank}>
                 {bank}
@@ -336,7 +336,7 @@ export default function RequestLetterForm({
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Enter bank email (use commas to separate multiple emails)"
           />
-          {formData.selectedBank && (
+          {selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
               You can edit these email addresses if needed
             </p>

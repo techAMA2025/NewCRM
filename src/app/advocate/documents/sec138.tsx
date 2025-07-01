@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import { bankData } from "@/data/bankData";
+import { useBankDataSimple } from "@/components/BankDataProvider";
 
 interface Bank {
   id: string;
@@ -65,6 +65,7 @@ interface FirestoreClient {
 }
 
 export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProps) {
+  const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<FirestoreClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
@@ -118,33 +119,30 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
     }
   };
 
+  const handleBankSelect = (value: string) => {
+    if (value && bankData[value]) {
+      const selectedBankData = bankData[value];
+      if (selectedBankData) {
+        setFormData(prev => ({
+          ...prev,
+          selectedBank: value,
+          bankName: value,
+          bankEmail: selectedBankData.email,
+          bankAddress: selectedBankData.address,
+        }));
+      }
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-
-    // If bank selection changes, update bank email field
-    if (name === "selectedBank" && value) {
-      const selectedBankData = bankData[value as keyof typeof bankData];
-      if (selectedBankData) {
-        setFormData({
-          ...formData,
-          selectedBank: value,
-          bankEmail: selectedBankData.email,
-          bankAddress: selectedBankData.address, // Add bank address
-        });
-      } else {
-        setFormData({
-          ...formData,
-          selectedBank: value,
-        });
-      }
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
+    
+    setFormData({
+      ...formData,
+      [name]: value
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -265,11 +263,13 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
           <select
             name="selectedBank"
             value={formData.selectedBank}
-            onChange={handleChange}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            required
+            onChange={(e) => handleBankSelect(e.target.value)}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            disabled={isLoadingBanks}
           >
-            <option value="">Select a bank...</option>
+            <option value="">
+              {isLoadingBanks ? "Loading banks..." : "Select a bank..."}
+            </option>
             {Object.keys(bankData).map((bank) => (
               <option key={bank} value={bank}>
                 {bank}
