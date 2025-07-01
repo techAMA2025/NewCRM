@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, query, where, Timestamp, QueryConstraint } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { LeadsBySourceData, SourceTotals, StatusKey, SourceKey, ChartDataset } from '../types';
@@ -33,6 +33,10 @@ export const useLeadsData = ({
   });
   
   const [isLoading, setIsLoading] = useState(true);
+
+  // Use ref to store the callback to avoid dependency issues
+  const onLoadCompleteRef = useRef(onLoadComplete);
+  onLoadCompleteRef.current = onLoadComplete;
 
   useEffect(() => {
     if (!enabled) {
@@ -159,18 +163,21 @@ export const useLeadsData = ({
         
         setSourceTotals(sourceTotalCounts);
         setIsLoading(false);
-        onLoadComplete?.();
+        
+        // Call the callback using the ref to avoid dependency issues
+        onLoadCompleteRef.current?.();
         
         console.log(`✅ Leads analytics complete: ${leadsSnapshot.size} leads processed`);
       } catch (error) {
         console.error('Error fetching leads data:', error);
         setIsLoading(false);
-        onLoadComplete?.();
+        onLoadCompleteRef.current?.();
       }
     };
     
     fetchLeadsData();
-  }, [startDate, endDate, isFilterApplied, selectedLeadsSalesperson, enabled, onLoadComplete]);
+    // Removed onLoadComplete from dependency array to prevent infinite re-renders
+  }, [startDate, endDate, isFilterApplied, selectedLeadsSalesperson, enabled]);
 
   return {
     leadsBySourceData,

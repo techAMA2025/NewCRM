@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export const useProgressiveDataLoading = () => {
   const [loadingStages, setLoadingStages] = useState({
@@ -38,9 +38,9 @@ export const useProgressiveDataLoading = () => {
     };
   }, []);
 
-  const setStageLoaded = (stage: keyof typeof loadingStages) => {
+  const setStageLoaded = useCallback((stage: keyof typeof loadingStages) => {
     setLoadingStages(prev => ({ ...prev, [stage]: false }));
-  };
+  }, []);
 
   return {
     loadingStages,

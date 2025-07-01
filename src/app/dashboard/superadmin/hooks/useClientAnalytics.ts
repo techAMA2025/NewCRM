@@ -238,6 +238,10 @@ export const useClientAnalytics = ({
   const [isLoading, setIsLoading] = useState(true);
   const hasLoaded = useRef(false);
 
+  // Use ref to store the callback to avoid dependency issues
+  const onLoadCompleteRef = useRef(onLoadComplete);
+  onLoadCompleteRef.current = onLoadComplete;
+
   // Progress callback to update UI immediately
   const handleProgress = useCallback((partialResult: ClientAnalytics) => {
     setClientAnalytics(partialResult);
@@ -246,9 +250,9 @@ export const useClientAnalytics = ({
     // Call completion for first batch (UI shows content immediately)
     if (!hasLoaded.current) {
       hasLoaded.current = true;
-      onLoadComplete?.();
+      onLoadCompleteRef.current?.();
     }
-  }, [onLoadComplete]);
+  }, []); // Removed onLoadComplete dependency
 
   useEffect(() => {
     if (!enabled || hasLoaded.current) {
@@ -264,7 +268,7 @@ export const useClientAnalytics = ({
           setClientAnalytics(cachedResult);
           setIsLoading(false);
           hasLoaded.current = true;
-          onLoadComplete?.();
+          onLoadCompleteRef.current?.();
           return;
         }
         
@@ -275,7 +279,7 @@ export const useClientAnalytics = ({
           setClientAnalytics(result);
           setIsLoading(false);
           hasLoaded.current = true;
-          onLoadComplete?.();
+          onLoadCompleteRef.current?.();
           return;
         }
         
@@ -291,7 +295,7 @@ export const useClientAnalytics = ({
       } catch (error) {
         console.error('❌ Error fetching client analytics:', error);
         setIsLoading(false);
-        onLoadComplete?.();
+        onLoadCompleteRef.current?.();
       } finally {
         // Reset global loading state
         setTimeout(() => {
@@ -302,7 +306,8 @@ export const useClientAnalytics = ({
     };
     
     fetchClientAnalytics();
-  }, [enabled, onLoadComplete, handleProgress]);
+    // Removed onLoadComplete and handleProgress from dependency array
+  }, [enabled]);
 
   return {
     clientAnalytics,

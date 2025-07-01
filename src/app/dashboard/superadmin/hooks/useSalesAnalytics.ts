@@ -34,10 +34,9 @@ export const useSalesAnalytics = ({
   const salespeopleLoaded = useRef(false);
   const lastAnalyticsParams = useRef<string>('');
 
-  // Memoize the onLoadComplete callback
-  const handleLoadComplete = useCallback(() => {
-    onLoadComplete?.();
-  }, [onLoadComplete]);
+  // Use ref to store the callback to avoid dependency issues
+  const onLoadCompleteRef = useRef(onLoadComplete);
+  onLoadCompleteRef.current = onLoadComplete;
 
   // Fetch salespeople - only once when enabled
   useEffect(() => {
@@ -71,31 +70,32 @@ export const useSalesAnalytics = ({
           setSalespeople(salespeople);
           salespeopleLoaded.current = true;
         } catch (error) {
-          const prevMonthIndex = (currentMonth - 1 + 12) % 12;
-          const prevMonthYear = prevMonthIndex > currentMonth ? currentYear - 1 : currentYear;
-          const prevMonthName = `${monthNames[prevMonthIndex]}_${prevMonthYear}`;
+          console.error('No sales targets found for current month, loading from client payments...', error);
           
-          const prevMonthTargetsRef = collection(db, `targets/${prevMonthName}/sales_targets`);
-          const prevMonthSnapshot = await getDocs(prevMonthTargetsRef);
+          // Fallback: get salespeople from clients collection
+          const clientsCollection = collection(db, 'clients');
+          const clientsSnapshot = await getDocs(clientsCollection);
           
-          const salespeople: Salesperson[] = [];
-          
-          prevMonthSnapshot.forEach((doc) => {
-            const targetData = doc.data();
-            if (targetData.userName) {
-              salespeople.push({
-                id: doc.id,
-                name: targetData.userName
-              });
+          const salespeopleSet = new Set<string>();
+          clientsSnapshot.forEach((doc) => {
+            const client = doc.data();
+            if (client.salesperson) {
+              salespeopleSet.add(client.salesperson);
             }
           });
           
-          salespeople.sort((a, b) => a.name.localeCompare(b.name));
-          setSalespeople(salespeople);
+          const fallbackSalespeople: Salesperson[] = Array.from(salespeopleSet).map((name) => ({
+            id: name,
+            name: name
+          }));
+          
+          fallbackSalespeople.sort((a, b) => a.name.localeCompare(b.name));
+          setSalespeople(fallbackSalespeople);
           salespeopleLoaded.current = true;
         }
       } catch (error) {
         console.error('Error fetching salespeople:', error);
+        salespeopleLoaded.current = true;
       }
     };
     
@@ -154,57 +154,24 @@ export const useSalesAnalytics = ({
         } catch (error) {
           console.error('Error fetching payments data:', error);
         }
-
+        
+        // Fetch targets and sales data
+        const monthYearName = `${targetMonthName}_${targetYear}`;
+        const salesTargetsRef = collection(db, `targets/${monthYearName}/sales_targets`);
+        
         try {
-          const targetMonthDoc = `${targetMonthName}_${targetYear}`;
-          const salesTargetsRef = collection(db, `targets/${targetMonthDoc}/sales_targets`);
           const salesTargetsSnapshot = await getDocs(salesTargetsRef);
-          
-          let targetDataCount = 0;
-          totalTarget = 0;
           
           salesTargetsSnapshot.forEach((doc) => {
             const targetData = doc.data();
-            targetDataCount++;
+            totalTarget += targetData.targetAmount || 0;
             
-            const targetAmount = targetData.amountCollectedTarget || 0;
-            totalTarget += targetAmount;
-            
-            if (!hasPaymentData) {
-              totalCollected += targetData.amountCollected || 0;
+            if (targetData.collectedAmount !== undefined) {
+              totalCollected += targetData.collectedAmount || 0;
             }
           });
-          
-          if (targetDataCount === 0) {
-            for (let m = targetMonth - 1; m >= 0; m--) {
-              const prevMonthName = monthNames[m];
-              const prevMonthDoc = `${prevMonthName}_${targetYear}`;
-              
-              try {
-                const prevTargetsRef = collection(db, `targets/${prevMonthDoc}/sales_targets`);
-                const prevTargetsSnapshot = await getDocs(prevTargetsRef);
-                
-                if (!prevTargetsSnapshot.empty) {
-                  totalTarget = 0;
-                  
-                  prevTargetsSnapshot.forEach((doc) => {
-                    const targetData = doc.data();
-                    totalTarget += targetData.amountCollectedTarget || 0;
-                    
-                    if (!hasPaymentData) {
-                      totalCollected += targetData.amountCollected || 0;
-                    }
-                  });
-                  
-                  break;
-                }
-              } catch (err) {
-                console.error('Error checking previous month:', err);
-              }
-            }
-          }
         } catch (error) {
-          console.error('Error fetching targets for target month:', error);
+          console.error('Error fetching sales targets:', error);
         }
         
         if (hasPaymentData) {
@@ -230,87 +197,62 @@ export const useSalesAnalytics = ({
         
         // Call completion callback only once
         if (!salesAnalyticsLoaded.current) {
-          handleLoadComplete();
+          onLoadCompleteRef.current?.();
         }
         
       } catch (error) {
         console.error('Error fetching sales analytics:', error);
-        handleLoadComplete();
+        onLoadCompleteRef.current?.();
       }
     };
     
     fetchSalesAnalytics();
-  }, [selectedAnalyticsMonth, selectedAnalyticsYear, enabled, handleLoadComplete]);
+  }, [selectedAnalyticsMonth, selectedAnalyticsYear, enabled]);
 
-  // Fetch individual salesperson data - separate effect to avoid interference
+  // Fetch individual sales data when salesperson is selected
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !selectedSalesperson) {
+      setIndividualSalesData(null);
+      return;
+    }
     
     const fetchIndividualSalesData = async () => {
-      if (!selectedSalesperson) {
-        setIndividualSalesData(null);
-        return;
-      }
-      
       try {
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         
-        const last6Months = [];
-        for (let i = 0; i < 6; i++) {
-          const monthIndex = (currentMonth - i + 12) % 12;
-          const year = monthIndex > currentMonth ? currentYear - 1 : currentYear;
-          last6Months.push({
-            monthName: `${monthNames[monthIndex]}_${year}`,
-            index: 5 - i
+        const targetMonth = selectedAnalyticsMonth !== null ? selectedAnalyticsMonth : currentMonth;
+        const targetYear = selectedAnalyticsYear !== null ? selectedAnalyticsYear : currentYear;
+        const targetMonthName = monthNames[targetMonth];
+        const monthYearName = `${targetMonthName}_${targetYear}`;
+        
+        const salesTargetRef = doc(db, `targets/${monthYearName}/sales_targets`, selectedSalesperson);
+        const salesTargetDoc = await getDoc(salesTargetRef);
+        
+        if (salesTargetDoc.exists()) {
+          const targetData = salesTargetDoc.data();
+          setIndividualSalesData({
+            name: targetData.userName || 'Unknown',
+            targetAmount: targetData.targetAmount || 0,
+            collectedAmount: targetData.collectedAmount || 0,
+            conversionRate: targetData.targetAmount > 0 
+              ? Math.round((targetData.collectedAmount / targetData.targetAmount) * 100) 
+              : 0,
+            monthlyData: [0, 0, 0, 0, 0, 0]
           });
+        } else {
+          setIndividualSalesData(null);
         }
-        
-        const monthlyData = [0, 0, 0, 0, 0, 0];
-        
-        let salespersonName = "";
-        let targetAmount = 0;
-        let collectedAmount = 0;
-        
-        for (const { monthName, index } of last6Months) {
-          try {
-            const targetRef = doc(db, `targets/${monthName}/sales_targets/${selectedSalesperson}`);
-            const targetSnap = await getDoc(targetRef);
-            
-            if (targetSnap.exists()) {
-              const targetData = targetSnap.data();
-              
-              if (!salespersonName) {
-                salespersonName = targetData.userName || "";
-                targetAmount = targetData.amountCollectedTarget || 0;
-                collectedAmount = targetData.amountCollected || 0;
-              }
-              
-              monthlyData[index] = targetData.amountCollected || 0;
-            }
-          } catch (error) {
-            console.error('Error fetching individual sales data:', error);
-          }
-        }
-        
-        const conversionRate = targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
-        
-        setIndividualSalesData({
-          name: salespersonName,
-          targetAmount: targetAmount,
-          collectedAmount: collectedAmount,
-          conversionRate: conversionRate,
-          monthlyData: monthlyData
-        });
       } catch (error) {
         console.error('Error fetching individual sales data:', error);
+        setIndividualSalesData(null);
       }
     };
     
     fetchIndividualSalesData();
-  }, [selectedSalesperson, enabled]);
+  }, [selectedSalesperson, selectedAnalyticsMonth, selectedAnalyticsYear, enabled]);
 
   return {
     salesAnalytics,
