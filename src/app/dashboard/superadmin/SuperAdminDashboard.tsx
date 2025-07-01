@@ -85,16 +85,6 @@ const SuperAdminDashboard = React.memo(() => {
 
     return () => {
       perfMonitor.safeEnd('dashboard-initial-load');
-      
-      // Log performance metrics in development
-      if (process.env.NODE_ENV === 'development') {
-        setTimeout(() => {
-          const metrics = perfMonitor.getMetrics();
-          if (metrics.length > 0) {
-            console.table(metrics);
-          }
-        }, 1000);
-      }
     };
   }, []);
 
