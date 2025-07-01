@@ -92,12 +92,12 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen grid transition-all duration-300" 
+         style={{
+           gridTemplateColumns: isExpanded ? '250px 1fr' : '50px 1fr'
+         }}>
       {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full z-50 flex flex-col transition-all duration-300 bg-gray-900 shadow-xl"
-           style={{ 
-             width: isExpanded ? '250px' : '50px',
-           }}>
+      <div className="flex flex-col bg-gray-900 shadow-xl overflow-hidden">
         <div className="sticky top-0 z-10 bg-gray-900">
           <div className="flex items-center justify-between px-2 py-5">
             {isExpanded ? (
@@ -166,12 +166,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       </div>
 
       {/* Main Content Area */}
-      <div 
-        className="flex-1 transition-all duration-300"
-        style={{ 
-          marginLeft: isExpanded ? '250px' : '50px'
-        }}
-      >
+      <div className="min-h-screen overflow-x-hidden bg-gray-100">
         {children}
       </div>
     </div>
