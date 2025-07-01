@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { PaymentAnalytics, CurrentMonthPayments } from '../types';
@@ -32,6 +32,14 @@ export const usePaymentAnalytics = ({
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Use ref to track loading state and prevent infinite re-renders
+  const hasLoaded = useRef(false);
+
+  // Memoize the onLoadComplete callback
+  const handleLoadComplete = useCallback(() => {
+    onLoadComplete?.();
+  }, [onLoadComplete]);
 
   useEffect(() => {
     if (!enabled) {
@@ -39,8 +47,15 @@ export const usePaymentAnalytics = ({
       return;
     }
 
+    // Prevent duplicate loads
+    if (hasLoaded.current) {
+      return;
+    }
+
     const fetchPaymentAnalytics = async () => {
       try {
+        console.log('🚀 Loading payment analytics...');
+        
         // First, get a limited set of payment records for faster initial load
         const paymentsCollection = collection(db, 'clients_payments');
         const limitedQuery = query(paymentsCollection, limit(50)); // Limit initial load
@@ -176,17 +191,21 @@ export const usePaymentAnalytics = ({
         });
         
         setIsLoading(false);
-        onLoadComplete?.();
+        hasLoaded.current = true;
+        
+        console.log('✅ Payment analytics loaded successfully');
+        handleLoadComplete();
         
       } catch (error) {
-        console.error('Error fetching payment analytics:', error);
+        console.error('❌ Error fetching payment analytics:', error);
         setIsLoading(false);
-        onLoadComplete?.();
+        hasLoaded.current = true;
+        handleLoadComplete();
       }
     };
     
     fetchPaymentAnalytics();
-  }, [enabled, onLoadComplete]);
+  }, [enabled, handleLoadComplete]);
 
   return {
     paymentAnalytics,

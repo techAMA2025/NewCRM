@@ -1,6 +1,6 @@
 // Define type for status and source keys
 export type StatusKey = 'Interested' | 'Not Interested' | 'Not Answering' | 'Callback' 
-| 'Converted' | 'Loan Required' | 'Cibil Issue' | 'Closed Lead' | 'No Status';
+| 'Converted' | 'Loan Required' | 'Cibil Issue' | 'Closed Lead' | 'Language Barrier' | 'Future Potential' | 'No Status';
 
 export type SourceKey = 'settleloans' | 'credsettlee' | 'ama';
 

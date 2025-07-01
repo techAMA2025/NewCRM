@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { SalesAnalytics, Salesperson, IndividualSalesData } from '../types';
@@ -29,9 +29,19 @@ export const useSalesAnalytics = ({
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [individualSalesData, setIndividualSalesData] = useState<IndividualSalesData>(null);
 
-  // Fetch salespeople
+  // Use refs to track loading states and prevent infinite re-renders
+  const salesAnalyticsLoaded = useRef(false);
+  const salespeopleLoaded = useRef(false);
+  const lastAnalyticsParams = useRef<string>('');
+
+  // Memoize the onLoadComplete callback
+  const handleLoadComplete = useCallback(() => {
+    onLoadComplete?.();
+  }, [onLoadComplete]);
+
+  // Fetch salespeople - only once when enabled
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || salespeopleLoaded.current) return;
     
     const fetchSalespeople = async () => {
       try {
@@ -59,6 +69,7 @@ export const useSalesAnalytics = ({
           
           salespeople.sort((a, b) => a.name.localeCompare(b.name));
           setSalespeople(salespeople);
+          salespeopleLoaded.current = true;
         } catch (error) {
           const prevMonthIndex = (currentMonth - 1 + 12) % 12;
           const prevMonthYear = prevMonthIndex > currentMonth ? currentYear - 1 : currentYear;
@@ -81,6 +92,7 @@ export const useSalesAnalytics = ({
           
           salespeople.sort((a, b) => a.name.localeCompare(b.name));
           setSalespeople(salespeople);
+          salespeopleLoaded.current = true;
         }
       } catch (error) {
         console.error('Error fetching salespeople:', error);
@@ -90,9 +102,15 @@ export const useSalesAnalytics = ({
     fetchSalespeople();
   }, [enabled]);
 
-  // Fetch sales analytics
+  // Fetch sales analytics - triggered by filter changes
   useEffect(() => {
     if (!enabled) return;
+    
+    // Create a unique key for current parameters to avoid duplicate calls
+    const currentParams = `${selectedAnalyticsMonth}-${selectedAnalyticsYear}`;
+    if (lastAnalyticsParams.current === currentParams && salesAnalyticsLoaded.current) {
+      return;
+    }
     
     const fetchSalesAnalytics = async () => {
       try {
@@ -206,18 +224,25 @@ export const useSalesAnalytics = ({
           avgDealSize: analyticsStats.avgDealSize
         });
         
-        onLoadComplete?.();
+        // Update tracking refs
+        lastAnalyticsParams.current = currentParams;
+        salesAnalyticsLoaded.current = true;
+        
+        // Call completion callback only once
+        if (!salesAnalyticsLoaded.current) {
+          handleLoadComplete();
+        }
         
       } catch (error) {
         console.error('Error fetching sales analytics:', error);
-        onLoadComplete?.();
+        handleLoadComplete();
       }
     };
     
     fetchSalesAnalytics();
-  }, [salespeople.length, selectedAnalyticsMonth, selectedAnalyticsYear, enabled, onLoadComplete]);
+  }, [selectedAnalyticsMonth, selectedAnalyticsYear, enabled, handleLoadComplete]);
 
-  // Fetch individual salesperson data
+  // Fetch individual salesperson data - separate effect to avoid interference
   useEffect(() => {
     if (!enabled) return;
     

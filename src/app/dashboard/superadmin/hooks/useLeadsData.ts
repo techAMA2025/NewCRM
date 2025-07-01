@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, Timestamp, QueryConstraint, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, QueryConstraint } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { LeadsBySourceData, SourceTotals, StatusKey, SourceKey, ChartDataset } from '../types';
 import { statusColors } from '../utils/chartConfigs';
@@ -42,6 +42,8 @@ export const useLeadsData = ({
 
     const fetchLeadsData = async () => {
       try {
+        console.log('🚀 Loading ALL leads data (no limits)...');
+        
         // Create a base query
         const leadsCollection = collection(db, 'crm_leads');
         let leadsQuery: any = leadsCollection;
@@ -67,10 +69,8 @@ export const useLeadsData = ({
           }
           
           leadsQuery = query(leadsQuery, ...constraints);
-        } else {
-          // If no filters applied, limit to prevent loading too much data
-          leadsQuery = query(leadsQuery, limit(500));
         }
+        // Removed the limit(500) to load ALL leads when no date filter is applied
         
         // Add salesperson filter if selected
         if (selectedLeadsSalesperson) {
@@ -78,6 +78,7 @@ export const useLeadsData = ({
         }
         
         const leadsSnapshot = await getDocs(leadsQuery);
+        console.log(`📊 Processing ${leadsSnapshot.size} leads...`);
         
         // Initialize direct counts for total leads by source
         const sourceTotalCounts = {
@@ -86,7 +87,7 @@ export const useLeadsData = ({
           ama: 0,
         };
         
-        // Initialize counters for each status and source combination
+        // Initialize counters for each status and source combination (including new statuses)
         const statusCounts = {
           'Interested': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Not Interested': { settleloans: 0, credsettlee: 0, ama: 0 },
@@ -96,6 +97,8 @@ export const useLeadsData = ({
           'Loan Required': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Cibil Issue': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Closed Lead': { settleloans: 0, credsettlee: 0, ama: 0 },
+          'Language Barrier': { settleloans: 0, credsettlee: 0, ama: 0 },
+          'Future Potential': { settleloans: 0, credsettlee: 0, ama: 0 },
           'No Status': { settleloans: 0, credsettlee: 0, ama: 0 },
         };
         
@@ -132,7 +135,7 @@ export const useLeadsData = ({
               if (status && statusCounts[status as StatusKey]) {
                 statusCounts[status as StatusKey][mappedSource as SourceKey]++;
               } else {
-                // Count leads with valid source but invalid/missing status as "Other"
+                // Count leads with valid source but invalid/missing status as "No Status"
                 statusCounts['No Status'][mappedSource as SourceKey]++;
               }
             }
@@ -157,6 +160,8 @@ export const useLeadsData = ({
         setSourceTotals(sourceTotalCounts);
         setIsLoading(false);
         onLoadComplete?.();
+        
+        console.log(`✅ Leads analytics complete: ${leadsSnapshot.size} leads processed`);
       } catch (error) {
         console.error('Error fetching leads data:', error);
         setIsLoading(false);
