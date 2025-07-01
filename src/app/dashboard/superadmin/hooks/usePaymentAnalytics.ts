@@ -36,10 +36,9 @@ export const usePaymentAnalytics = ({
   // Use ref to track loading state and prevent infinite re-renders
   const hasLoaded = useRef(false);
 
-  // Memoize the onLoadComplete callback
-  const handleLoadComplete = useCallback(() => {
-    onLoadComplete?.();
-  }, [onLoadComplete]);
+  // Use ref to store the callback to avoid dependency issues
+  const onLoadCompleteRef = useRef(onLoadComplete);
+  onLoadCompleteRef.current = onLoadComplete;
 
   useEffect(() => {
     if (!enabled) {
@@ -148,7 +147,7 @@ export const usePaymentAnalytics = ({
                 if (paymentDate >= currentMonthStart && paymentDate <= currentMonthEnd) {
                   isCurrentMonth = true;
                 }
-              } 
+              }
               else if (payment.dateApproved) {
                 const approvalDate = payment.dateApproved.toDate ? 
                   payment.dateApproved.toDate() : new Date(payment.dateApproved);
@@ -194,18 +193,18 @@ export const usePaymentAnalytics = ({
         hasLoaded.current = true;
         
         console.log('✅ Payment analytics loaded successfully');
-        handleLoadComplete();
+        onLoadCompleteRef.current?.();
         
       } catch (error) {
         console.error('❌ Error fetching payment analytics:', error);
         setIsLoading(false);
         hasLoaded.current = true;
-        handleLoadComplete();
+        onLoadCompleteRef.current?.();
       }
     };
     
     fetchPaymentAnalytics();
-  }, [enabled, handleLoadComplete]);
+  }, [enabled]);
 
   return {
     paymentAnalytics,

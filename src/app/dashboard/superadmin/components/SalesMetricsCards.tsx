@@ -58,7 +58,7 @@ export const SalesMetricsCards: React.FC<SalesMetricsCardsProps> = ({
   );
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
       {/* Revenue Card */}
       <MetricCard
         title={selectedSalesperson ? 'Revenue Collected' : 'Total Revenue'}
@@ -88,16 +88,6 @@ export const SalesMetricsCards: React.FC<SalesMetricsCardsProps> = ({
         gradient="bg-gradient-to-r from-green-400 to-emerald-400"
         textColor="text-green-300"
         icon={conversionRateIcon}
-      />
-
-      {/* Avg Deal Size Card */}
-      <MetricCard
-        title={selectedSalesperson ? 'Total Collections' : 'Avg. Deal Size'}
-        value={`₹${analyticsStats.avgDealSize.toLocaleString('en-IN')}`}
-        subtitle={selectedSalesperson ? 'per client' : 'average'}
-        gradient="bg-gradient-to-r from-amber-400 to-yellow-400"
-        textColor="text-amber-300"
-        icon={dealSizeIcon}
       />
     </div>
   );
