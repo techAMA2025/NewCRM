@@ -55,12 +55,12 @@ export const SalesMetricsSkeleton: React.FC = () => (
 );
 
 export const DashboardSkeleton: React.FC = () => (
-  <div className="p-2 min-h-screen bg-gray-900 text-white w-full">
+  <div className="p-2 min-h-screen bg-gray-900 text-white">
     <div className="h-6 bg-gray-700 rounded w-64 mb-4 animate-pulse"></div>
     
     <div className="flex flex-col gap-3">
       {/* Sales Analytics Skeleton */}
-      <div className="w-full bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div className="h-5 bg-gray-600 rounded w-48 mb-4 animate-pulse"></div>
         <SalesMetricsSkeleton />
         
@@ -75,7 +75,7 @@ export const DashboardSkeleton: React.FC = () => (
       </div>
       
       {/* Client Analytics Skeleton */}
-      <div className="w-full bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div className="h-5 bg-gray-600 rounded w-48 mb-4 animate-pulse"></div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ChartSkeleton />
@@ -84,12 +84,16 @@ export const DashboardSkeleton: React.FC = () => (
       </div>
       
       {/* Payment Analytics Skeleton */}
-      <div className="w-full bg-gray-800 border border-gray-700 rounded-lg p-4">
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div className="h-5 bg-gray-600 rounded w-48 mb-4 animate-pulse"></div>
         <SalesMetricsSkeleton />
         <div className="flex flex-col lg:flex-row gap-3">
-          <ChartSkeleton />
-          <ChartSkeleton />
+          <div className="lg:w-1/2">
+            <ChartSkeleton />
+          </div>
+          <div className="lg:w-1/2">
+            <ChartSkeleton />
+          </div>
         </div>
       </div>
     </div>

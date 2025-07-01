@@ -266,13 +266,13 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="p-2 min-h-screen bg-gray-900 text-white w-full max-w-full">
+    <div className="p-2 min-h-screen bg-gray-900 text-white">
       <h1 className="text-xl font-bold mb-3">Super Admin Dashboard</h1>
 
-      <div className="flex flex-col gap-3 w-full">
+      <div className="flex flex-col gap-3">
         {/* Sales Analytics Section */}
         <div className="w-full">
-          <Card className="bg-gray-800 border-gray-700 shadow-lg w-full">
+          <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-white text-base">
                 {selectedSalesperson && individualSalesData
@@ -346,7 +346,7 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="w-full">
+            <CardContent>
               {/* Sales Metrics Cards - Show skeleton while loading */}
               {loadingStages.salesAnalytics ? (
                 <SalesMetricsSkeleton />
@@ -359,9 +359,9 @@ export default function SuperAdminDashboard() {
               )}
 
               {/* CRM Leads Analytics Section */}
-              <div className="mt-4 flex flex-col lg:flex-row gap-3 w-full">
+              <div className="mt-4 flex flex-col lg:flex-row gap-3">
                 {/* Left side: Table with filters */}
-                <div className="lg:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl w-full">
+                <div className="lg:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-lg font-semibold text-blue-100">CRM Leads Analytics</h3>
                     
@@ -411,7 +411,7 @@ export default function SuperAdminDashboard() {
                 </div>
                 
                 {/* Right side: Pie chart */}
-                <div className="lg:w-1/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex flex-col w-full">
+                <div className="lg:w-1/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex flex-col">
                   {!enabledStages.leadsData || leadsLoading ? (
                     <ChartSkeleton height="h-64" />
                   ) : (
@@ -428,22 +428,22 @@ export default function SuperAdminDashboard() {
 
         {/* Client Analytics Section */}
         <div className="w-full">
-          <Card className="bg-gray-800 border-gray-700 shadow-lg w-full">
+          <Card className="bg-gray-800 border-gray-700 shadow-lg">
             <CardHeader>
               <CardTitle className="text-white text-base">Client & Advocate Analytics</CardTitle>
             </CardHeader>
-            <CardContent className="w-full">
+            <CardContent>
               {!enabledStages.clientAnalytics || clientsLoading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <ChartSkeleton />
                   <ChartSkeleton />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Left column: Client status distribution */}
                   <div className="w-full">
                     <h3 className="text-base font-semibold text-blue-200 mb-3">Client Status Distribution</h3>
-                    <div className="h-48 w-full">
+                    <div className="h-48">
                       <Bar 
                         data={clientStatusChartData} 
                         options={{
@@ -462,7 +462,7 @@ export default function SuperAdminDashboard() {
                     </div>
                     
                     {/* Client stats cards */}
-                    <div className="grid grid-cols-2 gap-2 mt-3 w-full">
+                    <div className="grid grid-cols-2 gap-2 mt-3">
                       <MetricCard
                         title="Total Clients"
                         value={clientAnalytics.totalClients}
@@ -493,7 +493,7 @@ export default function SuperAdminDashboard() {
                   {/* Right column: Loan type distribution and top advocates */}
                   <div className="w-full">
                     <h3 className="text-base font-semibold text-blue-200 mb-3">Loan Type Distribution</h3>
-                    <div className="h-48 w-full">
+                    <div className="h-48">
                       <Pie 
                         data={loanTypeChartData} 
                         options={{
@@ -511,10 +511,10 @@ export default function SuperAdminDashboard() {
                     </div>
                     
                     {/* Top advocates section */}
-                    <div className="mt-4 w-full">
+                    <div className="mt-4">
                       <h3 className="text-base font-semibold text-blue-200 mb-2">Top Advocates</h3>
-                      <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden w-full">
-                        <table className="min-w-full">
+                      <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
+                        <table className="w-full">
                           <thead>
                             <tr className="bg-gradient-to-r from-blue-900/80 to-purple-900/80">
                               <th className="py-2 px-3 text-left text-xs font-semibold text-blue-100">Advocate Name</th>
