@@ -461,9 +461,19 @@ const BillCutLeadsPage = () => {
 
   // Handle search results from BillcutLeadsFilters component
   const handleSearchResults = useCallback((results: Lead[]) => {
-    setSearchResults(results)
+    // If we have optimistic updates in the main leads state, apply them to search results too
+    const updatedResults = results.map(searchLead => {
+      const mainLead = leads.find(lead => lead.id === searchLead.id)
+      // If the main lead has a more recent lastModified date, use its data
+      if (mainLead && mainLead.lastModified > searchLead.lastModified) {
+        return mainLead
+      }
+      return searchLead
+    })
+    
+    setSearchResults(updatedResults)
     setIsSearching(false)
-  }, [])
+  }, [leads])
 
   // Build Firestore query based on filters (excluding search)
   const buildQuery = useCallback(
@@ -796,8 +806,17 @@ const BillCutLeadsPage = () => {
 
   // Optimistic update function
   const updateLeadOptimistic = useCallback((id: string, updates: Partial<Lead>) => {
-    setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, ...updates, lastModified: new Date() } : lead)))
-  }, [])
+    const updateFunction = (prev: Lead[]) => 
+      prev.map((lead) => (lead.id === id ? { ...lead, ...updates, lastModified: new Date() } : lead))
+    
+    // Always update main leads state
+    setLeads(updateFunction)
+    
+    // Update search results if there's an active search and the lead exists in search results
+    if (searchQuery.trim() && searchResults.some(lead => lead.id === id)) {
+      setSearchResults(updateFunction)
+    }
+  }, [searchQuery, searchResults])
 
   // Update lead with optimistic updates
   const updateLead = async (id: string, data: any) => {
