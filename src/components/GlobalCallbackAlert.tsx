@@ -11,6 +11,7 @@ interface UpcomingCallback {
   leadName: string;
   scheduledTime: Date;
   timeUntil: string;
+  assignedTo: string;
 }
 
 interface Lead {
@@ -140,7 +141,8 @@ const GlobalCallbackAlert = () => {
           id: lead.id,
           leadName: lead.name,
           scheduledTime,
-          timeUntil
+          timeUntil,
+          assignedTo: lead.assignedTo
         }))
         .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
 
@@ -209,6 +211,11 @@ const GlobalCallbackAlert = () => {
                 hour12: true
               })} (in {callback.timeUntil})
             </p>
+            {callback.assignedTo && (
+              <p className="mt-1 text-sm text-yellow-200">
+                👤 Assigned to: {callback.assignedTo}
+              </p>
+            )}
             <div className="mt-2 flex space-x-2">
               <button
                 onClick={() => {
