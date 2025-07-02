@@ -11,6 +11,7 @@ export const getStatusColor = (status: string) => {
     case 'Loan Required': return 'bg-purple-900 text-purple-100 border-purple-700';
     case 'Cibil Issue': return 'bg-rose-900 text-rose-100 border-rose-700';
     case 'Language Barrier': return 'bg-indigo-900 text-indigo-100 border-indigo-700';
+    case 'Retargeting': return 'bg-cyan-900 text-cyan-100 border-cyan-700';
     case 'Closed Lead': return 'bg-gray-500 text-white border-gray-700';
     case 'Select Status': 
     default: return 'bg-gray-700 text-gray-200 border-gray-600';

@@ -150,6 +150,8 @@ const BillcutLeadsTableOptimized = React.memo(
           return "bg-rose-900 text-rose-100 border-rose-700"
         case "language barrier":
           return "bg-indigo-900 text-indigo-100 border-indigo-700"
+        case "retargeting":
+          return "bg-cyan-900 text-cyan-100 border-cyan-700"
         case "closed lead":
           return "bg-gray-500 text-white border-gray-700"
         case "select status":
@@ -577,7 +579,7 @@ const BillcutLeadsTableOptimized = React.memo(
                       : "bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed"
                   }`}
                 >
-                  {statusOptions.map((status) => (
+                  {statusOptions.filter(status => status !== "Retargeting").map((status) => (
                     <option key={status} value={status}>
                       {status}
                     </option>
