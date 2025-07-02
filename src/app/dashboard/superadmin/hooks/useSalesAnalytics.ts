@@ -164,10 +164,10 @@ export const useSalesAnalytics = ({
           
           salesTargetsSnapshot.forEach((doc) => {
             const targetData = doc.data();
-            totalTarget += targetData.targetAmount || 0;
+            totalTarget += targetData.amountCollectedTarget || 0;
             
-            if (targetData.collectedAmount !== undefined) {
-              totalCollected += targetData.collectedAmount || 0;
+            if (targetData.amountCollected !== undefined) {
+              totalCollected += targetData.amountCollected || 0;
             }
           });
         } catch (error) {
@@ -235,10 +235,10 @@ export const useSalesAnalytics = ({
           const targetData = salesTargetDoc.data();
           setIndividualSalesData({
             name: targetData.userName || 'Unknown',
-            targetAmount: targetData.targetAmount || 0,
-            collectedAmount: targetData.collectedAmount || 0,
-            conversionRate: targetData.targetAmount > 0 
-              ? Math.round((targetData.collectedAmount / targetData.targetAmount) * 100) 
+            targetAmount: targetData.amountCollectedTarget || 0,
+            collectedAmount: targetData.amountCollected || 0,
+            conversionRate: targetData.amountCollectedTarget > 0 
+              ? Math.round((targetData.amountCollected / targetData.amountCollectedTarget) * 100) 
               : 0,
             monthlyData: [0, 0, 0, 0, 0, 0]
           });
