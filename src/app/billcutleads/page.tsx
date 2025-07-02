@@ -590,7 +590,7 @@ const BillCutLeadsPage = () => {
       const countSnapshot = await getDocs(countQuery)
       setTotalFilteredCount(countSnapshot.size)
     } catch (error) {
-      console.error("Error fetching total count:", error)
+      console.error("Error fetching total count:", error) 
       setTotalFilteredCount(0)
     }
   }, [buildCountQuery])
