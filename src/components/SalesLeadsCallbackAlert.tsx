@@ -13,6 +13,7 @@ interface UpcomingCallback {
   timeUntil: string;
   phone?: string;
   email?: string;
+  assignedTo: string;
 }
 
 interface Lead {
@@ -148,7 +149,8 @@ const SalesLeadsCallbackAlert = () => {
           scheduledTime,
           timeUntil,
           phone: lead.phone,
-          email: lead.email
+          email: lead.email,
+          assignedTo: lead.assignedTo
         }))
         .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
 
@@ -261,6 +263,11 @@ const SalesLeadsCallbackAlert = () => {
                 day: 'numeric'
               })}
             </p>
+            {callback.assignedTo && (
+              <p className="mt-1 text-sm text-white/80">
+                👤 Assigned to: {callback.assignedTo}
+              </p>
+            )}
             {callback.phone && (
               <p className="mt-1 text-sm text-white/80">
                 📱 {callback.phone}
