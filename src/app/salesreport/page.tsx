@@ -115,6 +115,16 @@ interface SimpleCityChartProps {
   cityData: SimpleCityData[];
 }
 
+interface LanguageBarrierData {
+  language: string;
+  count: number;
+  percentage: number;
+}
+
+interface LanguageBarrierChartProps {
+  languageData: LanguageBarrierData[];
+}
+
 const LEAD_STATUSES = [
   'No Status',
   'Interested',
@@ -124,7 +134,8 @@ const LEAD_STATUSES = [
   'Converted',
   'Loan Required',
   'Cibil Issue',
-  'Closed Lead'
+  'Closed Lead',
+  'Language Barrier'
 ];
 
 const LEAD_SOURCES = ['credsettlee', 'ama', 'settleloans', 'billcut'];
@@ -147,7 +158,49 @@ const COLORS = [
   '#82CA9D',
   '#FFC658',
   '#FF6B6B',
-  '#4ECDC4'
+  '#4ECDC4',
+  '#9B59B6',
+  '#E67E22',
+  '#34495E',
+  '#F39C12',
+  '#27AE60',
+  '#E74C3C',
+  '#3498DB',
+  '#2ECC71',
+  '#F1C40F',
+  '#9013FE',
+  '#FF5722',
+  '#607D8B',
+  '#795548',
+  '#FF9800',
+  '#4CAF50'
+];
+
+const INDIAN_LANGUAGES = [
+  'Hindi',
+  'Bengali',
+  'Telugu',
+  'Marathi',
+  'Tamil',
+  'Gujarati',
+  'Kannada',
+  'Malayalam',
+  'Punjabi',
+  'Odia',
+  'Assamese',
+  'Maithili',
+  'Santali',
+  'Kashmiri',
+  'Nepali',
+  'Sindhi',
+  'Dogri',
+  'Konkani',
+  'Manipuri',
+  'Bodo',
+  'Sanskrit',
+  'Urdu',
+  'English',
+  'Other'
 ];
 
 export default function SalesReport() {
@@ -188,6 +241,7 @@ export default function SalesReport() {
 
   // Add new state for simplified city data
   const [simpleCityData, setSimpleCityData] = useState<SimpleCityData[]>([]);
+  const [languageBarrierData, setLanguageBarrierData] = useState<LanguageBarrierData[]>([]);
 
   // Helper function to get city name from lead data (handles both 'city' and 'City' fields)
   const getCityName = (leadData: any): string => {
@@ -518,6 +572,37 @@ export default function SalesReport() {
             }
           });
         }
+        
+        // Process language barrier data
+        const languageBarrierMap: { [key: string]: number } = {};
+        let totalLanguageBarrierLeads = 0;
+
+        leadsSnapshot.docs.forEach(doc => {
+          const leadData = doc.data();
+          
+          // Only process leads with 'Language Barrier' status
+          if (
+            leadData.status === 'Language Barrier' &&
+            leadData.language_barrier &&
+            (selectedSource === 'all' || leadData.source_database === selectedSource) &&
+            (selectedCity === 'all' || leadData.city === selectedCity)
+          ) {
+            const language = leadData.language_barrier || 'Other';
+            languageBarrierMap[language] = (languageBarrierMap[language] || 0) + 1;
+            totalLanguageBarrierLeads += 1;
+          }
+        });
+
+        // Convert to array and calculate percentages
+        const languageBarrierArray: LanguageBarrierData[] = Object.entries(languageBarrierMap)
+          .map(([language, count]) => ({
+            language,
+            count,
+            percentage: totalLanguageBarrierLeads > 0 ? (count / totalLanguageBarrierLeads) * 100 : 0
+          }))
+          .sort((a, b) => b.count - a.count); // Sort by count in descending order
+
+        setLanguageBarrierData(languageBarrierArray);
         
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -988,6 +1073,100 @@ export default function SalesReport() {
     );
   };
 
+  // Language Barrier Bar Chart
+  const LanguageBarrierBarChart: React.FC<LanguageBarrierChartProps> = ({ languageData }) => {
+    return (
+      <div className="h-[400px] w-full">
+        <ResponsiveContainer>
+          <BarChart data={languageData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="language" 
+              angle={-45} 
+              textAnchor="end" 
+              height={80}
+              interval={0}
+              fontSize={11}
+            />
+            <YAxis />
+            <Tooltip 
+              formatter={(value: number, name: string) => [
+                name === 'count' ? value : `${value.toFixed(1)}%`,
+                name === 'count' ? 'Leads' : 'Percentage'
+              ]}
+              labelFormatter={(label: string) => `Language: ${label}`}
+            />
+            <Legend />
+            <Bar 
+              dataKey="count" 
+              fill="#DC2626" 
+              name="Number of Leads"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // Language Barrier Pie Chart
+  const LanguageBarrierPieChart: React.FC<LanguageBarrierChartProps> = ({ languageData }) => {
+    const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, language, count }: any) => {
+      const RADIAN = Math.PI / 180;
+      const radius = outerRadius * 1.2;
+      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+      const textAnchor = x > cx ? 'start' : 'end';
+
+      // Only show label if percentage is greater than 5%
+      if (percent * 100 < 5) return null;
+
+      return (
+        <text 
+          x={x} 
+          y={y} 
+          fill="#374151" 
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          fontSize="12"
+          fontWeight="500"
+        >
+          {`${language}: ${count} (${(percent * 100).toFixed(1)}%)`}
+        </text>
+      );
+    };
+
+    return (
+      <div className="h-[400px] w-full">
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={languageData}
+              dataKey="count"
+              nameKey="language"
+              cx="50%"
+              cy="50%"
+              outerRadius={120}
+              label={renderCustomizedLabel}
+            >
+              {languageData.map((entry, index) => (
+                <Cell key={entry.language} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip 
+              formatter={(value: number) => [value, 'Leads']}
+              labelFormatter={(label: string) => `Language: ${label}`}
+            />
+            <Legend 
+              wrapperStyle={{ fontSize: '12px' }}
+              iconType="circle"
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       {userRole === 'billcut' ? <BillcutSidebar /> : <OverlordSidebar />}
@@ -1323,10 +1502,6 @@ export default function SalesReport() {
                   ))}
                 </div>
 
-              
-
-               
-
                 {/* Sales Team Performance Table */}
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-2xl blur-lg"></div>
@@ -1430,8 +1605,6 @@ export default function SalesReport() {
                   </div>
                 </div>
 
-               
-
                 {/* NEW: Simplified City-wise Lead Distribution Section */}
                 {simpleCityData.length > 0 && (
                   <>
@@ -1488,6 +1661,135 @@ export default function SalesReport() {
                         <SimpleCityWiseBarChart cityData={simpleCityData} />
                       </div>
                     </div>
+                  </>
+                )}
+
+                {/* Language Barrier Analytics Section */}
+                {languageBarrierData.length > 0 && (
+                  <>
+                    {/* Section Divider */}
+                    <div className="relative my-8">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gradient-to-r from-indigo-300 to-purple-300"></div>
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-gradient-to-r from-slate-50 via-blue-50/30 to-indigo-50/20 px-6 py-2 text-lg font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
+                          Language Barrier Analytics
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Language Barrier Summary Card */}
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-600/5 to-orange-600/5 rounded-2xl blur-lg"></div>
+                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Total Language Barriers</p>
+                            <p className="text-2xl font-bold text-red-600">
+                              {languageBarrierData.reduce((sum, lang) => sum + lang.count, 0)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Languages Affected</p>
+                            <p className="text-2xl font-bold text-orange-600">{languageBarrierData.length}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Most Common</p>
+                            <p className="text-lg font-bold text-amber-600">
+                              {languageBarrierData.length > 0 ? languageBarrierData[0].language : 'N/A'}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {languageBarrierData.length > 0 ? `${languageBarrierData[0].count} leads` : ''}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Barrier Rate</p>
+                            <p className="text-2xl font-bold text-purple-600">
+                              {summaryMetrics.totalLeads > 0 
+                                ? ((languageBarrierData.reduce((sum, lang) => sum + lang.count, 0) / summaryMetrics.totalLeads) * 100).toFixed(1)
+                                : 0}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  
+
+                    {/* Language Barrier Details Table */}
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-600/5 to-orange-600/5 rounded-2xl blur-lg"></div>
+                      <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
+                        <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
+                          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg">
+                              <UserGroupIcon className="h-5 w-5 text-white" />
+                            </div>
+                            Language Barrier Breakdown
+                          </h3>
+                        </div>
+                        <div className="p-6">
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full">
+                              <thead>
+                                <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Language
+                                  </th>
+                                  <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Number of Leads
+                                  </th>
+                                  <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Percentage
+                                  </th>
+                                  <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    Impact Level
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100/50">
+                                {languageBarrierData.map((language, index) => (
+                                  <tr key={language.language} className="hover:bg-red-50/30 transition-colors duration-200">
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center space-x-3">
+                                        <div 
+                                          className="w-4 h-4 rounded-full flex-shrink-0"
+                                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                        ></div>
+                                        <div className="text-sm font-bold text-gray-900">{language.language}</div>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                      <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-red-800 bg-red-100 border border-red-200 shadow-sm">
+                                        {language.count}
+                                      </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                      <span className="text-sm font-bold text-gray-900">
+                                        {language.percentage.toFixed(1)}%
+                                      </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${
+                                        language.percentage >= 20 ? 'bg-red-100 text-red-800' :
+                                        language.percentage >= 10 ? 'bg-orange-100 text-orange-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                      }`}>
+                                        {language.percentage >= 20 ? 'High' :
+                                         language.percentage >= 10 ? 'Medium' : 'Low'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+
                   </>
                 )}
               </div>
