@@ -104,6 +104,8 @@ const getStatusColor = (status: string) => {
       return 'bg-purple-900 text-white';
     case 'cibil issue':
       return 'bg-rose-900 text-white';
+    case 'retargeting':
+      return 'bg-cyan-900 text-white';
     case 'closed lead':
       return 'bg-gray-500 text-white';
     case 'select status':
@@ -130,6 +132,8 @@ const getStatusBadgeColor = (status: string) => {
       return 'bg-purple-900 text-white border-purple-700';
     case 'cibil issue':
       return 'bg-rose-900 text-white border-rose-700';
+    case 'retargeting':
+      return 'bg-cyan-900 text-white border-cyan-700';
     case 'closed lead':
       return 'bg-gray-500 text-white border-gray-700';
     case 'select status':

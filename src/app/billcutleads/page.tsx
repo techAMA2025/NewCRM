@@ -54,6 +54,7 @@ const statusOptions = [
   "Loan Required",
   "Cibil Issue",
   "Language Barrier",
+  "Retargeting",
   "Closed Lead",
 ]
 
