@@ -122,6 +122,14 @@ const AdminDashboard = () => {
   const [totalConvertedLeads, setTotalConvertedLeads] = useState(0)
   const [totalLeadsTarget, setTotalLeadsTarget] = useState(0)
   const [pendingLetters, setPendingLetters] = useState<Letter[]>([])
+  
+  // Add month/year filter state
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const date = new Date();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months[date.getMonth()];
+  })
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -191,17 +199,18 @@ const AdminDashboard = () => {
     fetchStats()
   }, [])
   
+  // Re-fetch targets data when month or year changes
+  useEffect(() => {
+    if (salesUsers.length > 0) {
+      fetchTargetsData()
+    }
+  }, [selectedMonth, selectedYear, salesUsers])
+  
   // Fetch targets for all sales users
   const fetchTargetsData = async () => {
     try {
-      // Get current month and year
-      const date = new Date();
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const currentMonth = months[date.getMonth()];
-      const currentYear = date.getFullYear();
-      
-      // Create the monthly document ID
-      const monthDocId = `${currentMonth}_${currentYear}`;
+      // Use selected month and year instead of current
+      const monthDocId = `${selectedMonth}_${selectedYear}`;
       
       // Check if the monthly document exists
       const monthlyDocRef = doc(db, "targets", monthDocId);
@@ -522,9 +531,45 @@ const AdminDashboard = () => {
           Sales Analytics Dashboard
         </h2>
         
-        {/* Current Month Display */}
-        <div className="mb-4 text-sm text-gray-400">
-          Showing data for: {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+        {/* Month and Year Filter */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label htmlFor="monthSelect" className="block text-sm font-medium mb-2 text-gray-300">
+              Select Month:
+            </label>
+            <select 
+              id="monthSelect"
+              className="bg-gray-800 border border-gray-700 text-gray-100 rounded-md px-3 py-2 w-full"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map(month => (
+                <option key={month} value={month}>{month}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="yearSelect" className="block text-sm font-medium mb-2 text-gray-300">
+              Select Year:
+            </label>
+            <select 
+              id="yearSelect"
+              className="bg-gray-800 border border-gray-700 text-gray-100 rounded-md px-3 py-2 w-full"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            >
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="text-sm text-gray-400">
+            <div className="text-lg font-semibold text-indigo-400">
+              Showing data for: {selectedMonth} {selectedYear}
+            </div>
+          </div>
         </div>
         
         {/* Sales User Selector */}
@@ -570,7 +615,7 @@ const AdminDashboard = () => {
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
               <CardTitle className="text-gray-100">
-                Converted Leads Target ({new Date().toLocaleString('default', { month: 'short', year: 'numeric' })})
+                Converted Leads Target ({selectedMonth} {selectedYear})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -592,7 +637,7 @@ const AdminDashboard = () => {
         {/* Sales Target Table */}
         <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-purple-500/10 transition-all duration-300 mb-6">
           <CardHeader className="pb-2">
-            <CardTitle className="text-gray-100">Sales Team Targets & Collections</CardTitle>
+            <CardTitle className="text-gray-100">Sales Team Targets & Collections ({selectedMonth} {selectedYear})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -657,7 +702,7 @@ const AdminDashboard = () => {
         {/* Converted Leads Table */}
         <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 mb-6">
           <CardHeader className="pb-2">
-            <CardTitle className="text-gray-100">Sales Team Converted Leads</CardTitle>
+            <CardTitle className="text-gray-100">Sales Team Converted Leads ({selectedMonth} {selectedYear})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
