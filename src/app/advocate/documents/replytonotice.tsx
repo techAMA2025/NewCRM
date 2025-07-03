@@ -201,7 +201,7 @@ const ReplyToNoticeForm = ({ onClose }: ReplyToNoticeFormProps) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${formData.clientName}_replyToNotice.docx`;
+      a.download = `${formData.clientName}_sec25_reply_${formData.bankName}.docx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
