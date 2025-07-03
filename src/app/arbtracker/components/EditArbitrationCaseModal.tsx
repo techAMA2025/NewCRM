@@ -16,9 +16,10 @@ interface EditArbitrationCaseModalProps {
 
 const defaultEmails = [
   'shreyarora.amalegal@gmail.com',
-  'work.rahulgour@gmail.com',
-  'abhudash.amalegal@gmail.com',
-  'shrutiamalegal@gmail.com'
+  'shrutiamalegal@gmail.com',
+  'sourav.amalegal@gmail.com',
+  'latika.amalegal@gmail.com',
+  'sanchaita.amalegal@gmail.com',
 ]
 
 export default function EditArbitrationCaseModal({
