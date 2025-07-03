@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     // Create response with appropriate headers for file download
     return new NextResponse(buffer, {
       headers: {
-        'Content-Disposition': `attachment; filename="${clientName}_replyToNotice.docx"`,
+        'Content-Disposition': `attachment; filename="${clientName}_sec25reply_${bankName}.docx"`,
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       }
     });
