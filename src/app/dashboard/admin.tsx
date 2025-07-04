@@ -160,11 +160,9 @@ const AdminDashboard = () => {
         const cachedUsers = adminUsersCache.get<SalesUser[]>(usersCacheKey);
         
         if (cachedUsers && !usersLoaded.current) {
-          console.log('🔍 Using cached users data');
           setSalesUsers(cachedUsers);
           usersLoaded.current = true;
         } else if (!usersLoaded.current) {
-          console.log('🔍 Fetching users data from database');
           // Fetch users collection
           const usersRef = collection(db, 'users')
           const usersSnap = await getDocs(usersRef)
@@ -242,7 +240,6 @@ const AdminDashboard = () => {
   // Fetch targets for all sales users
   const fetchTargetsData = useCallback(async () => {
     if (targetsLoaded.current) {
-      console.log('🔍 Targets data already loaded, skipping fetch');
       return;
     }
     
@@ -256,14 +253,13 @@ const AdminDashboard = () => {
       // Check cache first
       const cachedTargets = adminAnalyticsCache.get<TargetData[]>(targetsCacheKey);
       if (cachedTargets) {
-        console.log('🔍 Using cached targets data');
         setTargetData(cachedTargets);
         targetsLoaded.current = true;
         perfMonitor.end('targets-data-load');
         return;
       }
       
-      console.log('🔍 Fetching targets data from database');
+
       
       // Check if the monthly document exists
       const monthlyDocRef = doc(db, "targets", monthDocId);
@@ -344,7 +340,6 @@ const AdminDashboard = () => {
   // Fetch leads data
   const fetchLeadsData = useCallback(async () => {
     if (leadsLoaded.current) {
-      console.log('🔍 Leads data already loaded, skipping fetch');
       return;
     }
     
@@ -361,7 +356,6 @@ const AdminDashboard = () => {
       }>(leadsCacheKey);
       
       if (cachedLeads) {
-        console.log('🔍 Using cached leads data');
         setLeadsData(cachedLeads.allLeads);
         setStatusData(cachedLeads.statusData);
         setMonthlyLeadsData(cachedLeads.monthlyLeadsData);
@@ -370,7 +364,7 @@ const AdminDashboard = () => {
         return;
       }
       
-      console.log('🔍 Fetching leads data from database');
+
       
       const leadsRef = collection(db, 'crm_leads')
       const leadsSnap = await getDocs(leadsRef)
@@ -457,7 +451,6 @@ const AdminDashboard = () => {
   // Add this new function to fetch pending letters
   const fetchPendingLetters = useCallback(async () => {
     if (lettersLoaded.current) {
-      console.log('🔍 Pending letters data already loaded, skipping fetch');
       return;
     }
     
@@ -469,14 +462,13 @@ const AdminDashboard = () => {
       // Check cache first
       const cachedLetters = adminCache.get<Letter[]>(lettersCacheKey);
       if (cachedLetters) {
-        console.log('🔍 Using cached pending letters data');
         setPendingLetters(cachedLetters);
         lettersLoaded.current = true;
         perfMonitor.end('pending-letters-load');
         return;
       }
       
-      console.log('🔍 Fetching pending letters data from database');
+
       
       // Fetch clients where request_letter isn't true
       const clientsRef = collection(db, 'clients');
@@ -645,7 +637,6 @@ const AdminDashboard = () => {
     adminCache.clear();
     adminAnalyticsCache.clear();
     adminUsersCache.clear();
-    console.log('🗑️ All admin dashboard cache cleared');
     setCacheSize(0);
   }, []);
 
@@ -675,7 +666,6 @@ const AdminDashboard = () => {
       // Clear the specific cache for the new month/year
       const targetsCacheKey = generateCacheKey.targets(selectedMonth, selectedYear);
       adminAnalyticsCache.delete(targetsCacheKey);
-      console.log('🗑️ Cleared targets cache for:', targetsCacheKey);
       
       // Call fetchTargetsData directly without adding it to dependencies
       const refetchTargets = async () => {

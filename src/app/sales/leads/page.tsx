@@ -315,7 +315,6 @@ const LeadsPage = () => {
       }
       return null;
     } catch (error) {
-      console.error('Error fetching callback info:', error);
       return null;
     }
   }, []);
@@ -956,7 +955,7 @@ const LeadsPage = () => {
       setAllFilteredLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
       setFilteredLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
     } catch (error) {
-      console.error('Error refreshing callback info:', error);
+      // Handle error silently
     }
   };
 
@@ -1017,7 +1016,7 @@ const LeadsPage = () => {
             setAllFilteredLeads(prevLeads => updateLeadsWithCallbackInfo(prevLeads));
           }
         } catch (error) {
-          console.error('Error fetching callback info:', error);
+          // Handle error silently
         } finally {
           setIsLoadingCallbackInfo(false);
         }

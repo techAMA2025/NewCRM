@@ -304,7 +304,6 @@ const BillCutLeadsPage = () => {
 
       return null
     } catch (error) {
-      console.error("Error fetching callback info:", error)
       return null
     }
   }
@@ -1145,7 +1144,7 @@ const BillCutLeadsPage = () => {
       const callbackInfo = await fetchCallbackInfo(leadId)
       updateLeadOptimistic(leadId, { callbackInfo })
     } catch (error) {
-      console.error("Error refreshing callback info:", error)
+      // Handle error silently
     }
   }
 

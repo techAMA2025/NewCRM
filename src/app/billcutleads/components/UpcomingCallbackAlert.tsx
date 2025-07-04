@@ -130,7 +130,7 @@ const UpcomingCallbackAlert: React.FC = () => {
       setUpcomingCallbacks(callbacks);
       setIsVisible(callbacks.length > 0);
     } catch (error) {
-      console.error('Error fetching upcoming callbacks:', error);
+      // Handle error silently
     }
   };
 

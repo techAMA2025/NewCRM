@@ -8,12 +8,12 @@ const AdminCloseAllButton = () => {
   const [hasActiveToasts, setHasActiveToasts] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Check if user is admin from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userRoleFromStorage = localStorage.getItem('userRole');
-      console.log('AdminCloseAllButton - User Role:', userRoleFromStorage);
       setIsAdminUser(userRoleFromStorage === 'admin');
     }
   }, []);
@@ -28,11 +28,9 @@ const AdminCloseAllButton = () => {
 
         // Method 1: Look for react-toastify toasts
         const toastifyToasts = document.querySelectorAll('.Toastify__toast');
-        console.log('AdminCloseAllButton - Toastify toasts found:', toastifyToasts.length);
         
         toastifyToasts.forEach((toastElement, index) => {
           const toastText = toastElement.textContent || '';
-          console.log(`Toast ${index + 1} text:`, toastText.substring(0, 100));
           
           if (toastText.includes('Callback') || 
               toastText.includes('Sales Lead') ||
@@ -47,7 +45,6 @@ const AdminCloseAllButton = () => {
 
         // Method 2: Look for any element with callback-related IDs
         const toastsByTestId = document.querySelectorAll('[data-testid*="toast"]');
-        console.log('AdminCloseAllButton - Toast test-id elements found:', toastsByTestId.length);
         
         toastsByTestId.forEach(toast => {
           const testId = toast.getAttribute('data-testid') || '';
@@ -72,13 +69,6 @@ const AdminCloseAllButton = () => {
           }
         });
 
-        console.log('AdminCloseAllButton - Detection results:', {
-          toastifyCount: toastifyToasts.length,
-          callbackDivs,
-          totalCallbackToasts: toastCount,
-          hasCallbackToasts
-        });
-
         setHasActiveToasts(hasCallbackToasts);
       }
     };
@@ -88,7 +78,6 @@ const AdminCloseAllButton = () => {
 
     // Set up a mutation observer to watch for toast changes
     const observer = new MutationObserver(() => {
-      console.log('AdminCloseAllButton - DOM changed, rechecking toasts');
       setTimeout(checkActiveToasts, 100); // Small delay to let DOM settle
     });
     
@@ -116,8 +105,6 @@ const AdminCloseAllButton = () => {
     
     setIsPressed(true);
     setTimeout(() => setIsPressed(false), 150);
-    
-    console.log('AdminCloseAllButton - Closing all callbacks');
     
     if (typeof window !== 'undefined') {
       let closedCount = 0;
@@ -160,7 +147,6 @@ const AdminCloseAllButton = () => {
             const toastId = testId.replace('toast-', '');
             toast.dismiss(toastId);
             closedCount++;
-            console.log('Dismissed toast by testid:', toastId);
           }
         }
       });
@@ -168,15 +154,12 @@ const AdminCloseAllButton = () => {
       // Method 3: Use the nuclear option - dismiss ALL toasts
       toast.dismiss();
       
-      console.log('AdminCloseAllButton - Total dismiss attempts:', closedCount);
-      
       // Force immediate state update
       setHasActiveToasts(false);
       
       // Re-check after a delay to see if any toasts remain
       setTimeout(() => {
         const remainingToasts = document.querySelectorAll('.Toastify__toast');
-        console.log('Remaining toasts after dismiss:', remainingToasts.length);
         
         if (remainingToasts.length === 0) {
           setHasActiveToasts(false);
@@ -191,12 +174,6 @@ const AdminCloseAllButton = () => {
       }, 300);
     }
   };
-
-  console.log('AdminCloseAllButton - Render check:', {
-    isAdminUser,
-    hasActiveToasts,
-    shouldShow: isAdminUser && hasActiveToasts
-  });
 
   // Only show if user is admin and there are active callback toasts
   if (!isAdminUser || !hasActiveToasts) {

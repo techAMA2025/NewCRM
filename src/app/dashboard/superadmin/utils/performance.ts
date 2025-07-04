@@ -34,11 +34,6 @@ class PerformanceMonitor {
 
     this.timers.delete(name);
     
-    // Log performance in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`⚡ ${name}: ${duration.toFixed(2)}ms`);
-    }
-
     return duration;
   }
 
