@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { 
@@ -22,6 +22,10 @@ import {
   LineChart,
   Line,
 } from "recharts";
+
+// Import cache and performance utilities
+import { salesCache, salesAnalyticsCache, salesTargetsCache, salesTasksCache, generateCacheKey } from './sales/utils/cache';
+import { salesPerfMonitor, preloadCriticalResources, debounce } from './sales/utils/performance';
 
 interface TargetData {
   amountCollectedTarget: number;
@@ -148,7 +152,25 @@ export default function SalesDashboard() {
   // Add state for analytics source selection
   const [analyticsSource, setAnalyticsSource] = useState<'AMA' | 'Billcut'>('AMA');
 
+  // Cache management state
+  const [cacheSize, setCacheSize] = useState(0);
+  
+  // Use refs to track loading states and prevent infinite re-renders
+  const targetsLoaded = useRef(false);
+  const leadsLoaded = useRef(false);
+  const billcutLeadsLoaded = useRef(false);
+  const tasksLoaded = useRef(false);
+  const monthsLoaded = useRef(false);
+
   useEffect(() => {
+    // Start performance monitoring
+    salesPerfMonitor.start('sales-dashboard-initial-load');
+    salesPerfMonitor.start('critical-resources-preload');
+    
+    // Preload critical resources
+    preloadCriticalResources();
+    salesPerfMonitor.end('critical-resources-preload');
+
     // Get user details from localStorage
     const storedUserName = localStorage.getItem("userName");
     const storedUserEmail = localStorage.getItem("userEmail");
@@ -161,47 +183,84 @@ export default function SalesDashboard() {
       fetchData(storedUserName);
     } else {
       setIsLoading(false);
+      salesPerfMonitor.safeEnd('sales-dashboard-initial-load');
     }
-  }, []);
+
+    return () => {
+      salesPerfMonitor.safeEnd('sales-dashboard-initial-load');
+    };
+  }, []); // Empty dependency array to run only once
 
   // New effect to refetch data when month/year changes
   useEffect(() => {
-    if (userName) {
-      fetchTargetDataByUserName(userName);
-      fetchLeadData(userName);
-      fetchBillcutLeadData(userName);
+    if (userName && !isLoading) {
+      // Reset the loaded flags when month/year changes to force refetch
+      targetsLoaded.current = false;
+      leadsLoaded.current = false;
+      billcutLeadsLoaded.current = false;
+      
+      // Clear the specific cache for the new month/year
+      const targetsCacheKey = generateCacheKey.targets(userName, currentMonth, currentYear);
+      const leadsCacheKey = generateCacheKey.leads(userName, currentMonth, currentYear);
+      const billcutCacheKey = generateCacheKey.billcutLeads(userName, currentMonth, currentYear);
+      
+      salesTargetsCache.delete(targetsCacheKey);
+      salesAnalyticsCache.delete(leadsCacheKey);
+      salesAnalyticsCache.delete(billcutCacheKey);
+      
+      // Use Promise.all to fetch data in parallel
+      Promise.all([
+        fetchTargetDataByUserName(userName),
+        fetchLeadData(userName),
+        fetchBillcutLeadData(userName)
+      ]).catch(error => {
+        console.error("Error fetching data on month/year change:", error);
+      });
     }
-  }, [currentMonth, currentYear, userName]);
+  }, [currentMonth, currentYear, userName, isLoading]); // Added isLoading to prevent calls during initial load
 
   // New function to fetch all data types
-  const fetchData = async (userName: string) => {
+  const fetchData = useCallback(async (userName: string) => {
     try {
       setIsLoading(true);
       
-      // Fetch target data
-      await fetchTargetDataByUserName(userName);
+      // Fetch all data in parallel for better performance
+      await Promise.all([
+        fetchTargetDataByUserName(userName),
+        fetchLeadData(userName),
+        fetchBillcutLeadData(userName),
+        fetchTaskData(userName),
+        fetchAvailableMonths(userName)
+      ]);
       
-      // Fetch lead data
-      await fetchLeadData(userName);
-      
-      // Fetch Billcut lead data
-      await fetchBillcutLeadData(userName);
-      
-      // Fetch tasks assigned to this user
-      await fetchTaskData(userName);
-      
-      // Get available months for filtering
-      await fetchAvailableMonths(userName);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
+      salesPerfMonitor.safeEnd('sales-dashboard-initial-load');
     }
-  };
+  }, []);
 
   // New function to get available months with lead data
-  const fetchAvailableMonths = async (userName: string) => {
+  const fetchAvailableMonths = useCallback(async (userName: string) => {
+    if (monthsLoaded.current) {
+      return;
+    }
+    
+    salesPerfMonitor.start('available-months-load');
+    
     try {
+      const monthsCacheKey = generateCacheKey.availableMonths(userName);
+      
+      // Check cache first
+      const cachedMonths = salesCache.get<{month: string, year: number}[]>(monthsCacheKey);
+      if (cachedMonths) {
+        setAvailableMonths(cachedMonths);
+        monthsLoaded.current = true;
+        salesPerfMonitor.end('available-months-load');
+        return;
+      }
+      
       // Query all leads assigned to the current user (AMA leads)
       const leadsQuery = query(
         collection(db, "crm_leads"),
@@ -282,14 +341,37 @@ export default function SalesDashboard() {
         monthsArray.unshift({ month: currentMonth, year: currentYear });
       }
       
+      // Cache the months data
+      salesCache.set(monthsCacheKey, monthsArray);
+      
       setAvailableMonths(monthsArray);
+      monthsLoaded.current = true;
+      salesPerfMonitor.end('available-months-load');
+      
     } catch (error) {
       console.error("Error fetching available months:", error);
+      salesPerfMonitor.safeEnd('available-months-load');
     }
-  };
+  }, [currentMonth, currentYear]);
 
-  const fetchTargetDataByUserName = async (userName: string) => {
+  const fetchTargetDataByUserName = useCallback(async (userName: string) => {
+    if (targetsLoaded.current) {
+      return;
+    }
+    
+    salesPerfMonitor.start('targets-data-load');
+    
     try {
+      const targetsCacheKey = generateCacheKey.targets(userName, currentMonth, currentYear);
+      
+      // Check cache first
+      const cachedTargets = salesTargetsCache.get<TargetData>(targetsCacheKey);
+      if (cachedTargets) {
+        setTargetData(cachedTargets);
+        targetsLoaded.current = true;
+        salesPerfMonitor.end('targets-data-load');
+        return;
+      }
       
       // Create the monthly document ID
       const monthDocId = `${currentMonth}_${currentYear}`;
@@ -297,6 +379,8 @@ export default function SalesDashboard() {
       // First get the monthly document to see if it exists
       const monthlyDocRef = doc(db, "targets", monthDocId);
       const monthlyDocSnap = await getDoc(monthlyDocRef);
+      
+      let targetDataFound: TargetData | null = null;
       
       if (monthlyDocSnap.exists()) {
         
@@ -311,8 +395,7 @@ export default function SalesDashboard() {
         if (!querySnapshot.empty) {
           // Found user's target in subcollection
           const targetDoc = querySnapshot.docs[0];
-          const data = targetDoc.data() as TargetData;
-          setTargetData(data);
+          targetDataFound = targetDoc.data() as TargetData;
         } else {
           
           // Try finding by userId instead if userName doesn't match
@@ -320,20 +403,14 @@ export default function SalesDashboard() {
           const altQuerySnapshot = await getDocs(salesTargetsAltQuery);
           
           // Loop through all targets
-          let foundTarget = false;
           altQuerySnapshot.forEach(doc => {
             const data = doc.data();
             // Check if this looks like the right user (case-insensitive comparison)
             if (data.userName && 
                 data.userName.toLowerCase().includes(userName.toLowerCase())) {
-              setTargetData(data as TargetData);
-              foundTarget = true;
+              targetDataFound = data as TargetData;
             }
           });
-          
-          if (!foundTarget) {
-            console.log("No target found for this user at all");
-          }
         }
       } else {
         console.log(`Monthly document ${monthDocId} does not exist`);
@@ -359,35 +436,75 @@ export default function SalesDashboard() {
             
             if (!prevQuerySnapshot.empty) {
               const prevTargetDoc = prevQuerySnapshot.docs[0];
-              const prevData = prevTargetDoc.data() as TargetData;
-              setTargetData(prevData);
+              targetDataFound = prevTargetDoc.data() as TargetData;
             }
           }
         }
         
-        // As a fallback, check for old-style targets
-        const legacyTargetsQuery = query(
-          collection(db, "targets"),
-          where("userName", "==", userName)
-        );
-        
-        const legacyQuerySnapshot = await getDocs(legacyTargetsQuery);
-        
-        if (!legacyQuerySnapshot.empty) {
-          const legacyDoc = legacyQuerySnapshot.docs[0];
-          const legacyData = legacyDoc.data() as TargetData;
-          setTargetData(legacyData);
+        // As a fallback, check for old-style targets only if no target found yet
+        if (!targetDataFound) {
+          const legacyTargetsQuery = query(
+            collection(db, "targets"),
+            where("userName", "==", userName)
+          );
+          
+          const legacyQuerySnapshot = await getDocs(legacyTargetsQuery);
+          
+          if (!legacyQuerySnapshot.empty) {
+            const legacyDoc = legacyQuerySnapshot.docs[0];
+            targetDataFound = legacyDoc.data() as TargetData;
+          }
         }
       }
+      
+      // Cache and set the target data if found
+      if (targetDataFound) {
+        salesTargetsCache.set(targetsCacheKey, targetDataFound);
+        setTargetData(targetDataFound);
+      } else {
+        console.log("No target found for this user at all");
+      }
+      
+      targetsLoaded.current = true;
+      salesPerfMonitor.end('targets-data-load');
+      
     } catch (error) {
       console.error("Error fetching target data:", error);
-    } finally {
-      setIsLoading(false);
+      salesPerfMonitor.safeEnd('targets-data-load');
     }
-  };
+  }, [currentMonth, currentYear]);
 
-  const fetchLeadData = async (userName: string) => {
+  const fetchLeadData = useCallback(async (userName: string) => {
+    if (leadsLoaded.current) {
+      return;
+    }
+    
+    salesPerfMonitor.start('leads-data-load');
+    
     try {
+      const leadsCacheKey = generateCacheKey.leads(userName, currentMonth, currentYear);
+      
+      // Check cache first
+      const cachedLeads = salesAnalyticsCache.get<{
+        allLeads: any[];
+        totalLeads: number;
+        convertedLeads: number;
+        leadsChartData: any[];
+        statusData: { name: string; value: number }[];
+        leadAnalytics: LeadAnalytics | null;
+      }>(leadsCacheKey);
+      
+      if (cachedLeads) {
+        setAllLeads(cachedLeads.allLeads);
+        setTotalLeads(cachedLeads.totalLeads);
+        setConvertedLeads(cachedLeads.convertedLeads);
+        setLeadsChartData(cachedLeads.leadsChartData);
+        setStatusData(cachedLeads.statusData);
+        setLeadAnalytics(cachedLeads.leadAnalytics);
+        leadsLoaded.current = true;
+        salesPerfMonitor.end('leads-data-load');
+        return;
+      }
       
       // Query leads assigned to the current user
       const leadsQuery = query(
@@ -403,7 +520,6 @@ export default function SalesDashboard() {
           id: doc.id,
           ...doc.data()
         }));
-        setAllLeads(allLeadsData);
         
         // Count total leads and converted leads for the selected month
         let totalCount = 0;
@@ -416,7 +532,6 @@ export default function SalesDashboard() {
         const monthlyData: { [key: string]: { total: number, converted: number } } = {};
         
         // Process each lead document
-        let leadIndex = 0;
         querySnapshot.forEach((doc) => {
           const leadData = doc.data();
           
@@ -459,9 +574,7 @@ export default function SalesDashboard() {
               statusCounts[status] = 0;
             }
             statusCounts[status] += 1;
-          } else {
           }
-          leadIndex++;
         });
         
         // Transform monthly data to chart format and sort properly
@@ -481,8 +594,8 @@ export default function SalesDashboard() {
           value: statusCounts[status]
         }));
         
-        // CRITICAL FIX: Force the same conversion value for all data pieces
-        // This ensures every widget uses the same number
+        // Set all state at once to prevent multiple re-renders
+        setAllLeads(allLeadsData);
         setTotalLeads(totalCount);
         setConvertedLeads(convertedCount);
         setLeadsChartData(formattedChartData);
@@ -491,21 +604,48 @@ export default function SalesDashboard() {
         // Calculate detailed analytics
         calculateDetailedAnalytics(allLeadsData);
         
+        // Cache the leads data
+        const leadsDataToCache = {
+          allLeads: allLeadsData,
+          totalLeads: totalCount,
+          convertedLeads: convertedCount,
+          leadsChartData: formattedChartData,
+          statusData: formattedStatusData,
+          leadAnalytics: null // Will be set by calculateDetailedAnalytics
+        };
+        salesAnalyticsCache.set(leadsCacheKey, leadsDataToCache);
+        
       } else {
+        // Set all empty states at once
+        setAllLeads([]);
         setTotalLeads(0);
         setConvertedLeads(0);
         setLeadsChartData([]);
         setStatusData([]);
-        setAllLeads([]);
         setLeadAnalytics(null);
+        
+        // Cache empty data
+        salesAnalyticsCache.set(leadsCacheKey, {
+          allLeads: [],
+          totalLeads: 0,
+          convertedLeads: 0,
+          leadsChartData: [],
+          statusData: [],
+          leadAnalytics: null
+        });
       }
+      
+      leadsLoaded.current = true;
+      salesPerfMonitor.end('leads-data-load');
+      
     } catch (error) {
       console.error("Error fetching lead data:", error);
+      salesPerfMonitor.safeEnd('leads-data-load');
     }
-  };
+  }, [currentMonth, currentYear]);
 
   // New function to calculate detailed analytics
-  const calculateDetailedAnalytics = (leads: any[]) => {
+  const calculateDetailedAnalytics = useCallback((leads: any[]) => {
     if (!leads || leads.length === 0) {
       setLeadAnalytics(null);
       return;
@@ -646,10 +786,43 @@ export default function SalesDashboard() {
     };
 
     setLeadAnalytics(analytics);
-  };
+    
+    // Update cache with analytics data
+    if (userName) {
+      const leadsCacheKey = generateCacheKey.leads(userName, currentMonth, currentYear);
+      const cachedLeads = salesAnalyticsCache.get<{
+        allLeads: any[];
+        totalLeads: number;
+        convertedLeads: number;
+        leadsChartData: any[];
+        statusData: { name: string; value: number }[];
+        leadAnalytics: LeadAnalytics | null;
+      }>(leadsCacheKey);
+      if (cachedLeads) {
+        cachedLeads.leadAnalytics = analytics;
+        salesAnalyticsCache.set(leadsCacheKey, cachedLeads);
+      }
+    }
+  }, [userName, currentMonth, currentYear]);
 
-  const fetchTaskData = async (userName: string) => {
+  const fetchTaskData = useCallback(async (userName: string) => {
+    if (tasksLoaded.current) {
+      return;
+    }
+    
+    salesPerfMonitor.start('tasks-data-load');
+    
     try {
+      const tasksCacheKey = generateCacheKey.tasks(userName);
+      
+      // Check cache first
+      const cachedTasks = salesTasksCache.get<Task[]>(tasksCacheKey);
+      if (cachedTasks) {
+        setAssignedTasks(cachedTasks);
+        tasksLoaded.current = true;
+        salesPerfMonitor.end('tasks-data-load');
+        return;
+      }
       
       // Query tasks assigned to the current user
       const tasksQuery = query(
@@ -678,13 +851,19 @@ export default function SalesDashboard() {
       // Sort tasks by creation date (newest first)
       tasksList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       
+      // Cache the tasks data
+      salesTasksCache.set(tasksCacheKey, tasksList);
+      
       setAssignedTasks(tasksList);
+      tasksLoaded.current = true;
+      salesPerfMonitor.end('tasks-data-load');
 
     } catch (error) {
       console.error("Error fetching task data:", error);
+      salesPerfMonitor.safeEnd('tasks-data-load');
     }
-  };
-  
+  }, []);
+
   // Function to mark a task as completed
   const markTaskAsCompleted = async (taskId: string) => {
     try {
@@ -707,15 +886,43 @@ export default function SalesDashboard() {
   };
 
   // Add a handler for month selection
-  const handleMonthYearChange = (monthYear: string) => {
+  const handleMonthYearChange = useCallback((monthYear: string) => {
     const [month, year] = monthYear.split('_');
     setCurrentMonth(month);
     setCurrentYear(parseInt(year));
-  };
+  }, []);
+
+  // Debounced version to prevent rapid successive calls
+  const debouncedMonthYearChange = useMemo(
+    () => debounce(handleMonthYearChange, 300),
+    [handleMonthYearChange]
+  );
 
   // New function to fetch Billcut leads data
-  const fetchBillcutLeadData = async (userName: string) => {
+  const fetchBillcutLeadData = useCallback(async (userName: string) => {
+    if (billcutLeadsLoaded.current) {
+      return;
+    }
+    
+    salesPerfMonitor.start('billcut-leads-load');
+    
     try {
+      const billcutCacheKey = generateCacheKey.billcutLeads(userName, currentMonth, currentYear);
+      
+      // Check cache first
+      const cachedBillcutLeads = salesAnalyticsCache.get<{
+        allBillcutLeads: any[];
+        billcutAnalytics: LeadAnalytics | null;
+      }>(billcutCacheKey);
+      
+      if (cachedBillcutLeads) {
+        setAllBillcutLeads(cachedBillcutLeads.allBillcutLeads);
+        setBillcutAnalytics(cachedBillcutLeads.billcutAnalytics);
+        billcutLeadsLoaded.current = true;
+        salesPerfMonitor.end('billcut-leads-load');
+        return;
+      }
+      
       // Query billcut leads assigned to the current user
       const billcutLeadsQuery = query(
         collection(db, "billcutLeads"),
@@ -730,7 +937,6 @@ export default function SalesDashboard() {
           id: doc.id,
           ...doc.data()
         }));
-        setAllBillcutLeads(allBillcutLeadsData);
         
         // Filter leads for the selected month and year
         const filteredLeads = allBillcutLeadsData.filter((lead: any) => {
@@ -749,20 +955,39 @@ export default function SalesDashboard() {
           return leadMonth === currentMonth && leadYear === currentYear;
         });
         
-        // Calculate detailed analytics for Billcut leads (filtered by month)
+        // Set state and calculate analytics
+        setAllBillcutLeads(allBillcutLeadsData);
         calculateBillcutDetailedAnalytics(filteredLeads);
         
+        // Cache the billcut leads data
+        salesAnalyticsCache.set(billcutCacheKey, {
+          allBillcutLeads: allBillcutLeadsData,
+          billcutAnalytics: null // Will be set by calculateBillcutDetailedAnalytics
+        });
+        
       } else {
+        // Set empty states
         setAllBillcutLeads([]);
         setBillcutAnalytics(null);
+        
+        // Cache empty data
+        salesAnalyticsCache.set(billcutCacheKey, {
+          allBillcutLeads: [],
+          billcutAnalytics: null
+        });
       }
+      
+      billcutLeadsLoaded.current = true;
+      salesPerfMonitor.end('billcut-leads-load');
+      
     } catch (error) {
       console.error("Error fetching billcut lead data:", error);
+      salesPerfMonitor.safeEnd('billcut-leads-load');
     }
-  };
+  }, [currentMonth, currentYear]);
 
   // New function to calculate detailed analytics for Billcut leads
-  const calculateBillcutDetailedAnalytics = (leads: any[]) => {
+  const calculateBillcutDetailedAnalytics = useCallback((leads: any[]) => {
     if (!leads || leads.length === 0) {
       setBillcutAnalytics(null);
       return;
@@ -905,7 +1130,47 @@ export default function SalesDashboard() {
     };
 
     setBillcutAnalytics(analytics);
-  };
+    
+    // Update cache with analytics data
+    if (userName) {
+      const billcutCacheKey = generateCacheKey.billcutLeads(userName, currentMonth, currentYear);
+      const cachedBillcutLeads = salesAnalyticsCache.get<{
+        allBillcutLeads: any[];
+        billcutAnalytics: LeadAnalytics | null;
+      }>(billcutCacheKey);
+      if (cachedBillcutLeads) {
+        cachedBillcutLeads.billcutAnalytics = analytics;
+        salesAnalyticsCache.set(billcutCacheKey, cachedBillcutLeads);
+      }
+    }
+  }, [userName, currentMonth, currentYear]);
+
+  // Cache management functions
+  const clearAllCache = useCallback(() => {
+    salesCache.clear();
+    salesAnalyticsCache.clear();
+    salesTargetsCache.clear();
+    salesTasksCache.clear();
+    setCacheSize(0);
+  }, []);
+
+  const refreshAllData = useCallback(() => {
+    clearAllCache();
+    // Reset all loaded flags
+    targetsLoaded.current = false;
+    leadsLoaded.current = false;
+    billcutLeadsLoaded.current = false;
+    tasksLoaded.current = false;
+    monthsLoaded.current = false;
+    // Force refresh by triggering re-renders
+    window.location.reload();
+  }, [clearAllCache]);
+
+  // Update cache size display
+  useEffect(() => {
+    const totalSize = salesCache.size() + salesAnalyticsCache.size() + salesTargetsCache.size() + salesTasksCache.size();
+    setCacheSize(totalSize);
+  }, [targetData, allLeads, allBillcutLeads, assignedTasks, availableMonths]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
@@ -941,14 +1206,37 @@ export default function SalesDashboard() {
     <div className="p-6 bg-gray-900 text-gray-100 min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-            Sales Dashboard for {targetData?.userName}
-            {(leadAnalytics || billcutAnalytics) && (
-              <span className="text-lg text-gray-400 ml-2">
-                ({analyticsSource} Data)
-              </span>
-            )}
-          </h1>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+              Sales Dashboard for {targetData?.userName}
+              {(leadAnalytics || billcutAnalytics) && (
+                <span className="text-lg text-gray-400 ml-2">
+                  ({analyticsSource} Data)
+                </span>
+              )}
+            </h1>
+          </div>
+          
+          {/* Cache management controls */}
+          <div className="flex items-center gap-2 mr-4">
+            <button
+              onClick={clearAllCache}
+              className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-md transition-colors"
+              title="Clear cache"
+            >
+              🗑️ Clear Cache
+            </button>
+            <button
+              onClick={refreshAllData}
+              className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded-md transition-colors"
+              title="Refresh all data"
+            >
+              🔄 Refresh
+            </button>
+            <div className="text-xs text-gray-400">
+              Cache: {cacheSize} items
+            </div>
+          </div>
           
           {/* Month selector */}
           <div className="flex items-center space-x-2">
@@ -959,7 +1247,7 @@ export default function SalesDashboard() {
               id="monthSelector"
               className="bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm"
               value={`${currentMonth}_${currentYear}`}
-              onChange={(e) => handleMonthYearChange(e.target.value)}
+              onChange={(e) => debouncedMonthYearChange(e.target.value)}
             >
               {availableMonths.map(({ month, year }) => (
                 <option key={`${month}_${year}`} value={`${month}_${year}`}>
