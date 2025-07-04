@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { SalesAnalytics, Salesperson, IndividualSalesData } from '../types';
 import { analyticsCache, generateCacheKey } from '../utils/cache';
@@ -48,14 +48,6 @@ export const useSalesAnalytics = ({
     
     const fetchSalespeople = async () => {
       try {
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        
-        const currentMonthName = `${monthNames[currentMonth]}_${currentYear}`;
-        const salesTargetsRef = collection(db, `targets/${currentMonthName}/sales_targets`);
-        
         const cachedPeople = analyticsCache.get<Salesperson[]>(salespeopleCacheKey);
         if (cachedPeople) {
           setSalespeople(cachedPeople);
@@ -63,50 +55,69 @@ export const useSalesAnalytics = ({
           return;
         }
         
+        // Get salespeople from users collection
+        const usersCollection = collection(db, 'users');
+        const usersQuery = query(usersCollection, where('role', '==', 'sales'));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        const salespeople: Salesperson[] = [];
+        
+        usersSnapshot.forEach((doc) => {
+          const userData = doc.data();
+          const firstName = userData.firstName || '';
+          const lastName = userData.lastName || '';
+          const fullName = `${firstName} ${lastName}`.trim();
+          
+          if (fullName) {
+            salespeople.push({
+              id: doc.id,
+              name: fullName
+            });
+          }
+        });
+        
+        salespeople.sort((a, b) => a.name.localeCompare(b.name));
+        analyticsCache.set(salespeopleCacheKey, salespeople);
+        setSalespeople(salespeople);
+        salespeopleLoaded.current = true;
+        
+        console.log('🔍 Fetched salespeople from users collection:', salespeople);
+      } catch (error) {
+        console.error('Error fetching salespeople from users collection:', error);
+        
+        // Fallback: try to get from targets collection
         try {
+          const currentDate = new Date();
+          const currentMonth = currentDate.getMonth();
+          const currentYear = currentDate.getFullYear();
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          
+          const currentMonthName = `${monthNames[currentMonth]}_${currentYear}`;
+          const salesTargetsRef = collection(db, `targets/${currentMonthName}/sales_targets`);
+          
           const salesTargetsSnapshot = await getDocs(salesTargetsRef);
-          const salespeople: Salesperson[] = [];
+          const fallbackSalespeople: Salesperson[] = [];
           
           salesTargetsSnapshot.forEach((doc) => {
             const targetData = doc.data();
             if (targetData.userName) {
-              salespeople.push({
+              fallbackSalespeople.push({
                 id: doc.id,
                 name: targetData.userName
               });
             }
           });
           
-          salespeople.sort((a, b) => a.name.localeCompare(b.name));
-          analyticsCache.set(salespeopleCacheKey, salespeople);
-          salespeopleLoaded.current = true;
-        } catch (error) {
-          console.error('No sales targets found for current month, loading from client payments...', error);
-          
-          // Fallback: get salespeople from clients collection
-          const clientsCollection = collection(db, 'clients');
-          const clientsSnapshot = await getDocs(clientsCollection);
-          
-          const salespeopleSet = new Set<string>();
-          clientsSnapshot.forEach((doc) => {
-            const client = doc.data();
-            if (client.salesperson) {
-              salespeopleSet.add(client.salesperson);
-            }
-          });
-          
-          const fallbackSalespeople: Salesperson[] = Array.from(salespeopleSet).map((name) => ({
-            id: name,
-            name: name
-          }));
-          
           fallbackSalespeople.sort((a, b) => a.name.localeCompare(b.name));
           analyticsCache.set(salespeopleCacheKey, fallbackSalespeople);
+          setSalespeople(fallbackSalespeople);
+          salespeopleLoaded.current = true;
+          
+          console.log('🔍 Fallback: Fetched salespeople from targets collection:', fallbackSalespeople);
+        } catch (fallbackError) {
+          console.error('Error fetching salespeople from targets collection:', fallbackError);
           salespeopleLoaded.current = true;
         }
-      } catch (error) {
-        console.error('Error fetching salespeople:', error);
-        salespeopleLoaded.current = true;
       }
     };
     
@@ -240,6 +251,7 @@ export const useSalesAnalytics = ({
     
     const fetchIndividualSalesData = async () => {
       try {
+        console.log('🔍 Fetching individual sales data for:', selectedSalesperson);
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
@@ -250,13 +262,64 @@ export const useSalesAnalytics = ({
         const targetMonthName = monthNames[targetMonth];
         const monthYearName = `${targetMonthName}_${targetYear}`;
         
-        const salesTargetRef = doc(db, `targets/${monthYearName}/sales_targets`, selectedSalesperson);
-        const salesTargetDoc = await getDoc(salesTargetRef);
+        console.log('🔍 Querying targets collection:', `targets/${monthYearName}/sales_targets`);
         
-        if (salesTargetDoc.exists()) {
-          const targetData = salesTargetDoc.data();
+        // First, try to find the user ID that corresponds to the selected salesperson name
+        const usersCollection = collection(db, 'users');
+        const usersQuery = query(usersCollection, where('role', '==', 'sales'));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        let targetUserId = null;
+        usersSnapshot.forEach((doc) => {
+          const userData = doc.data();
+          const firstName = userData.firstName || '';
+          const lastName = userData.lastName || '';
+          const fullName = `${firstName} ${lastName}`.trim();
+          
+          if (fullName === selectedSalesperson) {
+            targetUserId = doc.id;
+          }
+        });
+        
+        console.log('🔍 Found target user ID:', targetUserId);
+        
+        // Query by userName field instead of using selectedSalesperson as document ID
+        const salesTargetsRef = collection(db, `targets/${monthYearName}/sales_targets`);
+        let salesTargetsSnapshot;
+        
+        if (targetUserId) {
+          // Try to get by user ID first
+          const targetDocRef = doc(salesTargetsRef, targetUserId);
+          const targetDoc = await getDoc(targetDocRef);
+          
+          if (targetDoc.exists()) {
+            console.log('🔍 Found target by user ID');
+            const targetData = targetDoc.data();
+            setIndividualSalesData({
+              name: targetData.userName || selectedSalesperson,
+              targetAmount: targetData.amountCollectedTarget || 0,
+              collectedAmount: targetData.amountCollected || 0,
+              conversionRate: targetData.amountCollectedTarget > 0 
+                ? Math.round((targetData.amountCollected / targetData.amountCollectedTarget) * 100) 
+                : 0,
+              monthlyData: [0, 0, 0, 0, 0, 0]
+            });
+            return;
+          }
+        }
+        
+        // Fallback: query by userName field
+        const salesTargetsQuery = query(salesTargetsRef, where('userName', '==', selectedSalesperson));
+        salesTargetsSnapshot = await getDocs(salesTargetsQuery);
+        
+        console.log('🔍 Found target documents by userName:', salesTargetsSnapshot.size);
+        
+        if (!salesTargetsSnapshot.empty) {
+          const targetDoc = salesTargetsSnapshot.docs[0];
+          const targetData = targetDoc.data();
+          console.log('🔍 Target data found:', targetData);
           setIndividualSalesData({
-            name: targetData.userName || 'Unknown',
+            name: targetData.userName || selectedSalesperson,
             targetAmount: targetData.amountCollectedTarget || 0,
             collectedAmount: targetData.amountCollected || 0,
             conversionRate: targetData.amountCollectedTarget > 0 
@@ -265,6 +328,7 @@ export const useSalesAnalytics = ({
             monthlyData: [0, 0, 0, 0, 0, 0]
           });
         } else {
+          console.log('🔍 No target data found for salesperson:', selectedSalesperson);
           setIndividualSalesData(null);
         }
       } catch (error) {
