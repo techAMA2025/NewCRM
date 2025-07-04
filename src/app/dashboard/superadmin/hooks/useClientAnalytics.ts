@@ -3,6 +3,7 @@ import { collection, getDocs, query, orderBy, limit, startAfter, QuerySnapshot, 
 import { db } from '@/firebase/firebase';
 import { ClientAnalytics } from '../types';
 import { perfMonitor } from '../utils/performance';
+import { analyticsCache, generateCacheKey } from '../utils/cache';
 
 interface UseClientAnalyticsParams {
   enabled?: boolean;
@@ -12,9 +13,6 @@ interface UseClientAnalyticsParams {
 // Global loading state to prevent multiple simultaneous loads
 let isGloballyLoading = false;
 let globalLoadPromise: Promise<ClientAnalytics> | null = null;
-let cachedResult: ClientAnalytics | null = null;
-let cacheTimestamp = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
 // Helper function to process clients in batches for better performance
 const processClientsBatch = (clientsBatch: any[], analytics: any) => {
@@ -86,6 +84,15 @@ const loadClientAnalyticsProgressive = async (onProgress?: (partial: ClientAnaly
   
   console.log('⚡ Loading all client analytics in one go...');
   
+  // Check cache first at the global level
+  const clientAnalyticsCacheKey = generateCacheKey.clientAnalytics();
+  const cachedData = analyticsCache.get<ClientAnalytics>(clientAnalyticsCacheKey);
+  if (cachedData) {
+    console.log('⚡ Using cached client analytics (global level)');
+    onProgress?.(cachedData);
+    return cachedData;
+  }
+  
   // Initialize analytics object
   const analytics = {
     totalClients: 0,
@@ -137,9 +144,8 @@ const loadClientAnalyticsProgressive = async (onProgress?: (partial: ClientAnaly
   const duration = perfMonitor.safeEnd(timerId);
   console.log(`🎯 COMPLETE: All ${analytics.totalClients} clients loaded in ${duration.toFixed(2)}ms`);
   
-  // Cache the result
-  cachedResult = finalAnalytics;
-  cacheTimestamp = Date.now();
+  // Cache the result using the new cache system
+  analyticsCache.set(clientAnalyticsCacheKey, finalAnalytics);
   
   // Call progress callback with final result
   onProgress?.(finalAnalytics);
@@ -170,6 +176,9 @@ export const useClientAnalytics = ({
   const onLoadCompleteRef = useRef(onLoadComplete);
   onLoadCompleteRef.current = onLoadComplete;
 
+  // Generate cache key
+  const clientAnalyticsCacheKey = generateCacheKey.clientAnalytics();
+
   // Progress callback to update UI immediately
   const handleProgress = useCallback((partialResult: ClientAnalytics) => {
     setClientAnalytics(partialResult);
@@ -191,15 +200,16 @@ export const useClientAnalytics = ({
     const fetchClientAnalytics = async () => {
       try {
         // Check cache first
-        if (cachedResult && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
-          console.log('⚡ Using cached client analytics (instant load)');
-          setClientAnalytics(cachedResult);
+        const cachedData = analyticsCache.get<ClientAnalytics>(clientAnalyticsCacheKey);
+        if (cachedData) {
+          console.log('⚡ Using cached client analytics (hook level)');
+          setClientAnalytics(cachedData);
           setIsLoading(false);
           hasLoaded.current = true;
           onLoadCompleteRef.current?.();
           return;
         }
-        
+
         // Prevent multiple simultaneous loads
         if (isGloballyLoading && globalLoadPromise) {
           console.log('🔄 Reusing existing progressive load...');
@@ -235,7 +245,7 @@ export const useClientAnalytics = ({
     
     fetchClientAnalytics();
     // Removed onLoadComplete and handleProgress from dependency array
-  }, [enabled]);
+  }, [enabled, clientAnalyticsCacheKey]);
 
   return {
     clientAnalytics,

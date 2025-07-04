@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { SalesAnalytics, Salesperson, IndividualSalesData } from '../types';
+import { analyticsCache, generateCacheKey } from '../utils/cache';
 
 interface UseSalesAnalyticsParams {
   selectedAnalyticsMonth: number | null;
@@ -38,6 +39,9 @@ export const useSalesAnalytics = ({
   const onLoadCompleteRef = useRef(onLoadComplete);
   onLoadCompleteRef.current = onLoadComplete;
 
+  const salesAnalyticsCacheKey = generateCacheKey.salesAnalytics(selectedAnalyticsMonth, selectedAnalyticsYear, selectedSalesperson);
+  const salespeopleCacheKey = generateCacheKey.salespeople();
+
   // Fetch salespeople - only once when enabled
   useEffect(() => {
     if (!enabled || salespeopleLoaded.current) return;
@@ -51,6 +55,13 @@ export const useSalesAnalytics = ({
         
         const currentMonthName = `${monthNames[currentMonth]}_${currentYear}`;
         const salesTargetsRef = collection(db, `targets/${currentMonthName}/sales_targets`);
+        
+        const cachedPeople = analyticsCache.get<Salesperson[]>(salespeopleCacheKey);
+        if (cachedPeople) {
+          setSalespeople(cachedPeople);
+          salespeopleLoaded.current = true;
+          return;
+        }
         
         try {
           const salesTargetsSnapshot = await getDocs(salesTargetsRef);
@@ -67,7 +78,7 @@ export const useSalesAnalytics = ({
           });
           
           salespeople.sort((a, b) => a.name.localeCompare(b.name));
-          setSalespeople(salespeople);
+          analyticsCache.set(salespeopleCacheKey, salespeople);
           salespeopleLoaded.current = true;
         } catch (error) {
           console.error('No sales targets found for current month, loading from client payments...', error);
@@ -90,7 +101,7 @@ export const useSalesAnalytics = ({
           }));
           
           fallbackSalespeople.sort((a, b) => a.name.localeCompare(b.name));
-          setSalespeople(fallbackSalespeople);
+          analyticsCache.set(salespeopleCacheKey, fallbackSalespeople);
           salespeopleLoaded.current = true;
         }
       } catch (error) {
@@ -183,13 +194,24 @@ export const useSalesAnalytics = ({
           avgDealSize: 0
         };
         
-        setSalesAnalytics({
+        const cachedAnalytics = analyticsCache.get<SalesAnalytics>(salesAnalyticsCacheKey);
+        if (cachedAnalytics) {
+          setSalesAnalytics(cachedAnalytics);
+          lastAnalyticsParams.current = currentParams;
+          salesAnalyticsLoaded.current = true;
+          onLoadCompleteRef.current?.();
+          return;
+        }
+        
+        const newSalesAnalytics = {
           totalTargetAmount: totalTarget,
           totalCollectedAmount: totalCollected,
           monthlyRevenue: monthlyData,
           conversionRate: analyticsStats.conversionRate,
-          avgDealSize: analyticsStats.avgDealSize
-        });
+          avgDealSize: analyticsStats.avgDealSize,
+        } as SalesAnalytics;
+        analyticsCache.set(salesAnalyticsCacheKey, newSalesAnalytics);
+        setSalesAnalytics(newSalesAnalytics);
         
         // Update tracking refs
         lastAnalyticsParams.current = currentParams;

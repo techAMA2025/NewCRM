@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db as crmDb } from '@/firebase/firebase';
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { db as crmDb, auth } from '@/firebase/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { searchCache } from '@/app/dashboard/superadmin/utils/cache';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 
 interface UpcomingCallback {
   id: string;
@@ -30,6 +32,34 @@ const GlobalCallbackAlert = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const { user, userRole, userName } = useAuth();
 
+  // Track user activity to optimize polling
+  const [isActive, setIsActive] = useState(true);
+  const lastActivityRef = useRef(Date.now());
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsActive(!document.hidden);
+      if (!document.hidden) {
+        lastActivityRef.current = Date.now();
+      }
+    };
+
+    const handleUserActivity = () => {
+      lastActivityRef.current = Date.now();
+      setIsActive(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('mousedown', handleUserActivity);
+    document.addEventListener('keydown', handleUserActivity);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('mousedown', handleUserActivity);
+      document.removeEventListener('keydown', handleUserActivity);
+    };
+  }, []);
+
   // Fetch callback information for a lead
   const fetchCallbackInfo = async (leadId: string) => {
     try {
@@ -54,12 +84,20 @@ const GlobalCallbackAlert = () => {
 
   // Fetch all billcut leads with callback info
   const fetchLeads = async () => {
-    if (!user) return;
-    
+    if (!user || !isActive) return;
+
     try {
+      // Check cache first - use shorter cache for callback alerts (2 minutes)
+      const cacheKey = `callback-leads-${userName || 'global'}`;
+      const cachedLeads = searchCache.get<Lead[]>(cacheKey);
+      if (cachedLeads) {
+        setLeads(cachedLeads);
+        return;
+      }
+
       const billcutLeadsRef = collection(crmDb, 'billcutLeads');
-      const querySnapshot = await getDocs(billcutLeadsRef);
-      
+      const querySnapshot = await getDocs(query(billcutLeadsRef, where('category', '==', 'Callback')));
+
       const fetchedLeads = await Promise.all(
         querySnapshot.docs.map(async (doc) => {
           const data = doc.data();
@@ -80,6 +118,8 @@ const GlobalCallbackAlert = () => {
         })
       );
 
+      // Cache the results for 2 minutes
+      searchCache.set(cacheKey, fetchedLeads, 2 * 60 * 1000);
       setLeads(fetchedLeads);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -97,11 +137,16 @@ const GlobalCallbackAlert = () => {
   useEffect(() => {
     if (user) {
       fetchLeads();
-      // Refresh leads every 5 minutes
-      const interval = setInterval(fetchLeads, 5 * 60 * 1000);
+      // Increase polling interval from 5 minutes to 10 minutes to reduce reads
+      const interval = setInterval(() => {
+        // Only poll if user is active or was active recently
+        if (isActive || Date.now() - lastActivityRef.current < 5 * 60 * 1000) {
+          fetchLeads();
+        }
+      }, 10 * 60 * 1000); // Changed from 5 to 10 minutes
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, isActive]);
 
   // Check for upcoming callbacks within 30 minutes
   useEffect(() => {
@@ -161,11 +206,11 @@ const GlobalCallbackAlert = () => {
     // Check immediately
     checkUpcomingCallbacks();
     
-    // Check every minute
-    const interval = setInterval(checkUpcomingCallbacks, 60000);
+    // Check every 2 minutes instead of every minute
+    const interval = setInterval(checkUpcomingCallbacks, 2 * 60 * 1000); // Changed from 60000 to 2 minutes
     
     return () => clearInterval(interval);
-  }, [leads, shownToastIds, user, userRole, userName]);
+  }, [leads, shownToastIds, user, userRole, userName, isActive]);
 
   const getTimeUntil = (scheduledTime: Date): string => {
     const now = new Date();

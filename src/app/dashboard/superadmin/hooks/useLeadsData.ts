@@ -3,6 +3,7 @@ import { collection, getDocs, query, where, Timestamp, QueryConstraint } from 'f
 import { db } from '@/firebase/firebase';
 import { LeadsBySourceData, SourceTotals, StatusKey, SourceKey, ChartDataset } from '../types';
 import { statusColors } from '../utils/chartConfigs';
+import { analyticsCache, generateCacheKey } from '../utils/cache';
 
 interface UseLeadsDataParams {
   startDate: string;
@@ -38,6 +39,8 @@ export const useLeadsData = ({
   const onLoadCompleteRef = useRef(onLoadComplete);
   onLoadCompleteRef.current = onLoadComplete;
 
+  const leadsDataCacheKey = generateCacheKey.leadsData(startDate, endDate, selectedLeadsSalesperson, isFilterApplied);
+
   useEffect(() => {
     if (!enabled) {
       setIsLoading(false);
@@ -47,6 +50,16 @@ export const useLeadsData = ({
     const fetchLeadsData = async () => {
       try {
         console.log('🚀 Loading ALL leads data (no limits)...');
+        
+        // Check cache first
+        const cached = analyticsCache.get<{ leadsBySourceData: LeadsBySourceData; sourceTotals: SourceTotals; }>(leadsDataCacheKey);
+        if (cached) {
+          setLeadsBySourceData(cached.leadsBySourceData);
+          setSourceTotals(cached.sourceTotals);
+          setIsLoading(false);
+          onLoadCompleteRef.current?.();
+          return;
+        }
         
         // Create a base query
         const leadsCollection = collection(db, 'crm_leads');
@@ -156,12 +169,17 @@ export const useLeadsData = ({
         });
         
         // Update chart data
-        setLeadsBySourceData({
-          labels: ['Settleloans', 'Credsettlee', 'AMA'],
-          datasets: datasets,
-        });
+        const result = {
+          leadsBySourceData: {
+            labels: ['Settleloans', 'Credsettlee', 'AMA'],
+            datasets,
+          },
+          sourceTotals: sourceTotalCounts,
+        };
+        analyticsCache.set(leadsDataCacheKey, result);
         
-        setSourceTotals(sourceTotalCounts);
+        setLeadsBySourceData(result.leadsBySourceData);
+        setSourceTotals(result.sourceTotals);
         setIsLoading(false);
         
         // Call the callback using the ref to avoid dependency issues

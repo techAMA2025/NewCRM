@@ -31,6 +31,7 @@ import {
 
 // Import performance utilities
 import { perfMonitor, preloadCriticalResources } from './utils/performance';
+import { dashboardCache, analyticsCache, generateCacheKey } from './utils/cache';
 
 // Import types
 import { AnalyticsStats } from './types';
@@ -110,6 +111,17 @@ const SuperAdminDashboard = React.memo(() => {
   // Lazy loading state
   const [showClientAnalytics, setShowClientAnalytics] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
+
+  // Cache keys for different data types
+  const salesAnalyticsCacheKey = useMemo(() => 
+    generateCacheKey.salesAnalytics(selectedAnalyticsMonth, selectedAnalyticsYear, selectedSalesperson),
+    [selectedAnalyticsMonth, selectedAnalyticsYear, selectedSalesperson]
+  );
+
+  const leadsDataCacheKey = useMemo(() => 
+    generateCacheKey.leadsData(startDate, endDate, selectedLeadsSalesperson, isFilterApplied),
+    [startDate, endDate, selectedLeadsSalesperson, isFilterApplied]
+  );
 
   // Progressive component loading with intersection observer for better performance
   useEffect(() => {
@@ -191,27 +203,48 @@ const SuperAdminDashboard = React.memo(() => {
     onLoadComplete: useCallback(() => setStageLoaded('paymentAnalytics'), [setStageLoaded])
   });
 
-  // Memoized date filter handlers
+  // Memoized date filter handlers with cache invalidation
   const applyDateFilter = useCallback(() => {
     setIsFilterApplied(true);
-  }, []);
+    // Clear cache for leads data when filter changes
+    analyticsCache.delete(leadsDataCacheKey);
+  }, [leadsDataCacheKey]);
   
   const clearDateFilter = useCallback(() => {
     setStartDate('');
     setEndDate('');
     setIsFilterApplied(false);
-  }, []);
+    // Clear cache for leads data when filter changes
+    analyticsCache.delete(leadsDataCacheKey);
+  }, [leadsDataCacheKey]);
 
-  // Memoized salesperson selection handlers
+  // Memoized salesperson selection handlers with cache invalidation
   const handleSalespersonChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedSalesperson(value !== "all" ? value : null);
-  }, []);
+    // Clear cache for sales analytics when salesperson changes
+    analyticsCache.delete(salesAnalyticsCacheKey);
+  }, [salesAnalyticsCacheKey]);
 
   const handleLeadsSalespersonChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedLeadsSalesperson(value !== "all" ? value : null);
+    // Clear cache for leads data when salesperson changes
+    analyticsCache.delete(leadsDataCacheKey);
+  }, [leadsDataCacheKey]);
+
+  // Cache management functions
+  const clearAllCache = useCallback(() => {
+    dashboardCache.clear();
+    analyticsCache.clear();
+    console.log('🗑️ All dashboard cache cleared');
   }, []);
+
+  const refreshAllData = useCallback(() => {
+    clearAllCache();
+    // Force refresh by triggering re-renders
+    window.location.reload();
+  }, [clearAllCache]);
 
   // Memoized analytics stats calculation
   const analyticsStats = useMemo((): AnalyticsStats => {
@@ -238,7 +271,30 @@ const SuperAdminDashboard = React.memo(() => {
   return (
     <SimpleErrorFallback>
       <div className="p-2 min-h-screen bg-gray-900 text-white">
-        <h1 className="text-xl font-bold mb-3">Super Admin Dashboard</h1>
+        <div className="flex justify-between items-center mb-3">
+          <h1 className="text-xl font-bold">Super Admin Dashboard</h1>
+          
+          {/* Cache management controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={clearAllCache}
+              className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-md transition-colors"
+              title="Clear cache"
+            >
+              🗑️ Clear Cache
+            </button>
+            <button
+              onClick={refreshAllData}
+              className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded-md transition-colors"
+              title="Refresh all data"
+            >
+              🔄 Refresh
+            </button>
+            <div className="text-xs text-gray-400">
+              Cache: {analyticsCache.size()} items
+            </div>
+          </div>
+        </div>
 
         <div className="flex flex-col gap-3">
           {/* Sales Analytics Section - Priority Loading */}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { PaymentAnalytics, CurrentMonthPayments } from '../types';
+import { analyticsCache, generateCacheKey } from '../utils/cache';
 
 interface UsePaymentAnalyticsParams {
   enabled?: boolean;
@@ -40,6 +41,9 @@ export const usePaymentAnalytics = ({
   const onLoadCompleteRef = useRef(onLoadComplete);
   onLoadCompleteRef.current = onLoadComplete;
 
+  // Generate cache key
+  const paymentAnalyticsCacheKey = generateCacheKey.paymentAnalytics();
+
   useEffect(() => {
     if (!enabled) {
       setIsLoading(false);
@@ -53,6 +57,22 @@ export const usePaymentAnalytics = ({
 
     const fetchPaymentAnalytics = async () => {
       try {
+        // Check cache first
+        const cachedData = analyticsCache.get<{
+          paymentAnalytics: PaymentAnalytics;
+          currentMonthPayments: CurrentMonthPayments;
+        }>(paymentAnalyticsCacheKey);
+        
+        if (cachedData) {
+          console.log('⚡ Using cached payment analytics');
+          setPaymentAnalytics(cachedData.paymentAnalytics);
+          setCurrentMonthPayments(cachedData.currentMonthPayments);
+          setIsLoading(false);
+          hasLoaded.current = true;
+          onLoadCompleteRef.current?.();
+          return;
+        }
+
         console.log('🚀 Loading payment analytics...');
         
         // First, get a limited set of payment records for faster initial load
@@ -179,15 +199,25 @@ export const usePaymentAnalytics = ({
           ? Math.round((analytics.totalPaidAmount / analytics.totalPaymentsAmount) * 100) 
           : 0;
         
-        setPaymentAnalytics({
+        const finalPaymentAnalytics = {
           ...analytics,
           completionRate
-        });
-        
-        setCurrentMonthPayments({
+        };
+
+        const finalCurrentMonthPayments = {
           collected: currentMonthCollected,
           pending: currentMonthPending
-        });
+        };
+
+        // Cache the results
+        const resultToCache = {
+          paymentAnalytics: finalPaymentAnalytics,
+          currentMonthPayments: finalCurrentMonthPayments
+        };
+        analyticsCache.set(paymentAnalyticsCacheKey, resultToCache);
+        
+        setPaymentAnalytics(finalPaymentAnalytics);
+        setCurrentMonthPayments(finalCurrentMonthPayments);
         
         setIsLoading(false);
         hasLoaded.current = true;
@@ -204,7 +234,7 @@ export const usePaymentAnalytics = ({
     };
     
     fetchPaymentAnalytics();
-  }, [enabled]);
+  }, [enabled, paymentAnalyticsCacheKey]);
 
   return {
     paymentAnalytics,
