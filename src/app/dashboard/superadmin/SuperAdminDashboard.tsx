@@ -221,6 +221,7 @@ const SuperAdminDashboard = React.memo(() => {
   // Memoized salesperson selection handlers with cache invalidation
   const handleSalespersonChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
+    console.log('🔍 Sales Analytics filter changed:', { value, selectedSalesperson: value !== "all" ? value : null });
     setSelectedSalesperson(value !== "all" ? value : null);
     // Clear cache for sales analytics when salesperson changes
     analyticsCache.delete(salesAnalyticsCacheKey);
@@ -228,10 +229,12 @@ const SuperAdminDashboard = React.memo(() => {
 
   const handleLeadsSalespersonChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
+    console.log('🔍 CRM Leads filter changed:', { value, selectedLeadsSalesperson: value !== "all" ? value : null });
     setSelectedLeadsSalesperson(value !== "all" ? value : null);
-    // Clear cache for leads data when salesperson changes
-    analyticsCache.delete(leadsDataCacheKey);
-  }, [leadsDataCacheKey]);
+    // Clear cache for leads data when salesperson changes - use a more specific key
+    const currentLeadsCacheKey = generateCacheKey.leadsData(startDate, endDate, value !== "all" ? value : null, isFilterApplied);
+    analyticsCache.delete(currentLeadsCacheKey);
+  }, [startDate, endDate, isFilterApplied]);
 
   // Cache management functions
   const clearAllCache = useCallback(() => {
@@ -365,7 +368,7 @@ const SuperAdminDashboard = React.memo(() => {
                     >
                       <option value="all">All Salespeople</option>
                       {salespeople.map((person) => (
-                        <option key={person.id} value={person.id}>
+                        <option key={person.id} value={person.name}>
                           {person.name}
                         </option>
                       ))}

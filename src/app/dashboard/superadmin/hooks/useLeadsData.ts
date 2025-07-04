@@ -91,6 +91,7 @@ export const useLeadsData = ({
         
         // Add salesperson filter if selected
         if (selectedLeadsSalesperson) {
+          console.log('🔍 Applying salesperson filter to leads:', selectedLeadsSalesperson);
           leadsQuery = query(leadsQuery, where('assignedTo', '==', selectedLeadsSalesperson));
         }
         
