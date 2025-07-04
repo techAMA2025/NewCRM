@@ -80,7 +80,6 @@ const SalesLeadsCallbackAlert = () => {
       }
       return null;
     } catch (error) {
-      console.error('Error fetching callback info:', error);
       return null;
     }
   };
@@ -133,7 +132,7 @@ const SalesLeadsCallbackAlert = () => {
       searchCache.set(cacheKey, fetchedLeads, 3 * 60 * 1000);
       setLeads(fetchedLeads);
     } catch (error) {
-      console.error('Error fetching leads:', error);
+      // Handle error silently
     }
   };
 

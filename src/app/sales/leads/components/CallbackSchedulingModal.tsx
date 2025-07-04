@@ -131,7 +131,6 @@ const CallbackSchedulingModal = ({
       );
       onConfirm();
     } catch (error) {
-      console.error('Error scheduling callback:', error);
       toast.error(isEditing ? 'Failed to update callback. Please try again.' : 'Failed to schedule callback. Please try again.');
     } finally {
       setIsSubmitting(false);

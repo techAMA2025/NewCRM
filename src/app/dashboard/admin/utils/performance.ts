@@ -15,7 +15,6 @@ class PerformanceMonitor {
     this.metrics.set(metricName, {
       startTime: performance.now()
     });
-    console.log(`🚀 Started: ${metricName}`);
   }
 
   end(metricName: string) {
@@ -23,7 +22,6 @@ class PerformanceMonitor {
     if (metric) {
       metric.endTime = performance.now();
       metric.duration = metric.endTime - metric.startTime;
-      console.log(`✅ Completed: ${metricName} in ${metric.duration.toFixed(2)}ms`);
     }
   }
 
@@ -49,7 +47,6 @@ export const perfMonitor = new PerformanceMonitor();
 // Preload critical resources
 export const preloadCriticalResources = () => {
   // Preload any critical resources for admin dashboard
-  console.log('🔧 Preloading critical resources for admin dashboard');
 };
 
 // Debounce function for performance optimization

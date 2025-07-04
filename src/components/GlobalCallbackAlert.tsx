@@ -77,7 +77,6 @@ const GlobalCallbackAlert = () => {
       }
       return null;
     } catch (error) {
-      console.error('Error fetching callback info:', error);
       return null;
     }
   };
