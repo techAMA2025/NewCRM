@@ -174,6 +174,10 @@ export default function ClientsTable({
                         ? isDark
                           ? 'bg-red-900/50 text-red-400 border-red-700'
                           : 'bg-red-50 text-red-600 border-red-200'
+                        : client.adv_status === 'On Hold'
+                        ? isDark
+                          ? 'bg-purple-900/50 text-purple-400 border-purple-700'
+                          : 'bg-purple-50 text-purple-600 border-purple-200'
                         : isDark
                           ? 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
                           : 'bg-yellow-50 text-yellow-600 border-yellow-200'
@@ -184,6 +188,7 @@ export default function ClientsTable({
                       <SelectItem value="Active" className={isDark ? 'text-green-400' : 'text-green-600'}>Active</SelectItem>
                       <SelectItem value="Dropped" className={isDark ? 'text-red-400' : 'text-red-600'}>Dropped</SelectItem>
                       <SelectItem value="Not Responding" className={isDark ? 'text-yellow-400' : 'text-yellow-600'}>Not Responding</SelectItem>
+                      <SelectItem value="On Hold" className={isDark ? 'text-purple-400' : 'text-purple-600'}>On Hold</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
