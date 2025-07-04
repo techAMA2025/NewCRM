@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { db } from '@/firebase/firebase'
 import { collection, getDocs, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
 import Link from 'next/link'
@@ -20,6 +20,10 @@ import {
   Pie,
   Cell,
 } from "recharts"
+
+// Import cache and performance utilities
+import { adminCache, adminAnalyticsCache, adminUsersCache, generateCacheKey } from './admin/utils/cache'
+import { perfMonitor, preloadCriticalResources, debounce } from './admin/utils/performance'
 
 // Custom chart colors for dark mode
 const chartColors = {
@@ -131,54 +135,85 @@ const AdminDashboard = () => {
   })
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
 
+  // Cache management state
+  const [cacheSize, setCacheSize] = useState(0)
+  
+  // Use refs to track loading states and prevent infinite re-renders
+  const usersLoaded = useRef(false)
+  const targetsLoaded = useRef(false)
+  const leadsLoaded = useRef(false)
+  const lettersLoaded = useRef(false)
+
   useEffect(() => {
+    // Start performance monitoring
+    perfMonitor.start('admin-dashboard-initial-load');
+    perfMonitor.start('critical-resources-preload');
+    
+    // Preload critical resources
+    preloadCriticalResources();
+    perfMonitor.end('critical-resources-preload');
+
     const fetchStats = async () => {
       try {
-        // Fetch users collection
-        const usersRef = collection(db, 'users')
-        const usersSnap = await getDocs(usersRef)
+        // Check cache for users data
+        const usersCacheKey = generateCacheKey.users();
+        const cachedUsers = adminUsersCache.get<SalesUser[]>(usersCacheKey);
         
-        // Count different user roles
-        let sales = 0
-        let advocates = 0
-        const salesUsersList: SalesUser[] = []
-        
-        usersSnap.forEach((doc) => {
-          const userData = doc.data()
-          if (userData.role === 'sales') {
-            sales++
-            
-            // Store all possible identifiers to improve matching
-            const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
-            
-            salesUsersList.push({
-              id: doc.id,
-              uid: userData.uid, // Include Firebase UID if available
-              firstName: userData.firstName || '',
-              lastName: userData.lastName || '',
-              email: userData.email,
-              fullName: fullName,
-              // Store all possible identifiers for matching
-              identifiers: [
-                doc.id,                   // Firestore document ID
-                userData.uid || '',       // Firebase UID
-                userData.firstName || '', // First name
-                userData.lastName || '',  // Last name
-                fullName,                 // Full name
-                userData.email || ''      // Email
-              ].filter(Boolean) // Remove empty values
-            })
-          }
-          if (userData.role === 'advocate') advocates++
-        })
+        if (cachedUsers && !usersLoaded.current) {
+          console.log('🔍 Using cached users data');
+          setSalesUsers(cachedUsers);
+          usersLoaded.current = true;
+        } else if (!usersLoaded.current) {
+          console.log('🔍 Fetching users data from database');
+          // Fetch users collection
+          const usersRef = collection(db, 'users')
+          const usersSnap = await getDocs(usersRef)
+          
+          // Count different user roles
+          let sales = 0
+          let advocates = 0
+          const salesUsersList: SalesUser[] = []
+          
+          usersSnap.forEach((doc) => {
+            const userData = doc.data()
+            if (userData.role === 'sales') {
+              sales++
+              
+              // Store all possible identifiers to improve matching
+              const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
+              
+              salesUsersList.push({
+                id: doc.id,
+                uid: userData.uid, // Include Firebase UID if available
+                firstName: userData.firstName || '',
+                lastName: userData.lastName || '',
+                email: userData.email,
+                fullName: fullName,
+                // Store all possible identifiers for matching
+                identifiers: [
+                  doc.id,                   // Firestore document ID
+                  userData.uid || '',       // Firebase UID
+                  userData.firstName || '', // First name
+                  userData.lastName || '',  // Last name
+                  fullName,                 // Full name
+                  userData.email || ''      // Email
+                ].filter(Boolean) // Remove empty values
+              })
+            }
+            if (userData.role === 'advocate') advocates++
+          })
+          
+          // Cache the users data
+          adminUsersCache.set(usersCacheKey, salesUsersList);
+          setSalesUsers(salesUsersList)
+          usersLoaded.current = true;
+        }
         
         setStats({
-          totalUsers: usersSnap.size,
-          totalSales: sales,
-          totalAdvocates: advocates
+          totalUsers: salesUsers.length,
+          totalSales: salesUsers.filter(u => u.id).length,
+          totalAdvocates: salesUsers.filter(u => u.id).length
         })
-        
-        setSalesUsers(salesUsersList)
         
         // Fetch targets data for all sales users
         await fetchTargetsData()
@@ -193,24 +228,42 @@ const AdminDashboard = () => {
         console.error('Error fetching admin stats:', error)
       } finally {
         setLoading(false)
+        perfMonitor.safeEnd('admin-dashboard-initial-load');
       }
     }
 
     fetchStats()
+
+    return () => {
+      perfMonitor.safeEnd('admin-dashboard-initial-load');
+    };
   }, [])
   
-  // Re-fetch targets data when month or year changes
-  useEffect(() => {
-    if (salesUsers.length > 0) {
-      fetchTargetsData()
-    }
-  }, [selectedMonth, selectedYear, salesUsers])
-  
   // Fetch targets for all sales users
-  const fetchTargetsData = async () => {
+  const fetchTargetsData = useCallback(async () => {
+    if (targetsLoaded.current) {
+      console.log('🔍 Targets data already loaded, skipping fetch');
+      return;
+    }
+    
+    perfMonitor.start('targets-data-load');
+    
     try {
       // Use selected month and year instead of current
       const monthDocId = `${selectedMonth}_${selectedYear}`;
+      const targetsCacheKey = generateCacheKey.targets(selectedMonth, selectedYear);
+      
+      // Check cache first
+      const cachedTargets = adminAnalyticsCache.get<TargetData[]>(targetsCacheKey);
+      if (cachedTargets) {
+        console.log('🔍 Using cached targets data');
+        setTargetData(cachedTargets);
+        targetsLoaded.current = true;
+        perfMonitor.end('targets-data-load');
+        return;
+      }
+      
+      console.log('🔍 Fetching targets data from database');
       
       // Check if the monthly document exists
       const monthlyDocRef = doc(db, "targets", monthDocId);
@@ -270,20 +323,55 @@ const AdminDashboard = () => {
         });
       }
       
+      // Cache the targets data
+      adminAnalyticsCache.set(targetsCacheKey, targetsData);
+      
       setTargetData(targetsData);
       setTotalAmountCollected(totalAmount);
       setTotalAmountTarget(totalTarget);
       setTotalConvertedLeads(totalLeadsConverted); // Set the actual converted leads count
       setTotalLeadsTarget(totalLeadsTargetCount);
       
+      targetsLoaded.current = true;
+      perfMonitor.end('targets-data-load');
+      
     } catch (error) {
       console.error('Error fetching targets data:', error);
+      perfMonitor.safeEnd('targets-data-load');
     }
-  };
+  }, [selectedMonth, selectedYear]);
   
   // Fetch leads data
-  const fetchLeadsData = async () => {
+  const fetchLeadsData = useCallback(async () => {
+    if (leadsLoaded.current) {
+      console.log('🔍 Leads data already loaded, skipping fetch');
+      return;
+    }
+    
+    perfMonitor.start('leads-data-load');
+    
     try {
+      const leadsCacheKey = generateCacheKey.leads();
+      
+      // Check cache first
+      const cachedLeads = adminAnalyticsCache.get<{
+        allLeads: LeadData[];
+        statusData: {name: string; value: number}[];
+        monthlyLeadsData: {name: string; total: number; converted: number}[];
+      }>(leadsCacheKey);
+      
+      if (cachedLeads) {
+        console.log('🔍 Using cached leads data');
+        setLeadsData(cachedLeads.allLeads);
+        setStatusData(cachedLeads.statusData);
+        setMonthlyLeadsData(cachedLeads.monthlyLeadsData);
+        leadsLoaded.current = true;
+        perfMonitor.end('leads-data-load');
+        return;
+      }
+      
+      console.log('🔍 Fetching leads data from database');
+      
       const leadsRef = collection(db, 'crm_leads')
       const leadsSnap = await getDocs(leadsRef)
       
@@ -345,18 +433,51 @@ const AdminDashboard = () => {
       const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
       formattedMonthlyData.sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name))
       
+      // Cache the leads data
+      const leadsDataToCache = {
+        allLeads,
+        statusData: formattedStatusData,
+        monthlyLeadsData: formattedMonthlyData
+      };
+      adminAnalyticsCache.set(leadsCacheKey, leadsDataToCache);
+      
       setLeadsData(allLeads)
       setStatusData(formattedStatusData)
       setMonthlyLeadsData(formattedMonthlyData)
       
+      leadsLoaded.current = true;
+      perfMonitor.end('leads-data-load');
+      
     } catch (error) {
       console.error('Error fetching leads data:', error)
+      perfMonitor.safeEnd('leads-data-load');
     }
-  }
+  }, [])
   
   // Add this new function to fetch pending letters
-  const fetchPendingLetters = async () => {
+  const fetchPendingLetters = useCallback(async () => {
+    if (lettersLoaded.current) {
+      console.log('🔍 Pending letters data already loaded, skipping fetch');
+      return;
+    }
+    
+    perfMonitor.start('pending-letters-load');
+    
     try {
+      const lettersCacheKey = generateCacheKey.pendingLetters();
+      
+      // Check cache first
+      const cachedLetters = adminCache.get<Letter[]>(lettersCacheKey);
+      if (cachedLetters) {
+        console.log('🔍 Using cached pending letters data');
+        setPendingLetters(cachedLetters);
+        lettersLoaded.current = true;
+        perfMonitor.end('pending-letters-load');
+        return;
+      }
+      
+      console.log('🔍 Fetching pending letters data from database');
+      
       // Fetch clients where request_letter isn't true
       const clientsRef = collection(db, 'clients');
       const clientsSnapshot = await getDocs(clientsRef);
@@ -397,12 +518,18 @@ const AdminDashboard = () => {
         return 0;
       });
       
+      // Cache the pending letters data
+      adminCache.set(lettersCacheKey, pendingLettersList);
+      
       setPendingLetters(pendingLettersList);
+      lettersLoaded.current = true;
+      perfMonitor.end('pending-letters-load');
       
     } catch (error) {
       console.error('Error fetching pending letters:', error);
+      perfMonitor.safeEnd('pending-letters-load');
     }
-  };
+  }, [])
   
   // Filter data based on selected user
   const filteredData = useMemo(() => {
@@ -513,6 +640,51 @@ const AdminDashboard = () => {
     }
   }, [selectedUser, leadsData, targetData, statusData, monthlyLeadsData, totalAmountCollected, totalAmountTarget, totalConvertedLeads, totalLeadsTarget, salesUsers])
 
+  // Cache management functions
+  const clearAllCache = useCallback(() => {
+    adminCache.clear();
+    adminAnalyticsCache.clear();
+    adminUsersCache.clear();
+    console.log('🗑️ All admin dashboard cache cleared');
+    setCacheSize(0);
+  }, []);
+
+  const refreshAllData = useCallback(() => {
+    clearAllCache();
+    // Reset all loaded flags
+    usersLoaded.current = false;
+    targetsLoaded.current = false;
+    leadsLoaded.current = false;
+    lettersLoaded.current = false;
+    // Force refresh by triggering re-renders
+    window.location.reload();
+  }, [clearAllCache]);
+
+  // Update cache size display
+  useEffect(() => {
+    const totalSize = adminCache.size() + adminAnalyticsCache.size() + adminUsersCache.size();
+    setCacheSize(totalSize);
+  }, [targetData, leadsData, pendingLetters, salesUsers]);
+
+  // Re-fetch targets data when month or year changes
+  useEffect(() => {
+    if (salesUsers.length > 0) {
+      // Reset the loaded flag when month/year changes to force refetch
+      targetsLoaded.current = false;
+      
+      // Clear the specific cache for the new month/year
+      const targetsCacheKey = generateCacheKey.targets(selectedMonth, selectedYear);
+      adminAnalyticsCache.delete(targetsCacheKey);
+      console.log('🗑️ Cleared targets cache for:', targetsCacheKey);
+      
+      // Call fetchTargetsData directly without adding it to dependencies
+      const refetchTargets = async () => {
+        await fetchTargetsData();
+      };
+      refetchTargets();
+    }
+  }, [selectedMonth, selectedYear, salesUsers]) // Removed fetchTargetsData from dependencies
+
   if (loading) {
     return <div className="p-6">Loading dashboard data...</div>
   }
@@ -523,7 +695,30 @@ const AdminDashboard = () => {
 
   return (
     <div className="p-6 bg-gray-900 text-gray-100">
-      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        
+        {/* Cache management controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={clearAllCache}
+            className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-md transition-colors"
+            title="Clear cache"
+          >
+            🗑️ Clear Cache
+          </button>
+          <button
+            onClick={refreshAllData}
+            className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded-md transition-colors"
+            title="Refresh all data"
+          >
+            🔄 Refresh
+          </button>
+          <div className="text-xs text-gray-400">
+            Cache: {cacheSize} items
+          </div>
+        </div>
+      </div>
       
       {/* Sales Analytics Section */}
       <div className="mb-8">
