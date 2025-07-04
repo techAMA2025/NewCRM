@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { searchCache } from '@/app/dashboard/superadmin/utils/cache';
 
 interface UpcomingCallback {
   id: string;
@@ -33,6 +34,34 @@ const SalesLeadsCallbackAlert = () => {
   const [shownToastIds, setShownToastIds] = useState<Set<string>>(new Set());
   const [leads, setLeads] = useState<Lead[]>([]);
   const { user, userRole, userName } = useAuth();
+  
+  // Track user activity to optimize polling
+  const [isActive, setIsActive] = useState(true);
+  const lastActivityRef = useRef(Date.now());
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsActive(!document.hidden);
+      if (!document.hidden) {
+        lastActivityRef.current = Date.now();
+      }
+    };
+
+    const handleUserActivity = () => {
+      lastActivityRef.current = Date.now();
+      setIsActive(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('mousedown', handleUserActivity);
+    document.addEventListener('keydown', handleUserActivity);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('mousedown', handleUserActivity);
+      document.removeEventListener('keydown', handleUserActivity);
+    };
+  }, []);
 
   // Fetch callback information for a lead
   const fetchCallbackInfo = async (leadId: string) => {
@@ -56,14 +85,28 @@ const SalesLeadsCallbackAlert = () => {
     }
   };
 
-  // Fetch all sales leads with callback info
   const fetchLeads = async () => {
-    if (!user) return;
-    
+    if (!user || !isActive) return;
+
     try {
-      const salesLeadsRef = collection(crmDb, 'crm_leads');
-      const querySnapshot = await getDocs(salesLeadsRef);
-      
+      // Check cache first - sales-specific cache for 3 minutes
+      const cacheKey = `sales-callback-leads-${userName || 'all'}`;
+      const cachedLeads = searchCache.get<Lead[]>(cacheKey);
+      if (cachedLeads) {
+        setLeads(cachedLeads);
+        return;
+      }
+
+      const billcutLeadsRef = collection(crmDb, 'billcutLeads');
+      // Optimize query - only get callback leads assigned to current user
+      const querySnapshot = await getDocs(
+        query(
+          billcutLeadsRef,
+          where('category', '==', 'Callback'),
+          ...(userRole === 'sales' ? [where('assigned_to', '==', userName)] : [])
+        )
+      );
+
       const fetchedLeads = await Promise.all(
         querySnapshot.docs.map(async (doc) => {
           const data = doc.data();
@@ -86,9 +129,11 @@ const SalesLeadsCallbackAlert = () => {
         })
       );
 
+      // Cache for 3 minutes
+      searchCache.set(cacheKey, fetchedLeads, 3 * 60 * 1000);
       setLeads(fetchedLeads);
     } catch (error) {
-      console.error('Error fetching sales leads:', error);
+      console.error('Error fetching leads:', error);
     }
   };
 
@@ -99,15 +144,22 @@ const SalesLeadsCallbackAlert = () => {
     }
   }, []);
 
-  // Fetch leads when user changes
+  // Optimized polling with user activity tracking
   useEffect(() => {
     if (user) {
       fetchLeads();
-      // Refresh leads every 5 minutes
-      const interval = setInterval(fetchLeads, 5 * 60 * 1000);
+      
+      // Smart polling based on user activity
+      const interval = setInterval(() => {
+        // Only poll if user is active or was recently active (within 3 minutes)
+        if (isActive || Date.now() - lastActivityRef.current < 3 * 60 * 1000) {
+          fetchLeads();
+        }
+      }, 8 * 60 * 1000); // Increased from 5 to 8 minutes
+      
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, isActive]);
 
   // Check for upcoming callbacks within 30 minutes
   useEffect(() => {

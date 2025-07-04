@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { db } from '@/firebase/firebase';
+import { useAuth } from '@/context/AuthContext';
+import { searchCache } from '@/app/dashboard/superadmin/utils/cache';
 
 interface UpcomingCallback {
   id: string;
-  leadName: string;
+  name: string;
+  phone: string;
   scheduledTime: Date;
   timeUntil: string;
+  assignedTo: string;
 }
 
 interface UpcomingCallbackAlertProps {
@@ -15,86 +21,134 @@ interface UpcomingCallbackAlertProps {
   onDismiss?: () => void;
 }
 
-const UpcomingCallbackAlert = ({ 
-  leads, 
-  isVisible, 
-  onViewCallbacks, 
-  onDismiss 
-}: UpcomingCallbackAlertProps) => {
+const UpcomingCallbackAlert: React.FC = () => {
   const [upcomingCallbacks, setUpcomingCallbacks] = useState<UpcomingCallback[]>([]);
-  const [shownToastIds, setShownToastIds] = useState<Set<string>>(new Set());
+  const [isVisible, setIsVisible] = useState(false);
+  const { user, userRole, userName } = useAuth();
+  
+  // Track user activity to optimize polling
+  const [isActive, setIsActive] = useState(true);
+  const lastActivityRef = useRef(Date.now());
 
-  // Request notification permission on mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // Check for upcoming callbacks within 30 minutes
-  useEffect(() => {
-    const checkUpcomingCallbacks = () => {
-      const now = new Date();
-      const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
-      
-      // Get current user info
-      const currentUserName = typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '';
-      const currentUserRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') || '' : '';
-      
-      const upcoming = leads
-        .filter(lead => 
-          lead.status === 'Callback' && 
-          lead.callbackInfo && 
-          lead.callbackInfo.scheduled_dt
-        )
-        // Filter based on user role and assignment
-        .filter(lead => {
-          // Admin and overlord users can see all callback alerts
-          if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
-            return true;
-          }
-          // Sales users can only see alerts for callbacks assigned to them
-          return lead.assignedTo === currentUserName;
-        })
-        .map(lead => {
-          const scheduledTime = new Date(lead.callbackInfo.scheduled_dt);
-          return {
-            lead,
-            scheduledTime,
-            timeUntil: getTimeUntil(scheduledTime)
-          };
-        })
-        .filter(({ scheduledTime }) => 
-          scheduledTime >= now && scheduledTime <= thirtyMinutesFromNow
-        )
-        .map(({ lead, scheduledTime, timeUntil }) => ({
-          id: lead.id,
-          leadName: lead.name,
-          scheduledTime,
-          timeUntil
-        }))
-        .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
-
-      setUpcomingCallbacks(upcoming);
-      
-      // Show toast for new upcoming callbacks
-      upcoming.forEach(callback => {
-        const toastId = `callback-${callback.id}`;
-        if (!shownToastIds.has(toastId)) {
-          showCallbackToast(callback, toastId);
-          setShownToastIds(prev => new Set([...prev, toastId]));
-        }
-      });
+    const handleVisibilityChange = () => {
+      setIsActive(!document.hidden);
+      if (!document.hidden) {
+        lastActivityRef.current = Date.now();
+      }
     };
 
-    // Check immediately
-    checkUpcomingCallbacks();
-    
-    // Check every minute
-    const interval = setInterval(checkUpcomingCallbacks, 60000);
-    
-    return () => clearInterval(interval);
-  }, [leads, shownToastIds]);
+    const handleUserActivity = () => {
+      lastActivityRef.current = Date.now();
+      setIsActive(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('mousedown', handleUserActivity);
+    document.addEventListener('keydown', handleUserActivity);
+    document.addEventListener('scroll', handleUserActivity);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('mousedown', handleUserActivity);
+      document.removeEventListener('keydown', handleUserActivity);
+      document.removeEventListener('scroll', handleUserActivity);
+    };
+  }, []);
+
+  const fetchUpcomingCallbacks = async () => {
+    if (!user || !userName || !isActive) return;
+
+    try {
+      // Check cache first - 90 second cache for callbacks
+      const cacheKey = `upcoming-callbacks-${userName}`;
+      const cachedCallbacks = searchCache.get<UpcomingCallback[]>(cacheKey);
+      if (cachedCallbacks) {
+        setUpcomingCallbacks(cachedCallbacks);
+        setIsVisible(cachedCallbacks.length > 0);
+        return;
+      }
+
+      const now = new Date();
+      const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
+
+      const billcutLeadsRef = collection(db, 'billcutLeads');
+      
+      // Optimize query - filter by category and user assignment
+      let callbackQuery = query(
+        billcutLeadsRef,
+        where('category', '==', 'Callback'),
+        orderBy('scheduled_dt', 'asc'),
+        limit(20) // Limit results to reduce reads
+      );
+
+      // For sales users, add assignment filter
+      if (userRole === 'sales') {
+        callbackQuery = query(
+          billcutLeadsRef,
+          where('category', '==', 'Callback'),
+          where('assigned_to', '==', userName),
+          orderBy('scheduled_dt', 'asc'),
+          limit(10) // Fewer results for sales users
+        );
+      }
+
+      const querySnapshot = await getDocs(callbackQuery);
+      
+      const callbacks: UpcomingCallback[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.scheduled_dt) {
+          const scheduledTime = data.scheduled_dt.toDate();
+          
+          // Only include callbacks within 30 minutes
+          if (scheduledTime >= now && scheduledTime <= thirtyMinutesFromNow) {
+            // Filter by user role
+            const shouldInclude = userRole === 'admin' || data.assigned_to === userName;
+            
+            if (shouldInclude) {
+              callbacks.push({
+                id: doc.id,
+                name: data.name || 'Unknown',
+                phone: data.phone || '',
+                scheduledTime,
+                timeUntil: getTimeUntil(scheduledTime),
+                assignedTo: data.assigned_to || 'Unassigned'
+              });
+            }
+          }
+        }
+      });
+
+      // Sort by scheduled time
+      callbacks.sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
+
+      // Cache for 90 seconds
+      searchCache.set(cacheKey, callbacks, 90 * 1000);
+      
+      setUpcomingCallbacks(callbacks);
+      setIsVisible(callbacks.length > 0);
+    } catch (error) {
+      console.error('Error fetching upcoming callbacks:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchUpcomingCallbacks();
+      
+      // Smart polling - check every 3 minutes instead of every minute
+      const interval = setInterval(() => {
+        // Only fetch if user is active or was active in last 2 minutes
+        if (isActive || Date.now() - lastActivityRef.current < 2 * 60 * 1000) {
+          fetchUpcomingCallbacks();
+        }
+      }, 3 * 60 * 1000); // Changed from 60000 (1 minute) to 3 minutes
+      
+      return () => clearInterval(interval);
+    }
+  }, [user, userRole, userName, isActive]);
 
   const getTimeUntil = (scheduledTime: Date): string => {
     const now = new Date();
@@ -110,7 +164,7 @@ const UpcomingCallbackAlert = ({
     // Play notification sound if available
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       new Notification('Upcoming Callback Alert', {
-        body: `${callback.leadName} - ${callback.scheduledTime.toLocaleTimeString('en-US', {
+        body: `${callback.name} - ${callback.scheduledTime.toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
           hour12: true
@@ -131,7 +185,7 @@ const UpcomingCallbackAlert = ({
               ⚠️ Upcoming Callback Alert
             </p>
             <p className="mt-1 text-sm text-yellow-100">
-              <span className="font-medium">{callback.leadName}</span>
+              <span className="font-medium">{callback.name}</span>
             </p>
             <p className="mt-1 text-sm text-yellow-200">
               Scheduled for: {callback.scheduledTime.toLocaleTimeString('en-US', {
@@ -143,7 +197,8 @@ const UpcomingCallbackAlert = ({
             <div className="mt-2 flex space-x-2">
               <button
                 onClick={() => {
-                  onViewCallbacks?.();
+                  // Navigate to billcutleads page with callback tab
+                  window.location.href = '/billcutleads?tab=callback';
                   toast.dismiss(toastId);
                 }}
                 className="bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
