@@ -76,7 +76,7 @@ export default function ClientsPage() {
     'billcut',
     'manual'
   ]);
-  const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding'])
+  const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding', 'On Hold'])
 
   // Filtered clients based on search and filters
   const [filteredClients, setFilteredClients] = useState<Client[]>([])

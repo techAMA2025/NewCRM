@@ -1104,7 +1104,7 @@ function ClientsList() {
 
       // Check for status filter in URL
       const status = searchParams.get("status")
-      if (status && ["Active", "Dropped", "Not Responding"].includes(status)) {
+      if (status && ["Active", "Dropped", "Not Responding", "On Hold"].includes(status)) {
         setStatusFilter(status)
       }
     }
@@ -1514,6 +1514,7 @@ function ClientsList() {
                 <option value="Active">Active</option>
                 <option value="Dropped">Dropped</option>
                 <option value="Not Responding">Not Responding</option>
+                <option value="On Hold">On Hold</option>
               </select>
             </div>
 
@@ -1753,12 +1754,15 @@ function ClientsList() {
                                 ? "bg-red-800 text-red-200 focus:ring-red-500"
                                 : client.adv_status === "Not Responding"
                                   ? "bg-yellow-800 text-yellow-200 focus:ring-yellow-500"
-                                  : "bg-gray-800 text-gray-200 focus:ring-gray-500"
+                                  : client.adv_status === "On Hold"
+                                    ? "bg-purple-800 text-purple-200 focus:ring-purple-500"
+                                    : "bg-gray-800 text-gray-200 focus:ring-gray-500"
                           }`}
                         >
                           <option value="Active">Active</option>
                           <option value="Dropped">Dropped</option>
                           <option value="Not Responding">Not Responding</option>
+                          <option value="On Hold">On Hold</option>
                         </select>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center">
