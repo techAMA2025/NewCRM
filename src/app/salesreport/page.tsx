@@ -135,7 +135,8 @@ const LEAD_STATUSES = [
   'Loan Required',
   'Cibil Issue',
   'Closed Lead',
-  'Language Barrier'
+  'Language Barrier',
+  'Future Potential'
 ];
 
 const LEAD_SOURCES = ['credsettlee', 'ama', 'settleloans', 'billcut'];
@@ -270,21 +271,42 @@ export default function SalesReport() {
       return cityDataMap;
     }
 
-    // Redistribute proportionally
-    actualCities.forEach(city => {
+    // Calculate proportional distribution without rounding first
+    const redistributionData = actualCities.map(city => {
       const cityRatio = cityDataMap[city].totalLeads / totalActualLeads;
-      const redistributedLeads = Math.round(redistributeCount * cityRatio);
-      
-      cityDataMap[city].totalLeads += redistributedLeads;
+      const exactDistribution = redistributeCount * cityRatio;
+      return {
+        city,
+        exactDistribution,
+        floorDistribution: Math.floor(exactDistribution),
+        remainder: exactDistribution - Math.floor(exactDistribution)
+      };
+    });
+
+    // Calculate base distribution (floor values)
+    let totalDistributed = redistributionData.reduce((sum, data) => sum + data.floorDistribution, 0);
+    
+    // Distribute remaining leads to cities with highest remainders
+    const remainingLeads = redistributeCount - totalDistributed;
+    redistributionData.sort((a, b) => b.remainder - a.remainder);
+    
+    for (let i = 0; i < remainingLeads; i++) {
+      redistributionData[i].floorDistribution += 1;
+    }
+
+    // Apply the calculated distribution
+    redistributionData.forEach(data => {
+      const redistributedLeads = data.floorDistribution;
+      cityDataMap[data.city].totalLeads += redistributedLeads;
       
       // For detailed city data with status counts, distribute proportionally across statuses
-      if (cityDataMap[city].statusCounts) {
-        const cityTotalOriginal = Object.values(cityDataMap[city].statusCounts as { [key: string]: number }).reduce((a: number, b: number) => a + b, 0);
+      if (cityDataMap[data.city].statusCounts) {
+        const cityTotalOriginal = Object.values(cityDataMap[data.city].statusCounts as { [key: string]: number }).reduce((a: number, b: number) => a + b, 0);
         if (cityTotalOriginal > 0) {
-          Object.keys(cityDataMap[city].statusCounts).forEach(status => {
-            const statusRatio = (cityDataMap[city].statusCounts[status] || 0) / cityTotalOriginal;
+          Object.keys(cityDataMap[data.city].statusCounts).forEach(status => {
+            const statusRatio = (cityDataMap[data.city].statusCounts[status] || 0) / cityTotalOriginal;
             const redistributedStatusLeads = Math.round(redistributedLeads * statusRatio);
-            cityDataMap[city].statusCounts[status] = (cityDataMap[city].statusCounts[status] || 0) + redistributedStatusLeads;
+            cityDataMap[data.city].statusCounts[status] = (cityDataMap[data.city].statusCounts[status] || 0) + redistributedStatusLeads;
           });
         }
       }
@@ -384,6 +406,38 @@ export default function SalesReport() {
         }
         const leadsSnapshot = await getDocs(dateQuery);
         console.log('Found leads:', leadsSnapshot.docs.length);
+
+        // Calculate ALL leads that match the filter criteria (for consistent total counting)
+        let allLeadsCount = 0;
+        let allConvertedLeadsCount = 0;
+        let allActiveLeadsCount = 0;
+
+        leadsSnapshot.docs.forEach(doc => {
+          const leadData = doc.data();
+          if (
+            (selectedSource === 'all' || leadData.source_database === selectedSource) &&
+            (selectedCity === 'all' || leadData.city === selectedCity)
+          ) {
+            allLeadsCount++;
+            const status = leadData.status || 'No Status';
+            
+            if (status === 'Converted') {
+              allConvertedLeadsCount++;
+            }
+            
+            if (status === 'Interested' || status === 'Callback' || status === 'Future Potential' || status === 'No Status') {
+              allActiveLeadsCount++;
+            }
+          }
+        });
+
+        // Update summary metrics with ALL leads count
+        setSummaryMetrics({
+          totalLeads: allLeadsCount,
+          conversionRate: allLeadsCount ? (allConvertedLeadsCount / allLeadsCount) * 100 : 0,
+          activeLeads: allActiveLeadsCount,
+          totalSales: allConvertedLeadsCount
+        });
 
         const leadsDistribution: LeadStatusCount[] = [];
 
@@ -614,35 +668,9 @@ export default function SalesReport() {
     fetchData();
   }, [selectedRange, selectedSource, customDateRange, selectedCity]);
 
-  useEffect(() => {
-    const calculateSummaryMetrics = (distribution: LeadStatusCount[]) => {
-      const totalLeads = distribution.reduce((sum, dist) => 
-        sum + Object.values(dist.statusCounts).reduce((a, b) => a + b, 0), 0
-      );
-      
-      const convertedLeads = distribution.reduce((sum, dist) => 
-        sum + (dist.statusCounts['Converted'] || 0), 0
-      );
-
-      const activeLeads = distribution.reduce((sum, dist) => 
-        sum + (dist.statusCounts['Interested'] || 0) + 
-        (dist.statusCounts['Callback'] || 0) +
-        (dist.statusCounts['No Status'] || 0), 0
-      );
-
-      setSummaryMetrics({
-        totalLeads,
-        conversionRate: totalLeads ? (convertedLeads / totalLeads) * 100 : 0,
-        activeLeads,
-        totalSales: convertedLeads
-      });
-    };
-
-    calculateSummaryMetrics(leadStatusDistribution);
-  }, [leadStatusDistribution]);
-
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
+      'No Status': 'bg-neutral-100 text-neutral-600',
       'Converted': 'bg-emerald-100 text-emerald-800',
       'Interested': 'bg-indigo-100 text-indigo-800',
       'Not Interested': 'bg-rose-100 text-rose-800',
@@ -651,9 +679,30 @@ export default function SalesReport() {
       'Loan Required': 'bg-cyan-100 text-cyan-800',
       'Cibil Issue': 'bg-orange-100 text-orange-800',
       'Closed Lead': 'bg-slate-100 text-slate-800',
-      'No Status': 'bg-neutral-100 text-neutral-600'
+      'Language Barrier': 'bg-red-100 text-red-800',
+      'Future Potential': 'bg-blue-100 text-blue-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Helper function to get display name for status in table headers
+  const getStatusDisplayName = (status: string) => {
+    // For these specific statuses, show custom abbreviations
+    if (status === 'No Status') return 'NS';
+    if (status === 'Not Interested') return 'NI';
+    if (status === 'Not Answering') return 'NA';
+    if (status === 'Future Potential') return 'FP';
+    
+    // For others, show first word as before
+    return status.split(' ')[0];
+  };
+
+  // Helper function to safely calculate percentage and avoid NaN
+  const safePercentage = (numerator: number, denominator: number) => {
+    if (denominator === 0 || isNaN(numerator) || isNaN(denominator)) {
+      return '0';
+    }
+    return ((numerator / denominator) * 100).toFixed(1);
   };
 
   // Replace SalesPersonRadarChart with compact performance cards
@@ -1524,7 +1573,7 @@ export default function SalesReport() {
                             {LEAD_STATUSES.map((status) => (
                               <th key={status} scope="col" className="px-2 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
                                 <div className="flex flex-col">
-                                  <span className="truncate">{status.split(' ')[0]}</span>
+                                  <span className="truncate">{getStatusDisplayName(status)}</span>
                                   <span className="text-[9px] text-gray-400 font-normal normal-case mt-1">
                                     {leadStatusDistribution.reduce((sum, dist) => sum + (dist.statusCounts[status] || 0), 0)}
                                   </span>
@@ -1547,7 +1596,7 @@ export default function SalesReport() {
                                 <td className="px-3 py-3">
                                   <div className="text-sm font-bold text-gray-900 truncate">{distribution.userName}</div>
                                   <div className="text-xs text-gray-500 font-medium">
-                                    {((distribution.statusCounts['Converted'] || 0) / total * 100).toFixed(1)}%
+                                    {safePercentage(distribution.statusCounts['Converted'] || 0, total)}%
                                   </div>
                                 </td>
                                 {LEAD_STATUSES.map((status) => (
@@ -1557,7 +1606,7 @@ export default function SalesReport() {
                                         {distribution.statusCounts[status] || 0}
                                       </span>
                                       <div className="text-[9px] text-gray-400">
-                                        {((distribution.statusCounts[status] || 0) / total * 100).toFixed(1)}%
+                                        {safePercentage(distribution.statusCounts[status] || 0, total)}%
                                       </div>
                                     </div>
                                   </td>
@@ -1568,7 +1617,7 @@ export default function SalesReport() {
                                       {total}
                                     </span>
                                     <div className="text-xs text-gray-500 font-medium">
-                                      {((total / summaryMetrics.totalLeads) * 100).toFixed(1)}%
+                                      {safePercentage(total, summaryMetrics.totalLeads)}%
                                     </div>
                                   </div>
                                 </td>
@@ -1587,7 +1636,7 @@ export default function SalesReport() {
                                       {statusTotal}
                                     </span>
                                     <div className="text-[9px] text-gray-400 font-medium">
-                                      {((statusTotal / summaryMetrics.totalLeads) * 100).toFixed(1)}%
+                                      {safePercentage(statusTotal, summaryMetrics.totalLeads)}%
                                     </div>
                                   </div>
                                 </td>
@@ -1706,9 +1755,7 @@ export default function SalesReport() {
                           <div>
                             <p className="text-sm font-medium text-gray-600">Barrier Rate</p>
                             <p className="text-2xl font-bold text-purple-600">
-                              {summaryMetrics.totalLeads > 0 
-                                ? ((languageBarrierData.reduce((sum, lang) => sum + lang.count, 0) / summaryMetrics.totalLeads) * 100).toFixed(1)
-                                : 0}%
+                              {safePercentage(languageBarrierData.reduce((sum, lang) => sum + lang.count, 0), summaryMetrics.totalLeads)}%
                             </p>
                           </div>
                         </div>
