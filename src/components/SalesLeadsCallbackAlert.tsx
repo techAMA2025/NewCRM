@@ -29,6 +29,10 @@ interface Lead {
   } | null;
 }
 
+// === CONFIGURATION ===
+// How many minutes before a scheduled callback we should show the toast.
+const ALERT_AHEAD_MINUTES = 30; // 30 minutes
+
 const SalesLeadsCallbackAlert = () => {
   const [upcomingCallbacks, setUpcomingCallbacks] = useState<UpcomingCallback[]>([]);
   const [shownToastIds, setShownToastIds] = useState<Set<string>>(new Set());
@@ -85,26 +89,30 @@ const SalesLeadsCallbackAlert = () => {
   };
 
   const fetchLeads = async () => {
-    if (!user || !isActive) return;
+    if (!user || !isActive) {
+      console.log('🔍 SalesLeadsCallbackAlert: fetchLeads skipped - user or isActive false');
+      return;
+    }
 
     try {
-      // Check cache first - sales-specific cache for 3 minutes
+      console.log('🔍 SalesLeadsCallbackAlert: Fetching leads from crm_leads...');
       const cacheKey = `sales-callback-leads-${userName || 'all'}`;
       const cachedLeads = searchCache.get<Lead[]>(cacheKey);
       if (cachedLeads) {
+        console.log(`🔍 SalesLeadsCallbackAlert: Using cached leads (${cachedLeads.length})`);
         setLeads(cachedLeads);
         return;
       }
 
-      const billcutLeadsRef = collection(crmDb, 'billcutLeads');
-      // Optimize query - only get callback leads assigned to current user
+      const crmLeadsRef = collection(crmDb, 'crm_leads');
       const querySnapshot = await getDocs(
         query(
-          billcutLeadsRef,
-          where('category', '==', 'Callback'),
-          ...(userRole === 'sales' ? [where('assigned_to', '==', userName)] : [])
+          crmLeadsRef,
+          where('status', '==', 'Callback'),
+          ...(userRole === 'sales' ? [where('assignedTo', '==', userName)] : [])
         )
       );
+      console.log(`🔍 SalesLeadsCallbackAlert: Query returned ${querySnapshot.docs.length} docs from crm_leads`);
 
       const fetchedLeads = await Promise.all(
         querySnapshot.docs.map(async (doc) => {
@@ -119,20 +127,18 @@ const SalesLeadsCallbackAlert = () => {
             callbackInfo: null
           };
 
-          // Fetch callback info for callback leads
           if (lead.status === 'Callback') {
             lead.callbackInfo = await fetchCallbackInfo(lead.id);
           }
-
           return lead;
         })
       );
 
-      // Cache for 3 minutes
+      console.log(`🔍 SalesLeadsCallbackAlert: fetchedLeads length ${fetchedLeads.length}`);
       searchCache.set(cacheKey, fetchedLeads, 3 * 60 * 1000);
       setLeads(fetchedLeads);
     } catch (error) {
-      // Handle error silently
+      console.error('SalesLeadsCallbackAlert: Error fetching leads:', error);
     }
   };
 
@@ -165,9 +171,13 @@ const SalesLeadsCallbackAlert = () => {
     if (!user || !userRole || !userName) return;
 
     const checkUpcomingCallbacks = () => {
+      console.log('🔍 SalesLeadsCallbackAlert: checkUpcomingCallbacks called');
       const now = new Date();
-      const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
-      
+      const windowEndsAt = new Date(now.getTime() + ALERT_AHEAD_MINUTES * 60 * 1000);
+      console.log('🔍 Current time:', now.toISOString());
+      console.log(`🔍 Window ends at (+${ALERT_AHEAD_MINUTES}m):`, windowEndsAt.toISOString());
+      console.log('🔍 Leads length:', leads.length);
+
       const upcoming = leads
         .filter(lead => 
           lead.status === 'Callback' && 
@@ -192,7 +202,7 @@ const SalesLeadsCallbackAlert = () => {
           };
         })
         .filter(({ scheduledTime }) => 
-          scheduledTime >= now && scheduledTime <= thirtyMinutesFromNow
+          scheduledTime >= now && scheduledTime <= windowEndsAt
         )
         .map(({ lead, scheduledTime, timeUntil }) => ({
           id: lead.id,
@@ -205,12 +215,15 @@ const SalesLeadsCallbackAlert = () => {
         }))
         .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
 
+      console.log(`🔍 SalesLeadsCallbackAlert: upcoming length ${upcoming.length}`, upcoming);
+
       setUpcomingCallbacks(upcoming);
       
       // Show toast for new upcoming callbacks
       upcoming.forEach(callback => {
         const toastId = `sales-callback-${callback.id}`;
         if (!shownToastIds.has(toastId)) {
+          console.log('🔍 SalesLeadsCallbackAlert: Showing toast', toastId);
           showCallbackToast(callback, toastId);
           setShownToastIds(prev => new Set([...prev, toastId]));
         }

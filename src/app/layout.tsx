@@ -49,7 +49,7 @@ export default function RootLayout({
             draggable
             pauseOnHover
             theme="dark"
-            toastClassName="bg-gray-800/90 text-gray-100"
+            style={{ zIndex: 9999 }}
           />
           {children}
         </AuthProvider>
