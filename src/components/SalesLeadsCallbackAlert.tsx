@@ -172,6 +172,13 @@ const SalesLeadsCallbackAlert = () => {
 
     const checkUpcomingCallbacks = () => {
       console.log('🔍 SalesLeadsCallbackAlert: checkUpcomingCallbacks called');
+      
+      // If user is overlord, don't show any toasts
+      if (userRole === 'overlord') {
+        console.log('🔍 SalesLeadsCallbackAlert: Skipping toasts for overlord user');
+        return;
+      }
+      
       const now = new Date();
       const windowEndsAt = new Date(now.getTime() + ALERT_AHEAD_MINUTES * 60 * 1000);
       console.log('🔍 Current time:', now.toISOString());

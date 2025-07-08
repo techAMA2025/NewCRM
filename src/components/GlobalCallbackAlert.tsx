@@ -158,6 +158,11 @@ const GlobalCallbackAlert = () => {
     if (!user || !userRole || !userName) return;
 
     const checkUpcomingCallbacks = () => {
+      // If user is overlord, don't show any toasts
+      if (userRole === 'overlord') {
+        return;
+      }
+      
       const now = new Date();
       const windowEndsAt = new Date(now.getTime() + ALERT_AHEAD_MINUTES * 60 * 1000);
       
