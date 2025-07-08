@@ -147,22 +147,6 @@ const LeadsPage = () => {
   // Add state to store all filtered leads for pagination
   const [allFilteredLeads, setAllFilteredLeads] = useState<Lead[]>([]);
 
-  // Debug toast functionality
-  useEffect(() => {
-    console.log('🔍 LeadsPage component mounted');
-    console.log('🔍 toast function available:', typeof toast);
-    console.log('🔍 toast.success available:', typeof toast.success);
-    
-    // Test a simple toast to see if it works
-    setTimeout(() => {
-      console.log('🔍 Testing simple toast...');
-      toast.success('Test toast from LeadsPage', {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      console.log('🔍 Test toast called');
-    }, 2000);
-  }, []);
 
   // Test toast function
   const testToast = () => {
@@ -197,10 +181,30 @@ const LeadsPage = () => {
     
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
+    const salesPersonParam = urlParams.get('salesPerson');
+    const statusParam = urlParams.get('status');
+    const fromDateParam = urlParams.get('fromDate');
+    const toDateParam = urlParams.get('toDate');
 
     // Apply tab parameter
     if (tabParam === 'callback') {
       setActiveTab('callback');
+    }
+
+    if (salesPersonParam) {
+      setSalesPersonFilter(salesPersonParam);
+    }
+
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+
+    if (fromDateParam) {
+      setFromDate(fromDateParam);
+    }
+
+    if (toDateParam) {
+      setToDate(toDateParam);
     }
   }, []); // Empty dependency array since we only want to run this once on mount
 
@@ -212,11 +216,14 @@ const LeadsPage = () => {
         
         // First check localStorage for user role
         const localStorageRole = localStorage.getItem('userRole');
+        const urlParams = new URLSearchParams(window.location.search);
+        const salesPersonParam = urlParams.get('salesPerson');
+
         if (localStorageRole) {
           setUserRole(localStorageRole);
           
           // If not admin, set the filter to their name
-          if (localStorageRole !== 'admin' && localStorageRole !== 'overlord') {
+          if (localStorageRole !== 'admin' && localStorageRole !== 'overlord' && !salesPersonParam) {
             // Get user name from localStorage if available
             const userName = localStorage.getItem('userName');
             if (userName) {
@@ -247,7 +254,7 @@ const LeadsPage = () => {
             }
             
             // If not admin, set the filter to their name
-            if (userData.role !== 'admin' && userData.name) {
+            if (userData.role !== 'admin' && userData.name && !salesPersonParam) {
               setSalesPersonFilter(userData.name);
             }
           }
@@ -428,13 +435,18 @@ const LeadsPage = () => {
       try {
         // Use Firebase query for date range to reduce data transfer
         let leadsRef: any = collection(crmDb, 'crm_leads');
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromDateParam = urlParams.get('fromDate') || fromDate;
+        const toDateParam = urlParams.get('toDate') || toDate;
+        const statusFilterParam = urlParams.get('status') || statusFilter;
+        const salesPersonFilterParam = urlParams.get('salesPerson') || salesPersonFilter;
         
         // Apply date range filters at database level for better performance
-        if (fromDate && toDate) {
-          const fromDateTime = new Date(fromDate);
+        if (fromDateParam && toDateParam) {
+          const fromDateTime = new Date(fromDateParam);
           fromDateTime.setHours(0, 0, 0, 0);
           
-          const toDateTime = new Date(toDate);
+          const toDateTime = new Date(toDateParam);
           toDateTime.setHours(23, 59, 59, 999);
           
           // Apply role-based filtering at database level
@@ -486,22 +498,22 @@ const LeadsPage = () => {
         }
         
         // Apply status filter
-        if (statusFilter !== 'all') {
-          if (statusFilter === 'No Status') {
+        if (statusFilterParam !== 'all') {
+          if (statusFilterParam === 'No Status') {
             allLeads = allLeads.filter(lead => 
               !lead.status || lead.status === '' || lead.status === 'No Status'
             );
           } else {
-            allLeads = allLeads.filter(lead => lead.status === statusFilter);
+            allLeads = allLeads.filter(lead => lead.status === statusFilterParam);
           }
         }
         
         // Apply salesperson filter (if not already applied at database level)
-        if (salesPersonFilter !== 'all' && userRole !== 'salesperson') {
-          if (salesPersonFilter === '') {
+        if (salesPersonFilterParam !== 'all' && userRole !== 'salesperson') {
+          if (salesPersonFilterParam === '') {
             allLeads = allLeads.filter(lead => !lead.assignedTo);
           } else {
-            allLeads = allLeads.filter(lead => lead.assignedTo === salesPersonFilter);
+            allLeads = allLeads.filter(lead => lead.assignedTo === salesPersonFilterParam);
           }
         }
         
@@ -821,7 +833,7 @@ const LeadsPage = () => {
         clearTimeout(filterTimeoutRef.current);
       }
     };
-  }, [leads, allFilteredLeads, filterLeads, activeTab]);
+  }, [leads, allFilteredLeads, filterLeads, activeTab, fromDate, toDate, statusFilter, salesPersonFilter, sourceFilter, searchQuery]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {

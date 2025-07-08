@@ -26,6 +26,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
+import { useRouter } from 'next/navigation';
 
 interface SalesUser {
   firstName: string;
@@ -205,6 +206,7 @@ const INDIAN_LANGUAGES = [
 ];
 
 export default function SalesReport() {
+  const router = useRouter();
   const [salesUsers, setSalesUsers] = useState<SalesUser[]>([]);
   const [leadStatusDistribution, setLeadStatusDistribution] = useState<LeadStatusCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -243,6 +245,30 @@ export default function SalesReport() {
   // Add new state for simplified city data
   const [simpleCityData, setSimpleCityData] = useState<SimpleCityData[]>([]);
   const [languageBarrierData, setLanguageBarrierData] = useState<LanguageBarrierData[]>([]);
+
+  const handleCellClick = (salesPersonName: string, status: string) => {
+    const { startDate, endDate } = getDateRange(selectedRange);
+    
+    const params = new URLSearchParams();
+    if (salesPersonName && salesPersonName !== 'all') {
+      params.set('salesPerson', salesPersonName);
+    }
+    if (status && status !== 'all') {
+      params.set('status', status);
+    }
+
+    if (selectedRange !== 'all') {
+      if (selectedRange === 'custom') {
+        params.set('fromDate', customDateRange.startDate.toISOString().split('T')[0]);
+        params.set('toDate', customDateRange.endDate.toISOString().split('T')[0]);
+      } else {
+        params.set('fromDate', startDate.toISOString().split('T')[0]);
+        params.set('toDate', endDate.toISOString().split('T')[0]);
+      }
+    }
+    
+    router.push(`/sales/leads?${params.toString()}`);
+  };
 
   // Helper function to get city name from lead data (handles both 'city' and 'City' fields)
   const getCityName = (leadData: any): string => {
@@ -1599,23 +1625,34 @@ export default function SalesReport() {
                                     {safePercentage(distribution.statusCounts['Converted'] || 0, total)}%
                                   </div>
                                 </td>
-                                {LEAD_STATUSES.map((status) => (
-                                  <td key={status} className="px-2 py-3 text-center">
-                                    <div className="flex flex-col items-center space-y-1">
-                                      <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-sm`}>
-                                        {distribution.statusCounts[status] || 0}
-                                      </span>
-                                      <div className="text-[9px] text-gray-400">
-                                        {safePercentage(distribution.statusCounts[status] || 0, total)}%
+                                {LEAD_STATUSES.map((status) => {
+                                  const count = distribution.statusCounts[status] || 0;
+                                  return (
+                                    <td key={status} className="px-2 py-3 text-center">
+                                      <div className="flex flex-col items-center space-y-1">
+                                        <button
+                                          onClick={() => count > 0 && handleCellClick(distribution.userName, status)}
+                                          disabled={count === 0}
+                                          className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-sm ${count > 0 ? 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500' : 'cursor-not-allowed'}`}
+                                        >
+                                          {count}
+                                        </button>
+                                        <div className="text-[9px] text-gray-400">
+                                          {safePercentage(count, total)}%
+                                        </div>
                                       </div>
-                                    </div>
-                                  </td>
-                                ))}
+                                    </td>
+                                  )
+                                })}
                                 <td className="px-3 py-3 text-center">
                                   <div className="flex flex-col items-center space-y-1">
-                                    <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm">
+                                    <button
+                                      onClick={() => total > 0 && handleCellClick(distribution.userName, 'all')}
+                                      disabled={total === 0}
+                                      className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm ${total > 0 ? 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500' : 'cursor-not-allowed'}`}
+                                    >
                                       {total}
-                                    </span>
+                                    </button>
                                     <div className="text-xs text-gray-500 font-medium">
                                       {safePercentage(total, summaryMetrics.totalLeads)}%
                                     </div>
@@ -1632,9 +1669,13 @@ export default function SalesReport() {
                               return (
                                 <td key={status} className="px-2 py-3 text-center">
                                   <div className="flex flex-col items-center space-y-1">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-md border border-white/50`}>
+                                    <button
+                                      onClick={() => statusTotal > 0 && handleCellClick('all', status)}
+                                      disabled={statusTotal === 0}
+                                      className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-md border border-white/50 ${statusTotal > 0 ? 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500' : 'cursor-not-allowed'}`}
+                                    >
                                       {statusTotal}
-                                    </span>
+                                    </button>
                                     <div className="text-[9px] text-gray-400 font-medium">
                                       {safePercentage(statusTotal, summaryMetrics.totalLeads)}%
                                     </div>
@@ -1643,9 +1684,13 @@ export default function SalesReport() {
                               );
                             })}
                             <td className="px-3 py-3 text-center">
-                              <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-100 to-indigo-100 border-2 border-blue-300 shadow-md">
+                              <button
+                                onClick={() => summaryMetrics.totalLeads > 0 && handleCellClick('all', 'all')}
+                                disabled={summaryMetrics.totalLeads === 0}
+                                className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-gray-900 bg-gradient-to-r from-blue-100 to-indigo-100 border-2 border-blue-300 shadow-md ${summaryMetrics.totalLeads > 0 ? 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-indigo-500' : 'cursor-not-allowed'}`}
+                              >
                                 {summaryMetrics.totalLeads}
-                              </span>
+                              </button>
                             </td>
                           </tr>
                         </tbody>

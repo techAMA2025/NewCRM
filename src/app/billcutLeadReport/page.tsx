@@ -1254,8 +1254,6 @@ const BillcutLeadReportContent = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-
-          
           </div>
 
           {/* Charts Grid */}
