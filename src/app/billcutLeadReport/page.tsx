@@ -49,6 +49,9 @@ interface BillcutLead {
   name: string;
   sales_notes: string;
   synced_date: any;
+  convertedAt?: any;
+  lastModified?: any;
+  status?: string;
 }
 
 interface MetricCardProps {
@@ -490,6 +493,148 @@ const BillcutLeadReportContent = () => {
     // Calculate conversion rate
     const convertedLeads = leads.filter(lead => lead.category === 'Converted').length;
     const conversionRate = (convertedLeads / totalLeads) * 100;
+
+    // NEW: Conversion Time Analysis
+    const convertedLeadsWithTime = leads.filter(lead => 
+      lead.category === 'Converted' && 
+      lead.convertedAt && 
+      (lead.date || lead.synced_date)
+    );
+
+    const conversionTimeData = convertedLeadsWithTime.map(lead => {
+      const leadCreationTime = lead.date || (lead.synced_date?.toMillis ? lead.synced_date.toMillis() : lead.synced_date);
+      const conversionTime = lead.convertedAt?.toMillis ? lead.convertedAt.toMillis() : lead.convertedAt;
+      
+      const timeDiffMs = conversionTime - leadCreationTime;
+      const timeDiffDays = Math.floor(timeDiffMs / (1000 * 60 * 60 * 24));
+      const timeDiffHours = Math.floor((timeDiffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      
+      return {
+        leadName: lead.name,
+        assignedTo: lead.assigned_to,
+        createdAt: new Date(leadCreationTime),
+        convertedAt: new Date(conversionTime),
+        conversionTimeDays: timeDiffDays,
+        conversionTimeHours: timeDiffHours,
+        conversionTimeMs: timeDiffMs,
+        debtRange: lead.debt_range,
+        income: lead.income
+      };
+    });
+
+    // Average conversion time calculation
+    const avgConversionTimeMs = conversionTimeData.length > 0 
+      ? conversionTimeData.reduce((sum, item) => sum + item.conversionTimeMs, 0) / conversionTimeData.length
+      : 0;
+    
+    const avgConversionTimeDays = Math.floor(avgConversionTimeMs / (1000 * 60 * 60 * 24));
+    const avgConversionTimeHours = Math.floor((avgConversionTimeMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+    // Conversion time distribution (buckets)
+    const conversionTimeBuckets = {
+      'Same Day (0-24h)': 0,
+      '2-3 Days': 0,
+      '4-7 Days': 0,
+      '1-2 Weeks': 0,
+      '2-4 Weeks': 0,
+      '1-2 Months': 0,
+      '2+ Months': 0
+    };
+
+    conversionTimeData.forEach(item => {
+      const days = item.conversionTimeDays;
+      if (days === 0) conversionTimeBuckets['Same Day (0-24h)']++;
+      else if (days <= 3) conversionTimeBuckets['2-3 Days']++;
+      else if (days <= 7) conversionTimeBuckets['4-7 Days']++;
+      else if (days <= 14) conversionTimeBuckets['1-2 Weeks']++;
+      else if (days <= 30) conversionTimeBuckets['2-4 Weeks']++;
+      else if (days <= 60) conversionTimeBuckets['1-2 Months']++;
+      else conversionTimeBuckets['2+ Months']++;
+    });
+
+    // NEW: Lead Entry Timeline Analysis
+    const leadEntryTimeline = leads.reduce((acc, lead) => {
+      const creationDate = new Date(lead.date || (lead.synced_date?.toMillis ? lead.synced_date.toMillis() : lead.synced_date));
+      const dateKey = creationDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      if (!acc[dateKey]) {
+        acc[dateKey] = {
+          date: dateKey,
+          totalLeads: 0,
+          convertedLeads: 0,
+          interestedLeads: 0,
+          notInterestedLeads: 0
+        };
+      }
+      
+      acc[dateKey].totalLeads++;
+      
+      if (lead.category === 'Converted') {
+        acc[dateKey].convertedLeads++;
+      } else if (lead.category === 'Interested') {
+        acc[dateKey].interestedLeads++;
+      } else if (lead.category === 'Not Interested') {
+        acc[dateKey].notInterestedLeads++;
+      }
+      
+      return acc;
+    }, {} as Record<string, any>);
+
+    const leadEntryTimelineData = Object.values(leadEntryTimeline)
+      .sort((a: any, b: any) => a.date.localeCompare(b.date))
+      .slice(-30); // Show last 30 days
+
+    // Conversion time by salesperson
+    const conversionTimeBySalesperson = conversionTimeData.reduce((acc, item) => {
+      if (!acc[item.assignedTo]) {
+        acc[item.assignedTo] = {
+          name: item.assignedTo,
+          conversions: [],
+          avgDays: 0,
+          fastestDays: Infinity,
+          slowestDays: 0
+        };
+      }
+      
+      acc[item.assignedTo].conversions.push(item.conversionTimeDays);
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Calculate averages for each salesperson
+    Object.values(conversionTimeBySalesperson).forEach((rep: any) => {
+      const conversions = rep.conversions;
+      rep.avgDays = conversions.reduce((sum: number, days: number) => sum + days, 0) / conversions.length;
+      rep.fastestDays = Math.min(...conversions);
+      rep.slowestDays = Math.max(...conversions);
+      rep.totalConversions = conversions.length;
+    });
+
+    const conversionTimeBySalespersonData = Object.values(conversionTimeBySalesperson);
+
+    // Hourly lead entry pattern
+    const hourlyPattern = leads.reduce((acc, lead) => {
+      const creationDate = new Date(lead.date || (lead.synced_date?.toMillis ? lead.synced_date.toMillis() : lead.synced_date));
+      const hour = creationDate.getHours();
+      acc[hour] = (acc[hour] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+
+    const hourlyPatternData = Array.from({ length: 24 }, (_, hour) => ({
+      hour: `${hour}:00`,
+      leads: hourlyPattern[hour] || 0
+    }));
+
+    // Day of week pattern
+    const dayOfWeekPattern = leads.reduce((acc, lead) => {
+      const creationDate = new Date(lead.date || (lead.synced_date?.toMillis ? lead.synced_date.toMillis() : lead.synced_date));
+      const dayOfWeek = creationDate.getDay(); // 0 = Sunday, 6 = Saturday
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const dayName = dayNames[dayOfWeek];
+      acc[dayName] = (acc[dayName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const dayOfWeekPatternData = Object.entries(dayOfWeekPattern).map(([day, count]) => ({ day, count }));
     
     // Category distribution with percentage
     const categoryDistribution = leads.reduce((acc, lead) => {
@@ -638,6 +783,17 @@ const BillcutLeadReportContent = () => {
       uniqueAssignees,
       averageDebt,
       conversionRate: Math.round(conversionRate * 100) / 100,
+      // NEW: Conversion time analytics
+      conversionTimeData,
+      avgConversionTimeDays,
+      avgConversionTimeHours,
+      conversionTimeBuckets: Object.entries(conversionTimeBuckets).map(([name, value]) => ({ name, value })),
+      conversionTimeBySalesperson: conversionTimeBySalespersonData,
+      // NEW: Lead entry analytics
+      leadEntryTimelineData,
+      hourlyPatternData,
+      dayOfWeekPatternData,
+      // Existing analytics
       categoryDistribution: categoryData,
       assigneeDistribution: Object.entries(assigneeDistribution).map(([name, value]) => ({ name, value })),
       debtRangeDistribution: sortedDebtRanges,
@@ -1029,6 +1185,77 @@ const BillcutLeadReportContent = () => {
               icon={<FiTrendingUp size={24} />}
               color="#EF4444"
             />
+          </div>
+
+          {/* NEW: Conversion Time Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            <MetricCard
+              title="Avg Conversion Time"
+              value={analytics.conversionTimeData.length > 0 ? `${analytics.avgConversionTimeDays}d ${analytics.avgConversionTimeHours}h` : 'N/A'}
+              icon={<FiCalendar size={24} />}
+              color="#8B5CF6"
+            />
+            <MetricCard
+              title="Total Conversions"
+              value={analytics.conversionTimeData.length.toLocaleString()}
+              icon={<FiTarget size={24} />}
+              color="#EC4899"
+            />
+            <MetricCard
+              title="Fastest Conversion"
+              value={analytics.conversionTimeData.length > 0 ? 
+                (() => {
+                  const fastest = Math.min(...analytics.conversionTimeData.map(item => item.conversionTimeDays));
+                  return fastest === 0 ? 'Same Day' : `${fastest} days`;
+                })() : 'N/A'
+              }
+              icon={<FiActivity size={24} />}
+              color="#14B8A6"
+            />
+            <MetricCard
+              title="Slowest Conversion"
+              value={analytics.conversionTimeData.length > 0 ? 
+                `${Math.max(...analytics.conversionTimeData.map(item => item.conversionTimeDays))} days` : 'N/A'
+              }
+              icon={<FiActivity size={24} />}
+              color="#F97316"
+            />
+          </div>
+
+          {/* NEW: Conversion Time Analytics Section */}
+          <div className="w-full mb-6 lg:mb-8">
+            {/* Conversion Time Distribution */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <FiCalendar className="mr-2" />
+                Conversion Time Distribution
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analytics.conversionTimeBuckets}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={80}
+                    stroke={isDarkMode ? "#fff" : "#000"}
+                  />
+                  <YAxis stroke={isDarkMode ? "#fff" : "#000"} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#fff' : '#000'
+                    }}
+                    formatter={(value: number) => [`${value} conversions`, 'Count']}
+                  />
+                  <Bar dataKey="value" fill="#8B5CF6" name="Conversions" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+          
           </div>
 
           {/* Charts Grid */}
