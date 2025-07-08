@@ -65,6 +65,36 @@ const LeadsTable = ({
     toastShownRef.current = false;
   }, [filteredLeads.length]);
 
+  const uniqueLeads = useMemo(() => {
+    const seenIds = new Set<string>();
+    const uniqueLeadsArray: any[] = [];
+    filteredLeads.forEach((lead) => {
+      if (!seenIds.has(lead.id)) {
+        seenIds.add(lead.id);
+        uniqueLeadsArray.push(lead);
+      }
+    });
+    return uniqueLeadsArray;
+  }, [filteredLeads]);
+
+  useEffect(() => {
+    const seenIds = new Set<string>();
+    let hasDuplicates = false;
+    for (const lead of filteredLeads) {
+      if (seenIds.has(lead.id)) {
+        hasDuplicates = true;
+        break;
+      }
+      seenIds.add(lead.id);
+    }
+
+    if (hasDuplicates && !duplicateToastShown) {
+      setDuplicateToastShown(true);
+      console.warn('Duplicate lead IDs detected and handled.');
+    }
+  }, [filteredLeads, duplicateToastShown]);
+
+
   // Effect to show toast if duplicates are detected
   useEffect(() => {
     if (duplicateToastShown && !toastShownRef.current) {
@@ -195,30 +225,6 @@ const LeadsTable = ({
         </tr>
       );
     }
-
-    // Detect and handle duplicate keys
-    const uniqueLeads = useMemo(() => {
-      const seenIds = new Set<string>();
-      const duplicateIds = new Set<string>();
-      const uniqueLeadsArray: any[] = [];
-
-      filteredLeads.forEach((lead) => {
-        if (seenIds.has(lead.id)) {
-          duplicateIds.add(lead.id);
-        } else {
-          seenIds.add(lead.id);
-          uniqueLeadsArray.push(lead);
-        }
-      });
-
-      // Set flag if duplicates detected (toast will be shown by useEffect)
-      if (duplicateIds.size > 0 && !duplicateToastShown) {
-        setDuplicateToastShown(true);
-        console.warn('Duplicate lead IDs detected:', Array.from(duplicateIds));
-      }
-
-      return uniqueLeadsArray;
-    }, [filteredLeads, duplicateToastShown]);
 
     return uniqueLeads.map((lead) => (
       <LeadRow
