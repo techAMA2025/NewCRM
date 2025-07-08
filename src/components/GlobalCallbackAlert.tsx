@@ -26,6 +26,10 @@ interface Lead {
   } | null;
 }
 
+// === CONFIGURATION ===
+// How many minutes before a scheduled callback we should show the toast.
+const ALERT_AHEAD_MINUTES = 30; // 30 minutes
+
 const GlobalCallbackAlert = () => {
   const [upcomingCallbacks, setUpcomingCallbacks] = useState<UpcomingCallback[]>([]);
   const [shownToastIds, setShownToastIds] = useState<Set<string>>(new Set());
@@ -60,7 +64,7 @@ const GlobalCallbackAlert = () => {
     };
   }, []);
 
-  // Fetch callback information for a lead
+  // Fetch callback information for a lead from billcutLeads
   const fetchCallbackInfo = async (leadId: string) => {
     try {
       const callbackInfoRef = collection(crmDb, 'billcutLeads', leadId, 'callback_info');
@@ -83,11 +87,13 @@ const GlobalCallbackAlert = () => {
 
   // Fetch all billcut leads with callback info
   const fetchLeads = async () => {
-    if (!user || !isActive) return;
+    if (!user || !isActive) {
+      return;
+    }
 
     try {
       // Check cache first - use shorter cache for callback alerts (2 minutes)
-      const cacheKey = `callback-leads-${userName || 'global'}`;
+      const cacheKey = `billcut-callback-leads-${userName || 'global'}`;
       const cachedLeads = searchCache.get<Lead[]>(cacheKey);
       if (cachedLeads) {
         setLeads(cachedLeads);
@@ -153,7 +159,7 @@ const GlobalCallbackAlert = () => {
 
     const checkUpcomingCallbacks = () => {
       const now = new Date();
-      const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
+      const windowEndsAt = new Date(now.getTime() + ALERT_AHEAD_MINUTES * 60 * 1000);
       
       const upcoming = leads
         .filter(lead => 
@@ -163,11 +169,11 @@ const GlobalCallbackAlert = () => {
         )
         // Filter based on user role and assignment
         .filter(lead => {
-          // Admin users can see all callback alerts
-          if (userRole === 'admin') {
+          // Admin and overlord users can see all callback alerts
+          if (userRole === 'admin' || userRole === 'overlord') {
             return true;
           }
-          // Sales users can only see alerts for callbacks assigned to them
+          // Other users (billcut, sales) can only see alerts for callbacks assigned to them
           return lead.assignedTo === userName;
         })
         .map(lead => {
@@ -179,7 +185,7 @@ const GlobalCallbackAlert = () => {
           };
         })
         .filter(({ scheduledTime }) => 
-          scheduledTime >= now && scheduledTime <= thirtyMinutesFromNow
+          scheduledTime >= now && scheduledTime <= windowEndsAt
         )
         .map(({ lead, scheduledTime, timeUntil }) => ({
           id: lead.id,

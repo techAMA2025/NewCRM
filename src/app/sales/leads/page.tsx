@@ -106,6 +106,33 @@ const LeadsPage = () => {
   // Add state to store all filtered leads for pagination
   const [allFilteredLeads, setAllFilteredLeads] = useState<Lead[]>([]);
 
+  // Debug toast functionality
+  useEffect(() => {
+    console.log('🔍 LeadsPage component mounted');
+    console.log('🔍 toast function available:', typeof toast);
+    console.log('🔍 toast.success available:', typeof toast.success);
+    
+    // Test a simple toast to see if it works
+    setTimeout(() => {
+      console.log('🔍 Testing simple toast...');
+      toast.success('Test toast from LeadsPage', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      console.log('🔍 Test toast called');
+    }, 2000);
+  }, []);
+
+  // Test toast function
+  const testToast = () => {
+    console.log('🔍 Manual test toast triggered');
+    toast.success('Manual test toast!', {
+      position: "top-right",
+      autoClose: 3000,
+    });
+    console.log('🔍 Manual test toast called');
+  };
+
   // Page visibility handling for better bfcache compatibility
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1026,84 +1053,49 @@ const LeadsPage = () => {
 
   // Handle callback modal confirmation
   const handleCallbackConfirm = async () => {
+    console.log('🔍 handleCallbackConfirm called');
+    console.log('🔍 isEditingCallback:', isEditingCallback);
+    console.log('🔍 callbackLeadId:', callbackLeadId);
+    console.log('🔍 callbackLeadName:', callbackLeadName);
+    
     if (isEditingCallback) {
+      console.log('🔍 Editing callback path');
       // For editing, just refresh the callback information
       await refreshLeadCallbackInfo(callbackLeadId);
       
       // Show success toast for editing
-      toast.success(
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-            </div>
-            <div className="ml-3 flex-1">
-              <div className="flex items-center space-x-2">
-                <span className="text-lg">✅</span>
-                <p className="text-sm font-bold text-white">
-                  Callback Updated
-                </p>
-              </div>
-              <p className="mt-2 text-sm text-green-100 font-medium">
-                {callbackLeadName}
-              </p>
-              <p className="mt-1 text-sm text-green-200">
-                Callback details have been updated successfully
-              </p>
-            </div>
-          </div>
-        </div>,
-        {
+      console.log('🔍 About to show edit callback toast');
+      toast.success(`✅ Callback Updated - ${callbackLeadName}`, {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      console.log('🔍 Edit callback toast called');
+    } else {
+      console.log('🔍 New callback path');
+      // For new callbacks, update the lead status to "Callback"
+      const dbData = { status: 'Callback' };
+      const success = await updateLead(callbackLeadId, dbData);
+      console.log('🔍 updateLead success:', success);
+      
+      if (success) {
+        // Refresh callback information for this lead
+        await refreshLeadCallbackInfo(callbackLeadId);
+        
+        // Show success toast for new callback
+        console.log('🔍 About to show new callback toast');
+        toast.success(`✅ Callback Scheduled - ${callbackLeadName}`, {
           position: "top-right",
           autoClose: 4000,
           hideProgressBar: false,
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-          className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-        }
-      );
-    } else {
-      // For new callbacks, update the lead status to "Callback"
-      const dbData = { status: 'Callback' };
-      const success = await updateLead(callbackLeadId, dbData);
-      if (success) {
-        // Refresh callback information for this lead
-        await refreshLeadCallbackInfo(callbackLeadId);
-        
-        // Show success toast for new callback
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-sm font-bold text-white">
-                    Callback Scheduled
-                  </p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">
-                  {callbackLeadName}
-                </p>
-                <p className="mt-1 text-sm text-green-200">
-                  Lead status updated to "Callback" and scheduled
-                </p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          }
-        );
+        });
+        console.log('🔍 New callback toast called');
       }
     }
     
@@ -1152,83 +1144,51 @@ const LeadsPage = () => {
 
   // Handle language barrier modal confirmation
   const handleLanguageBarrierConfirm = async (language: string) => {
+    console.log('🔍 handleLanguageBarrierConfirm called');
+    console.log('🔍 language:', language);
+    console.log('🔍 isEditingLanguageBarrier:', isEditingLanguageBarrier);
+    console.log('🔍 languageBarrierLeadId:', languageBarrierLeadId);
+    console.log('🔍 languageBarrierLeadName:', languageBarrierLeadName);
+    
     if (isEditingLanguageBarrier) {
+      console.log('🔍 Editing language barrier path');
       // For editing, update the language barrier field
       const success = await updateLead(languageBarrierLeadId, { language_barrier: language });
+      console.log('🔍 updateLead success:', success);
+      
       if (success) {
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-sm font-bold text-white">
-                    Language Updated
-                  </p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">
-                  {languageBarrierLeadName}
-                </p>
-                <p className="mt-1 text-sm text-green-200">
-                  Preferred language updated to {language}
-                </p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          }
-        );
+        console.log('🔍 About to show language update toast');
+        toast.success(`✅ Language Updated - ${languageBarrierLeadName} (${language})`, {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+        console.log('🔍 Language update toast called');
       }
     } else {
+      console.log('🔍 New language barrier path');
       // For new language barrier, update the lead status and language barrier field
       const dbData = { 
         status: 'Language Barrier',
         language_barrier: language 
       };
       const success = await updateLead(languageBarrierLeadId, dbData);
+      console.log('🔍 updateLead success:', success);
+      
       if (success) {
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-sm font-bold text-white">
-                    Language Barrier Set
-                  </p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">
-                  {languageBarrierLeadName}
-                </p>
-                <p className="mt-1 text-sm text-green-200">
-                  Lead status updated to "Language Barrier" with preferred language: {language}
-                </p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          }
-        );
+        console.log('🔍 About to show language barrier toast');
+        toast.success(`✅ Language Barrier Set - ${languageBarrierLeadName} (${language})`, {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+        console.log('🔍 Language barrier toast called');
       }
     }
     
@@ -1266,6 +1226,10 @@ const LeadsPage = () => {
 
   // Handle conversion modal confirmation
   const handleConversionConfirm = async () => {
+    console.log('🔍 handleConversionConfirm called');
+    console.log('🔍 conversionLeadId:', conversionLeadId);
+    console.log('🔍 conversionLeadName:', conversionLeadName);
+    
     setIsConvertingLead(true);
     
     try {
@@ -1276,12 +1240,16 @@ const LeadsPage = () => {
       };
       
       const success = await updateLead(conversionLeadId, dbData);
+      console.log('🔍 updateLead success:', success);
       
       if (success) {
         // Get the assigned salesperson's information from the lead
         const lead = leads.find(l => l.id === conversionLeadId);
         const assignedSalesPerson = lead?.assignedTo;
         const assignedSalesPersonId = lead?.assignedToId;
+        
+        console.log('🔍 assignedSalesPerson:', assignedSalesPerson);
+        console.log('🔍 assignedSalesPersonId:', assignedSalesPersonId);
         
         if (assignedSalesPerson && assignedSalesPersonId) {
           // Get current month and year for targets collection
@@ -1376,39 +1344,16 @@ const LeadsPage = () => {
         }
         
         // Show success toast
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">🎉</span>
-                  <p className="text-sm font-bold text-white">
-                    Lead Converted Successfully
-                  </p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">
-                  {conversionLeadName}
-                </p>
-                <p className="mt-1 text-sm text-green-200">
-                  Lead status updated to "Converted" with conversion timestamp
-                  {assignedSalesPerson && ` • Target updated for ${assignedSalesPerson}`}
-                </p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className: "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          }
-        );
+        console.log('🔍 About to show conversion success toast');
+        toast.success(`🎉 Lead Converted Successfully - ${conversionLeadName}${assignedSalesPerson ? ` • Target updated for ${assignedSalesPerson}` : ''}`, {
+          position: "top-right",
+          autoClose: 4000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+        console.log('🔍 Conversion success toast called');
       }
     } catch (error) {
       console.error('Error converting lead:', error);
@@ -1744,6 +1689,18 @@ const LeadsPage = () => {
           {process.env.NODE_ENV === 'development' && debugInfo && (
             <div className="bg-gray-800 text-gray-300 p-1.5 mb-3 text-xs rounded-md border border-gray-700">
               <strong>Debug:</strong> {debugInfo}
+            </div>
+          )}
+          
+          {/* Test Toast Button - only show in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-3">
+              <button
+                onClick={testToast}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs"
+              >
+                Test Toast
+              </button>
             </div>
           )}
           
