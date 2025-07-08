@@ -626,8 +626,13 @@ const LeadsPage = () => {
 
   // Optimized filter function with memoization
   const filterLeads = useCallback(() => {
-    // Use allFilteredLeads when on callback tab to ensure we have all callback leads
-    const sourceLeads = activeTab === 'callback' ? allFilteredLeads : leads;
+    // Choose the data set we want to filter on:
+    // 1. For the Callback tab we always need the full list (`allFilteredLeads`).
+    // 2. When a search query is present we should also search the full list so that
+    //    results are not limited to the first paginated batch.
+    // 3. Otherwise (no search + All tab) we can safely work with the currently
+    //    loaded/paginated subset (`leads`).
+    const sourceLeads = (activeTab === 'callback' || searchQuery) ? allFilteredLeads : leads;
     
     if (!sourceLeads || sourceLeads.length === 0) return [];
     
@@ -1814,7 +1819,7 @@ const LeadsPage = () => {
                 onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
                 onStatusChangeToConverted={handleStatusChangeToConverted}
                 onEditCallback={handleEditCallback}
-                hasMoreLeads={hasMoreLeads}
+                hasMoreLeads={searchQuery ? false : hasMoreLeads}
                 isLoadingMore={isLoadingMore}
                 loadMoreLeads={loadMoreLeads}
               />
