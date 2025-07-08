@@ -1,6 +1,7 @@
 import { FaSort } from 'react-icons/fa';
 import LeadRow from './LeadRow';
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { toast } from 'react-toastify';
 
 type LeadsTableProps = {
   filteredLeads: any[];
@@ -55,6 +56,35 @@ const LeadsTable = ({
   isLoadingMore = false,
   loadMoreLeads,
 }: LeadsTableProps) => {
+  const [duplicateToastShown, setDuplicateToastShown] = useState(false);
+  const toastShownRef = useRef(false);
+
+  // Reset duplicate toast flag when leads change significantly
+  useEffect(() => {
+    setDuplicateToastShown(false);
+    toastShownRef.current = false;
+  }, [filteredLeads.length]);
+
+  // Effect to show toast if duplicates are detected
+  useEffect(() => {
+    if (duplicateToastShown && !toastShownRef.current) {
+      toast.info("You have reached the end of the page - no more leads available", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      toastShownRef.current = true;
+      
+      // Reset after a delay to allow new duplicates to show toast again
+      setTimeout(() => {
+        toastShownRef.current = false;
+      }, 5000);
+    }
+  }, [duplicateToastShown]);
+
   const renderTableHeader = () => (
     <thead className="bg-gray-800 text-xs uppercase font-medium sticky top-0 z-10">
       <tr>
@@ -166,7 +196,31 @@ const LeadsTable = ({
       );
     }
 
-    return filteredLeads.map((lead) => (
+    // Detect and handle duplicate keys
+    const uniqueLeads = useMemo(() => {
+      const seenIds = new Set<string>();
+      const duplicateIds = new Set<string>();
+      const uniqueLeadsArray: any[] = [];
+
+      filteredLeads.forEach((lead) => {
+        if (seenIds.has(lead.id)) {
+          duplicateIds.add(lead.id);
+        } else {
+          seenIds.add(lead.id);
+          uniqueLeadsArray.push(lead);
+        }
+      });
+
+      // Set flag if duplicates detected (toast will be shown by useEffect)
+      if (duplicateIds.size > 0 && !duplicateToastShown) {
+        setDuplicateToastShown(true);
+        console.warn('Duplicate lead IDs detected:', Array.from(duplicateIds));
+      }
+
+      return uniqueLeadsArray;
+    }, [filteredLeads, duplicateToastShown]);
+
+    return uniqueLeads.map((lead) => (
       <LeadRow
         key={lead.id}
         lead={lead}
@@ -193,12 +247,37 @@ const LeadsTable = ({
   };
 
   const renderLoadMoreButton = () => {
-    if (!hasMoreLeads || !loadMoreLeads) return null;
+    if (!hasMoreLeads || !loadMoreLeads) {
+      // Show message when no more leads are available
+      if (!hasMoreLeads && filteredLeads.length > 0) {
+        return (
+          <div className="flex justify-center py-4">
+            <div className="px-4 py-2 bg-gray-700 text-gray-300 rounded-md text-sm font-medium">
+              No more leads available
+            </div>
+          </div>
+        );
+      }
+      return null;
+    }
+
+    const handleLoadMore = async () => {
+      try {
+        if (loadMoreLeads) {
+          await loadMoreLeads();
+        }
+      } catch (error) {
+        toast.error("Failed to load more leads", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    };
 
     return (
       <div className="flex justify-center py-4">
         <button
-          onClick={loadMoreLeads}
+          onClick={handleLoadMore}
           disabled={isLoadingMore}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-md text-sm font-medium transition-colors duration-200 flex items-center space-x-2"
         >
