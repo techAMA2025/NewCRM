@@ -44,6 +44,47 @@ const statusOptions = [
 const LEADS_PER_PAGE = 50;
 const CALLBACK_INFO_BATCH_SIZE = 100;
 
+// Helper function to get callback priority for sorting
+const getCallbackPriority = (lead: Lead): number => {
+  if (!lead.callbackInfo || !lead.callbackInfo.scheduled_dt) {
+    return 4 // Blank/no callback info - lowest priority
+  }
+
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const dayAfterTomorrow = new Date(today)
+  dayAfterTomorrow.setDate(today.getDate() + 2)
+
+  const scheduledDate = new Date(lead.callbackInfo.scheduled_dt)
+  const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate())
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
+  const dayAfterTomorrowOnly = new Date(
+    dayAfterTomorrow.getFullYear(),
+    dayAfterTomorrow.getMonth(),
+    dayAfterTomorrow.getDate(),
+  )
+
+  let priority = 4
+  if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
+    priority = 1 // Red strap - today (highest priority)
+  } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
+    priority = 2 // Yellow strap - tomorrow
+  } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
+    priority = 3 // Green strap - day after tomorrow or later
+  } else {
+    priority = 4 // Gray/other dates - lowest priority
+  }
+
+  // Debug logging for first few leads
+  if (Math.random() < 0.1) { // Log 10% of leads to avoid spam
+    console.log(`Lead ${lead.name}: scheduled for ${scheduledDate.toLocaleDateString()}, priority: ${priority}`)
+  }
+
+  return priority
+}
+
 const LeadsPage = () => {
   // State Management
   const [isLoading, setIsLoading] = useState(true);
@@ -728,6 +769,34 @@ const LeadsPage = () => {
         }
         return 0;
       });
+    }
+
+    // Apply callback priority sorting when on callback tab (after all other sorting)
+    if (activeTab === 'callback') {
+      result = [...result].sort((a, b) => {
+        const priorityA = getCallbackPriority(a)
+        const priorityB = getCallbackPriority(b)
+        
+        // If priorities are the same, sort by scheduled time (earliest first)
+        if (priorityA === priorityB && a.callbackInfo && b.callbackInfo && 
+            a.callbackInfo.scheduled_dt && b.callbackInfo.scheduled_dt) {
+          const timeA = new Date(a.callbackInfo.scheduled_dt).getTime()
+          const timeB = new Date(b.callbackInfo.scheduled_dt).getTime()
+          return timeA - timeB
+        }
+        
+        return priorityA - priorityB
+      })
+
+      // Debug logging to verify sorting
+      console.log("Callback sorting applied. First 10 leads:", 
+        result.slice(0, 10).map(lead => ({
+          name: lead.name,
+          priority: getCallbackPriority(lead),
+          hasCallbackInfo: !!lead.callbackInfo,
+          scheduledDate: lead.callbackInfo?.scheduled_dt ? new Date(lead.callbackInfo.scheduled_dt).toLocaleDateString() : "No date"
+        }))
+      )
     }
     
     return result;
