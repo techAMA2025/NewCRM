@@ -44,6 +44,10 @@ interface ClientsTableProps {
   theme?: 'light' | 'dark'
   onThemeChange?: (theme: 'light' | 'dark') => void
   openDocumentViewer: (documentUrl: string, documentName: string) => void
+  onViewHistory: (clientId: string) => void
+  remarks: { [key: string]: string }
+  onRemarkChange: (clientId: string, value: string) => void
+  onSaveRemark: (clientId: string) => void
 }
 
 export default function ClientsTable({
@@ -57,7 +61,11 @@ export default function ClientsTable({
   onSelectClient,
   theme = 'light',
   onThemeChange,
-  openDocumentViewer
+  openDocumentViewer,
+  onViewHistory,
+  remarks,
+  onRemarkChange,
+  onSaveRemark
 }: ClientsTableProps) {
   const isDark = theme === 'dark'
 
@@ -116,6 +124,7 @@ export default function ClientsTable({
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>City</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Advocate</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Status</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Remarks</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Sales By</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-right p-1`}>Actions</TableHead>
             </TableRow>
@@ -191,6 +200,39 @@ export default function ClientsTable({
                       <SelectItem value="On Hold" className={isDark ? 'text-purple-400' : 'text-purple-600'}>On Hold</SelectItem>
                     </SelectContent>
                   </Select>
+                </TableCell>
+                <TableCell className="p-1">
+                  <div className="flex flex-col space-y-1.5">
+                    <textarea
+                      value={remarks[client.id] || ""}
+                      onChange={(e) => onRemarkChange(client.id, e.target.value)}
+                      placeholder="Enter remark..."
+                      className={`w-full px-1.5 py-1 ${isDark ? 'bg-gray-700 border-gray-600 text-gray-200' : 'bg-gray-100 border-gray-300 text-gray-800'} border rounded text-xs resize-none`}
+                      rows={2}
+                    />
+                    <div className="flex space-x-1.5">
+                      <button
+                        onClick={() => onSaveRemark(client.id)}
+                        className={`px-2 py-0.5 text-xs rounded transition-colors duration-200 ${
+                          isDark 
+                            ? 'bg-green-700 hover:bg-green-600 text-white' 
+                            : 'bg-green-600 hover:bg-green-500 text-white'
+                        }`}
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => onViewHistory(client.id)}
+                        className={`px-2 py-0.5 text-xs rounded transition-colors duration-200 ${
+                          isDark 
+                            ? 'bg-purple-700 hover:bg-purple-600 text-white' 
+                            : 'bg-purple-600 hover:bg-purple-500 text-white'
+                        }`}
+                      >
+                        History
+                      </button>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="p-1">
                   <span className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
