@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, getDocs, query, orderBy, doc, updateDoc, where, deleteDoc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, doc, updateDoc, where, deleteDoc, limit, addDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase'
 import { 
   Table, 
@@ -26,6 +26,7 @@ import EditModal from './EditModal'
 import { format } from 'date-fns'
 import ClientsTable from '@/components/ClientsTable'
 import { Client } from './types'
+import { serverTimestamp } from 'firebase/firestore'
 
 interface User {
   uid: string;
@@ -102,6 +103,18 @@ export default function ClientsPage() {
   // Add new state for theme
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
+  // Add new state for history modal
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [selectedClientHistory, setSelectedClientHistory] = useState<Array<{
+    remark: string;
+    advocateName: string;
+    timestamp: any;
+  }>>([])
+  const [selectedClientId, setSelectedClientId] = useState<string>('')
+  
+  // Add new state for remarks management
+  const [remarks, setRemarks] = useState<{ [key: string]: string }>({})
+  
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
@@ -117,6 +130,17 @@ export default function ClientsPage() {
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
+
+  // Initialize remarks with latest remarks from clients
+  useEffect(() => {
+    const initialRemarks: { [key: string]: string } = {};
+    clients.forEach(client => {
+      if (client.latestRemark?.remark) {
+        initialRemarks[client.id] = client.latestRemark.remark;
+      }
+    });
+    setRemarks(initialRemarks);
+  }, [clients]);
 
   useEffect(() => {
     // Get user role from localStorage
@@ -138,21 +162,49 @@ export default function ClientsPage() {
         
         // Enhance clients with document URLs if they are missing for billcut source
         clientsData = await Promise.all(clientsData.map(async (client) => {
+          let enhancedClient = client;
+          
+          // Add document URL for billcut source if missing
           if (client.source_database === 'billcut' && !client.documentUrl) {
             try {
               const documentName = `${client.name}_billcut_agreement.docx`;
               const storagePath = `clients/billcut/documents/${documentName}`;
               const docRef = ref(storage, storagePath);
               const url = await getDownloadURL(docRef);
-              return { ...client, documentUrl: url, documentName };
+              enhancedClient = { ...enhancedClient, documentUrl: url, documentName };
             } catch (error: any) {
               if (error.code !== 'storage/object-not-found') {
                 console.error(`Error checking for document for ${client.name}:`, error);
               }
-              return client;
             }
           }
-          return client;
+          
+          // Fetch latest remark from history subcollection
+          try {
+            const historyQuery = query(
+              collection(db, 'clients', client.id, 'history'),
+              orderBy('timestamp', 'desc'),
+              limit(1)
+            );
+            const historySnapshot = await getDocs(historyQuery);
+            
+            if (!historySnapshot.empty) {
+              const latestHistoryDoc = historySnapshot.docs[0];
+              const historyData = latestHistoryDoc.data();
+              enhancedClient = {
+                ...enhancedClient,
+                latestRemark: {
+                  remark: historyData.remark || '',
+                  advocateName: historyData.advocateName || '',
+                  timestamp: historyData.timestamp
+                }
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching history for client ${client.name}:`, error);
+          }
+          
+          return enhancedClient;
         }));
 
         setClients(clientsData);
@@ -739,6 +791,91 @@ export default function ClientsPage() {
     }
   }
 
+  // Add function to handle viewing remark history
+  const handleViewHistory = async (clientId: string) => {
+    try {
+      const historyRef = collection(db, 'clients', clientId, 'history')
+      const q = query(historyRef, orderBy('timestamp', 'desc'))
+      const snapshot = await getDocs(q)
+
+      const history = snapshot.docs.map(doc => ({
+        remark: doc.data().remark || '',
+        advocateName: doc.data().advocateName || '',
+        timestamp: doc.data().timestamp
+      }))
+
+      setSelectedClientHistory(history)
+      setSelectedClientId(clientId)
+      setIsHistoryModalOpen(true)
+    } catch (error) {
+      console.error('Error fetching history:', error)
+      showToast(
+        "Error",
+        "Failed to fetch remark history",
+        "error"
+      )
+    }
+  }
+
+  // Add function to handle remark changes
+  const handleRemarkChange = (clientId: string, value: string) => {
+    setRemarks(prev => ({ ...prev, [clientId]: value }))
+  }
+
+  // Add function to handle saving remarks
+  const handleSaveRemark = async (clientId: string) => {
+    try {
+      const advocateName = localStorage.getItem('userName') || 'Unknown Advocate'
+      const remarkText = remarks[clientId]?.trim()
+
+      if (!remarkText) {
+        showToast(
+          "Error",
+          "Please enter a remark before saving",
+          "error"
+        )
+        return
+      }
+
+      const historyRef = collection(db, 'clients', clientId, 'history')
+      await addDoc(historyRef, {
+        remark: remarkText,
+        timestamp: serverTimestamp(),
+        advocateName,
+      })
+
+      // Update the client's latest remark in local state
+      setClients(clients.map(client => 
+        client.id === clientId 
+          ? {
+              ...client,
+              latestRemark: {
+                remark: remarkText,
+                advocateName,
+                timestamp: new Date()
+              }
+            }
+          : client
+      ))
+
+      // Keep the remark in the textarea after saving (don't clear it)
+      // setRemarks(prev => ({ ...prev, [clientId]: '' }))
+      
+      showToast(
+        "Success",
+        "Remark saved successfully",
+        "success"
+      )
+    } catch (error) {
+      console.error('Error saving remark:', error)
+      showToast(
+        "Error",
+        "Failed to save remark",
+        "error"
+      )
+    }
+  }
+
   if (loading) return (
     <div className="flex min-h-screen bg-white">
       {renderSidebar()}
@@ -902,6 +1039,10 @@ export default function ClientsPage() {
           theme={theme}
           onThemeChange={setTheme}
           openDocumentViewer={openDocumentViewer}
+          onViewHistory={handleViewHistory}
+          remarks={remarks}
+          onRemarkChange={handleRemarkChange}
+          onSaveRemark={handleSaveRemark}
         />
 
         {/* Modals */}
@@ -1136,6 +1277,47 @@ export default function ClientsPage() {
                     )}
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* History Modal */}
+        {isHistoryModalOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+            <div className={`${theme === 'dark' ? 'bg-gray-900' : 'bg-white'} rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'} p-4 w-full max-w-2xl animate-fade-in shadow-xl`}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>Remark History</h2>
+                <button
+                  onClick={() => setIsHistoryModalOpen(false)}
+                  className={`rounded-full h-8 w-8 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-800'} transition-colors`}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                {selectedClientHistory.map((history, index) => (
+                  <div key={index} className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-3 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-sm font-medium ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
+                        {history.advocateName}
+                      </span>
+                      <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {history.timestamp?.toDate?.()?.toLocaleString("en-IN") || "Unknown date"}
+                      </span>
+                    </div>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                      {history.remark}
+                    </p>
+                  </div>
+                ))}
+
+                {selectedClientHistory.length === 0 && (
+                  <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    No remarks history available
+                  </div>
+                )}
               </div>
             </div>
           </div>
