@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Eye } from 'lucide-react'
+import { Eye, Download } from 'lucide-react'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import { Input } from '@/components/ui/input'
@@ -595,6 +595,103 @@ export default function ClientsPage() {
     }
   };
 
+  // Function to download CSV
+  const downloadCSV = () => {
+    if (filteredClients.length === 0) {
+      showToast(
+        "No data to export",
+        "There are no clients to export to CSV.",
+        "error"
+      );
+      return;
+    }
+
+    // Define CSV headers
+    const headers = [
+      'Name',
+      'Phone',
+      'Email',
+      'City',
+      'Occupation',
+      'Aadhar Number',
+      'PAN Number',
+      'Primary Advocate',
+      'Secondary Advocate',
+      'Status',
+      'Source',
+      'Monthly Income',
+      'Monthly Fees',
+      'Personal Loan Dues',
+      'Credit Card Dues',
+      'Start Date',
+      'Tenure',
+      'Sales By',
+      'Latest Remark',
+      'Remark By',
+      'Last Modified'
+    ];
+
+    // Convert clients data to CSV rows
+    const csvRows = [headers];
+
+    filteredClients.forEach(client => {
+      const row = [
+        client.name || '',
+        client.phone || '',
+        client.email || '',
+        client.city || '',
+        client.occupation || '',
+        client.aadharNumber || '',
+        client.panNumber || '',
+        client.alloc_adv || '',
+        client.alloc_adv_secondary || '',
+        client.adv_status || '',
+        formatSourceName(client.source_database || ''),
+        client.monthlyIncome || '',
+        client.monthlyFees || '',
+        client.personalLoanDues || '',
+        client.creditCardDues || '',
+        client.startDate || '',
+        client.tenure || '',
+        client.assignedTo || '',
+        client.latestRemark?.remark || '',
+        client.latestRemark?.advocateName || '',
+        client.lastModified ? formatTimestamp(client.lastModified) : ''
+      ];
+
+      // Escape commas and quotes in CSV values
+      const escapedRow = row.map(value => {
+        const stringValue = String(value);
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      });
+
+      csvRows.push(escapedRow);
+    });
+
+    // Convert to CSV string
+    const csvContent = csvRows.map(row => row.join(',')).join('\n');
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `clients_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast(
+      "CSV Downloaded",
+      `Successfully exported ${filteredClients.length} clients to CSV.`,
+      "success"
+    );
+  };
+
   // Add this to your existing useEffect or create a new one
   useEffect(() => {
     const fetchAdvocates = async () => {
@@ -926,6 +1023,17 @@ export default function ClientsPage() {
             )}
           </div>
           <div className="flex gap-1.5">
+            <Button
+              onClick={downloadCSV}
+              className={`${
+                theme === 'dark'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+              } text-[10px] h-5 px-2 flex items-center gap-1`}
+            >
+              <Download className="h-2.5 w-2.5" />
+              Export CSV
+            </Button>
             <Input
               placeholder="Search clients..."
               value={searchTerm}
