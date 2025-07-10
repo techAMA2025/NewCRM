@@ -1537,32 +1537,7 @@ const BillcutLeadReportContent = () => {
               Salesperson-wise Lead Status Analytics
             </h3>
             
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {analytics.salesPerformance.map((rep, index) => (
-                <div key={rep.name} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">{rep.name}</h4>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Total:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{rep.totalLeads}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Interested:</span>
-                      <span className="font-medium text-green-600">{rep.interested}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Converted:</span>
-                      <span className="font-medium text-blue-600">{rep.converted}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">Rate:</span>
-                      <span className="font-medium text-purple-600">{rep.conversionRate}%</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+           
 
             {/* Detailed Table */}
             <div className="overflow-x-auto">
