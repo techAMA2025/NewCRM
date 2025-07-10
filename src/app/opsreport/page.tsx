@@ -85,7 +85,8 @@ export default function OpsReport() {
   const [totalDebtStats, setTotalDebtStats] = useState({
     totalCreditCardDues: 0,
     totalPersonalLoanDues: 0,
-    totalBankLoans: 0
+    totalBankLoans: 0,
+    combinedTotalLoanAmount: 0
   });
 
   useEffect(() => {
@@ -406,7 +407,14 @@ export default function OpsReport() {
         }
       });
     });
-    setTotalDebtStats(totalStats);
+
+    // Calculate combined total loan amount (creditCardDues + personalLoanDues)
+    const combinedTotalLoanAmount = totalStats.totalCreditCardDues + totalStats.totalPersonalLoanDues;
+    
+    setTotalDebtStats({
+      ...totalStats,
+      combinedTotalLoanAmount
+    });
 
     // Process monthly income statistics
     const incomeRanges = {
@@ -491,7 +499,7 @@ export default function OpsReport() {
         </h1>
 
         {/* Advocate Performance Section */}
-        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+        {/* <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-5 text-gray-100">Advocate Performance</h2>
           <div className="h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -514,6 +522,33 @@ export default function OpsReport() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div> */}
+         {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {advocateStats.map((advocate) => (
+            <div key={advocate.id} className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-indigo-500">
+              <h3 className="text-base font-semibold mb-2 text-gray-100">{advocate.name}</h3>
+              <div className="space-y-2">
+                <p className="text-xs text-gray-300">
+                  Total Clients: <span className="font-medium text-indigo-400">{advocate.totalClients}</span>
+                </p>
+                <p className="text-xs text-gray-300">
+                  Total Loan Amount: <span className="font-medium text-green-400">₹{advocate.totalLoanAmount.toLocaleString()}</span>
+                </p>
+                <div className="flex flex-wrap gap-2 text-[10px]">
+                  <span className="px-2 py-0.5 bg-green-900/50 text-green-300 rounded-full border border-green-700">
+                    Active: {advocate.active}
+                  </span>
+                  <span className="px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-700">
+                    Not Responding: {advocate.notResponding}
+                  </span>
+                  <span className="px-2 py-0.5 bg-red-900/50 text-red-300 rounded-full border border-red-700">
+                    Dropped: {advocate.dropped}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Bank Analytics Section */}
@@ -794,7 +829,11 @@ export default function OpsReport() {
         {/* Total Debt Overview */}
         <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-5 text-gray-100">Total Debt Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+              <h3 className="text-base font-medium text-gray-200 mb-2">Combined Total Loan Amount</h3>
+              <p className="text-xl font-bold text-green-400">₹{totalDebtStats.combinedTotalLoanAmount.toLocaleString()}</p>
+            </div> */}
             <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
               <h3 className="text-base font-medium text-gray-200 mb-2">Credit Card Dues</h3>
               <p className="text-xl font-bold text-red-400">₹{totalDebtStats.totalCreditCardDues.toLocaleString()}</p>
@@ -805,7 +844,7 @@ export default function OpsReport() {
             </div>
             <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
               <h3 className="text-base font-medium text-gray-200 mb-2">Total Bank Loans</h3>
-              <p className="text-xl font-bold text-yellow-400">₹{totalDebtStats.totalBankLoans.toLocaleString()}</p>
+              <p className="text-xl font-bold text-yellow-400">₹{totalDebtStats.combinedTotalLoanAmount.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -921,33 +960,7 @@ export default function OpsReport() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {advocateStats.map((advocate) => (
-            <div key={advocate.id} className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-indigo-500">
-              <h3 className="text-base font-semibold mb-2 text-gray-100">{advocate.name}</h3>
-              <div className="space-y-2">
-                <p className="text-xs text-gray-300">
-                  Total Clients: <span className="font-medium text-indigo-400">{advocate.totalClients}</span>
-                </p>
-                <p className="text-xs text-gray-300">
-                  Total Loan Amount: <span className="font-medium text-green-400">₹{advocate.totalLoanAmount.toLocaleString()}</span>
-                </p>
-                <div className="flex flex-wrap gap-2 text-[10px]">
-                  <span className="px-2 py-0.5 bg-green-900/50 text-green-300 rounded-full border border-green-700">
-                    Active: {advocate.active}
-                  </span>
-                  <span className="px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-700">
-                    Not Responding: {advocate.notResponding}
-                  </span>
-                  <span className="px-2 py-0.5 bg-red-900/50 text-red-300 rounded-full border border-red-700">
-                    Dropped: {advocate.dropped}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+       
       </div>
     </div>
   );
