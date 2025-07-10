@@ -261,7 +261,13 @@ export default function SalesReport() {
       if (selectedRange === 'custom') {
         params.set('fromDate', customDateRange.startDate.toISOString().split('T')[0]);
         params.set('toDate', customDateRange.endDate.toISOString().split('T')[0]);
+      } else if (selectedRange === 'today') {
+        // For today, both fromDate and toDate should be the same (today's date)
+        const todayStr = new Date().toISOString().split('T')[0];
+        params.set('fromDate', todayStr);
+        params.set('toDate', todayStr);
       } else {
+        // For other ranges (last7days, last30days, last60days)
         params.set('fromDate', startDate.toISOString().split('T')[0]);
         params.set('toDate', endDate.toISOString().split('T')[0]);
       }
@@ -362,17 +368,17 @@ export default function SalesReport() {
         return { startDate: startOfToday, endDate: today };
       case 'last7days':
         const last7 = new Date();
-        last7.setDate(last7.getDate() - 7);
+        last7.setDate(last7.getDate() - 6); // Changed from -7 to -6 to get exactly 7 days including today
         last7.setHours(0, 0, 0, 0);
         return { startDate: last7, endDate: today };
       case 'last30days':
         const last30 = new Date();
-        last30.setDate(last30.getDate() - 30);
+        last30.setDate(last30.getDate() - 29); // Changed from -30 to -29 to get exactly 30 days including today
         last30.setHours(0, 0, 0, 0);
         return { startDate: last30, endDate: today };
       case 'last60days':
         const last60 = new Date();
-        last60.setDate(last60.getDate() - 60);
+        last60.setDate(last60.getDate() - 59); // Changed from -60 to -59 to get exactly 60 days including today
         last60.setHours(0, 0, 0, 0);
         return { startDate: last60, endDate: today };
       case 'custom':
@@ -769,7 +775,13 @@ export default function SalesReport() {
           <div className="flex justify-center space-x-4 mt-2">
             <div className="text-center">
               <p className="text-xs text-gray-500">Total</p>
-              <p className="text-lg font-bold text-gray-900">{totalLeads}</p>
+              <button
+                onClick={() => totalLeads > 0 && handleCellClick(distribution.userName, 'all')}
+                disabled={totalLeads === 0}
+                className={`text-lg font-bold ${totalLeads > 0 ? 'text-gray-900 hover:text-blue-600 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
+              >
+                {totalLeads}
+              </button>
             </div>
             <div className="text-center">
               <p className="text-xs text-gray-500">Conv. Rate</p>
@@ -781,7 +793,16 @@ export default function SalesReport() {
         {/* Status Breakdown */}
         <div className="flex-1 space-y-1 max-h-48 overflow-y-auto">
           {displayStatuses.map((item, index) => (
-            <div key={item.status} className="flex items-center justify-between p-2 bg-gray-50/50 rounded-lg">
+            <button
+              key={item.status}
+              onClick={() => item.count > 0 && handleCellClick(distribution.userName, item.status)}
+              disabled={item.count === 0}
+              className={`w-full flex items-center justify-between p-2 rounded-lg transition-all duration-200 ${
+                item.count > 0 
+                  ? 'bg-gray-50/50 hover:bg-gray-100/70 hover:ring-2 hover:ring-offset-1 hover:ring-indigo-500 cursor-pointer' 
+                  : 'bg-gray-50/30 cursor-not-allowed opacity-60'
+              }`}
+            >
               <div className="flex items-center space-x-2 flex-1 min-w-0">
                 <div 
                   className="w-3 h-3 rounded-full flex-shrink-0"
@@ -790,10 +811,12 @@ export default function SalesReport() {
                 <span className="text-xs font-medium text-gray-700 truncate">{item.status}</span>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-sm font-bold text-gray-900">{item.count}</p>
+                <p className={`text-sm font-bold ${item.count > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {item.count}
+                </p>
                 <p className="text-xs text-gray-500">{item.percentage.toFixed(1)}%</p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -1578,7 +1601,7 @@ export default function SalesReport() {
                 </div>
 
                 {/* Sales Team Performance Table */}
-                <div className="relative">
+                {/* <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-2xl blur-lg"></div>
                   <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
                     <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
@@ -1661,7 +1684,6 @@ export default function SalesReport() {
                               </tr>
                             );
                           })}
-                          {/* Total Row */}
                           <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm border-t-2 border-gray-200">
                             <td className="px-3 py-3 text-sm font-bold text-gray-900">Total</td>
                             {LEAD_STATUSES.map((status) => {
@@ -1697,7 +1719,7 @@ export default function SalesReport() {
                       </table>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* NEW: Simplified City-wise Lead Distribution Section */}
                 {simpleCityData.length > 0 && (
