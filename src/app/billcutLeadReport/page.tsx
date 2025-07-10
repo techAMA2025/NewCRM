@@ -928,196 +928,36 @@ const BillcutLeadReportContent = () => {
                 </div>
               </div>
 
+           
+
               {/* Custom Date Range Picker */}
               {showDatePicker && (
                 <div className="lg:ml-4 p-4 lg:p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 w-full lg:w-auto">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    {/* Start Date Picker */}
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-900 dark:text-white">Start Date</h4>
-                      <div className="space-y-3">
-                        {/* Month/Year Selection */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Month
-                            </label>
-                            <select
-                              value={customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month}
-                              onChange={(e) => {
-                                const month = parseInt(e.target.value);
-                                const year = customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year;
-                                const day = customDateRange.startDate ? new Date(customDateRange.startDate).getDate() : 1;
-                                const newDateString = createLocalDateString(year, month, day);
-                                handleCustomDateChange('startDate', newDateString);
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
-                            >
-                              {Array.from({ length: 12 }, (_, i) => (
-                                <option key={i} value={i}>{getMonthName(i)}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Year
-                            </label>
-                            <select
-                              value={customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year}
-                              onChange={(e) => {
-                                const year = parseInt(e.target.value);
-                                const month = customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month;
-                                const day = customDateRange.startDate ? new Date(customDateRange.startDate).getDate() : 1;
-                                const newDateString = createLocalDateString(year, month, day);
-                                handleCustomDateChange('startDate', newDateString);
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
-                            >
-                              {Array.from({ length: 10 }, (_, i) => {
-                                const year = new Date().getFullYear() - 5 + i;
-                                return (
-                                  <option key={year} value={year}>{year}</option>
-                                );
-                              })}
-                            </select>
-                          </div>
-                        </div>
-                        
-                        {/* Calendar Grid */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-                          <div className="grid grid-cols-7 gap-1 text-xs">
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                              <div key={day} className="p-1 text-center text-gray-500 dark:text-gray-400 font-medium">
-                                {day}
-                              </div>
-                            ))}
-                            {generateCalendarDays(
-                              customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year,
-                              customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month
-                            ).map(({ day, isEmpty }, index) => (
-                              <button
-                                key={index}
-                                disabled={isEmpty}
-                                onClick={() => {
-                                  if (!isEmpty && typeof day === 'number') {
-                                    const year = customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year;
-                                    const month = customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month;
-                                    const newDateString = createLocalDateString(year, month, day);
-                                    handleCustomDateChange('startDate', newDateString);
-                                  }
-                                }}
-                                className={`p-1 text-xs rounded hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
-                                  isEmpty ? 'invisible' : 'cursor-pointer'
-                                } ${
-                                  customDateRange.startDate && 
-                                  typeof day === 'number' &&
-                                  new Date(customDateRange.startDate).getDate() === day &&
-                                  new Date(customDateRange.startDate).getMonth() === (customDateRange.startDate ? new Date(customDateRange.startDate).getMonth() : getCurrentMonthYear().month) &&
-                                  new Date(customDateRange.startDate).getFullYear() === (customDateRange.startDate ? new Date(customDateRange.startDate).getFullYear() : getCurrentMonthYear().year)
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-gray-900 dark:text-white'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                    {/* Start Date */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customDateRange.startDate}
+                        onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+                      />
                     </div>
 
-                    {/* End Date Picker */}
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-900 dark:text-white">End Date</h4>
-                      <div className="space-y-3">
-                        {/* Month/Year Selection */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Month
-                            </label>
-                            <select
-                              value={customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month}
-                              onChange={(e) => {
-                                const month = parseInt(e.target.value);
-                                const year = customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year;
-                                const day = customDateRange.endDate ? new Date(customDateRange.endDate).getDate() : 1;
-                                const newDateString = createLocalDateString(year, month, day);
-                                handleCustomDateChange('endDate', newDateString);
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
-                            >
-                              {Array.from({ length: 12 }, (_, i) => (
-                                <option key={i} value={i}>{getMonthName(i)}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Year
-                            </label>
-                            <select
-                              value={customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year}
-                              onChange={(e) => {
-                                const year = parseInt(e.target.value);
-                                const month = customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month;
-                                const day = customDateRange.endDate ? new Date(customDateRange.endDate).getDate() : 1;
-                                const newDateString = createLocalDateString(year, month, day);
-                                handleCustomDateChange('endDate', newDateString);
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white text-sm"
-                            >
-                              {Array.from({ length: 10 }, (_, i) => {
-                                const year = new Date().getFullYear() - 5 + i;
-                                return (
-                                  <option key={year} value={year}>{year}</option>
-                                );
-                              })}
-                            </select>
-                          </div>
-                        </div>
-                        
-                        {/* Calendar Grid */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-                          <div className="grid grid-cols-7 gap-1 text-xs">
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                              <div key={day} className="p-1 text-center text-gray-500 dark:text-gray-400 font-medium">
-                                {day}
-                              </div>
-                            ))}
-                            {generateCalendarDays(
-                              customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year,
-                              customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month
-                            ).map(({ day, isEmpty }, index) => (
-                              <button
-                                key={index}
-                                disabled={isEmpty}
-                                onClick={() => {
-                                  if (!isEmpty && typeof day === 'number') {
-                                    const year = customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year;
-                                    const month = customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month;
-                                    const newDateString = createLocalDateString(year, month, day);
-                                    handleCustomDateChange('endDate', newDateString);
-                                  }
-                                }}
-                                className={`p-1 text-xs rounded hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
-                                  isEmpty ? 'invisible' : 'cursor-pointer'
-                                } ${
-                                  customDateRange.endDate && 
-                                  typeof day === 'number' &&
-                                  new Date(customDateRange.endDate).getDate() === day &&
-                                  new Date(customDateRange.endDate).getMonth() === (customDateRange.endDate ? new Date(customDateRange.endDate).getMonth() : getCurrentMonthYear().month) &&
-                                  new Date(customDateRange.endDate).getFullYear() === (customDateRange.endDate ? new Date(customDateRange.endDate).getFullYear() : getCurrentMonthYear().year)
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-gray-900 dark:text-white'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                    {/* End Date */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customDateRange.endDate}
+                        onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+                      />
                     </div>
                   </div>
 

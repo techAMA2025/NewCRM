@@ -39,39 +39,40 @@ const processClientsBatch = (clientsBatch: any[], analytics: any) => {
     const city = client.city || 'Unknown';
     analytics.cityDistribution[city] = (analytics.cityDistribution[city] || 0) + 1;
     
-    // Process banks array efficiently
+    // Process total loan amount from creditCardDues + personalLoanDues
+    let totalClientLoanAmount = 0;
+    
+    // Process credit card dues
+    if (client.creditCardDues) {
+      const creditCardDues = typeof client.creditCardDues === 'string' 
+        ? parseFloat(client.creditCardDues.replace(/[^0-9.-]+/g, '')) 
+        : parseFloat(client.creditCardDues) || 0;
+      if (!isNaN(creditCardDues) && creditCardDues > 0) {
+        totalClientLoanAmount += creditCardDues;
+      }
+    }
+
+    // Process personal loan dues
+    if (client.personalLoanDues) {
+      const personalLoanDues = typeof client.personalLoanDues === 'string'
+        ? parseFloat(client.personalLoanDues.replace(/[^0-9.-]+/g, ''))
+        : parseFloat(client.personalLoanDues) || 0;
+      if (!isNaN(personalLoanDues) && personalLoanDues > 0) {
+        totalClientLoanAmount += personalLoanDues;
+      }
+    }
+
+    // Add to total if client has any loan amount
+    if (totalClientLoanAmount > 0) {
+      analytics.totalLoanAmount += totalClientLoanAmount;
+      analytics.loanCount++;
+    }
+    
+    // Process banks array for loan type distribution only
     if (client.banks && Array.isArray(client.banks) && client.banks.length > 0) {
       client.banks.forEach((bank: any) => {
         const loanType = bank.loanType || 'Unknown';
         analytics.loanTypeDistribution[loanType] = (analytics.loanTypeDistribution[loanType] || 0) + 1;
-        
-        // Optimized loan amount parsing
-        if (bank.loanAmount) {
-          let amount: number = 0;
-          
-          if (typeof bank.loanAmount === 'number') {
-            amount = bank.loanAmount;
-          } else {
-            const amountStr = String(bank.loanAmount).toLowerCase();
-            
-            if (amountStr.includes('lakh')) {
-              const match = amountStr.match(/(\d+(?:\.\d+)?)/);
-              amount = match ? parseFloat(match[0]) * 100000 : 0;
-            } else if (amountStr.includes('crore')) {
-              const match = amountStr.match(/(\d+(?:\.\d+)?)/);
-              amount = match ? parseFloat(match[0]) * 10000000 : 0;
-            } else {
-              // Clean and parse the amount
-              const cleanedStr = amountStr.replace(/[₹rs.,\s]/g, '').replace(/^0+/, '');
-              amount = parseFloat(cleanedStr) || 0;
-            }
-          }
-          
-          if (amount > 0) {
-            analytics.totalLoanAmount += amount;
-            analytics.loanCount++;
-          }
-        }
       });
     }
   });
