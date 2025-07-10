@@ -430,7 +430,8 @@ Below is a draft email you can send to your bank or financial institution to ini
       },
     ]);
 
-    setTempClientId(""); // Reset selection
+    // Don't reset tempClientId to keep the dropdown selected for dynamic details
+    // setTempClientId(""); // Reset selection
     toast.success(`${client.name} added as recipient`);
   };
 
@@ -935,7 +936,8 @@ Below is a draft email you can send to your bank or financial institution to ini
       },
     ]);
 
-    setTempClientId(""); // Reset selection
+    // Don't reset tempClientId to keep the dropdown selected for dynamic details
+    // setTempClientId(""); // Reset selection
     toast.success(`${client.name} added as CC recipient`);
   };
 
