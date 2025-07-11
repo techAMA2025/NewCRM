@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { collection, getDocs, query, orderBy, doc, updateDoc, where, deleteDoc, limit, addDoc } from 'firebase/firestore'
 import { db } from '@/firebase/firebase'
 import { 
@@ -45,7 +45,8 @@ interface ToastMessage {
   type: 'success' | 'error' | 'info';
 }
 
-export default function ClientsPage() {
+// Separate component for URL parameter handling
+function ClientsPageWithParams() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +116,9 @@ export default function ClientsPage() {
   
   // Add new state for remarks management
   const [remarks, setRemarks] = useState<{ [key: string]: string }>({})
+  
+  // Add URL parameter handling
+  const searchParams = useSearchParams();
   
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -229,8 +233,6 @@ export default function ClientsPage() {
   }, []);
 
   // Add URL parameter handling
-  const searchParams = useSearchParams();
-  
   useEffect(() => {
     // Apply filters from URL parameters only after clients data is loaded
     if (clients.length > 0) {
@@ -239,24 +241,18 @@ export default function ClientsPage() {
       const sourceFromUrl = searchParams.get('source');
       const searchFromUrl = searchParams.get('search');
       
-      console.log('URL Parameters:', { statusFromUrl, advocateFromUrl, sourceFromUrl, searchFromUrl });
-      
       if (statusFromUrl) {
-        console.log('Setting status filter to:', statusFromUrl);
         setStatusFilter(statusFromUrl);
       }
       if (advocateFromUrl) {
-        console.log('Setting advocate filter to:', advocateFromUrl);
         setPrimaryAdvocateFilter(advocateFromUrl);
       }
       if (sourceFromUrl) {
-        console.log('Setting source filter to:', sourceFromUrl);
         // Convert display name back to normalized source value
         const normalizedSource = sourceFromUrl.toLowerCase().replace(/\s+/g, '');
         setSourceFilter(normalizedSource);
       }
       if (searchFromUrl) {
-        console.log('Setting search term to:', searchFromUrl);
         setSearchTerm(searchFromUrl);
       }
     }
@@ -566,15 +562,6 @@ export default function ClientsPage() {
 
   // Apply filters and search
   useEffect(() => {
-    console.log('Applying filters:', {
-      searchTerm,
-      primaryAdvocateFilter,
-      secondaryAdvocateFilter,
-      statusFilter,
-      sourceFilter,
-      clientsCount: clients.length
-    });
-    
     let results = [...clients]
     
     // Apply search term
@@ -586,34 +573,28 @@ export default function ClientsPage() {
         (client.phone && client.phone.includes(searchTerm)) ||
         (client.aadharNumber && client.aadharNumber.includes(searchTerm))
       )
-      console.log('After search filter:', results.length, 'clients');
     }
     
     // Apply primary advocate filter
     if (primaryAdvocateFilter !== 'all') {
       results = results.filter(client => client.alloc_adv === primaryAdvocateFilter)
-      console.log('After primary advocate filter:', results.length, 'clients');
     }
     
     // Apply secondary advocate filter
     if (secondaryAdvocateFilter !== 'all') {
       results = results.filter(client => client.alloc_adv_secondary === secondaryAdvocateFilter)
-      console.log('After secondary advocate filter:', results.length, 'clients');
     }
     
     // Apply status filter
     if (statusFilter !== 'all') {
       results = results.filter(client => client.adv_status === statusFilter)
-      console.log('After status filter:', results.length, 'clients');
     }
     
     // Apply source filter
     if (sourceFilter !== 'all') {
       results = results.filter(client => normalizeSource(client.source_database) === sourceFilter)
-      console.log('After source filter:', results.length, 'clients');
     }
     
-    console.log('Final filtered results:', results.length, 'clients');
     setFilteredClients(results)
   }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter])
   
@@ -1568,4 +1549,12 @@ export default function ClientsPage() {
       </div>
     </div>
   )
+}
+
+export default function ClientsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ClientsPageWithParams />
+    </Suspense>
+  );
 }
