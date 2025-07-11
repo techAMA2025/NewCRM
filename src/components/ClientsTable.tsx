@@ -121,6 +121,7 @@ export default function ClientsTable({
                   onChange={(e) => onSelectAll(e.target.checked)}
                 />
               </TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Start Date</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Name</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Phone</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>City</TableHead>
@@ -150,6 +151,7 @@ export default function ClientsTable({
                     onChange={(e) => onSelectClient(client.id, e.target.checked)}
                   />
                 </TableCell>
+                <TableCell className="p-1 text-[10px]">{client.startDate}</TableCell>
                 <TableCell className={`font-medium p-1 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                   <div className="flex flex-col">
                     <span className="font-medium text-[10px]">{client.name.toUpperCase()}</span>
