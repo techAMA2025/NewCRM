@@ -79,7 +79,7 @@ function ClientsPageWithParams() {
     'billcut',
     'manual'
   ]);
-  const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding', 'On Hold'])
+  const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding', 'On Hold', 'Inactive'])
 
   // Filtered clients based on search and filters
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
@@ -164,6 +164,12 @@ function ClientsPageWithParams() {
           id: doc.id,
           ...doc.data()
         } as Client));
+        
+        // Mark clients with missing adv_status as "Inactive"
+        clientsData = clientsData.map(client => ({
+          ...client,
+          adv_status: client.adv_status || 'Inactive'
+        }));
         
         // Enhance clients with document URLs if they are missing for billcut source
         clientsData = await Promise.all(clientsData.map(async (client) => {
@@ -353,12 +359,16 @@ function ClientsPageWithParams() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'qualified':
+      case 'active':
         return 'bg-green-500/20 text-green-500 border-green-500/50';
-      case 'pending':
-        return 'bg-amber-500/20 text-amber-500 border-amber-500/50';
-      case 'rejected':
+      case 'dropped':
         return 'bg-red-500/20 text-red-500 border-red-500/50';
+      case 'not responding':
+        return 'bg-amber-500/20 text-amber-500 border-amber-500/50';
+      case 'on hold':
+        return 'bg-blue-500/20 text-blue-500 border-blue-500/50';
+      case 'inactive':
+        return 'bg-gray-500/20 text-gray-500 border-gray-500/50';
       default:
         return 'bg-blue-500/20 text-blue-500 border-blue-500/50';
     }

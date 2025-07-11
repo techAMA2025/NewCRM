@@ -253,6 +253,24 @@ export default function EditModal({
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <label className="text-sm text-gray-400 block mb-1">Status</label>
+                <Select 
+                  defaultValue={client.adv_status || "Inactive"}
+                  onValueChange={(value) => handleSelectChange('adv_status', value)}
+                >
+                  <SelectTrigger className="bg-gray-950 border-gray-700 text-white">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 text-white border-gray-700">
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Dropped">Dropped</SelectItem>
+                    <SelectItem value="Not Responding">Not Responding</SelectItem>
+                    <SelectItem value="On Hold">On Hold</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           

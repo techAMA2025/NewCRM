@@ -174,7 +174,7 @@ export default function ClientsTable({
                 </TableCell>
                 <TableCell className="p-1">
                   <Select 
-                    value={client.adv_status || 'Pending'} 
+                    value={client.adv_status || 'Inactive'} 
                     onValueChange={(value) => onAdvocateStatusChange(client.id, value)}
                   >
                     <SelectTrigger className={`w-[75px] h-4 px-1 py-0 text-[8px] border ${
@@ -190,9 +190,17 @@ export default function ClientsTable({
                         ? isDark
                           ? 'bg-purple-900/50 text-purple-400 border-purple-700'
                           : 'bg-purple-50 text-purple-600 border-purple-200'
-                        : isDark
+                        : client.adv_status === 'Not Responding'
+                        ? isDark
                           ? 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
                           : 'bg-yellow-50 text-yellow-600 border-yellow-200'
+                        : client.adv_status === 'Inactive'
+                        ? isDark
+                          ? 'bg-gray-900/50 text-gray-400 border-gray-700'
+                          : 'bg-gray-50 text-gray-600 border-gray-200'
+                        : isDark
+                          ? 'bg-gray-900/50 text-gray-400 border-gray-700'
+                          : 'bg-gray-50 text-gray-600 border-gray-200'
                     }`}>
                       <SelectValue />
                     </SelectTrigger>
@@ -201,6 +209,7 @@ export default function ClientsTable({
                       <SelectItem value="Dropped" className={isDark ? 'text-red-400' : 'text-red-600'}>Dropped</SelectItem>
                       <SelectItem value="Not Responding" className={isDark ? 'text-yellow-400' : 'text-yellow-600'}>Not Responding</SelectItem>
                       <SelectItem value="On Hold" className={isDark ? 'text-purple-400' : 'text-purple-600'}>On Hold</SelectItem>
+                      <SelectItem value="Inactive" className={isDark ? 'text-gray-400' : 'text-gray-600'}>Inactive</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
