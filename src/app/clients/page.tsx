@@ -234,29 +234,33 @@ function ClientsPageWithParams() {
 
   // Add URL parameter handling
   useEffect(() => {
-    // Apply filters from URL parameters only after clients data is loaded
-    if (clients.length > 0) {
-      const statusFromUrl = searchParams.get('status');
-      const advocateFromUrl = searchParams.get('advocate');
-      const sourceFromUrl = searchParams.get('source');
-      const searchFromUrl = searchParams.get('search');
-      
-      if (statusFromUrl) {
-        setStatusFilter(statusFromUrl);
-      }
-      if (advocateFromUrl) {
-        setPrimaryAdvocateFilter(advocateFromUrl);
-      }
-      if (sourceFromUrl) {
-        // Convert display name back to normalized source value
-        const normalizedSource = sourceFromUrl.toLowerCase().replace(/\s+/g, '');
-        setSourceFilter(normalizedSource);
-      }
-      if (searchFromUrl) {
-        setSearchTerm(searchFromUrl);
-      }
+    // Apply filters from URL parameters immediately when component mounts
+    const statusFromUrl = searchParams.get('status');
+    const advocateFromUrl = searchParams.get('advocate');
+    const sourceFromUrl = searchParams.get('source');
+    const searchFromUrl = searchParams.get('search');
+    
+    console.log('URL Parameters detected:', { statusFromUrl, advocateFromUrl, sourceFromUrl, searchFromUrl });
+    
+    if (statusFromUrl) {
+      console.log('Setting status filter to:', statusFromUrl);
+      setStatusFilter(statusFromUrl);
     }
-  }, [searchParams, clients]);
+    if (advocateFromUrl) {
+      console.log('Setting advocate filter to:', advocateFromUrl);
+      setPrimaryAdvocateFilter(advocateFromUrl);
+    }
+    if (sourceFromUrl) {
+      // Convert display name back to normalized source value
+      const normalizedSource = sourceFromUrl.toLowerCase().replace(/\s+/g, '');
+      console.log('Setting source filter to:', normalizedSource);
+      setSourceFilter(normalizedSource);
+    }
+    if (searchFromUrl) {
+      console.log('Setting search term to:', searchFromUrl);
+      setSearchTerm(searchFromUrl);
+    }
+  }, [searchParams]); // Remove clients dependency to apply immediately
 
   useEffect(() => {
 
@@ -562,6 +566,24 @@ function ClientsPageWithParams() {
 
   // Apply filters and search
   useEffect(() => {
+    console.log('Filter application triggered with:', {
+      searchTerm,
+      primaryAdvocateFilter,
+      secondaryAdvocateFilter,
+      statusFilter,
+      sourceFilter,
+      clientsCount: clients.length
+    });
+    
+    // Debug: Check unique advocate names in the data
+    if (clients.length > 0) {
+      const uniqueAdvocates = [...new Set(clients.map(client => client.alloc_adv).filter(Boolean))];
+      console.log('Unique advocate names in data:', uniqueAdvocates);
+      
+      const uniqueStatuses = [...new Set(clients.map(client => client.adv_status).filter(Boolean))];
+      console.log('Unique statuses in data:', uniqueStatuses);
+    }
+    
     let results = [...clients]
     
     // Apply search term
@@ -573,28 +595,56 @@ function ClientsPageWithParams() {
         (client.phone && client.phone.includes(searchTerm)) ||
         (client.aadharNumber && client.aadharNumber.includes(searchTerm))
       )
+      console.log('After search filter:', results.length, 'clients');
     }
     
     // Apply primary advocate filter
     if (primaryAdvocateFilter !== 'all') {
-      results = results.filter(client => client.alloc_adv === primaryAdvocateFilter)
+      console.log('Filtering by advocate:', primaryAdvocateFilter);
+      results = results.filter(client => {
+        const matches = client.alloc_adv === primaryAdvocateFilter;
+        if (!matches && client.alloc_adv) {
+          console.log('Advocate mismatch:', { 
+            expected: primaryAdvocateFilter, 
+            actual: client.alloc_adv,
+            clientName: client.name 
+          });
+        }
+        return matches;
+      });
+      console.log('After primary advocate filter:', results.length, 'clients');
     }
     
     // Apply secondary advocate filter
     if (secondaryAdvocateFilter !== 'all') {
       results = results.filter(client => client.alloc_adv_secondary === secondaryAdvocateFilter)
+      console.log('After secondary advocate filter:', results.length, 'clients');
     }
     
     // Apply status filter
     if (statusFilter !== 'all') {
-      results = results.filter(client => client.adv_status === statusFilter)
+      console.log('Filtering by status:', statusFilter);
+      results = results.filter(client => {
+        const matches = client.adv_status === statusFilter;
+        if (!matches && client.adv_status) {
+          console.log('Status mismatch:', { 
+            expected: statusFilter, 
+            actual: client.adv_status,
+            clientName: client.name 
+          });
+        }
+        return matches;
+      });
+      console.log('After status filter:', results.length, 'clients');
     }
     
     // Apply source filter
     if (sourceFilter !== 'all') {
       results = results.filter(client => normalizeSource(client.source_database) === sourceFilter)
+      console.log('After source filter:', results.length, 'clients');
     }
     
+    console.log('Final filtered results:', results.length, 'clients');
     setFilteredClients(results)
   }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter])
   
