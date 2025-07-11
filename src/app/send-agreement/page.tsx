@@ -115,19 +115,99 @@ export default function SendAgreementPage() {
     "billcut-signup": {
       id: "billcut-signup",
       name: "BILLCUT Sign Up",
-      content: "Dear Client,\n\nThank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee Rs.XXXX and are excited to assist you in your journey toward financial freedom.\n\nOur program includes the following key services designed to provide you with end-to-end support:\n\n🔒 Anti-Harassment Services:\nWe will file complaints and provide call-forwarding services to shield you from recovery agent harassment and unlawful practices.\n\n⚖️ Lawyer Support:\nOur legal team will handle responses to all legal notices on your behalf.\n\nWe will also file necessary complaints, and offer mediation and conciliation services for non-court cases.\n\n💼 Loan Settlement:\nWe will assist you in negotiating and settling your outstanding loans, with the goal of achieving a settlement at around 50% of your total dues.\n\nTo formalize our services, we will share with you an Agreement/Memorandum of Understanding (MOU) detailing all relevant terms and conditions.\n\nPlease note:\n• The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.\n• By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.\n• A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.\n\nOur team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.",
+      content: `Dear Client,
+
+Thank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee Rs.XXXX and are excited to assist you in your journey toward financial freedom.
+
+Our program includes the following key services designed to provide you with end-to-end support:
+
+1. 🔒 Anti-Harassment Services:
+   • We will file complaints to shield you from recovery agent harassment and unlawful practices.
+   • We will provide call-forwarding services to protect your privacy and peace of mind.
+
+2. ⚖️ Lawyer Support:
+   • Our legal team will handle responses to all legal notices on your behalf.
+   • We will also file necessary complaints.
+   • We offer mediation and conciliation services for non-court cases.
+
+3. 💼 Loan Settlement:
+   • We will assist you in negotiating and settling your outstanding loans.
+   • Our goal is to achieve a settlement at around 50% of your total dues.
+
+To formalize our services, we will share with you an Agreement/Memorandum of Understanding (MOU) detailing all relevant terms and conditions.
+
+Please note:
+1. The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.
+2. By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.
+3. A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.
+
+Our team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.`,
       subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
     },
     "ama-legal-signup": {
       id: "ama-legal-signup",
       name: "AMA Legal Solutions Sign Up",
-      content: "Dear Client,\n\nThank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee Rs.XXXX and are excited to assist you in your journey toward financial freedom.\n\nOur program includes the following key services designed to provide you with end-to-end support:\n\n🔒 Anti-Harassment Services:\nWe will file complaints and provide call-forwarding services to shield you from recovery agent harassment and unlawful practices.\n\n⚖️ Lawyer Support:\nOur legal team will handle responses to all legal notices on your behalf.\n\nWe will also file necessary complaints, and offer mediation and conciliation services for non-court cases.\n\n💼 Loan Settlement:\nWe will assist you in negotiating and settling your outstanding loans, with the goal of achieving a settlement at around 50% of your total dues.\n\nTo formalize our services, we will share with you an Agreement/Memorandum of Understanding (MOU) detailing all relevant terms and conditions.\n\nPlease note:\n• The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.\n• By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.\n• A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.\n\nOur team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.",
+      content: `Dear Client,
+
+Thank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee Rs.XXXX and are excited to assist you in your journey toward financial freedom.
+
+Our program includes the following key services designed to provide you with end-to-end support:
+
+1. 🔒 Anti-Harassment Services:
+   • We will file complaints to shield you from recovery agent harassment and unlawful practices.
+   • We will provide call-forwarding services to protect your privacy and peace of mind.
+
+2. ⚖️ Lawyer Support:
+   • Our legal team will handle responses to all legal notices on your behalf.
+   • We will also file necessary complaints.
+   • We offer mediation and conciliation services for non-court cases.
+
+3. 💼 Loan Settlement:
+   • We will assist you in negotiating and settling your outstanding loans.
+   • Our goal is to achieve a settlement at around 50% of your total dues.
+
+To formalize our services, we will share with you an Agreement/Memorandum of Understanding (MOU) detailing all relevant terms and conditions.
+
+Please note:
+1. The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.
+2. By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.
+3. A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.
+
+Our team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.`,
       subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
     },
     "part-payment-billcut": {
       id: "part-payment-billcut",
       name: "Part-payment BILLCUT",
-      content: "Dear Client,\n\nThank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee of Rs. {{Amount_Received}}. We are excited to assist you in your journey toward financial freedom.\n\nPlease note that your total sign-up amount is Rs. {{Total_SignUp_Amount}}, out of which Rs. {{Amount_Received}} has been received as of today.\n\nOur program includes the following key services designed to provide you with end-to-end support:\n\n🔒 Anti-Harassment Services:\nWe will file complaints and provide call-forwarding services to shield you from recovery agent harassment and unlawful practices.\n\n⚖️ Lawyer Support:\nOur legal team will handle responses to all legal notices on your behalf.\n\nWe will also file necessary complaints, and offer mediation and conciliation services for non-court cases.\n\n💼 Loan Settlement:\nWe will assist you in negotiating and settling your outstanding loans, with the goal of achieving a settlement at around 50% of your total dues.\n\nTo formalize our services, we will soon share with you an Agreement/Memorandum of Understanding (MOU) outlining all relevant terms and conditions.\n\nPlease note:\n• The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.\n• By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.\n• A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.\n\nOur team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.",
+      content: `Dear Client,
+
+Thank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee of Rs. {{Amount_Received}}. We are excited to assist you in your journey toward financial freedom.
+
+Please note that your total sign-up amount is Rs. {{Total_SignUp_Amount}}, out of which Rs. {{Amount_Received}} has been received as of today.
+
+Our program includes the following key services designed to provide you with end-to-end support:
+
+1. 🔒 Anti-Harassment Services:
+   • We will file complaints to shield you from recovery agent harassment and unlawful practices.
+   • We will provide call-forwarding services to protect your privacy and peace of mind.
+
+2. ⚖️ Lawyer Support:
+   • Our legal team will handle responses to all legal notices on your behalf.
+   • We will also file necessary complaints.
+   • We offer mediation and conciliation services for non-court cases.
+
+3. 💼 Loan Settlement:
+   • We will assist you in negotiating and settling your outstanding loans.
+   • Our goal is to achieve a settlement at around 50% of your total dues.
+
+To formalize our services, we will soon share with you an Agreement/Memorandum of Understanding (MOU) outlining all relevant terms and conditions.
+
+Please note:
+1. The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.
+2. By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.
+3. A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.
+
+Our team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.`,
       subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
     }
   };
