@@ -275,10 +275,20 @@ function ClientViewModal({
                 Client Profile
                 <span
                   className={`ml-3 px-3 py-0.5 rounded-full text-xs font-medium ${
-                    client.status === "Converted" ? "bg-green-800 text-green-200" : "bg-blue-800 text-blue-200"
+                    client.adv_status === "Active" 
+                      ? "bg-blue-800 text-blue-200"
+                      : !client.adv_status || client.adv_status === "Inactive"
+                        ? "bg-gray-700 text-gray-300"
+                        : client.adv_status === "Dropped"
+                          ? "bg-red-800 text-red-200"
+                          : client.adv_status === "Not Responding"
+                            ? "bg-yellow-800 text-yellow-200"
+                            : client.adv_status === "On Hold"
+                              ? "bg-purple-800 text-purple-200"
+                              : "bg-gray-700 text-gray-300"
                   }`}
                 >
-                  {client.status}
+                  {client.adv_status || "Inactive"}
                 </span>
               </div>
               <h2 className="text-3xl font-bold text-white tracking-tight mb-1">{client.name}</h2>
@@ -469,6 +479,10 @@ function ClientViewModal({
                 <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Salesperson</span>
                   <span className="text-white w-2/3">{client.assignedTo}</span>
+                </div>
+                <div className="flex border-b border-gray-700 pb-2">
+                  <span className="text-gray-400 w-1/3">Advocate Status</span>
+                  <span className="text-white w-2/3">{client.adv_status || "Inactive"}</span>
                 </div>
                 <div className="flex">
                   <span className="text-gray-400 w-1/3">Tenure</span>
@@ -1214,18 +1228,35 @@ function ClientsList() {
   const handleStatusChange = async (clientId: string, newStatus: string) => {
     try {
       const clientRef = doc(db, "clients", clientId)
-      await updateDoc(clientRef, {
-        adv_status: newStatus,
-      })
+      
+      if (newStatus === "Inactive") {
+        // Remove the adv_status field when setting to Inactive
+        await updateDoc(clientRef, {
+          adv_status: null,
+        })
+      } else {
+        // Set the adv_status field for other statuses
+        await updateDoc(clientRef, {
+          adv_status: newStatus,
+        })
+      }
 
       // Update local state
       setClients((prevClients) =>
-        prevClients.map((client) => (client.id === clientId ? { ...client, adv_status: newStatus } : client)),
+        prevClients.map((client) => 
+          client.id === clientId 
+            ? { ...client, adv_status: newStatus === "Inactive" ? undefined : newStatus } 
+            : client
+        ),
       )
 
       // Also update viewClient if the modal is open
       if (viewClient?.id === clientId) {
-        setViewClient((prev) => (prev ? { ...prev, adv_status: newStatus } : null))
+        setViewClient((prev) => 
+          prev 
+            ? { ...prev, adv_status: newStatus === "Inactive" ? undefined : newStatus } 
+            : null
+        )
       }
 
       // Show success toast
@@ -1361,8 +1392,8 @@ function ClientsList() {
 
         const matchesStatus =
           statusFilter === "all" ||
-          client.adv_status === statusFilter ||
-          (!client.adv_status && statusFilter === "Active")
+          (statusFilter === "Inactive" && !client.adv_status) ||
+          (client.adv_status === statusFilter)
 
         const matchesSource = sourceFilter === "all" || client.source_database === sourceFilter
 
@@ -1512,6 +1543,7 @@ function ClientsList() {
               >
                 <option value="all">All Statuses</option>
                 <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
                 <option value="Dropped">Dropped</option>
                 <option value="Not Responding">Not Responding</option>
                 <option value="On Hold">On Hold</option>
@@ -1745,21 +1777,24 @@ function ClientsList() {
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <select
-                          value={client.adv_status || "Active"}
+                          value={client.adv_status || "Inactive"}
                           onChange={(e) => handleStatusChange(client.id, e.target.value)}
                           className={`px-1.5 py-1 rounded text-xs font-medium border-0 focus:ring-1 focus:ring-opacity-50 ${
-                            client.adv_status === "Active" || !client.adv_status
+                            client.adv_status === "Active"
                               ? "bg-blue-800 text-blue-200 focus:ring-blue-500"
-                              : client.adv_status === "Dropped"
-                                ? "bg-red-800 text-red-200 focus:ring-red-500"
-                                : client.adv_status === "Not Responding"
-                                  ? "bg-yellow-800 text-yellow-200 focus:ring-yellow-500"
-                                  : client.adv_status === "On Hold"
-                                    ? "bg-purple-800 text-purple-200 focus:ring-purple-500"
-                                    : "bg-gray-800 text-gray-200 focus:ring-gray-500"
+                              : !client.adv_status || client.adv_status === "Inactive"
+                                ? "bg-gray-800 text-gray-200 focus:ring-gray-500"
+                                : client.adv_status === "Dropped"
+                                  ? "bg-red-800 text-red-200 focus:ring-red-500"
+                                  : client.adv_status === "Not Responding"
+                                    ? "bg-yellow-800 text-yellow-200 focus:ring-yellow-500"
+                                    : client.adv_status === "On Hold"
+                                      ? "bg-purple-800 text-purple-200 focus:ring-purple-500"
+                                      : "bg-gray-800 text-gray-200 focus:ring-gray-500"
                           }`}
                         >
                           <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
                           <option value="Dropped">Dropped</option>
                           <option value="Not Responding">Not Responding</option>
                           <option value="On Hold">On Hold</option>
