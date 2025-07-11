@@ -45,6 +45,7 @@ interface Client {
   documentUrl?: string
   documentName?: string
   documentUploadedAt?: Date
+  sentAgreement?: boolean
 }
 
 interface User {
@@ -428,6 +429,23 @@ export default function EditModal({
         
         {/* Additional Information */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-800">
+            <h3 className="font-semibold text-lg mb-3 text-green-400">Agreement Status</h3>
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="sentAgreement"
+                name="sentAgreement"
+                checked={client.sentAgreement || false}
+                onChange={(e) => handleSelectChange('sentAgreement', e.target.checked.toString())}
+                className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <label htmlFor="sentAgreement" className="text-sm text-gray-300">
+                Agreement Sent
+              </label>
+            </div>
+          </div>
+          
           <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-800">
             <h3 className="font-semibold text-lg mb-3 text-yellow-400">Remarks</h3>
             <Textarea 
