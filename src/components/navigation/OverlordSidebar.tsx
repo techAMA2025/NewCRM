@@ -76,6 +76,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
     { href: '/payapproval', icon: <FaMoneyCheckAlt />, label: 'Payment Approvals' },
     { href: '/advocate/documents', icon: <FaFileAlt />, label: 'Documents' },
     { href: '/advocate/emailcompose', icon: <FaEnvelopeOpenText />, label: 'Compose Email' },
+    { href: '/send-agreement', icon: <FaEnvelopeOpenText />, label: 'Sales Email' },
   ];
 
   const handleLogout = async () => {
