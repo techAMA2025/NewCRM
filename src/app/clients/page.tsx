@@ -157,7 +157,7 @@ function ClientsPageWithParams() {
     const fetchClients = async () => {
       try {
 
-        const clientsQuery = query(collection(db, 'clients'), orderBy('name'));
+        const clientsQuery = query(collection(db, 'clients'), orderBy('startDate', 'desc'));
         const querySnapshot = await getDocs(clientsQuery);
         
         let clientsData: Client[] = querySnapshot.docs.map(doc => ({
