@@ -104,16 +104,45 @@ export default function SendAgreementPage() {
   // State for client search
   const [clientSearchTerm, setClientSearchTerm] = useState("");
 
-  // Single agreement template
-  const agreementTemplate = {
-    id: "agreement-draft",
-    name: "Agreement Draft",
-    content: "Dear [CLIENT_NAME],\n\nWe are pleased to attach the consultancy agreement. This agreement outlines the terms and conditions governing our consultancy services, and it is legally binding upon both parties.\n\nPlease be informed that, under this agreement, both parties are expected to adhere to the commitments specified therein. Any breach of the terms could lead to legal consequences as per applicable law, ensuring the protection and enforcement of both parties' rights and responsibilities.\n\nTo proceed, kindly review the agreement carefully and confirm your acknowledgment of its terms by replying to this email. Should you have any questions, please feel free to reach out for clarification.\n\nThank you for your attention to this matter.",
+  // Multiple agreement templates
+  const agreementTemplates = {
+    "agreement-draft": {
+      id: "agreement-draft",
+      name: "Agreement Draft",
+      content: "Dear [CLIENT_NAME],\n\nWe are pleased to attach the consultancy agreement. This agreement outlines the terms and conditions governing our consultancy services, and it is legally binding upon both parties.\n\nPlease be informed that, under this agreement, both parties are expected to adhere to the commitments specified therein. Any breach of the terms could lead to legal consequences as per applicable law, ensuring the protection and enforcement of both parties' rights and responsibilities.\n\nTo proceed, kindly review the agreement carefully and confirm your acknowledgment of its terms by replying to this email. Should you have any questions, please feel free to reach out for clarification.\n\nThank you for your attention to this matter.",
+      subject: "Consultancy Agreement - AMA LEGAL SOLUTIONS"
+    },
+    "billcut-signup": {
+      id: "billcut-signup",
+      name: "BILLCUT Sign Up",
+      content: "Dear Client,\n\nThank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee Rs.XXXX and are excited to assist you in your journey toward financial freedom.\n\nOur program includes the following key services designed to provide you with end-to-end support:\n\n🔒 Anti-Harassment Services:\nWe will file complaints and provide call-forwarding services to shield you from recovery agent harassment and unlawful practices.\n\n⚖️ Lawyer Support:\nOur legal team will handle responses to all legal notices on your behalf.\n\nWe will also file necessary complaints, and offer mediation and conciliation services for non-court cases.\n\n💼 Loan Settlement:\nWe will assist you in negotiating and settling your outstanding loans, with the goal of achieving a settlement at around 50% of your total dues.\n\nTo formalize our services, we will share with you an Agreement/Memorandum of Understanding (MOU) detailing all relevant terms and conditions.\n\nPlease note:\n• The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.\n• By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.\n• A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.\n\nOur team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.",
+      subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
+    },
+    "ama-legal-signup": {
+      id: "ama-legal-signup",
+      name: "AMA Legal Solutions Sign Up",
+      content: "Dear Client,\n\nThank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee Rs.XXXX and are excited to assist you in your journey toward financial freedom.\n\nOur program includes the following key services designed to provide you with end-to-end support:\n\n🔒 Anti-Harassment Services:\nWe will file complaints and provide call-forwarding services to shield you from recovery agent harassment and unlawful practices.\n\n⚖️ Lawyer Support:\nOur legal team will handle responses to all legal notices on your behalf.\n\nWe will also file necessary complaints, and offer mediation and conciliation services for non-court cases.\n\n💼 Loan Settlement:\nWe will assist you in negotiating and settling your outstanding loans, with the goal of achieving a settlement at around 50% of your total dues.\n\nTo formalize our services, we will share with you an Agreement/Memorandum of Understanding (MOU) detailing all relevant terms and conditions.\n\nPlease note:\n• The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.\n• By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.\n• A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.\n\nOur team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.",
+      subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
+    },
+    "part-payment-billcut": {
+      id: "part-payment-billcut",
+      name: "Part-payment BILLCUT",
+      content: "Dear Client,\n\nThank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee of Rs. {{Amount_Received}}. We are excited to assist you in your journey toward financial freedom.\n\nPlease note that your total sign-up amount is Rs. {{Total_SignUp_Amount}}, out of which Rs. {{Amount_Received}} has been received as of today.\n\nOur program includes the following key services designed to provide you with end-to-end support:\n\n🔒 Anti-Harassment Services:\nWe will file complaints and provide call-forwarding services to shield you from recovery agent harassment and unlawful practices.\n\n⚖️ Lawyer Support:\nOur legal team will handle responses to all legal notices on your behalf.\n\nWe will also file necessary complaints, and offer mediation and conciliation services for non-court cases.\n\n💼 Loan Settlement:\nWe will assist you in negotiating and settling your outstanding loans, with the goal of achieving a settlement at around 50% of your total dues.\n\nTo formalize our services, we will soon share with you an Agreement/Memorandum of Understanding (MOU) outlining all relevant terms and conditions.\n\nPlease note:\n• The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.\n• By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.\n• A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.\n\nOur team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.",
+      subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
+    }
   };
 
+  // Get current template
+  const getCurrentTemplate = () => {
+    return agreementTemplates[selectedAgreement as keyof typeof agreementTemplates] || agreementTemplates["agreement-draft"];
+  };
+
+  // Single agreement template (for backward compatibility)
+  const agreementTemplate = getCurrentTemplate();
+
   const subjectTemplate = {
-    id: "agreement-draft-subject",
-    text: "Consultancy Agreement - AMA LEGAL SOLUTIONS"
+    id: `${selectedAgreement}-subject`,
+    text: getCurrentTemplate().subject
   };
 
   // Filter clients based on search term
@@ -168,7 +197,7 @@ export default function SendAgreementPage() {
   useEffect(() => {
     const selectedClient = clients.find(c => c.id === tempClientId);
     
-    let content = agreementTemplate.content;
+    let content = getCurrentTemplate().content;
     if (selectedClient) {
       content = content
         .replace(/\[CLIENT_NAME\]/g, selectedClient.name || '[Client Name]')
@@ -178,12 +207,12 @@ export default function SendAgreementPage() {
     setEmailContent(content);
 
     // Set subject
-    let subjectText = subjectTemplate.text;
+    let subjectText = getCurrentTemplate().subject;
     if (selectedClient) {
       subjectText = subjectText.replace(/\[CLIENT_NAME\]/g, selectedClient.name || '[Client Name]');
     }
     setCustomSubject(subjectText);
-  }, [tempClientId, clients]);
+  }, [tempClientId, clients, selectedAgreement]);
 
   // Update email content and subject when client recipients change
   useEffect(() => {
@@ -195,26 +224,26 @@ export default function SendAgreementPage() {
     
     if (firstClientRecipient) {
       // Update email content
-      let content = agreementTemplate.content;
+      let content = getCurrentTemplate().content;
       content = content
         .replace(/\[CLIENT_NAME\]/g, firstClientRecipient.name || '[Client Name]')
         .replace(/\[CLIENT_EMAIL\]/g, firstClientRecipient.email || '[Client Email]');
       setEmailContent(content);
 
       // Update subject
-      let subjectText = subjectTemplate.text;
+      let subjectText = getCurrentTemplate().subject;
       subjectText = subjectText.replace(/\[CLIENT_NAME\]/g, firstClientRecipient.name || '[Client Name]');
       setCustomSubject(subjectText);
       setIsCustomSubject(true);
       setSelectedSubject("custom");
     } else {
       // No client recipients, reset to template
-      setEmailContent(agreementTemplate.content);
-      setCustomSubject(subjectTemplate.text);
+      setEmailContent(getCurrentTemplate().content);
+      setCustomSubject(getCurrentTemplate().subject);
       setIsCustomSubject(false);
-      setSelectedSubject("agreement-draft-subject");
+      setSelectedSubject(`${selectedAgreement}-subject`);
     }
-  }, [recipients, ccRecipients]);
+  }, [recipients, ccRecipients, selectedAgreement]);
 
   // Handle subject selection
   const handleSubjectChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -226,14 +255,14 @@ export default function SendAgreementPage() {
       setCustomSubject("");
     } else {
       setIsCustomSubject(false);
-      setCustomSubject(subjectTemplate.text);
+      setCustomSubject(getCurrentTemplate().subject);
     }
   };
 
   // Toggle subject editing mode
   const toggleSubjectEdit = () => {
     if (!editingSubject) {
-      const subjectText = isCustomSubject ? customSubject : subjectTemplate.text;
+      const subjectText = isCustomSubject ? customSubject : getCurrentTemplate().subject;
       setCustomSubject(subjectText);
     }
 
@@ -260,12 +289,27 @@ export default function SendAgreementPage() {
       return customSubject;
     }
 
-    return subjectTemplate.text;
+    return getCurrentTemplate().subject;
   };
 
   // Handle client selection
   const handleClientChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setTempClientId(e.target.value);
+  };
+
+  // Handle template selection
+  const handleTemplateChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const newTemplateId = e.target.value;
+    setSelectedAgreement(newTemplateId);
+    
+    // Update email content with new template
+    const newTemplate = agreementTemplates[newTemplateId as keyof typeof agreementTemplates];
+    if (newTemplate) {
+      setEmailContent(newTemplate.content);
+      setCustomSubject(newTemplate.subject);
+      setIsCustomSubject(false);
+      setSelectedSubject(`${newTemplateId}-subject`);
+    }
   };
 
   // Function to add a client as recipient
@@ -304,14 +348,14 @@ export default function SendAgreementPage() {
     ]);
 
     // Update email content and subject with client name
-    let content = agreementTemplate.content;
+    let content = getCurrentTemplate().content;
     content = content
       .replace(/\[CLIENT_NAME\]/g, client.name || '[Client Name]')
       .replace(/\[CLIENT_EMAIL\]/g, client.email || '[Client Email]');
     setEmailContent(content);
 
     // Update subject with client name
-    let subjectText = subjectTemplate.text;
+    let subjectText = getCurrentTemplate().subject;
     subjectText = subjectText.replace(/\[CLIENT_NAME\]/g, client.name || '[Client Name]');
     setCustomSubject(subjectText);
     setIsCustomSubject(true);
@@ -702,14 +746,14 @@ export default function SendAgreementPage() {
     // Update email content and subject with client name (if no client recipients exist)
     const existingClientRecipients = recipients.filter(r => r.type === "client");
     if (existingClientRecipients.length === 0) {
-      let content = agreementTemplate.content;
+      let content = getCurrentTemplate().content;
       content = content
         .replace(/\[CLIENT_NAME\]/g, client.name || '[Client Name]')
         .replace(/\[CLIENT_EMAIL\]/g, client.email || '[Client Email]');
       setEmailContent(content);
 
       // Update subject with client name
-      let subjectText = subjectTemplate.text;
+      let subjectText = getCurrentTemplate().subject;
       subjectText = subjectText.replace(/\[CLIENT_NAME\]/g, client.name || '[Client Name]');
       setCustomSubject(subjectText);
       setIsCustomSubject(true);
@@ -736,10 +780,10 @@ export default function SendAgreementPage() {
           <div className="max-w-5xl mx-auto">
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <FaFileContract className="mr-3 text-green-400" />
-              Send Agreement (From: notify@amalegalsolutions.com)
+              Send Email Templates (From: notify@amalegalsolutions.com)
             </h1>
             <p className="text-gray-400 mb-8">
-              Send agreement drafts to clients
+              Send agreement drafts, sign-up confirmations, and other templates to clients
             </p>
             
             <form
@@ -750,15 +794,18 @@ export default function SendAgreementPage() {
                 {/* Agreement Template Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Agreement Template
+                    Email Template
                   </label>
                   <select
                     value={selectedAgreement}
-                    onChange={() => {}} // Disabled since there's only one template
+                    onChange={handleTemplateChange}
                     className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    disabled
                   >
-                    <option value="agreement-draft">Agreement Draft</option>
+                    {Object.keys(agreementTemplates).map((templateId) => (
+                      <option key={templateId} value={templateId}>
+                        {agreementTemplates[templateId as keyof typeof agreementTemplates].name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -776,7 +823,9 @@ export default function SendAgreementPage() {
                         className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         disabled={editingSubject}
                       >
-                        <option value="agreement-draft-subject">Consultancy Agreement - AMA LEGAL SOLUTIONS</option>
+                        <option value={`${selectedAgreement}-subject`}>
+                          {getCurrentTemplate().subject}
+                        </option>
                         <option value="custom">Custom Subject...</option>
                       </select>
 
@@ -1306,7 +1355,7 @@ export default function SendAgreementPage() {
                   ) : (
                     <>
                       <FaPaperPlane className="mr-2" />
-                      Send Agreement
+                      Send Email
                     </>
                   )}
                 </button>
