@@ -38,6 +38,7 @@ export interface Client {
   documentUploadedAt?: any
   dob?: string
   message: string
+  sentAgreement?: boolean
   latestRemark?: {
     remark: string;
     advocateName: string;

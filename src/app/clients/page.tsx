@@ -27,6 +27,7 @@ import { format } from 'date-fns'
 import ClientsTable from '@/components/ClientsTable'
 import { Client } from './types'
 import { serverTimestamp } from 'firebase/firestore'
+import { useSearchParams } from 'next/navigation'
 
 interface User {
   uid: string;
@@ -226,6 +227,40 @@ export default function ClientsPage() {
 
     fetchClients();
   }, []);
+
+  // Add URL parameter handling
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    // Apply filters from URL parameters only after clients data is loaded
+    if (clients.length > 0) {
+      const statusFromUrl = searchParams.get('status');
+      const advocateFromUrl = searchParams.get('advocate');
+      const sourceFromUrl = searchParams.get('source');
+      const searchFromUrl = searchParams.get('search');
+      
+      console.log('URL Parameters:', { statusFromUrl, advocateFromUrl, sourceFromUrl, searchFromUrl });
+      
+      if (statusFromUrl) {
+        console.log('Setting status filter to:', statusFromUrl);
+        setStatusFilter(statusFromUrl);
+      }
+      if (advocateFromUrl) {
+        console.log('Setting advocate filter to:', advocateFromUrl);
+        setPrimaryAdvocateFilter(advocateFromUrl);
+      }
+      if (sourceFromUrl) {
+        console.log('Setting source filter to:', sourceFromUrl);
+        // Convert display name back to normalized source value
+        const normalizedSource = sourceFromUrl.toLowerCase().replace(/\s+/g, '');
+        setSourceFilter(normalizedSource);
+      }
+      if (searchFromUrl) {
+        console.log('Setting search term to:', searchFromUrl);
+        setSearchTerm(searchFromUrl);
+      }
+    }
+  }, [searchParams, clients]);
 
   useEffect(() => {
 
@@ -531,6 +566,15 @@ export default function ClientsPage() {
 
   // Apply filters and search
   useEffect(() => {
+    console.log('Applying filters:', {
+      searchTerm,
+      primaryAdvocateFilter,
+      secondaryAdvocateFilter,
+      statusFilter,
+      sourceFilter,
+      clientsCount: clients.length
+    });
+    
     let results = [...clients]
     
     // Apply search term
@@ -542,28 +586,34 @@ export default function ClientsPage() {
         (client.phone && client.phone.includes(searchTerm)) ||
         (client.aadharNumber && client.aadharNumber.includes(searchTerm))
       )
+      console.log('After search filter:', results.length, 'clients');
     }
     
     // Apply primary advocate filter
     if (primaryAdvocateFilter !== 'all') {
       results = results.filter(client => client.alloc_adv === primaryAdvocateFilter)
+      console.log('After primary advocate filter:', results.length, 'clients');
     }
     
     // Apply secondary advocate filter
     if (secondaryAdvocateFilter !== 'all') {
       results = results.filter(client => client.alloc_adv_secondary === secondaryAdvocateFilter)
+      console.log('After secondary advocate filter:', results.length, 'clients');
     }
     
     // Apply status filter
     if (statusFilter !== 'all') {
       results = results.filter(client => client.adv_status === statusFilter)
+      console.log('After status filter:', results.length, 'clients');
     }
     
     // Apply source filter
     if (sourceFilter !== 'all') {
       results = results.filter(client => normalizeSource(client.source_database) === sourceFilter)
+      console.log('After source filter:', results.length, 'clients');
     }
     
+    console.log('Final filtered results:', results.length, 'clients');
     setFilteredClients(results)
   }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter])
   
@@ -973,6 +1023,44 @@ export default function ClientsPage() {
     }
   }
 
+  // Add function to handle agreement toggle
+  const handleAgreementToggle = async (clientId: string, currentStatus: boolean) => {
+    try {
+      const clientRef = doc(db, 'clients', clientId);
+      await updateDoc(clientRef, {
+        sentAgreement: !currentStatus,
+        lastModified: new Date()
+      });
+      
+      // Update local state
+      setClients(clients.map(client => 
+        client.id === clientId 
+          ? { ...client, sentAgreement: !currentStatus, lastModified: new Date() }
+          : client
+      ));
+      
+      // Update filtered clients as well
+      setFilteredClients(filteredClients.map(client => 
+        client.id === clientId 
+          ? { ...client, sentAgreement: !currentStatus, lastModified: new Date() }
+          : client
+      ));
+      
+      showToast(
+        "Agreement status updated",
+        `Agreement ${!currentStatus ? 'marked as sent' : 'marked as not sent'}`,
+        "success"
+      );
+    } catch (error) {
+      console.error('Error updating agreement status:', error);
+      showToast(
+        "Update failed",
+        "Failed to update agreement status. Please try again.",
+        "error"
+      );
+    }
+  };
+
   if (loading) return (
     <div className="flex min-h-screen bg-white">
       {renderSidebar()}
@@ -1151,6 +1239,7 @@ export default function ClientsPage() {
           remarks={remarks}
           onRemarkChange={handleRemarkChange}
           onSaveRemark={handleSaveRemark}
+          onAgreementToggle={handleAgreementToggle}
         />
 
         {/* Modals */}

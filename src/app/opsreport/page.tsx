@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import { useRouter } from 'next/navigation';
 import {
   BarChart,
   Bar,
@@ -20,6 +21,7 @@ import {
   LabelList,
 } from 'recharts';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import AdminSidebar from '@/components/navigation/AdminSidebar';
 
 interface BankStats {
   bankName: string;
@@ -88,8 +90,43 @@ export default function OpsReport() {
     totalBankLoans: 0,
     combinedTotalLoanAmount: 0
   });
+  const [userRole, setUserRole] = useState<string>('');
+  const [authChecked, setAuthChecked] = useState(false);
+  const router = useRouter();
+
+  // Add click handler for advocate status navigation
+  const handleAdvocateStatusClick = (advocateName: string, status: string) => {
+    const params = new URLSearchParams();
+    params.set('advocate', advocateName);
+    params.set('status', status);
+    router.push(`/clients?${params.toString()}`);
+  };
+
+  // Add click handler for advocate card navigation (all clients for that advocate)
+  const handleAdvocateCardClick = (advocateName: string) => {
+    const params = new URLSearchParams();
+    params.set('advocate', advocateName);
+    router.push(`/clients?${params.toString()}`);
+  };
 
   useEffect(() => {
+    // Check user role from localStorage
+    const storedRole = localStorage.getItem('userRole');
+    setUserRole(storedRole || '');
+    
+    // Check if user has permission to access this page
+    if (storedRole !== 'admin' && storedRole !== 'overlord') {
+      router.push('/dashboard');
+      return;
+    }
+    
+    setAuthChecked(true);
+  }, [router]);
+
+  useEffect(() => {
+    // Only fetch data if user has proper authentication
+    if (!authChecked) return;
+    
     const fetchClients = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'clients'));
@@ -104,7 +141,7 @@ export default function OpsReport() {
     };
 
     fetchClients();
-  }, []);
+  }, [authChecked]);
 
   const processData = (clientsData: Client[]) => {
     // Helper function to normalize bank names
@@ -482,6 +519,14 @@ export default function OpsReport() {
     setOccupationStats(Array.from(occupationMap.values()));
   };
 
+  if (!authChecked) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -492,14 +537,14 @@ export default function OpsReport() {
 
   return (
     <div className="flex">
-      <OverlordSidebar />
+      {userRole === 'admin' ? <AdminSidebar /> : <OverlordSidebar />}
       <div className="flex-1 p-5 bg-gray-900 min-h-screen">
         <h1 className="text-2xl font-bold text-gray-100 mb-6 border-b border-gray-700 pb-3">
           Operations Analytics Dashboard
         </h1>
 
         {/* Advocate Performance Section */}
-        {/* <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-5 text-gray-100">Advocate Performance</h2>
           <div className="h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -522,11 +567,15 @@ export default function OpsReport() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div> */}
+        </div>
          {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {advocateStats.map((advocate) => (
-            <div key={advocate.id} className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-indigo-500">
+            <div 
+              key={advocate.id} 
+              className="bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700 transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-indigo-500 cursor-pointer"
+              onClick={() => handleAdvocateCardClick(advocate.name)}
+            >
               <h3 className="text-base font-semibold mb-2 text-gray-100">{advocate.name}</h3>
               <div className="space-y-2">
                 <p className="text-xs text-gray-300">
@@ -536,13 +585,31 @@ export default function OpsReport() {
                   Total Loan Amount: <span className="font-medium text-green-400">₹{advocate.totalLoanAmount.toLocaleString()}</span>
                 </p>
                 <div className="flex flex-wrap gap-2 text-[10px]">
-                  <span className="px-2 py-0.5 bg-green-900/50 text-green-300 rounded-full border border-green-700">
+                  <span 
+                    className="px-2 py-0.5 bg-green-900/50 text-green-300 rounded-full border border-green-700 hover:bg-green-800/50 hover:border-green-600 cursor-pointer transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAdvocateStatusClick(advocate.name, 'Active');
+                    }}
+                  >
                     Active: {advocate.active}
                   </span>
-                  <span className="px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-700">
+                  <span 
+                    className="px-2 py-0.5 bg-yellow-900/50 text-yellow-300 rounded-full border border-yellow-700 hover:bg-yellow-800/50 hover:border-yellow-600 cursor-pointer transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAdvocateStatusClick(advocate.name, 'Not Responding');
+                    }}
+                  >
                     Not Responding: {advocate.notResponding}
                   </span>
-                  <span className="px-2 py-0.5 bg-red-900/50 text-red-300 rounded-full border border-red-700">
+                  <span 
+                    className="px-2 py-0.5 bg-red-900/50 text-red-300 rounded-full border border-red-700 hover:bg-red-800/50 hover:border-red-600 cursor-pointer transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAdvocateStatusClick(advocate.name, 'Dropped');
+                    }}
+                  >
                     Dropped: {advocate.dropped}
                   </span>
                 </div>

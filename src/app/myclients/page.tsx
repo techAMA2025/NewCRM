@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db, storage } from '@/firebase/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 import ClientDetailsModal from './ClientDetailsModal';
@@ -52,6 +52,7 @@ interface Client {
   message: string;
   documentUrl?: string;
   documentName?: string;
+  sentAgreement?: boolean;
 }
 
 export default function MyClientsPage() {
@@ -140,6 +141,26 @@ export default function MyClientsPage() {
   const handleClientUpdated = () => {
     // Refresh the clients list after an update
     fetchClients(userName);
+  };
+
+  // Handle agreement sent toggle
+  const handleAgreementToggle = async (clientId: string, currentStatus: boolean) => {
+    try {
+      const clientRef = doc(db, 'clients', clientId);
+      await updateDoc(clientRef, {
+        sentAgreement: !currentStatus,
+        lastModified: new Date()
+      });
+      
+      // Update local state
+      setClients(clients.map(client => 
+        client.id === clientId 
+          ? { ...client, sentAgreement: !currentStatus, lastModified: new Date() }
+          : client
+      ));
+    } catch (error) {
+      console.error('Error updating agreement status:', error);
+    }
   };
 
   // Format the timestamp for display
@@ -298,6 +319,18 @@ export default function MyClientsPage() {
                     <div className="flex items-center text-gray-600 dark:text-gray-300">
                       <FaCalendarAlt className="mr-2 text-gray-400" />
                       <span className="text-sm">{formatDate(client.lastModified)}</span>
+                    </div>
+                    <div className="flex items-center text-gray-600 dark:text-gray-300">
+                      <input
+                        type="checkbox"
+                        id={`agreement-${client.id}`}
+                        checked={client.sentAgreement || false}
+                        onChange={() => handleAgreementToggle(client.id, client.sentAgreement || false)}
+                        className="mr-2 h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                      <label htmlFor={`agreement-${client.id}`} className="text-sm cursor-pointer">
+                        Agreement Sent
+                      </label>
                     </div>
                   </div>
                   

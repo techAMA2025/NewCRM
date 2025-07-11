@@ -48,6 +48,7 @@ interface ClientsTableProps {
   remarks: { [key: string]: string }
   onRemarkChange: (clientId: string, value: string) => void
   onSaveRemark: (clientId: string) => void
+  onAgreementToggle: (clientId: string, currentStatus: boolean) => void
 }
 
 export default function ClientsTable({
@@ -65,7 +66,8 @@ export default function ClientsTable({
   onViewHistory,
   remarks,
   onRemarkChange,
-  onSaveRemark
+  onSaveRemark,
+  onAgreementToggle
 }: ClientsTableProps) {
   const isDark = theme === 'dark'
 
@@ -124,6 +126,7 @@ export default function ClientsTable({
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>City</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Advocate</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Status</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Agreement</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Remarks</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Sales By</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-right p-1`}>Actions</TableHead>
@@ -200,6 +203,29 @@ export default function ClientsTable({
                       <SelectItem value="On Hold" className={isDark ? 'text-purple-400' : 'text-purple-600'}>On Hold</SelectItem>
                     </SelectContent>
                   </Select>
+                </TableCell>
+                <TableCell className="p-1">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`agreement-${client.id}`}
+                      checked={client.sentAgreement || false}
+                      onChange={() => onAgreementToggle(client.id, client.sentAgreement || false)}
+                      className={`rounded ${
+                        isDark 
+                          ? 'border-gray-600 text-blue-400 focus:ring-blue-400 bg-gray-700' 
+                          : 'border-gray-300 text-blue-500 focus:ring-blue-500 bg-white'
+                      } h-3 w-3`}
+                    />
+                    <label 
+                      htmlFor={`agreement-${client.id}`} 
+                      className={`ml-1 text-[8px] cursor-pointer ${
+                        isDark ? 'text-gray-300' : 'text-gray-600'
+                      }`}
+                    >
+                      Sent
+                    </label>
+                  </div>
                 </TableCell>
                 <TableCell className="p-1">
                   <div className="flex flex-col space-y-1.5">

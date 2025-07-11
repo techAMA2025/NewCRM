@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaUsers, FaChartPie, FaCog, FaFileAlt, FaHistory, FaMoneyBillWave, FaSignOutAlt, FaBriefcase, FaUserPlus, FaUniversity } from 'react-icons/fa'
+import { FaUsers, FaChartPie, FaCog, FaFileAlt, FaHistory, FaMoneyBillWave, FaSignOutAlt, FaBriefcase, FaUserPlus, FaUniversity, FaChartBar } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -62,6 +62,12 @@ const AdminSidebar = () => {
             <Link href="/billcutLeadReport" className={`flex items-center px-6 py-3 ${isActive('/billcutLeadReport')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
               <FiPieChart className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
               <span>Billcut Analysis</span>
+            </Link>
+          </li>
+          <li>
+            <Link href="/opsreport" className={`flex items-center px-6 py-3 ${isActive('/opsreport')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
+              <FaChartBar className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
+              <span>Operations Report</span>
             </Link>
           </li>
           <li>

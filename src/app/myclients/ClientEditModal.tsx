@@ -45,6 +45,7 @@ interface Client {
   leadId: string;
   startDate: string;
   message: string;
+  sentAgreement?: boolean;
 }
 
 interface ClientEditModalProps {
@@ -82,7 +83,8 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
         tenure: client.tenure,
         occupation: client.occupation,
         aadharNumber: client.aadharNumber,
-        message: client.message
+        message: client.message,
+        sentAgreement: client.sentAgreement || false
       });
 
       // Initialize banks
@@ -94,7 +96,11 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
     if ('target' in e) {
       // This is a regular DOM event
       const { name, value } = e.target;
-      setFormData(prev => ({ ...prev, [name]: value }));
+      const target = e.target as HTMLInputElement;
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: target.type === 'checkbox' ? target.checked : value 
+      }));
     } else {
       // This is a direct {name, value} object
       const { name, value } = e;
@@ -341,6 +347,19 @@ export default function ClientEditModal({ client, isOpen, onClose, onClientUpdat
 
               <FormSection title="Additional Information">
                 <div className="space-y-4">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="sentAgreement"
+                      name="sentAgreement"
+                      checked={formData.sentAgreement || false}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                    <label htmlFor="sentAgreement" className="ml-2 block text-sm text-gray-300">
+                      Agreement Sent
+                    </label>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">
                       Client Remarks
