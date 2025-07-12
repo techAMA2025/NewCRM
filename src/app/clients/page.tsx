@@ -69,6 +69,7 @@ function ClientsPageWithParams() {
   const [primaryAdvocateFilter, setPrimaryAdvocateFilter] = useState<string>('all')
   const [secondaryAdvocateFilter, setSecondaryAdvocateFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [documentFilter, setDocumentFilter] = useState<string>('all')
   
   // Lists for filter dropdowns
   const [allAdvocates, setAllAdvocates] = useState<string[]>([])
@@ -245,8 +246,9 @@ function ClientsPageWithParams() {
     const advocateFromUrl = searchParams.get('advocate');
     const sourceFromUrl = searchParams.get('source');
     const searchFromUrl = searchParams.get('search');
+    const documentFromUrl = searchParams.get('document');
     
-    console.log('URL Parameters detected:', { statusFromUrl, advocateFromUrl, sourceFromUrl, searchFromUrl });
+    console.log('URL Parameters detected:', { statusFromUrl, advocateFromUrl, sourceFromUrl, searchFromUrl, documentFromUrl });
     
     if (statusFromUrl) {
       console.log('Setting status filter to:', statusFromUrl);
@@ -265,6 +267,10 @@ function ClientsPageWithParams() {
     if (searchFromUrl) {
       console.log('Setting search term to:', searchFromUrl);
       setSearchTerm(searchFromUrl);
+    }
+    if (documentFromUrl) {
+      console.log('Setting document filter to:', documentFromUrl);
+      setDocumentFilter(documentFromUrl);
     }
   }, [searchParams]); // Remove clients dependency to apply immediately
 
@@ -584,6 +590,7 @@ function ClientsPageWithParams() {
       secondaryAdvocateFilter,
       statusFilter,
       sourceFilter,
+      documentFilter,
       clientsCount: clients.length
     });
     
@@ -655,10 +662,28 @@ function ClientsPageWithParams() {
       results = results.filter(client => normalizeSource(client.source_database) === sourceFilter)
       console.log('After source filter:', results.length, 'clients');
     }
+
+    // Apply document filter
+    if (documentFilter !== 'all') {
+      console.log('Filtering by document status:', documentFilter);
+      results = results.filter(client => {
+        const hasDocument = !!(client.documentUrl && client.documentUrl.trim() !== '');
+        const matches = documentFilter === 'with_document' ? hasDocument : !hasDocument;
+        if (!matches && hasDocument) {
+          console.log('Document mismatch:', { 
+            expected: documentFilter, 
+            actual: 'with_document',
+            clientName: client.name 
+          });
+        }
+        return matches;
+      });
+      console.log('After document filter:', results.length, 'clients');
+    }
     
     console.log('Final filtered results:', results.length, 'clients');
     setFilteredClients(results)
-  }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter])
+  }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter, documentFilter])
   
   // Reset all filters
   const resetFilters = () => {
@@ -667,6 +692,7 @@ function ClientsPageWithParams() {
     setPrimaryAdvocateFilter('all')
     setSecondaryAdvocateFilter('all')
     setSourceFilter('all')
+    setDocumentFilter('all')
   }
 
   // Function to format source display name
@@ -1249,6 +1275,24 @@ function ClientsPageWithParams() {
                 {allSources.map(source => (
                   <SelectItem key={source} value={source}>{formatSourceName(source)}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={documentFilter} onValueChange={setDocumentFilter}>
+              <SelectTrigger className={`w-[100px] ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-800'
+              } text-[10px] h-5`}>
+                <SelectValue placeholder="Filter by document" />
+              </SelectTrigger>
+              <SelectContent className={`${
+                theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 border-gray-700'
+                  : 'bg-white text-gray-800 border-gray-300'
+              } text-[10px]`}>
+                <SelectItem value="all">All Documents</SelectItem>
+                <SelectItem value="with_document">With Document</SelectItem>
+                <SelectItem value="no_document">No Document</SelectItem>
               </SelectContent>
             </Select>
             <Button 
