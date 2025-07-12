@@ -176,6 +176,23 @@ export default function MyClientsPage() {
     }
   };
 
+  // Format start date in dd/mm/yyyy format
+  const formatStartDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      return 'N/A';
+    }
+  };
+
   const openDocumentViewer = (url: string, name: string) => {
     setViewingDocumentUrl(url);
     setViewingDocumentName(name || "Document");
@@ -318,7 +335,7 @@ export default function MyClientsPage() {
                     </div>
                     <div className="flex items-center text-gray-600 dark:text-gray-300">
                       <FaCalendarAlt className="mr-2 text-gray-400" />
-                      <span className="text-sm">{formatDate(client.lastModified)}</span>
+                      <span className="text-sm">{formatStartDate(client.startDate)}</span>
                     </div>
                     <div className="flex items-center text-gray-600 dark:text-gray-300">
                       <input
