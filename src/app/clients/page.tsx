@@ -157,23 +157,51 @@ function ClientsPageWithParams() {
     
     const fetchClients = async () => {
       try {
-
-        const clientsQuery = query(collection(db, 'clients'), orderBy('startDate', 'desc'));
-        const querySnapshot = await getDocs(clientsQuery);
+        // Fetch all clients first
+        const allClientsQuery = query(collection(db, 'clients'));
+        const querySnapshot = await getDocs(allClientsQuery);
         
-        let clientsData: Client[] = querySnapshot.docs.map(doc => ({
+        let allClientsData: Client[] = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         } as Client));
         
         // Mark clients with missing adv_status as "Inactive"
-        clientsData = clientsData.map(client => ({
+        allClientsData = allClientsData.map(client => ({
           ...client,
           adv_status: client.adv_status || 'Inactive'
         }));
         
+        // Separate clients based on startDate
+        const clientsWithoutStartDate: Client[] = [];
+        const clientsWithStartDate: Client[] = [];
+        
+        allClientsData.forEach(client => {
+          // Check if startDate is missing, null, undefined, or empty string
+          if (!client.startDate || client.startDate.trim() === '') {
+            clientsWithoutStartDate.push(client);
+          } else {
+            clientsWithStartDate.push(client);
+          }
+        });
+        
+        // Sort clients with startDate by date (newest first)
+        clientsWithStartDate.sort((a, b) => {
+          if (!a.startDate || !b.startDate) return 0;
+          const dateA = new Date(a.startDate);
+          const dateB = new Date(b.startDate);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        // Combine both arrays with clients without startDate at the top
+        let combinedClients = [...clientsWithoutStartDate, ...clientsWithStartDate];
+        
+        console.log(`Total clients: ${combinedClients.length}`);
+        console.log(`Clients without startDate: ${clientsWithoutStartDate.length}`);
+        console.log(`Clients with startDate: ${clientsWithStartDate.length}`);
+        
         // Enhance clients with document URLs if they are missing for billcut source
-        clientsData = await Promise.all(clientsData.map(async (client) => {
+        combinedClients = await Promise.all(combinedClients.map(async (client) => {
           let enhancedClient = client;
           
           // Add document URL for billcut source if missing
@@ -219,10 +247,10 @@ function ClientsPageWithParams() {
           return enhancedClient;
         }));
 
-        setClients(clientsData);
-        setFilteredClients(clientsData);
+        setClients(combinedClients);
+        setFilteredClients(combinedClients);
         
-        const advocates = Array.from(new Set(clientsData.map(client => client.alloc_adv).filter(Boolean) as string[]));
+        const advocates = Array.from(new Set(combinedClients.map(client => client.alloc_adv).filter(Boolean) as string[]));
 
       } catch (err) {
         console.error('Detailed error fetching clients:', err);
@@ -770,7 +798,7 @@ function ClientsPageWithParams() {
         client.monthlyFees || '',
         client.personalLoanDues || '',
         client.creditCardDues || '',
-        client.startDate || '',
+        client.startDate || '', // Keep empty if no startDate
         client.tenure || '',
         client.assignedTo || '',
         client.latestRemark?.remark || '',
