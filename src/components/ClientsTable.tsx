@@ -77,6 +77,23 @@ export default function ClientsTable({
     }
   }
 
+  const formatStartDate = (dateString: string) => {
+
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      return 'N/A';
+    }
+  };
+
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center">
@@ -151,7 +168,7 @@ export default function ClientsTable({
                     onChange={(e) => onSelectClient(client.id, e.target.checked)}
                   />
                 </TableCell>
-                <TableCell className="p-1 text-[10px]">{client.startDate}</TableCell>
+                <TableCell className="p-1 text-[10px]">{formatStartDate(client.startDate)}</TableCell>
                 <TableCell className={`font-medium p-1 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                   <div className="flex flex-col">
                     <span className="font-medium text-[10px]">{client.name.toUpperCase()}</span>

@@ -284,6 +284,8 @@ function ClientsPageWithParams() {
     }
   }
 
+  
+
   const handleViewDetails = (client: Client) => {
     setSelectedClient(client);
     setIsModalOpen(true);
