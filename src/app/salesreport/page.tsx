@@ -1301,13 +1301,49 @@ export default function SalesReport() {
           }
         });
 
-        // Convert to array format
-        const productivityArray: ProductivityStats[] = [];
-        Object.values(productivityMap).forEach(userDates => {
-          Object.values(userDates).forEach(stats => {
-            productivityArray.push(stats);
+        // Convert to array format and aggregate based on selected range
+        let productivityArray: ProductivityStats[] = [];
+        
+        if (selectedProductivityRange === 'today' || selectedProductivityRange === 'yesterday') {
+          // For single day ranges, show individual days
+          Object.values(productivityMap).forEach(userDates => {
+            Object.values(userDates).forEach(stats => {
+              productivityArray.push(stats);
+            });
           });
-        });
+        } else {
+          // For multi-day ranges (last7days, last30days, custom), aggregate by user
+          Object.entries(productivityMap).forEach(([userId, userDates]) => {
+            const aggregatedStats: ProductivityStats = {
+              userId,
+              userName: Object.values(userDates)[0]?.userName || 'Unknown',
+              date: `${selectedProductivityRange === 'last7days' ? 'Last 7 Days' : 
+                     selectedProductivityRange === 'last30days' ? 'Last 30 Days' : 
+                     'Custom Range'}`,
+              leadsWorked: 0,
+              lastActivity: new Date(0),
+              statusBreakdown: {}
+            };
+
+            // Aggregate all days for this user
+            Object.values(userDates).forEach(stats => {
+              aggregatedStats.leadsWorked += stats.leadsWorked;
+              
+              // Merge status breakdowns
+              Object.entries(stats.statusBreakdown).forEach(([status, count]) => {
+                aggregatedStats.statusBreakdown[status] = 
+                  (aggregatedStats.statusBreakdown[status] || 0) + count;
+              });
+              
+              // Update last activity if this is more recent
+              if (stats.lastActivity > aggregatedStats.lastActivity) {
+                aggregatedStats.lastActivity = stats.lastActivity;
+              }
+            });
+
+            productivityArray.push(aggregatedStats);
+          });
+        }
 
         // Sort by date (newest first) and then by leads worked (descending)
         productivityArray.sort((a, b) => {
@@ -1920,6 +1956,9 @@ export default function SalesReport() {
       );
     }
 
+    // Check if we're showing aggregated data (multi-day ranges)
+    const isAggregated = selectedProductivityRange === 'last7days' || selectedProductivityRange === 'last30days' || selectedProductivityRange === 'custom';
+
     // Group by user for summary
     const userSummary = productivityStats.reduce((acc, stat) => {
       if (!acc[stat.userId]) {
@@ -1928,16 +1967,28 @@ export default function SalesReport() {
           totalLeads: 0,
           totalDays: new Set(),
           averageLeadsPerDay: 0,
-          lastActivity: new Date(0)
+          lastActivity: new Date(0),
+          isAggregated: isAggregated
         };
       }
       acc[stat.userId].totalLeads += stat.leadsWorked;
-      acc[stat.userId].totalDays.add(stat.date);
+      
+      if (isAggregated) {
+        // For aggregated data, calculate days based on the date range
+        const daysInRange = selectedProductivityRange === 'last7days' ? 7 : 
+                           selectedProductivityRange === 'last30days' ? 30 : 
+                           Math.ceil((productivityDateRange.endDate.getTime() - productivityDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        acc[stat.userId].totalDays = new Set(Array.from({length: daysInRange}, (_, i) => `day${i}`));
+      } else {
+        // For individual days, count actual days with activity
+        acc[stat.userId].totalDays.add(stat.date);
+      }
+      
       if (stat.lastActivity > acc[stat.userId].lastActivity) {
         acc[stat.userId].lastActivity = stat.lastActivity;
       }
       return acc;
-    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date } });
+    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date; isAggregated: boolean } });
 
     // Calculate averages
     Object.values(userSummary).forEach(user => {
@@ -1957,7 +2008,9 @@ export default function SalesReport() {
                     <UserGroupIcon className="h-4 w-4 text-white" />
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-medium text-gray-500 mb-1">Total Worked</p>
+                    <p className="text-xs font-medium text-gray-500 mb-1">
+                      {isAggregated ? 'Total Worked' : 'Total Worked'}
+                    </p>
                     <h3 className="text-xl font-bold text-gray-900">{user.totalLeads}</h3>
                   </div>
                 </div>
@@ -1967,8 +2020,17 @@ export default function SalesReport() {
                     <span className="font-bold text-emerald-600">{user.averageLeadsPerDay.toFixed(1)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">Days Active:</span>
-                    <span className="font-bold text-blue-600">{user.totalDays.size}</span>
+                    <span className="text-gray-600">
+                      {isAggregated ? 'Period:' : 'Days Active:'}
+                    </span>
+                    <span className="font-bold text-blue-600">
+                      {isAggregated ? 
+                        (selectedProductivityRange === 'last7days' ? '7 Days' : 
+                         selectedProductivityRange === 'last30days' ? '30 Days' : 
+                         'Custom') : 
+                        `${user.totalDays.size} days`
+                      }
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-600">Last Activity:</span>
@@ -2001,6 +2063,13 @@ export default function SalesReport() {
                   <ChartBarIcon className="h-5 w-5 text-white" />
                 </div>
                 Detailed Productivity Breakdown
+                {isAggregated && (
+                  <span className="text-sm font-normal text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">
+                    {selectedProductivityRange === 'last7days' ? 'Last 7 Days Aggregated' : 
+                     selectedProductivityRange === 'last30days' ? 'Last 30 Days Aggregated' : 
+                     'Custom Range Aggregated'}
+                  </span>
+                )}
               </h3>
             </div>
             <div className="p-6">
@@ -2012,7 +2081,7 @@ export default function SalesReport() {
                         Sales Person
                       </th>
                       <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Date
+                        {isAggregated ? 'Period' : 'Date'}
                       </th>
                       <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
                         Leads Worked
@@ -2033,12 +2102,14 @@ export default function SalesReport() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 shadow-sm">
-                            {stat.lastActivity.toLocaleDateString('en-IN', { 
-                              timeZone: 'Asia/Kolkata',
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
+                            {isAggregated ? stat.date : 
+                              stat.lastActivity.toLocaleDateString('en-IN', { 
+                                timeZone: 'Asia/Kolkata',
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric'
+                              })
+                            }
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">

@@ -624,7 +624,17 @@ const BillcutLeadReportContent = () => {
           if (leadData.lastModified) {
             // Use lastModified as UTC (do NOT convert to IST)
             const lastModifiedUTC = leadData.lastModified.toDate();
-            const dateKey = lastModifiedUTC.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }).split(',').slice(1).join(',').trim() || lastModifiedUTC.toISOString().split('T')[0];
+            
+            // For last7days and last30days, use a single date key to aggregate all data
+            // For other ranges, use individual dates
+            let dateKey: string;
+            if (selectedProductivityRange === 'last7days' || selectedProductivityRange === 'last30days') {
+              // Use a single key for the entire period
+              dateKey = selectedProductivityRange === 'last7days' ? 'Last 7 Days' : 'Last 30 Days';
+            } else {
+              // Use individual date keys for other ranges
+              dateKey = lastModifiedUTC.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }).split(',').slice(1).join(',').trim() || lastModifiedUTC.toISOString().split('T')[0];
+            }
             
             const userId = leadData.assigned_to || 'Unassigned';
             const userName = leadData.assigned_to || 'Unassigned';
@@ -1109,7 +1119,15 @@ const BillcutLeadReportContent = () => {
 
     // Calculate averages
     Object.values(userSummary).forEach(user => {
-      user.averageLeadsPerDay = user.totalLeads / user.totalDays.size;
+      // For aggregated periods (last7days, last30days), calculate average based on the actual period length
+      if (selectedProductivityRange === 'last7days') {
+        user.averageLeadsPerDay = user.totalLeads / 7;
+      } else if (selectedProductivityRange === 'last30days') {
+        user.averageLeadsPerDay = user.totalLeads / 30;
+      } else {
+        // For other ranges, use the actual number of days with activity
+        user.averageLeadsPerDay = user.totalLeads / user.totalDays.size;
+      }
     });
 
     return (
@@ -1135,8 +1153,17 @@ const BillcutLeadReportContent = () => {
                     <span className="font-bold text-emerald-600">{user.averageLeadsPerDay.toFixed(1)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">Days Active:</span>
-                    <span className="font-bold text-blue-600">{user.totalDays.size}</span>
+                    <span className="text-gray-600">
+                      {selectedProductivityRange === 'last7days' || selectedProductivityRange === 'last30days' ? 'Period:' : 'Days Active:'}
+                    </span>
+                    <span className="font-bold text-blue-600">
+                      {selectedProductivityRange === 'last7days' 
+                        ? '7 days' 
+                        : selectedProductivityRange === 'last30days' 
+                          ? '30 days' 
+                          : user.totalDays.size
+                      }
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-600">Last Activity:</span>
@@ -1180,7 +1207,7 @@ const BillcutLeadReportContent = () => {
                         Sales Person
                       </th>
                       <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Date
+                        {selectedProductivityRange === 'last7days' || selectedProductivityRange === 'last30days' ? 'Period' : 'Date'}
                       </th>
                       <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
                         Leads Worked
@@ -1201,12 +1228,15 @@ const BillcutLeadReportContent = () => {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 shadow-sm">
-                            {stat.lastActivity.toLocaleDateString('en-IN', { 
-                              timeZone: 'Asia/Kolkata',
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
+                            {selectedProductivityRange === 'last7days' || selectedProductivityRange === 'last30days' 
+                              ? stat.date // Show the period name (e.g., "Last 7 Days", "Last 30 Days")
+                              : stat.lastActivity.toLocaleDateString('en-IN', { 
+                                  timeZone: 'Asia/Kolkata',
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })
+                            }
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
