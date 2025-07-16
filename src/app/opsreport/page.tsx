@@ -67,6 +67,7 @@ interface AdvocateStats {
   active: number;
   notResponding: number;
   dropped: number;
+  onHold: number;
   totalLoanAmount: number;
 }
 
@@ -282,6 +283,7 @@ export default function OpsReport() {
           active: 0,
           notResponding: 0,
           dropped: 0,
+          onHold: 0,
           totalLoanAmount: 0,
         });
       }
@@ -290,6 +292,7 @@ export default function OpsReport() {
       if (client.adv_status === 'Active') stats.active++;
       if (client.adv_status === 'Not Responding') stats.notResponding++;
       if (client.adv_status === 'Dropped') stats.dropped++;
+      if (client.adv_status === 'On Hold') stats.onHold++;
       
       // Calculate total loan amount
       client.banks?.forEach(bank => {
@@ -564,6 +567,7 @@ export default function OpsReport() {
                 <Bar dataKey="active" fill="#3B82F6" name="Active" />
                 <Bar dataKey="notResponding" fill="#10B981" name="Not Responding" />
                 <Bar dataKey="dropped" fill="#EF4444" name="Dropped" />
+                <Bar dataKey="onHold" fill="#8B5CF6" name="On Hold" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -611,6 +615,15 @@ export default function OpsReport() {
                     }}
                   >
                     Dropped: {advocate.dropped}
+                  </span>
+                  <span 
+                    className="px-2 py-0.5 bg-purple-900/50 text-purple-300 rounded-full border border-purple-700 hover:bg-purple-800/50 hover:border-purple-600 cursor-pointer transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAdvocateStatusClick(advocate.name, 'On Hold');
+                    }}
+                  >
+                    On Hold: {advocate.onHold}
                   </span>
                 </div>
               </div>
