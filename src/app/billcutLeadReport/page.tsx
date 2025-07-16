@@ -118,6 +118,38 @@ const getStatusColor = (status: string) => {
   }
 };
 
+// Status short form function
+const getStatusShortForm = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'interested':
+      return 'int';
+    case 'not interested':
+      return 'ni';
+    case 'not answering':
+      return 'na';
+    case 'callback':
+      return 'cb';
+    case 'converted':
+      return 'conv';
+    case 'loan required':
+      return 'lr';
+    case 'cibil issue':
+      return 'ci';
+    case 'retargeting':
+      return 'rt';
+    case 'closed lead':
+      return 'cl';
+    case 'select status':
+      return 'ss';
+    case 'language barrier':
+      return 'lb';
+    case 'future potential':
+      return 'fp';
+    default:
+      return status;
+  }
+};
+
 // Status badge color function (for table cells with borders)
 const getStatusBadgeColor = (status: string) => {
   switch (status.toLowerCase()) {
@@ -620,8 +652,8 @@ const BillcutLeadReportContent = () => {
         productivitySnapshot.docs.forEach(doc => {
           const leadData = doc.data();
           
-          // Only process if lead has lastModified
-          if (leadData.lastModified) {
+          // Only process if lead has lastModified and status is not "-"
+          if (leadData.lastModified && leadData.category !== '-') {
             // Use lastModified as UTC (do NOT convert to IST)
             const lastModifiedUTC = leadData.lastModified.toDate();
             
@@ -1254,16 +1286,29 @@ const BillcutLeadReportContent = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1 justify-center">
-                            {Object.entries(stat.statusBreakdown).map(([status, count]) => (
-                              <span
-                                key={status}
-                                className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-sm`}
-                                title={`${status}: ${count}`}
-                              >
-                                {status}: {count}
-                              </span>
-                            ))}
+                          <div className="max-w-xs">
+                            <div className="overflow-x-auto">
+                              <table className="text-xs">
+                                <tbody>
+                                  <tr>
+                                    {Object.entries(stat.statusBreakdown).map(([status, count]) => (
+                                      <td key={status} className="px-1 text-center">
+                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${getStatusColor(status)}`} title={status}>
+                                          {getStatusShortForm(status)}
+                                        </span>
+                                      </td>
+                                    ))}
+                                  </tr>
+                                  <tr>
+                                    {Object.entries(stat.statusBreakdown).map(([status, count]) => (
+                                      <td key={status} className="px-1 text-center font-bold text-gray-900">
+                                        {count}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </td>
                       </tr>
