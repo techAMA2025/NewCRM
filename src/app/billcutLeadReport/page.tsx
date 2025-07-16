@@ -146,6 +146,22 @@ const getStatusBadgeColor = (status: string) => {
   }
 };
 
+// Add new interface for productivity stats
+interface ProductivityStats {
+  userId: string;
+  userName: string;
+  date: string;
+  leadsWorked: number;
+  lastActivity: Date;
+  statusBreakdown: { [key: string]: number };
+}
+
+// Add new interface for productivity date range
+interface ProductivityDateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
 const BillcutLeadReportContent = () => {
   const [leads, setLeads] = useState<BillcutLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -164,7 +180,17 @@ const BillcutLeadReportContent = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const router = useRouter();
 
-  // Function to navigate to billcut leads page with filters
+  // Add state for productivity tracking
+  const [productivityStats, setProductivityStats] = useState<ProductivityStats[]>([]);
+  const [productivityDateRange, setProductivityDateRange] = useState<ProductivityDateRange>({
+    startDate: new Date(),
+    endDate: new Date()
+  });
+  const [showProductivityCustomRange, setShowProductivityCustomRange] = useState(false);
+  const [selectedProductivityRange, setSelectedProductivityRange] = useState<string>('today');
+  const [productivityLoading, setProductivityLoading] = useState(false);
+
+  // Helper function to navigate to billcut leads page with filters
   const navigateToLeadsWithFilters = (salesperson: string, status: string) => {
     const params = new URLSearchParams();
     
@@ -389,6 +415,94 @@ const BillcutLeadReportContent = () => {
     return `${yearStr}-${monthStr}-${dayStr}`;
   };
 
+  // Helper function to convert date to IST
+  const toIST = (date: Date): Date => {
+    const utcDate = new Date(date);
+    const utcTime = utcDate.getTime();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = utcTime + istOffset;
+    return new Date(istTime);
+  };
+
+  // Helper function to convert IST to UTC for Firestore queries
+  const toUTC = (istDate: Date): Date => {
+    const istTime = new Date(istDate).getTime();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const utcTime = istTime - istOffset;
+    return new Date(utcTime);
+  };
+
+  // Helper function to get productivity date range
+  const getProductivityDateRange = (range: string): ProductivityDateRange => {
+    const nowIST = toIST(new Date());
+    const todayIST = new Date(nowIST);
+    todayIST.setHours(23, 59, 59, 999);
+    
+    const startOfTodayIST = new Date(nowIST);
+    startOfTodayIST.setHours(0, 0, 0, 0);
+
+    switch (range) {
+      case 'today':
+        return { startDate: startOfTodayIST, endDate: todayIST };
+      case 'yesterday':
+        const yesterdayStartIST = new Date(startOfTodayIST);
+        yesterdayStartIST.setDate(yesterdayStartIST.getDate() - 1);
+        const yesterdayEndIST = new Date(yesterdayStartIST);
+        yesterdayEndIST.setHours(23, 59, 59, 999);
+        return { startDate: yesterdayStartIST, endDate: yesterdayEndIST };
+      case 'last7days':
+        const last7IST = new Date(startOfTodayIST);
+        last7IST.setDate(last7IST.getDate() - 6);
+        return { startDate: last7IST, endDate: todayIST };
+      case 'last30days':
+        const last30IST = new Date(startOfTodayIST);
+        last30IST.setDate(last30IST.getDate() - 29);
+        return { startDate: last30IST, endDate: todayIST };
+      case 'custom':
+        const customStartIST = new Date(productivityDateRange.startDate);
+        customStartIST.setHours(0, 0, 0, 0);
+        const customEndIST = new Date(productivityDateRange.endDate);
+        customEndIST.setHours(23, 59, 59, 999);
+        return { startDate: customStartIST, endDate: customEndIST };
+      default:
+        return { startDate: startOfTodayIST, endDate: todayIST };
+    }
+  };
+
+  // Helper functions for productivity data
+  const getProductivityDisplayName = () => {
+    switch (selectedProductivityRange) {
+      case 'today': return "Today's Productivity";
+      case 'yesterday': return "Yesterday's Productivity";
+      case 'last7days': return "Last 7 Days Productivity";
+      case 'last30days': return "Last 30 Days Productivity";
+      case 'custom': return "Custom Range Productivity";
+      default: return "Today's Productivity";
+    }
+  };
+
+  const getProductivityColor = () => {
+    switch (selectedProductivityRange) {
+      case 'today': return 'text-emerald-600';
+      case 'yesterday': return 'text-blue-600';
+      case 'last7days': return 'text-purple-600';
+      case 'last30days': return 'text-indigo-600';
+      case 'custom': return 'text-orange-600';
+      default: return 'text-emerald-600';
+    }
+  };
+
+  const getProductivityGradient = () => {
+    switch (selectedProductivityRange) {
+      case 'today': return 'from-emerald-600/5 to-green-600/5';
+      case 'yesterday': return 'from-blue-600/5 to-indigo-600/5';
+      case 'last7days': return 'from-purple-600/5 to-violet-600/5';
+      case 'last30days': return 'from-indigo-600/5 to-blue-600/5';
+      case 'custom': return 'from-orange-600/5 to-amber-600/5';
+      default: return 'from-emerald-600/5 to-green-600/5';
+    }
+  };
+
   // Check user role and theme preference on component mount
   useEffect(() => {
     const storedRole = localStorage.getItem('userRole');
@@ -466,6 +580,113 @@ const BillcutLeadReportContent = () => {
 
     fetchLeads();
   }, [dateRange]);
+
+  // Separate useEffect for productivity tracking
+  useEffect(() => {
+    const fetchProductivityData = async () => {
+      try {
+        setProductivityLoading(true);
+
+        // Get productivity date range
+        const { startDate, endDate } = getProductivityDateRange(selectedProductivityRange);
+        
+        console.log('Productivity tracking (IST):', {
+          range: selectedProductivityRange,
+          startDate: startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          endDate: endDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+        });
+
+        // Convert IST dates to UTC for Firestore query
+        const startDateUTC = toUTC(startDate);
+        const endDateUTC = toUTC(endDate);
+        
+        console.log('Productivity Firestore query (UTC):', {
+          startDateUTC: startDateUTC.toISOString(),
+          endDateUTC: endDateUTC.toISOString()
+        });
+        
+        const productivityQuery = query(
+          collection(crmDb, 'billcutLeads'),
+          where('lastModified', '>=', startDateUTC),
+          where('lastModified', '<=', endDateUTC)
+        );
+
+        const productivitySnapshot = await getDocs(productivityQuery);
+        console.log('Found leads for productivity tracking:', productivitySnapshot.docs.length);
+
+        // Group leads by user and date
+        const productivityMap: { [key: string]: { [key: string]: ProductivityStats } } = {};
+
+        productivitySnapshot.docs.forEach(doc => {
+          const leadData = doc.data();
+          
+          // Only process if lead has lastModified
+          if (leadData.lastModified) {
+            // Use lastModified as UTC (do NOT convert to IST)
+            const lastModifiedUTC = leadData.lastModified.toDate();
+            const dateKey = lastModifiedUTC.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }).split(',').slice(1).join(',').trim() || lastModifiedUTC.toISOString().split('T')[0];
+            
+            const userId = leadData.assigned_to || 'Unassigned';
+            const userName = leadData.assigned_to || 'Unassigned';
+            const status = leadData.category || 'No Status';
+            
+            // Initialize user if not exists
+            if (!productivityMap[userId]) {
+              productivityMap[userId] = {};
+            }
+            
+            // Initialize date if not exists
+            if (!productivityMap[userId][dateKey]) {
+              productivityMap[userId][dateKey] = {
+                userId,
+                userName,
+                date: dateKey,
+                leadsWorked: 0,
+                lastActivity: lastModifiedUTC, // Store as UTC
+                statusBreakdown: {}
+              };
+            }
+            
+            // Update stats
+            productivityMap[userId][dateKey].leadsWorked += 1;
+            productivityMap[userId][dateKey].statusBreakdown[status] = 
+              (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1;
+            
+            // Update last activity if this is more recent
+            if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
+              productivityMap[userId][dateKey].lastActivity = lastModifiedUTC;
+            }
+          }
+        });
+
+        // Convert to array format
+        const productivityArray: ProductivityStats[] = [];
+        Object.values(productivityMap).forEach(userDates => {
+          Object.values(userDates).forEach(stats => {
+            productivityArray.push(stats);
+          });
+        });
+
+        // Sort by date (newest first) and then by leads worked (descending)
+        productivityArray.sort((a, b) => {
+          if (a.date !== b.date) {
+            return b.date.localeCompare(a.date);
+          }
+          return b.leadsWorked - a.leadsWorked;
+        });
+
+        console.log('Productivity stats:', productivityArray);
+        setProductivityStats(productivityArray);
+        
+      } catch (error) {
+        console.error('Error fetching productivity data:', error);
+      } finally {
+        setProductivityLoading(false);
+      }
+    };
+
+    fetchProductivityData();
+  }, [selectedProductivityRange, productivityDateRange]);
 
   // Analytics calculations
   const analytics = useMemo(() => {
@@ -841,6 +1062,191 @@ const BillcutLeadReportContent = () => {
       </div>
     );
   }
+
+  // Productivity Stats Component
+  const ProductivityStatsComponent = () => {
+    if (productivityLoading) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-emerald-200/50 rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            <div className="w-16 h-16 border-4 border-transparent border-l-green-500 rounded-full animate-spin absolute top-0 left-0 animate-pulse"></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (productivityStats.length === 0) {
+      return (
+        <div className="text-center py-20">
+          <div className="p-4 bg-emerald-50/50 rounded-xl">
+            <p className="text-emerald-600 font-medium">No productivity data found for the selected date range</p>
+            <p className="text-sm text-gray-500 mt-2">Try selecting a different date range or check if there's any activity</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Group by user for summary
+    const userSummary = productivityStats.reduce((acc, stat) => {
+      if (!acc[stat.userId]) {
+        acc[stat.userId] = {
+          userName: stat.userName,
+          totalLeads: 0,
+          totalDays: new Set(),
+          averageLeadsPerDay: 0,
+          lastActivity: new Date(0)
+        };
+      }
+      acc[stat.userId].totalLeads += stat.leadsWorked;
+      acc[stat.userId].totalDays.add(stat.date);
+      if (stat.lastActivity > acc[stat.userId].lastActivity) {
+        acc[stat.userId].lastActivity = stat.lastActivity;
+      }
+      return acc;
+    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date } });
+
+    // Calculate averages
+    Object.values(userSummary).forEach(user => {
+      user.averageLeadsPerDay = user.totalLeads / user.totalDays.size;
+    });
+
+    return (
+      <div className="space-y-6">
+        {/* Productivity Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Object.values(userSummary).map((user, index) => (
+            <div key={index} className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-green-500/5"></div>
+              <div className="relative p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg shadow-md">
+                    <FiUsers className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Total Worked</p>
+                    <h3 className="text-xl font-bold text-gray-900">{user.totalLeads}</h3>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Avg/Day:</span>
+                    <span className="font-bold text-emerald-600">{user.averageLeadsPerDay.toFixed(1)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Days Active:</span>
+                    <span className="font-bold text-blue-600">{user.totalDays.size}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Last Activity:</span>
+                    <span className="font-bold text-purple-600">
+                      {user.lastActivity.toLocaleDateString('en-IN', { 
+                        timeZone: 'Asia/Kolkata',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-sm font-bold text-gray-900 truncate">{user.userName}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Detailed Productivity Table */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-green-600/5 rounded-2xl blur-lg"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
+            <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg">
+                  <FiActivity className="h-5 w-5 text-white" />
+                </div>
+                Detailed Productivity Breakdown
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Sales Person
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Leads Worked
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Last Activity
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Status Breakdown
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100/50">
+                    {productivityStats.map((stat, index) => (
+                      <tr key={index} className="hover:bg-emerald-50/30 transition-colors duration-200">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold text-gray-900">{stat.userName}</div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 shadow-sm">
+                            {stat.lastActivity.toLocaleDateString('en-IN', { 
+                              timeZone: 'Asia/Kolkata',
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-blue-800 bg-blue-100 border border-blue-200 shadow-sm">
+                            {stat.leadsWorked}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-sm font-medium text-gray-900">
+                            {stat.lastActivity.toLocaleTimeString('en-IN', { 
+                              timeZone: 'Asia/Kolkata',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {Object.entries(stat.statusBreakdown).map(([status, count]) => (
+                              <span
+                                key={status}
+                                className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-sm`}
+                                title={`${status}: ${count}`}
+                              >
+                                {status}: {count}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 w-full" >
@@ -1496,6 +1902,102 @@ const BillcutLeadReportContent = () => {
                     </div>
                   );
                 })()}
+              </div>
+            </div>
+          </div>
+
+          {/* Productivity Stats Component */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <FiActivity className="mr-2" />
+              Productivity Analytics
+            </h3>
+            <ProductivityStatsComponent />
+          </div>
+
+          {/* Productivity Filters Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Productivity Date Range Filter */}
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <FiCalendar className="h-4 w-4 text-emerald-500" />
+                  Productivity Date Range
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'today', label: 'Today' },
+                    { key: 'yesterday', label: 'Yesterday' },
+                    { key: 'last7days', label: 'Last 7 Days' },
+                    { key: 'last30days', label: 'Last 30 Days' },
+                    { key: 'custom', label: 'Custom Range' }
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        console.log('Productivity date range button clicked:', key, label);
+                        setSelectedProductivityRange(key);
+                        setShowProductivityCustomRange(key === 'custom');
+                      }}
+                      className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                        selectedProductivityRange === key
+                          ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md'
+                          : 'bg-gray-50/80 text-gray-700 hover:bg-gray-100/80 border border-gray-200/50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom Productivity Date Range Picker */}
+                {showProductivityCustomRange && (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date</label>
+                      <input
+                        type="date"
+                        value={productivityDateRange.startDate.toISOString().split('T')[0]}
+                        onChange={(e) => setProductivityDateRange(prev => ({
+                          ...prev,
+                          startDate: new Date(e.target.value)
+                        }))}
+                        className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">End Date</label>
+                      <input
+                        type="date"
+                        value={productivityDateRange.endDate.toISOString().split('T')[0]}
+                        onChange={(e) => setProductivityDateRange(prev => ({
+                          ...prev,
+                          endDate: new Date(e.target.value)
+                        }))}
+                        className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Productivity Info */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                    <FiActivity className="h-4 w-4 text-emerald-500" />
+                    Productivity Info
+                  </label>
+                  <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-200/50">
+                    <p className="text-xs text-emerald-700 font-medium mb-1">
+                      {getProductivityDisplayName()}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Shows leads worked on per day based on lastModified timestamps
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
