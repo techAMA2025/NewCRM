@@ -1153,7 +1153,8 @@ const BillcutLeadReportContent = () => {
           totalLeads: 0,
           totalDays: new Set(),
           averageLeadsPerDay: 0,
-          lastActivity: new Date(0)
+          lastActivity: new Date(0),
+          statusBreakdown: {}
         };
       }
       acc[stat.userId].totalLeads += stat.leadsWorked;
@@ -1161,8 +1162,35 @@ const BillcutLeadReportContent = () => {
       if (stat.lastActivity > acc[stat.userId].lastActivity) {
         acc[stat.userId].lastActivity = stat.lastActivity;
       }
+      
+      // Aggregate status breakdown
+      Object.entries(stat.statusBreakdown).forEach(([status, count]) => {
+        // Normalize status name to match our expected format
+        const normalizedStatus = status.toLowerCase().trim();
+        let matchedStatus = null;
+        
+        // Find matching status from our list
+        for (const expectedStatus of getAllStatuses()) {
+          if (expectedStatus.toLowerCase() === normalizedStatus) {
+            matchedStatus = expectedStatus;
+            break;
+          }
+        }
+        
+        if (matchedStatus) {
+          acc[stat.userId].statusBreakdown[matchedStatus] = (acc[stat.userId].statusBreakdown[matchedStatus] || 0) + count;
+        } else {
+          // If no match found, use the original status
+          acc[stat.userId].statusBreakdown[status] = (acc[stat.userId].statusBreakdown[status] || 0) + count;
+        }
+      });
+      
       return acc;
-    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date } });
+    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date; statusBreakdown: { [key: string]: number } } });
+
+    // Debug: Log the actual status breakdown data
+    console.log('User Summary Status Breakdown:', userSummary);
+    console.log('Productivity Stats:', productivityStats);
 
     // Calculate averages
     Object.values(userSummary).forEach(user => {
@@ -1226,113 +1254,31 @@ const BillcutLeadReportContent = () => {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <p className="text-sm font-bold text-gray-900 truncate">{user.userName}</p>
+                  <p className="text-sm font-bold text-gray-900 truncate mb-2">{user.userName}</p>
+                  
+                  {/* Status Breakdown */}
+                  <div className="overflow-x-auto">
+                    <table className="text-xs w-full">
+                      <tbody>
+                        {getAllStatuses().map((status) => (
+                          <tr key={status} className="border-b border-gray-100 last:border-b-0">
+                            <td className="py-1 pr-2">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${getStatusColor(status)}`}>
+                                {status}
+                              </span>
+                            </td>
+                            <td className="py-1 text-right font-bold text-gray-900">
+                              {user.statusBreakdown[status] || 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Detailed Productivity Table */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-green-600/5 rounded-2xl blur-lg"></div>
-          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
-            <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg">
-                  <FiActivity className="h-5 w-5 text-white" />
-                </div>
-                Detailed Productivity Breakdown
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Sales Person
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        {selectedProductivityRange === 'last7days' || selectedProductivityRange === 'last30days' ? 'Period' : 'Date'}
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Leads Worked
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Last Activity
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Status Breakdown
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100/50">
-                    {productivityStats.map((stat, index) => (
-                      <tr key={index} className="hover:bg-emerald-50/30 transition-colors duration-200">
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-bold text-gray-900">{stat.userName}</div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 shadow-sm">
-                            {selectedProductivityRange === 'last7days' || selectedProductivityRange === 'last30days' 
-                              ? stat.date // Show the period name (e.g., "Last 7 Days", "Last 30 Days")
-                              : stat.lastActivity.toLocaleDateString('en-IN', { 
-                                  timeZone: 'Asia/Kolkata',
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })
-                            }
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-blue-800 bg-blue-100 border border-blue-200 shadow-sm">
-                            {stat.leadsWorked}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-medium text-gray-900">
-                            {stat.lastActivity.toLocaleTimeString('en-IN', { 
-                              timeZone: 'Asia/Kolkata',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="max-w-xs">
-                            <div className="overflow-x-auto">
-                              <table className="text-xs">
-                                <tbody>
-                                  <tr>
-                                    {getAllStatuses().map((status) => (
-                                      <td key={status} className="px-1 text-center">
-                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${getStatusColor(status)}`} title={status}>
-                                          {getStatusShortForm(status)}
-                                        </span>
-                                      </td>
-                                    ))}
-                                  </tr>
-                                  <tr>
-                                    {getAllStatuses().map((status) => (
-                                      <td key={status} className="px-1 text-center font-bold text-gray-900">
-                                        {stat.statusBreakdown[status] || 0}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     );
