@@ -194,6 +194,21 @@ interface ProductivityDateRange {
   endDate: Date;
 }
 
+// All possible statuses in uniform sequence
+const getAllStatuses = () => [
+  'interested',
+  'not interested', 
+  'not answering',
+  'callback',
+  'converted',
+  'loan required',
+  'cibil issue',
+  'retargeting',
+  'closed lead',
+  'language barrier',
+  'future potential'
+];
+
 const BillcutLeadReportContent = () => {
   const [leads, setLeads] = useState<BillcutLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1291,7 +1306,7 @@ const BillcutLeadReportContent = () => {
                               <table className="text-xs">
                                 <tbody>
                                   <tr>
-                                    {Object.entries(stat.statusBreakdown).map(([status, count]) => (
+                                    {getAllStatuses().map((status) => (
                                       <td key={status} className="px-1 text-center">
                                         <span className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${getStatusColor(status)}`} title={status}>
                                           {getStatusShortForm(status)}
@@ -1300,9 +1315,9 @@ const BillcutLeadReportContent = () => {
                                     ))}
                                   </tr>
                                   <tr>
-                                    {Object.entries(stat.statusBreakdown).map(([status, count]) => (
+                                    {getAllStatuses().map((status) => (
                                       <td key={status} className="px-1 text-center font-bold text-gray-900">
-                                        {count}
+                                        {stat.statusBreakdown[status] || 0}
                                       </td>
                                     ))}
                                   </tr>
