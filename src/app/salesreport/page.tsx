@@ -29,6 +29,7 @@ import {
 import { useRouter } from 'next/navigation';
 
 interface SalesUser {
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -124,6 +125,32 @@ interface LanguageBarrierData {
 
 interface LanguageBarrierChartProps {
   languageData: LanguageBarrierData[];
+}
+
+// Add new interface for lastModified tracking
+interface LastModifiedCount {
+  userId: string;
+  userName: string;
+  today: number;
+  yesterday: number;
+  thisWeek: number;
+  custom: number;
+}
+
+// Add new interface for productivity stats
+interface ProductivityStats {
+  userId: string;
+  userName: string;
+  date: string;
+  leadsWorked: number;
+  lastActivity: Date;
+  statusBreakdown: { [key: string]: number };
+}
+
+// Add new interface for productivity date range
+interface ProductivityDateRange {
+  startDate: Date;
+  endDate: Date;
 }
 
 const LEAD_STATUSES = [
@@ -245,6 +272,264 @@ export default function SalesReport() {
   // Add new state for simplified city data
   const [simpleCityData, setSimpleCityData] = useState<SimpleCityData[]>([]);
   const [languageBarrierData, setLanguageBarrierData] = useState<LanguageBarrierData[]>([]);
+
+  // Add state for lastModified tracking
+  const [lastModifiedData, setLastModifiedData] = useState<LastModifiedCount[]>([]);
+
+  // Add state for activity tracking custom date range
+  const [activityDateRange, setActivityDateRange] = useState<DateRange>({
+    startDate: new Date(),
+    endDate: new Date()
+  });
+  const [showActivityCustomRange, setShowActivityCustomRange] = useState(false);
+  const [selectedActivityRange, setSelectedActivityRange] = useState<string>('today');
+
+  // Add state for productivity tracking
+  const [productivityStats, setProductivityStats] = useState<ProductivityStats[]>([]);
+  const [productivityDateRange, setProductivityDateRange] = useState<ProductivityDateRange>({
+    startDate: new Date(),
+    endDate: new Date()
+  });
+  const [showProductivityCustomRange, setShowProductivityCustomRange] = useState(false);
+  const [selectedProductivityRange, setSelectedProductivityRange] = useState<string>('today');
+  const [productivityLoading, setProductivityLoading] = useState(false);
+
+  // Helper function to convert date to IST
+  // 
+  // Timezone Handling Improvements:
+  // Based on the provided timestamp examples:
+  // - July 8, 2025 12:07:31 PM UTC+5:30 → 2025-07-08T06:37:31Z (UTC)
+  // - May 12, 2025 6:36:38 PM UTC+5:30 → 2025-05-12T13:06:38Z (UTC)
+  // - July 12, 2025 11:07:58 AM UTC+5:30 → 2025-07-12T05:37:58Z (UTC)
+  //
+  // This function properly converts UTC timestamps to IST (UTC+5:30)
+  // by adding 5.5 hours (19,800,000 milliseconds) to the UTC time.
+  const toIST = (date: Date): Date => {
+    // Create a new date object to avoid mutating the original
+    const utcDate = new Date(date);
+    
+    // Get the UTC timestamp in milliseconds
+    const utcTime = utcDate.getTime();
+    
+    // Add IST offset (UTC+5:30 = 5.5 hours = 5.5 * 60 * 60 * 1000 milliseconds)
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = utcTime + istOffset;
+    
+    return new Date(istTime);
+  };
+
+  // Helper function to convert IST to UTC for Firestore queries
+  // 
+  // This function converts IST dates back to UTC for proper Firestore timestamp queries.
+  // Firestore stores timestamps in UTC, so we need to convert our IST date ranges
+  // to UTC before querying the database.
+  const toUTC = (istDate: Date): Date => {
+    // Create a new date object to avoid mutating the original
+    const istTime = new Date(istDate).getTime();
+    
+    // Subtract IST offset to get UTC time
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const utcTime = istTime - istOffset;
+    
+    return new Date(utcTime);
+  };
+
+  // Utility function to debug timezone conversions
+  const debugTimezoneConversion = (date: Date, label: string) => {
+    console.log(`${label}:`, {
+      original: date.toISOString(),
+      ist: toIST(date).toISOString(),
+      utc: toUTC(date).toISOString(),
+      localString: date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+      utcString: date.toLocaleString('en-US', { timeZone: 'UTC' })
+    });
+  };
+
+  // Test function to verify timezone conversions with provided examples
+  const testTimezoneConversions = () => {
+    console.log('=== Testing Timezone Conversions ===');
+    
+    // Test with the provided examples
+    const testDates = [
+      { utc: '2025-07-08T06:37:31Z', expectedIST: '2025-07-08T12:07:31.000Z' },
+      { utc: '2025-05-12T13:06:38Z', expectedIST: '2025-05-12T18:36:38.000Z' },
+      { utc: '2025-07-12T05:37:58Z', expectedIST: '2025-07-12T11:07:58.000Z' }
+    ];
+    
+    testDates.forEach((test, index) => {
+      const utcDate = new Date(test.utc);
+      const istDate = toIST(utcDate);
+      const backToUTC = toUTC(istDate);
+      
+      console.log(`Test ${index + 1}:`, {
+        originalUTC: test.utc,
+        convertedIST: istDate.toISOString(),
+        expectedIST: test.expectedIST,
+        backToUTC: backToUTC.toISOString(),
+        matches: istDate.toISOString() === test.expectedIST,
+        roundTrip: utcDate.getTime() === backToUTC.getTime()
+      });
+    });
+    
+    console.log('=== End Timezone Tests ===');
+  };
+
+  // Helper function to get IST date range for activity tracking
+  const getActivityDateRange = (range: string): DateRange => {
+    const nowIST = toIST(new Date());
+    const todayIST = new Date(nowIST);
+    todayIST.setHours(23, 59, 59, 999); // End of today in IST
+    
+    const startOfTodayIST = new Date(nowIST);
+    startOfTodayIST.setHours(0, 0, 0, 0); // Start of today in IST
+
+    switch (range) {
+      case 'today':
+        return { startDate: startOfTodayIST, endDate: todayIST };
+      case 'yesterday':
+        const yesterdayStartIST = new Date(startOfTodayIST);
+        yesterdayStartIST.setDate(yesterdayStartIST.getDate() - 1);
+        const yesterdayEndIST = new Date(yesterdayStartIST);
+        yesterdayEndIST.setHours(23, 59, 59, 999);
+        return { startDate: yesterdayStartIST, endDate: yesterdayEndIST };
+      case 'last7days':
+        const last7IST = new Date(startOfTodayIST);
+        last7IST.setDate(last7IST.getDate() - 6);
+        return { startDate: last7IST, endDate: todayIST };
+      case 'last30days':
+        const last30IST = new Date(startOfTodayIST);
+        last30IST.setDate(last30IST.getDate() - 29);
+        return { startDate: last30IST, endDate: todayIST };
+      case 'custom':
+        const customStartIST = new Date(activityDateRange.startDate);
+        customStartIST.setHours(0, 0, 0, 0);
+        const customEndIST = new Date(activityDateRange.endDate);
+        customEndIST.setHours(23, 59, 59, 999);
+        return { startDate: customStartIST, endDate: customEndIST };
+      default:
+        return { startDate: startOfTodayIST, endDate: todayIST };
+    }
+  };
+
+  // Helper functions for activity data
+  const getActivityDisplayName = () => {
+    switch (selectedActivityRange) {
+      case 'today': return "Today's Activity";
+      case 'yesterday': return "Yesterday's Activity";
+      case 'last7days': return "Last 7 Days Activity";
+      case 'last30days': return "Last 30 Days Activity";
+      case 'custom': return "Custom Range Activity";
+      default: return "Today's Activity";
+    }
+  };
+
+  const getActivityColor = () => {
+    switch (selectedActivityRange) {
+      case 'today': return 'text-green-600';
+      case 'yesterday': return 'text-blue-600';
+      case 'last7days': return 'text-purple-600';
+      case 'last30days': return 'text-indigo-600';
+      case 'custom': return 'text-orange-600';
+      default: return 'text-green-600';
+    }
+  };
+
+  const getActivityGradient = () => {
+    switch (selectedActivityRange) {
+      case 'today': return 'from-green-600/5 to-emerald-600/5';
+      case 'yesterday': return 'from-blue-600/5 to-indigo-600/5';
+      case 'last7days': return 'from-purple-600/5 to-violet-600/5';
+      case 'last30days': return 'from-indigo-600/5 to-blue-600/5';
+      case 'custom': return 'from-orange-600/5 to-amber-600/5';
+      default: return 'from-green-600/5 to-emerald-600/5';
+    }
+  };
+
+  const getActivityCount = (data: LastModifiedCount) => {
+    switch (selectedActivityRange) {
+      case 'today': return data.today;
+      case 'yesterday': return data.yesterday;
+      case 'last7days': return data.thisWeek;
+      case 'last30days': return data.thisWeek;
+      case 'custom': return data.custom;
+      default: return data.today;
+    }
+  };
+
+  const getTotalActivityCount = () => {
+    return lastModifiedData.reduce((sum, data) => sum + getActivityCount(data), 0);
+  };
+
+  // Helper function to get productivity date range
+  const getProductivityDateRange = (range: string): ProductivityDateRange => {
+    const nowIST = toIST(new Date());
+    const todayIST = new Date(nowIST);
+    todayIST.setHours(23, 59, 59, 999); // End of today in IST
+    
+    const startOfTodayIST = new Date(nowIST);
+    startOfTodayIST.setHours(0, 0, 0, 0); // Start of today in IST
+
+    switch (range) {
+      case 'today':
+        return { startDate: startOfTodayIST, endDate: todayIST };
+      case 'yesterday':
+        const yesterdayStartIST = new Date(startOfTodayIST);
+        yesterdayStartIST.setDate(yesterdayStartIST.getDate() - 1);
+        const yesterdayEndIST = new Date(yesterdayStartIST);
+        yesterdayEndIST.setHours(23, 59, 59, 999);
+        return { startDate: yesterdayStartIST, endDate: yesterdayEndIST };
+      case 'last7days':
+        const last7IST = new Date(startOfTodayIST);
+        last7IST.setDate(last7IST.getDate() - 6);
+        return { startDate: last7IST, endDate: todayIST };
+      case 'last30days':
+        const last30IST = new Date(startOfTodayIST);
+        last30IST.setDate(last30IST.getDate() - 29);
+        return { startDate: last30IST, endDate: todayIST };
+      case 'custom':
+        const customStartIST = new Date(productivityDateRange.startDate);
+        customStartIST.setHours(0, 0, 0, 0);
+        const customEndIST = new Date(productivityDateRange.endDate);
+        customEndIST.setHours(23, 59, 59, 999);
+        return { startDate: customStartIST, endDate: customEndIST };
+      default:
+        return { startDate: startOfTodayIST, endDate: todayIST };
+    }
+  };
+
+  // Helper functions for productivity data
+  const getProductivityDisplayName = () => {
+    switch (selectedProductivityRange) {
+      case 'today': return "Today's Productivity";
+      case 'yesterday': return "Yesterday's Productivity";
+      case 'last7days': return "Last 7 Days Productivity";
+      case 'last30days': return "Last 30 Days Productivity";
+      case 'custom': return "Custom Range Productivity";
+      default: return "Today's Productivity";
+    }
+  };
+
+  const getProductivityColor = () => {
+    switch (selectedProductivityRange) {
+      case 'today': return 'text-emerald-600';
+      case 'yesterday': return 'text-blue-600';
+      case 'last7days': return 'text-purple-600';
+      case 'last30days': return 'text-indigo-600';
+      case 'custom': return 'text-orange-600';
+      default: return 'text-emerald-600';
+    }
+  };
+
+  const getProductivityGradient = () => {
+    switch (selectedProductivityRange) {
+      case 'today': return 'from-emerald-600/5 to-green-600/5';
+      case 'yesterday': return 'from-blue-600/5 to-indigo-600/5';
+      case 'last7days': return 'from-purple-600/5 to-violet-600/5';
+      case 'last30days': return 'from-indigo-600/5 to-blue-600/5';
+      case 'custom': return 'from-orange-600/5 to-amber-600/5';
+      default: return 'from-emerald-600/5 to-green-600/5';
+    }
+  };
 
   const handleCellClick = (salesPersonName: string, status: string) => {
     const { startDate, endDate } = getDateRange(selectedRange);
@@ -403,6 +688,9 @@ export default function SalesReport() {
         setSelectedSource('billcut');
       }
     }
+    
+    // Test timezone conversions on component mount
+    testTimezoneConversions();
   }, []);
 
   useEffect(() => {
@@ -590,9 +878,15 @@ export default function SalesReport() {
             (selectedSource === 'all' || leadData.source_database === selectedSource) &&
             (selectedCity === 'all' || leadData.city === selectedCity)
           ) {
-            const createdDate = leadData.synced_at.toDate();
-            const convertedDate = leadData.convertedAt.toDate();
-            const conversionTimeInDays = Math.ceil((convertedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+            const createdDateUTC = leadData.synced_at.toDate();
+            const convertedDateUTC = leadData.convertedAt.toDate();
+            
+            // Convert both dates to IST for consistent day calculation
+            const createdDateIST = toIST(createdDateUTC);
+            const convertedDateIST = toIST(convertedDateUTC);
+            
+            // Calculate conversion time in days using IST dates
+            const conversionTimeInDays = Math.ceil((convertedDateIST.getTime() - createdDateIST.getTime()) / (1000 * 60 * 60 * 24));
             
             // Find assigned user name
             const assignedUser = salesUsersData.find(user => user.id === leadData.assignedToId);
@@ -601,8 +895,8 @@ export default function SalesReport() {
             conversionDataArray.push({
               leadId,
               leadName: leadData.name || 'Unknown',
-              createdDate,
-              convertedDate,
+              createdDate: createdDateIST, // Store IST date for display
+              convertedDate: convertedDateIST, // Store IST date for display
               conversionTimeInDays,
               assignedTo: assignedUserName,
               source: leadData.source_database || 'Unknown',
@@ -690,6 +984,107 @@ export default function SalesReport() {
 
         setLanguageBarrierData(languageBarrierArray);
         
+        // NOTE: Old lastModified processing moved to separate useEffect below
+        /*
+        // Process lastModified data for salesperson activity tracking
+        const now = new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Start of this week (Sunday)
+        
+        const { startDate: customStart, endDate: customEnd } = selectedRange === 'custom' 
+          ? getDateRange('custom') 
+          : { startDate: today, endDate: today };
+
+        console.log('Activity tracking dates:', {
+          today: today.toISOString().split('T')[0],
+          yesterday: yesterday.toISOString().split('T')[0],
+          startOfWeek: startOfWeek.toISOString().split('T')[0]
+        });
+
+        const lastModifiedCounts: LastModifiedCount[] = [];
+
+        for (const user of salesUsersData) {
+          const counts: LastModifiedCount = {
+            userId: user.id,
+            userName: `${user.firstName} ${user.lastName}`,
+            today: 0,
+            yesterday: 0,
+            thisWeek: 0,
+            custom: 0
+          };
+
+          let debugCount = 0;
+
+          leadsSnapshot.docs.forEach(doc => {
+            const leadData = doc.data();
+            
+            // Only count if lead is assigned to this user and matches source filter
+            if (
+              leadData.assignedToId === user.id &&
+              leadData.lastModified &&
+              (selectedSource === 'all' || leadData.source_database === selectedSource)
+            ) {
+              const lastModifiedDate = leadData.lastModified.toDate();
+              // Create a separate date object for comparison to avoid modifying the original
+              const lastModifiedDateOnly = new Date(lastModifiedDate);
+              lastModifiedDateOnly.setHours(0, 0, 0, 0);
+              
+              // Debug log for first few records of each user
+              if (debugCount < 3) {
+                console.log(`Lead for ${user.firstName} ${user.lastName}:`, {
+                  leadId: doc.id,
+                  lastModified: lastModifiedDate.toISOString(),
+                  lastModifiedDateOnly: lastModifiedDateOnly.toISOString().split('T')[0],
+                  today: today.toISOString().split('T')[0],
+                  yesterday: yesterday.toISOString().split('T')[0],
+                  isToday: lastModifiedDateOnly.getTime() === today.getTime(),
+                  isYesterday: lastModifiedDateOnly.getTime() === yesterday.getTime()
+                });
+                debugCount++;
+              }
+              
+              // Count for today
+              if (lastModifiedDateOnly.getTime() === today.getTime()) {
+                counts.today += 1;
+              }
+              
+              // Count for yesterday
+              if (lastModifiedDateOnly.getTime() === yesterday.getTime()) {
+                counts.yesterday += 1;
+              }
+              
+              // Count for this week
+              if (lastModifiedDateOnly >= startOfWeek && lastModifiedDateOnly <= today) {
+                counts.thisWeek += 1;
+              }
+              
+              // Count for custom date range
+              if (selectedRange === 'custom') {
+                const customStartOnly = new Date(customStart);
+                customStartOnly.setHours(0, 0, 0, 0);
+                const customEndOnly = new Date(customEnd);
+                customEndOnly.setHours(23, 59, 59, 999);
+                
+                if (lastModifiedDate >= customStartOnly && lastModifiedDate <= customEndOnly) {
+                  counts.custom += 1;
+                }
+              }
+            }
+          });
+
+          console.log(`Final counts for ${user.firstName} ${user.lastName}:`, counts);
+          lastModifiedCounts.push(counts);
+        }
+
+        setLastModifiedData(lastModifiedCounts);
+        */
+        
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -699,6 +1094,241 @@ export default function SalesReport() {
 
     fetchData();
   }, [selectedRange, selectedSource, customDateRange, selectedCity]);
+
+  // Separate useEffect for activity tracking with IST timezone
+  useEffect(() => {
+    const fetchActivityData = async () => {
+      try {
+        if (salesUsers.length === 0) return;
+
+        // Get leads data with IST date filtering
+        const { startDate, endDate } = getActivityDateRange(selectedActivityRange);
+        
+        console.log('Activity tracking (IST):', {
+          range: selectedActivityRange,
+          startDate: startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          endDate: endDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+        });
+
+        let activityQuery;
+        if (selectedActivityRange === 'all') {
+          activityQuery = query(collection(db, 'crm_leads'));
+        } else {
+          // Convert IST dates to UTC for Firestore query
+          const startDateUTC = toUTC(startDate);
+          const endDateUTC = toUTC(endDate);
+          
+          console.log('Firestore query (UTC):', {
+            startDateUTC: startDateUTC.toISOString(),
+            endDateUTC: endDateUTC.toISOString()
+          });
+          
+          activityQuery = query(
+            collection(db, 'crm_leads'),
+            where('lastModified', '>=', Timestamp.fromDate(startDateUTC)),
+            where('lastModified', '<=', Timestamp.fromDate(endDateUTC))
+          );
+        }
+
+        const activitySnapshot = await getDocs(activityQuery);
+        console.log('Found leads for activity tracking:', activitySnapshot.docs.length);
+
+        // Calculate IST dates for comparison
+        const nowIST = toIST(new Date());
+        const todayIST = new Date(nowIST);
+        todayIST.setHours(0, 0, 0, 0);
+        
+        const yesterdayIST = new Date(todayIST);
+        yesterdayIST.setDate(yesterdayIST.getDate() - 1);
+        
+        const startOfWeekIST = new Date(todayIST);
+        startOfWeekIST.setDate(startOfWeekIST.getDate() - startOfWeekIST.getDay());
+
+        const activityCounts: LastModifiedCount[] = [];
+
+        for (const user of salesUsers) {
+          const counts: LastModifiedCount = {
+            userId: user.id,
+            userName: `${user.firstName} ${user.lastName}`,
+            today: 0,
+            yesterday: 0,
+            thisWeek: 0,
+            custom: 0
+          };
+
+          activitySnapshot.docs.forEach(doc => {
+            const leadData = doc.data();
+            
+            // Only count if lead is assigned to this user and matches source filter
+            if (
+              leadData.assignedToId === user.id &&
+              leadData.lastModified &&
+              (selectedSource === 'all' || leadData.source_database === selectedSource)
+            ) {
+              // Convert lastModified to IST for comparison
+              const lastModifiedUTC = leadData.lastModified.toDate();
+              const lastModifiedIST = toIST(lastModifiedUTC);
+              const lastModifiedDateIST = new Date(lastModifiedIST);
+              lastModifiedDateIST.setHours(0, 0, 0, 0);
+              
+              // Count for today (IST)
+              if (lastModifiedDateIST.getTime() === todayIST.getTime()) {
+                counts.today += 1;
+              }
+              
+              // Count for yesterday (IST)
+              if (lastModifiedDateIST.getTime() === yesterdayIST.getTime()) {
+                counts.yesterday += 1;
+              }
+              
+              // Count for this week (IST)
+              if (lastModifiedDateIST >= startOfWeekIST && lastModifiedDateIST <= todayIST) {
+                counts.thisWeek += 1;
+              }
+              
+              // Count for custom date range (IST)
+              if (selectedActivityRange === 'custom') {
+                const customStartDateIST = new Date(startDate);
+                customStartDateIST.setHours(0, 0, 0, 0);
+                const customEndDateIST = new Date(endDate);
+                customEndDateIST.setHours(23, 59, 59, 999);
+                
+                if (lastModifiedIST >= customStartDateIST && lastModifiedIST <= customEndDateIST) {
+                  counts.custom += 1;
+                }
+              }
+            }
+          });
+
+          // Only add users with some activity (not all zeros)
+          if (counts.today > 0 || counts.yesterday > 0 || counts.thisWeek > 0 || counts.custom > 0) {
+            activityCounts.push(counts);
+          }
+        }
+
+        console.log('Activity counts (filtered):', activityCounts);
+        setLastModifiedData(activityCounts);
+        
+      } catch (error) {
+        console.error('Error fetching activity data:', error);
+      }
+    };
+
+    fetchActivityData();
+  }, [selectedActivityRange, activityDateRange, selectedSource, salesUsers]);
+
+  // Separate useEffect for productivity tracking
+  useEffect(() => {
+    const fetchProductivityData = async () => {
+      try {
+        if (salesUsers.length === 0) return;
+
+        setProductivityLoading(true);
+
+        // Get productivity date range
+        const { startDate, endDate } = getProductivityDateRange(selectedProductivityRange);
+        
+        console.log('Productivity tracking (IST):', {
+          range: selectedProductivityRange,
+          startDate: startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+          endDate: endDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+        });
+
+        // Convert IST dates to UTC for Firestore query
+        const startDateUTC = toUTC(startDate);
+        const endDateUTC = toUTC(endDate);
+        
+        console.log('Productivity Firestore query (UTC):', {
+          startDateUTC: startDateUTC.toISOString(),
+          endDateUTC: endDateUTC.toISOString()
+        });
+        
+        const productivityQuery = query(
+          collection(db, 'crm_leads'),
+          where('lastModified', '>=', Timestamp.fromDate(startDateUTC)),
+          where('lastModified', '<=', Timestamp.fromDate(endDateUTC))
+        );
+
+        const productivitySnapshot = await getDocs(productivityQuery);
+        console.log('Found leads for productivity tracking:', productivitySnapshot.docs.length);
+
+        // Group leads by user and date
+        const productivityMap: { [key: string]: { [key: string]: ProductivityStats } } = {};
+
+        productivitySnapshot.docs.forEach(doc => {
+          const leadData = doc.data();
+          
+          // Only process if lead has lastModified and matches source filter
+          if (
+            leadData.lastModified &&
+            leadData.assignedToId &&
+            (selectedSource === 'all' || leadData.source_database === selectedSource)
+          ) {
+            // Use lastModified as UTC (do NOT convert to IST)
+            const lastModifiedUTC = leadData.lastModified.toDate();
+            const dateKey = lastModifiedUTC.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }).split(',').slice(1).join(',').trim() || lastModifiedUTC.toISOString().split('T')[0]; // YYYY-MM-DD format in IST
+            
+            const userId = leadData.assignedToId;
+            const userName = leadData.assignedTo || 'Unknown';
+            const status = leadData.status || 'No Status';
+            
+            // Initialize user if not exists
+            if (!productivityMap[userId]) {
+              productivityMap[userId] = {};
+            }
+            
+            // Initialize date if not exists
+            if (!productivityMap[userId][dateKey]) {
+              productivityMap[userId][dateKey] = {
+                userId,
+                userName,
+                date: dateKey,
+                leadsWorked: 0,
+                lastActivity: lastModifiedUTC, // Store as UTC
+                statusBreakdown: {}
+              };
+            }
+            
+            // Update stats
+            productivityMap[userId][dateKey].leadsWorked += 1;
+            productivityMap[userId][dateKey].statusBreakdown[status] = 
+              (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1;
+            
+            // Update last activity if this is more recent
+            if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
+              productivityMap[userId][dateKey].lastActivity = lastModifiedUTC;
+            }
+          }
+        });
+
+        // Convert to array format
+        const productivityArray: ProductivityStats[] = [];
+        Object.values(productivityMap).forEach(userDates => {
+          Object.values(userDates).forEach(stats => {
+            productivityArray.push(stats);
+          });
+        });
+
+        // Sort by date (newest first) and then by leads worked (descending)
+        productivityArray.sort((a, b) => {
+          if (a.date !== b.date) {
+            return b.date.localeCompare(a.date);
+          }
+          return b.leadsWorked - a.leadsWorked;
+        });
+
+        console.log('Productivity stats:', productivityArray);
+        setProductivityStats(productivityArray);
+        
+      } catch (error) {
+        console.error('Error fetching productivity data:', error);
+      } finally {
+        setProductivityLoading(false);
+      }
+    };
+
+    fetchProductivityData();
+  }, [selectedProductivityRange, productivityDateRange, selectedSource, salesUsers]);
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
@@ -1261,6 +1891,191 @@ export default function SalesReport() {
             />
           </PieChart>
         </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  // Productivity Stats Component
+  const ProductivityStatsComponent = () => {
+    if (productivityLoading) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-emerald-200/50 rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            <div className="w-16 h-16 border-4 border-transparent border-l-green-500 rounded-full animate-spin absolute top-0 left-0 animate-pulse"></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (productivityStats.length === 0) {
+      return (
+        <div className="text-center py-20">
+          <div className="p-4 bg-emerald-50/50 rounded-xl">
+            <p className="text-emerald-600 font-medium">No productivity data found for the selected date range</p>
+            <p className="text-sm text-gray-500 mt-2">Try selecting a different date range or check if there's any activity</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Group by user for summary
+    const userSummary = productivityStats.reduce((acc, stat) => {
+      if (!acc[stat.userId]) {
+        acc[stat.userId] = {
+          userName: stat.userName,
+          totalLeads: 0,
+          totalDays: new Set(),
+          averageLeadsPerDay: 0,
+          lastActivity: new Date(0)
+        };
+      }
+      acc[stat.userId].totalLeads += stat.leadsWorked;
+      acc[stat.userId].totalDays.add(stat.date);
+      if (stat.lastActivity > acc[stat.userId].lastActivity) {
+        acc[stat.userId].lastActivity = stat.lastActivity;
+      }
+      return acc;
+    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date } });
+
+    // Calculate averages
+    Object.values(userSummary).forEach(user => {
+      user.averageLeadsPerDay = user.totalLeads / user.totalDays.size;
+    });
+
+    return (
+      <div className="space-y-6">
+        {/* Productivity Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Object.values(userSummary).map((user, index) => (
+            <div key={index} className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-green-500/5"></div>
+              <div className="relative p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg shadow-md">
+                    <UserGroupIcon className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Total Worked</p>
+                    <h3 className="text-xl font-bold text-gray-900">{user.totalLeads}</h3>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Avg/Day:</span>
+                    <span className="font-bold text-emerald-600">{user.averageLeadsPerDay.toFixed(1)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Days Active:</span>
+                    <span className="font-bold text-blue-600">{user.totalDays.size}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Last Activity:</span>
+                    <span className="font-bold text-purple-600">
+                      {user.lastActivity.toLocaleDateString('en-IN', { 
+                        timeZone: 'Asia/Kolkata',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-sm font-bold text-gray-900 truncate">{user.userName}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Detailed Productivity Table */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-green-600/5 rounded-2xl blur-lg"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
+            <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg">
+                  <ChartBarIcon className="h-5 w-5 text-white" />
+                </div>
+                Detailed Productivity Breakdown
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Sales Person
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Leads Worked
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Last Activity
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Status Breakdown
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100/50">
+                    {productivityStats.map((stat, index) => (
+                      <tr key={index} className="hover:bg-emerald-50/30 transition-colors duration-200">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold text-gray-900">{stat.userName}</div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 shadow-sm">
+                            {stat.lastActivity.toLocaleDateString('en-IN', { 
+                              timeZone: 'Asia/Kolkata',
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-blue-800 bg-blue-100 border border-blue-200 shadow-sm">
+                            {stat.leadsWorked}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-sm font-medium text-gray-900">
+                            {stat.lastActivity.toLocaleTimeString('en-IN', { 
+                              timeZone: 'Asia/Kolkata',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {Object.entries(stat.statusBreakdown).map(([status, count]) => (
+                              <span
+                                key={status}
+                                className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-sm`}
+                                title={`${status}: ${count}`}
+                              >
+                                {getStatusDisplayName(status)}: {count}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -1906,8 +2721,96 @@ export default function SalesReport() {
 
                   </>
                 )}
+
+                {/* Productivity Stats Component */}
+                <ProductivityStatsComponent />
+
               </div>
             )}
+
+            {/* Productivity Filters Section */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 via-green-600/5 to-teal-600/5 rounded-2xl blur-lg"></div>
+              <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Productivity Date Range Filter */}
+                  <div className="lg:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <CalendarDaysIcon className="h-4 w-4 text-emerald-500" />
+                      Productivity Date Range
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(DATE_RANGES).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            console.log('Productivity date range button clicked:', key, label);
+                            setSelectedProductivityRange(key);
+                            setShowProductivityCustomRange(key === 'custom');
+                          }}
+                          className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                            selectedProductivityRange === key
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md'
+                              : 'bg-gray-50/80 text-gray-700 hover:bg-gray-100/80 border border-gray-200/50'
+                          }`}
+                        >
+                          {(key !== 'all' && key !== 'last60days') && label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Custom Productivity Date Range Picker */}
+                    {showProductivityCustomRange && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Start Date</label>
+                          <input
+                            type="date"
+                            value={productivityDateRange.startDate.toISOString().split('T')[0]}
+                            onChange={(e) => setProductivityDateRange(prev => ({
+                              ...prev,
+                              startDate: new Date(e.target.value)
+                            }))}
+                            className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">End Date</label>
+                          <input
+                            type="date"
+                            value={productivityDateRange.endDate.toISOString().split('T')[0]}
+                            onChange={(e) => setProductivityDateRange(prev => ({
+                              ...prev,
+                              endDate: new Date(e.target.value)
+                            }))}
+                            className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Productivity Info */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <ChartBarIcon className="h-4 w-4 text-emerald-500" />
+                        Productivity Info
+                      </label>
+                      <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-200/50">
+                        <p className="text-xs text-emerald-700 font-medium mb-1">
+                          {getProductivityDisplayName()}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Shows leads worked on per day based on lastModified timestamps
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
