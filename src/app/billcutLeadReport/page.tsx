@@ -52,6 +52,7 @@ interface BillcutLead {
   convertedAt?: any;
   lastModified?: any;
   status?: string;
+  language_barrier?: string;
 }
 
 interface MetricCardProps {
@@ -113,6 +114,8 @@ const getStatusColor = (status: string) => {
       return 'bg-gray-500 text-white';
     case 'select status':
       return 'bg-gray-400 text-white';
+    case 'language barrier':
+      return 'bg-indigo-900 text-white';
     default:
       return 'bg-gray-400 text-white';
   }
@@ -173,6 +176,8 @@ const getStatusBadgeColor = (status: string) => {
       return 'bg-gray-500 text-white border-gray-700';
     case 'select status':
       return 'bg-gray-400 text-white border-gray-600';
+    case 'language barrier':
+      return 'bg-indigo-900 text-white border-indigo-700';
     default:
       return 'bg-gray-400 text-white border-gray-600';
   }
@@ -1056,6 +1061,193 @@ const BillcutLeadReportContent = () => {
       hasNotes: leads.filter(lead => lead.sales_notes && lead.sales_notes !== '').length
     };
 
+    // NEW: Language Barrier Analytics
+    const languageBarrierLeads = leads.filter(lead => 
+      lead.category === 'Language Barrier' || 
+      lead.status === 'Language Barrier' || 
+      (lead.language_barrier && lead.language_barrier !== '')
+    );
+
+    // Language distribution analysis
+    const languageDistribution = languageBarrierLeads.reduce((acc, lead) => {
+      // Check multiple sources for language information
+      let language = '';
+      if (lead.language_barrier && lead.language_barrier !== '') {
+        language = lead.language_barrier;
+      } else if (lead.sales_notes && lead.sales_notes.includes('Language Barrier')) {
+        // Extract language from sales notes if available
+        const languageMatch = lead.sales_notes.match(/Language Barrier[:\s-]+([A-Za-z]+)/i);
+        language = languageMatch ? languageMatch[1] : 'Unknown';
+      } else {
+        language = 'Unknown';
+      }
+      
+      acc[language] = (acc[language] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const languageDistributionData = Object.entries(languageDistribution)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    // Language barrier by salesperson
+    const languageBarrierBySalesperson = languageBarrierLeads.reduce((acc, lead) => {
+      const salesperson = lead.assigned_to || 'Unassigned';
+      if (!acc[salesperson]) {
+        acc[salesperson] = {
+          name: salesperson,
+          totalLanguageBarrierLeads: 0,
+          languages: {} as Record<string, number>
+        };
+      }
+      
+      acc[salesperson].totalLanguageBarrierLeads += 1;
+      
+      // Track languages for this salesperson
+      let language = '';
+      if (lead.language_barrier && lead.language_barrier !== '') {
+        language = lead.language_barrier;
+      } else if (lead.sales_notes && lead.sales_notes.includes('Language Barrier')) {
+        const languageMatch = lead.sales_notes.match(/Language Barrier[:\s-]+([A-Za-z]+)/i);
+        language = languageMatch ? languageMatch[1] : 'Unknown';
+      } else {
+        language = 'Unknown';
+      }
+      
+      acc[salesperson].languages[language] = (acc[salesperson].languages[language] || 0) + 1;
+      
+      return acc;
+    }, {} as Record<string, { name: string; totalLanguageBarrierLeads: number; languages: Record<string, number> }>);
+
+    const languageBarrierBySalespersonData = Object.values(languageBarrierBySalesperson)
+      .map(rep => ({
+        name: rep.name,
+        totalLeads: rep.totalLanguageBarrierLeads,
+        topLanguage: Object.entries(rep.languages)
+          .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown',
+        topLanguageCount: Object.entries(rep.languages)
+          .sort((a, b) => b[1] - a[1])[0]?.[1] || 0,
+        uniqueLanguages: Object.keys(rep.languages).length
+      }))
+      .sort((a, b) => b.totalLeads - a.totalLeads);
+
+    // Language barrier by geographic region (state)
+    const languageBarrierByState = languageBarrierLeads.reduce((acc, lead) => {
+      const address = lead.address || '';
+      const pincodeMatch = address.match(/\b\d{6}\b/);
+      const pincode = pincodeMatch ? pincodeMatch[0] : '';
+      
+      let state = 'Unknown';
+      if (pincode) {
+        const firstTwoDigits = parseInt(pincode.substring(0, 2));
+        
+        if (firstTwoDigits === 11) state = 'Delhi';
+        else if (firstTwoDigits >= 12 && firstTwoDigits <= 13) state = 'Haryana';
+        else if (firstTwoDigits >= 14 && firstTwoDigits <= 16) state = 'Punjab';
+        else if (firstTwoDigits === 17) state = 'Himachal Pradesh';
+        else if (firstTwoDigits >= 18 && firstTwoDigits <= 19) state = 'Jammu & Kashmir';
+        else if (firstTwoDigits >= 20 && firstTwoDigits <= 28) state = 'Uttar Pradesh';
+        else if (firstTwoDigits >= 30 && firstTwoDigits <= 34) state = 'Rajasthan';
+        else if (firstTwoDigits >= 36 && firstTwoDigits <= 39) state = 'Gujarat';
+        else if (firstTwoDigits >= 0 && firstTwoDigits <= 44) state = 'Maharashtra';
+        else if (firstTwoDigits >= 45 && firstTwoDigits <= 48) state = 'Madhya Pradesh';
+        else if (firstTwoDigits === 49) state = 'Chhattisgarh';
+        else if (firstTwoDigits >= 50 && firstTwoDigits <= 53) state = 'Andhra Pradesh/Telangana';
+        else if (firstTwoDigits >= 56 && firstTwoDigits <= 59) state = 'Karnataka';
+        else if (firstTwoDigits >= 60 && firstTwoDigits <= 64) state = 'Tamil Nadu';
+        else if (firstTwoDigits >= 67 && firstTwoDigits <= 69) state = 'Kerala';
+        else if (firstTwoDigits === 682) state = 'Lakshadweep';
+        else if (firstTwoDigits >= 70 && firstTwoDigits <= 74) state = 'West Bengal';
+        else if (firstTwoDigits === 744) state = 'Andaman & Nicobar';
+        else if (firstTwoDigits >= 75 && firstTwoDigits <= 77) state = 'Odisha';
+        else if (firstTwoDigits === 78) state = 'Assam';
+        else if (firstTwoDigits === 79) state = 'North Eastern States';
+        else if (firstTwoDigits >= 80 && firstTwoDigits <= 85) state = 'Bihar';
+        else if ((firstTwoDigits >= 80 && firstTwoDigits <= 83) || firstTwoDigits === 92) state = 'Jharkhand';
+      }
+      
+      if (!acc[state]) {
+        acc[state] = {
+          name: state,
+          totalLanguageBarrierLeads: 0,
+          languages: {} as Record<string, number>
+        };
+      }
+      
+      acc[state].totalLanguageBarrierLeads += 1;
+      
+      let language = '';
+      if (lead.language_barrier && lead.language_barrier !== '') {
+        language = lead.language_barrier;
+      } else if (lead.sales_notes && lead.sales_notes.includes('Language Barrier')) {
+        const languageMatch = lead.sales_notes.match(/Language Barrier[:\s-]+([A-Za-z]+)/i);
+        language = languageMatch ? languageMatch[1] : 'Unknown';
+      } else {
+        language = 'Unknown';
+      }
+      
+      acc[state].languages[language] = (acc[state].languages[language] || 0) + 1;
+      
+      return acc;
+    }, {} as Record<string, { name: string; totalLanguageBarrierLeads: number; languages: Record<string, number> }>);
+
+    const languageBarrierByStateData = Object.values(languageBarrierByState)
+      .map(state => ({
+        name: state.name,
+        totalLeads: state.totalLanguageBarrierLeads,
+        topLanguage: Object.entries(state.languages)
+          .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown',
+        topLanguageCount: Object.entries(state.languages)
+          .sort((a, b) => b[1] - a[1])[0]?.[1] || 0,
+        uniqueLanguages: Object.keys(state.languages).length
+      }))
+      .sort((a, b) => b.totalLeads - a.totalLeads)
+      .slice(0, 10); // Top 10 states
+
+    // Language barrier conversion analysis
+    const languageBarrierConversionData = languageBarrierLeads.reduce((acc, lead) => {
+      let language = '';
+      if (lead.language_barrier && lead.language_barrier !== '') {
+        language = lead.language_barrier;
+      } else if (lead.sales_notes && lead.sales_notes.includes('Language Barrier')) {
+        const languageMatch = lead.sales_notes.match(/Language Barrier[:\s-]+([A-Za-z]+)/i);
+        language = languageMatch ? languageMatch[1] : 'Unknown';
+      } else {
+        language = 'Unknown';
+      }
+      
+      if (!acc[language]) {
+        acc[language] = {
+          language,
+          totalLeads: 0,
+          convertedLeads: 0,
+          interestedLeads: 0,
+          notInterestedLeads: 0,
+          conversionRate: 0
+        };
+      }
+      
+      acc[language].totalLeads += 1;
+      
+      if (lead.category === 'Converted') {
+        acc[language].convertedLeads += 1;
+      } else if (lead.category === 'Interested') {
+        acc[language].interestedLeads += 1;
+      } else if (lead.category === 'Not Interested') {
+        acc[language].notInterestedLeads += 1;
+      }
+      
+      return acc;
+    }, {} as Record<string, { language: string; totalLeads: number; convertedLeads: number; interestedLeads: number; notInterestedLeads: number; conversionRate: number }>);
+
+    // Calculate conversion rates
+    Object.values(languageBarrierConversionData).forEach(data => {
+      data.conversionRate = data.totalLeads > 0 ? (data.convertedLeads / data.totalLeads) * 100 : 0;
+    });
+
+    const languageBarrierConversionDataArray = Object.values(languageBarrierConversionData)
+      .sort((a, b) => b.totalLeads - a.totalLeads);
+
     return {
       totalLeads,
       uniqueAssignees,
@@ -1071,6 +1263,12 @@ const BillcutLeadReportContent = () => {
       leadEntryTimelineData,
       hourlyPatternData,
       dayOfWeekPatternData,
+      // NEW: Language barrier analytics
+      languageBarrierLeads: languageBarrierLeads.length,
+      languageDistribution: languageDistributionData,
+      languageBarrierBySalesperson: languageBarrierBySalespersonData,
+      languageBarrierByState: languageBarrierByStateData,
+      languageBarrierConversion: languageBarrierConversionDataArray,
       // Existing analytics
       categoryDistribution: categoryData,
       assigneeDistribution: Object.entries(assigneeDistribution).map(([name, value]) => ({ name, value })),
@@ -1504,6 +1702,34 @@ const BillcutLeadReportContent = () => {
             />
           </div>
 
+          {/* NEW: Language Barrier Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            <MetricCard
+              title="Language Barrier Leads"
+              value={analytics.languageBarrierLeads.toLocaleString()}
+              icon={<FiUsers size={24} />}
+              color="#6366F1"
+            />
+            <MetricCard
+              title="Unique Languages"
+              value={analytics.languageDistribution.length}
+              icon={<FiTarget size={24} />}
+              color="#8B5CF6"
+            />
+            <MetricCard
+              title="Top Language"
+              value={analytics.languageDistribution.length > 0 ? analytics.languageDistribution[0].name : 'N/A'}
+              icon={<FiActivity size={24} />}
+              color="#EC4899"
+            />
+            <MetricCard
+              title="Language Barrier %"
+              value={analytics.totalLeads > 0 ? `${((analytics.languageBarrierLeads / analytics.totalLeads) * 100).toFixed(1)}%` : '0%'}
+              icon={<FiTrendingUp size={24} />}
+              color="#F59E0B"
+            />
+          </div>
+
           {/* NEW: Conversion Time Analytics Section */}
           <div className="w-full mb-6 lg:mb-8">
             {/* Conversion Time Distribution */}
@@ -1811,6 +2037,120 @@ const BillcutLeadReportContent = () => {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+           {/* NEW: Language Barrier Analytics Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <FiUsers className="mr-2" />
+              Language Barrier Analytics
+            </h3>
+            
+            {/* Summary Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Total Language Barriers</p>
+                  <p className="text-2xl font-bold text-red-600">{analytics.languageBarrierLeads.toLocaleString()}</p>
+                </div>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Languages Affected</p>
+                  <p className="text-2xl font-bold text-orange-600">{analytics.languageDistribution.length}</p>
+                </div>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Most Common</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                    {analytics.languageDistribution.length > 0 ? analytics.languageDistribution[0].name : 'N/A'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {analytics.languageDistribution.length > 0 ? `${analytics.languageDistribution[0].value} leads` : ''}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Barrier Rate</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {analytics.totalLeads > 0 ? `${((analytics.languageBarrierLeads / analytics.totalLeads) * 100).toFixed(1)}%` : '0%'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Language Barrier Breakdown Table */}
+            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-6">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <FiUsers className="mr-2" />
+                Language Barrier Breakdown
+              </h4>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">LANGUAGE</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-900 dark:text-white">NUMBER OF LEADS</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-900 dark:text-white">PERCENTAGE</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-900 dark:text-white">IMPACT LEVEL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.languageDistribution.map((language, index) => {
+                      const percentage = analytics.languageBarrierLeads > 0 ? 
+                        ((language.value / analytics.languageBarrierLeads) * 100).toFixed(1) : '0';
+                      
+                      // Determine impact level based on percentage
+                      let impactLevel = 'Low';
+                      let impactColor = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                      if (parseFloat(percentage) >= 30) {
+                        impactLevel = 'High';
+                        impactColor = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                      } else if (parseFloat(percentage) >= 15) {
+                        impactLevel = 'Medium';
+                        impactColor = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+                      }
+
+                      // Language color dots
+                      const languageColors = [
+                        'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 
+                        'bg-orange-500', 'bg-purple-500', 'bg-teal-500',
+                        'bg-pink-500', 'bg-indigo-500', 'bg-red-500', 'bg-gray-500'
+                      ];
+
+                      return (
+                        <tr key={language.name} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center">
+                              <div className={`w-3 h-3 rounded-full ${languageColors[index % languageColors.length]} mr-3`}></div>
+                              <span className="font-medium text-gray-900 dark:text-white">{language.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="inline-block bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-3 py-1 rounded-full text-sm font-medium">
+                              {language.value}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-medium text-gray-900 dark:text-white">{percentage}%</span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${impactColor}`}>
+                              {impactLevel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
 
           {/* Salesperson-wise Lead Status Analytics */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
@@ -2037,6 +2377,8 @@ const BillcutLeadReportContent = () => {
               </div>
             </div>
           </div>
+
+         
         </div>
       </div>
     </div>
