@@ -1968,10 +1968,17 @@ export default function SalesReport() {
           totalDays: new Set(),
           averageLeadsPerDay: 0,
           lastActivity: new Date(0),
-          isAggregated: isAggregated
+          isAggregated: isAggregated,
+          statusBreakdown: {}
         };
       }
       acc[stat.userId].totalLeads += stat.leadsWorked;
+      
+      // Merge status breakdowns
+      Object.entries(stat.statusBreakdown).forEach(([status, count]) => {
+        acc[stat.userId].statusBreakdown[status] = 
+          (acc[stat.userId].statusBreakdown[status] || 0) + count;
+      });
       
       if (isAggregated) {
         // For aggregated data, calculate days based on the date range
@@ -1988,7 +1995,7 @@ export default function SalesReport() {
         acc[stat.userId].lastActivity = stat.lastActivity;
       }
       return acc;
-    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date; isAggregated: boolean } });
+    }, {} as { [key: string]: { userName: string; totalLeads: number; totalDays: Set<string>; averageLeadsPerDay: number; lastActivity: Date; isAggregated: boolean; statusBreakdown: { [key: string]: number } } });
 
     // Calculate averages
     Object.values(userSummary).forEach(user => {
@@ -1997,40 +2004,54 @@ export default function SalesReport() {
 
     return (
       <div className="space-y-6">
-        {/* Productivity Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Productivity Analytics Header */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-green-600/5 rounded-2xl blur-lg"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
+                <ChartBarIcon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-emerald-800 to-green-800 bg-clip-text text-transparent">
+                  Productivity Analytics
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {getProductivityDisplayName()} - Performance metrics for sales agents
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Productivity Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Object.values(userSummary).map((user, index) => (
             <div key={index} className="group relative overflow-hidden bg-white/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-green-500/5"></div>
-              <div className="relative p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg shadow-md">
-                    <UserGroupIcon className="h-4 w-4 text-white" />
+              <div className="relative p-4 h-full flex flex-col">
+                {/* Agent Name Header */}
+                <div className="text-center mb-3">
+                  <h4 className="text-sm font-bold text-gray-900 truncate">{user.userName}</h4>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="flex justify-center space-x-4 mb-3">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">Total Worked</p>
+                    <p className="text-lg font-bold text-gray-900">{user.totalLeads}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-gray-500 mb-1">
-                      {isAggregated ? 'Total Worked' : 'Total Worked'}
-                    </p>
-                    <h3 className="text-xl font-bold text-gray-900">{user.totalLeads}</h3>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">Avg/Day</p>
+                    <p className="text-lg font-bold text-emerald-600">{user.averageLeadsPerDay.toFixed(1)}</p>
                   </div>
                 </div>
-                <div className="space-y-2">
+
+                {/* Additional Metrics */}
+                <div className="space-y-2 mb-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">Avg/Day:</span>
-                    <span className="font-bold text-emerald-600">{user.averageLeadsPerDay.toFixed(1)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-600">
-                      {isAggregated ? 'Period:' : 'Days Active:'}
-                    </span>
-                    <span className="font-bold text-blue-600">
-                      {isAggregated ? 
-                        (selectedProductivityRange === 'last7days' ? '7 Days' : 
-                         selectedProductivityRange === 'last30days' ? '30 Days' : 
-                         'Custom') : 
-                        `${user.totalDays.size} days`
-                      }
-                    </span>
+                    <span className="text-gray-600">Days Active:</span>
+                    <span className="font-bold text-blue-600">{user.totalDays.size}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-600">Last Activity:</span>
@@ -2045,108 +2066,33 @@ export default function SalesReport() {
                     </span>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <p className="text-sm font-bold text-gray-900 truncate">{user.userName}</p>
+
+                {/* Lead Status Breakdown */}
+                <div className="flex-1 space-y-1 max-h-32 overflow-y-auto">
+                  {Object.entries(user.statusBreakdown)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 8)
+                    .map(([status, count]) => (
+                      <div key={status} className="flex items-center justify-between p-1 rounded text-xs">
+                        <div className="flex items-center space-x-2 flex-1 min-w-0">
+                          <div 
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: COLORS[LEAD_STATUSES.indexOf(status) % COLORS.length] }}
+                          ></div>
+                          <span className="text-gray-700 truncate">{status.toLowerCase()}</span>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className="font-bold text-gray-900">{count}</span>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Detailed Productivity Table */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/5 to-green-600/5 rounded-2xl blur-lg"></div>
-          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
-            <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 px-6 py-4 border-b border-white/10 rounded-t-2xl">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg">
-                  <ChartBarIcon className="h-5 w-5 text-white" />
-                </div>
-                Detailed Productivity Breakdown
-                {isAggregated && (
-                  <span className="text-sm font-normal text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">
-                    {selectedProductivityRange === 'last7days' ? 'Last 7 Days Aggregated' : 
-                     selectedProductivityRange === 'last30days' ? 'Last 30 Days Aggregated' : 
-                     'Custom Range Aggregated'}
-                  </span>
-                )}
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm">
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Sales Person
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        {isAggregated ? 'Period' : 'Date'}
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Leads Worked
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Last Activity
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Status Breakdown
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100/50">
-                    {productivityStats.map((stat, index) => (
-                      <tr key={index} className="hover:bg-emerald-50/30 transition-colors duration-200">
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-bold text-gray-900">{stat.userName}</div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 shadow-sm">
-                            {isAggregated ? stat.date : 
-                              stat.lastActivity.toLocaleDateString('en-IN', { 
-                                timeZone: 'Asia/Kolkata',
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric'
-                              })
-                            }
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold text-blue-800 bg-blue-100 border border-blue-200 shadow-sm">
-                            {stat.leadsWorked}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-medium text-gray-900">
-                            {stat.lastActivity.toLocaleTimeString('en-IN', { 
-                              timeZone: 'Asia/Kolkata',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1 justify-center">
-                            {Object.entries(stat.statusBreakdown).map(([status, count]) => (
-                              <span
-                                key={status}
-                                className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${getStatusColor(status)} shadow-sm`}
-                                title={`${status}: ${count}`}
-                              >
-                                {getStatusDisplayName(status)}: {count}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+       
       </div>
     );
   };
