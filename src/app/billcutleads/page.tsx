@@ -230,6 +230,7 @@ const BillCutLeadsPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
+  const [isLoadAllLoading, setIsLoadAllLoading] = useState(false)
   const [leads, setLeads] = useState<Lead[]>([])
   const [searchResults, setSearchResults] = useState<Lead[]>([])
   const [hasMoreLeads, setHasMoreLeads] = useState(true)
@@ -793,7 +794,7 @@ const BillCutLeadsPage = () => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         const target = entries[0]
-        if (target.isIntersecting && hasMoreLeads && !isLoadingMore && !isLoading && !searchQuery.trim()) {
+        if (target.isIntersecting && hasMoreLeads && !isLoadingMore && !isLoading && !searchQuery.trim() && !isLoadAllLoading) {
           fetchBillcutLeads(true)
         }
       },
@@ -809,11 +810,14 @@ const BillCutLeadsPage = () => {
         observerRef.current.disconnect()
       }
     }
-  }, [hasMoreLeads, isLoadingMore, isLoading, fetchBillcutLeads, searchQuery])
+  }, [hasMoreLeads, isLoadingMore, isLoading, fetchBillcutLeads, searchQuery, isLoadAllLoading])
 
   // Fetch leads when filters change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
+      // Reset pagination state when filters change
+      setLastDoc(null)
+      setHasMoreLeads(true)
       fetchBillcutLeads(false)
     }, 300) // Debounce filter changes
 
@@ -1123,7 +1127,7 @@ const BillCutLeadsPage = () => {
   // Export to CSV function
   const exportToCSV = () => {
     try {
-      if (userRole !== "admin" && userRole !== "overlord") {
+      if (userRole !== "admin" && userRole !== "overlord" && userRole !== "billcut") {
         toast.error("You don't have permission to export data")
         return
       }
@@ -1532,6 +1536,171 @@ const BillCutLeadsPage = () => {
     }
   };
 
+  // Load all leads function - bypasses pagination
+  const loadAllLeads = async () => {
+    if (searchQuery.trim()) {
+      toast.error("Cannot load all leads while searching. Please clear the search first.")
+      return
+    }
+
+    setIsLoadAllLoading(true)
+    setLeads([])
+    setLastDoc(null)
+    setHasMoreLeads(false) // Disable infinite scroll while loading all
+
+    try {
+      const baseQuery = collection(crmDb, "billcutLeads")
+      const constraints: any[] = []
+
+      // Date filters - using 'date' field instead of 'synced_date'
+      if (fromDate) {
+        const fromDateStart = new Date(fromDate)
+        fromDateStart.setHours(0, 0, 0, 0)
+        constraints.push(where("date", ">=", fromDateStart.getTime()))
+      }
+
+      if (toDate) {
+        const toDateEnd = new Date(toDate)
+        toDateEnd.setHours(23, 59, 59, 999)
+        constraints.push(where("date", "<=", toDateEnd.getTime()))
+      }
+
+      // Status filter
+      if (statusFilter !== "all") {
+        if (statusFilter === "No Status") {
+          constraints.push(where("category", "in", ["", "-", "No Status"]))
+        } else {
+          constraints.push(where("category", "==", statusFilter))
+        }
+      }
+
+      // Salesperson filter
+      if (salesPersonFilter !== "all") {
+        if (salesPersonFilter === "-") {
+          constraints.push(where("assigned_to", "in", ["", "-"]))
+        } else {
+          constraints.push(where("assigned_to", "==", salesPersonFilter))
+        }
+      }
+
+      // My Leads filter
+      if (showMyLeads && typeof window !== "undefined") {
+        const currentUserName = localStorage.getItem("userName")
+        if (currentUserName) {
+          constraints.push(where("assigned_to", "==", currentUserName))
+        }
+      }
+
+      // Tab-based filtering - Callback tab
+      if (activeTab === "callback") {
+        constraints.push(where("category", "==", "Callback"))
+      }
+
+      // Add ordering - use 'date' field for consistency
+      constraints.push(orderBy("date", "desc"))
+
+      // Load all leads (no limit)
+      const allLeadsQuery = query(baseQuery, ...constraints)
+      const querySnapshot = await getDocs(allLeadsQuery)
+
+      if (querySnapshot.empty) {
+        setLeads([])
+        return
+      }
+
+      const fetchedLeads = await Promise.all(
+        querySnapshot.docs.map(async (docSnapshot) => {
+          const data = docSnapshot.data()
+          const address = data.address || ""
+          const pincode = extractPincodeFromAddress(address)
+          const state = pincode ? getStateFromPincode(pincode) : "Unknown State"
+
+          const lead: Lead = {
+            id: docSnapshot.id,
+            name: data.name || "",
+            email: data.email || "",
+            phone: data.mobile || "",
+            city: state,
+            status: data.category || "No Status",
+            source_database: "Bill Cut",
+            assignedTo: data.assigned_to || "",
+            monthlyIncome: data.income || "",
+            salesNotes: data.sales_notes || "",
+            lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+            date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
+            callbackInfo: null,
+            debtRange: data.debt_range || 0,
+          }
+
+          // Fetch callback info for callback leads
+          if (lead.status === "Callback") {
+            const callbackInfo = await fetchCallbackInfo(lead.id)
+            lead.callbackInfo = callbackInfo
+          }
+
+          return lead
+        }),
+      )
+
+      // Apply debt range sorting (client-side)
+      let filteredLeads = fetchedLeads
+      if (debtRangeSort !== "none") {
+        filteredLeads = [...filteredLeads].sort((a, b) => {
+          const debtA = Number.parseFloat(a.debtRange?.toString() || "0")
+          const debtB = Number.parseFloat(b.debtRange?.toString() || "0")
+          if (debtRangeSort === "low-to-high") {
+            return debtA - debtB
+          } else if (debtRangeSort === "high-to-low") {
+            return debtB - debtA
+          }
+          return 0
+        })
+      }
+
+      // Apply callback sorting to the entire list when on callback tab
+      if (activeTab === "callback") {
+        filteredLeads = [...filteredLeads].sort((a, b) => {
+          const priorityA = getCallbackPriority(a)
+          const priorityB = getCallbackPriority(b)
+          
+          // If priorities are the same, sort by scheduled time (earliest first)
+          if (priorityA === priorityB && a.callbackInfo && b.callbackInfo && 
+              a.callbackInfo.scheduled_dt && b.callbackInfo.scheduled_dt) {
+            const timeA = new Date(a.callbackInfo.scheduled_dt).getTime()
+            const timeB = new Date(b.callbackInfo.scheduled_dt).getTime()
+            return timeA - timeB
+          }
+          
+          return priorityA - priorityB
+        })
+      }
+
+      setLeads(filteredLeads)
+      setTotalFilteredCount(filteredLeads.length)
+
+      // Initialize editing state
+      const initialEditingState: EditingLeadsState = {}
+      filteredLeads.forEach((lead) => {
+        initialEditingState[lead.id] = {
+          ...lead,
+          salesNotes: lead.salesNotes || "",
+        }
+      })
+      setEditingLeads(initialEditingState)
+
+      toast.success(`Loaded ${filteredLeads.length} leads`, {
+        position: "top-right",
+        autoClose: 3000,
+      })
+
+    } catch (error) {
+      console.error("Error loading all leads: ", error)
+      toast.error("Failed to load all leads")
+    } finally {
+      setIsLoadAllLoading(false)
+    }
+  }
+
   // Render sidebar based on user role
   const SidebarComponent = useMemo(() => {
     if (userRole === "admin") {
@@ -1554,6 +1723,8 @@ const BillCutLeadsPage = () => {
             userRole={userRole}
             currentUser={currentUser}
             exportToCSV={exportToCSV}
+            loadAllLeads={loadAllLeads}
+            isLoadAllLoading={isLoadAllLoading}
           />
 
           <BillcutLeadsTabs
@@ -1640,7 +1811,7 @@ const BillCutLeadsPage = () => {
                 onEditLanguageBarrier={handleEditLanguageBarrier}
               />
 
-              {/* Infinite scroll trigger - only show when not searching */}
+              {/* Infinite scroll trigger - only show when not searching and has more leads */}
               {hasMoreLeads && !searchQuery.trim() && (
                 <div ref={loadMoreRef} className="flex justify-center items-center py-8">
                   {isLoadingMore ? (
@@ -1648,6 +1819,13 @@ const BillCutLeadsPage = () => {
                   ) : (
                     <div className="text-gray-400 text-sm">Scroll down to load more leads...</div>
                   )}
+                </div>
+              )}
+
+              {/* Show message when all leads are loaded */}
+              {!hasMoreLeads && !searchQuery.trim() && leads.length > 0 && (
+                <div className="flex justify-center items-center py-4">
+                  <div className="text-gray-400 text-sm">All leads loaded ({leads.length} total)</div>
                 </div>
               )}
 
