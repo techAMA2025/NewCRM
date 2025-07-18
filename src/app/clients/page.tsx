@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Eye, Download } from 'lucide-react'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
+import BillcutSidebar from '@/components/navigation/BillcutSidebar'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import toast from 'react-hot-toast'
@@ -153,6 +154,11 @@ function ClientsPageWithParams() {
     if (typeof window !== 'undefined') {
       const role = localStorage.getItem('userRole') || '';
       setUserRole(role);
+      
+      // If user is billcut, lock the source filter to billcut
+      if (role === 'billcut') {
+        setSourceFilter('billcut');
+      }
     }
     
     const fetchClients = async () => {
@@ -286,7 +292,7 @@ function ClientsPageWithParams() {
       console.log('Setting advocate filter to:', advocateFromUrl);
       setPrimaryAdvocateFilter(advocateFromUrl);
     }
-    if (sourceFromUrl) {
+    if (sourceFromUrl && userRole !== 'billcut') {
       // Convert display name back to normalized source value
       const normalizedSource = sourceFromUrl.toLowerCase().replace(/\s+/g, '');
       console.log('Setting source filter to:', normalizedSource);
@@ -300,7 +306,7 @@ function ClientsPageWithParams() {
       console.log('Setting document filter to:', documentFromUrl);
       setDocumentFilter(documentFromUrl);
     }
-  }, [searchParams]); // Remove clients dependency to apply immediately
+  }, [searchParams, userRole]); // Add userRole dependency to prevent overriding billcut filter
 
   useEffect(() => {
 
@@ -415,6 +421,8 @@ function ClientsPageWithParams() {
       return <OverlordSidebar />;
     } else if (userRole === 'admin') {
       return <AdminSidebar />;
+    } else if (userRole === 'billcut') {
+      return <BillcutSidebar />;
     } else {
       // Default to AdminSidebar if role is unknown
       return <AdminSidebar />;
@@ -1190,7 +1198,7 @@ function ClientsPageWithParams() {
             <h1 className={`text-base font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
               Clients Management
             </h1>
-            {selectedClients.size > 0 && (
+            {selectedClients.size > 0 && userRole !== 'billcut' && (
               <div className="flex gap-1">
                 <Button
                   onClick={() => setIsBulkAssignModalOpen(true)}
@@ -1208,17 +1216,19 @@ function ClientsPageWithParams() {
             )}
           </div>
           <div className="flex gap-1.5">
-            <Button
-              onClick={downloadCSV}
-              className={`${
-                theme === 'dark'
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-green-500 hover:bg-green-600 text-white'
-              } text-[10px] h-5 px-2 flex items-center gap-1`}
-            >
-              <Download className="h-2.5 w-2.5" />
-              Export CSV
-            </Button>
+            {userRole !== 'billcut' && (
+              <Button
+                onClick={downloadCSV}
+                className={`${
+                  theme === 'dark'
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                } text-[10px] h-5 px-2 flex items-center gap-1`}
+              >
+                <Download className="h-2.5 w-2.5" />
+                Export CSV
+              </Button>
+            )}
             <Input
               placeholder="Search clients..."
               value={searchTerm}
@@ -1286,12 +1296,12 @@ function ClientsPageWithParams() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <Select value={sourceFilter} onValueChange={setSourceFilter} disabled={userRole === 'billcut'}>
               <SelectTrigger className={`w-[100px] ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-gray-200'
                   : 'bg-white border-gray-300 text-gray-800'
-              } text-[10px] h-5`}>
+              } text-[10px] h-5 ${userRole === 'billcut' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <SelectValue placeholder="Filter by source" />
               </SelectTrigger>
               <SelectContent className={`${
@@ -1355,6 +1365,7 @@ function ClientsPageWithParams() {
           onRemarkChange={handleRemarkChange}
           onSaveRemark={handleSaveRemark}
           onAgreementToggle={handleAgreementToggle}
+          userRole={userRole}
         />
 
         {/* Modals */}

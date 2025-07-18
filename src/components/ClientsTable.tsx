@@ -49,6 +49,7 @@ interface ClientsTableProps {
   onRemarkChange: (clientId: string, value: string) => void
   onSaveRemark: (clientId: string) => void
   onAgreementToggle: (clientId: string, currentStatus: boolean) => void
+  userRole?: string
 }
 
 export default function ClientsTable({
@@ -67,7 +68,8 @@ export default function ClientsTable({
   remarks,
   onRemarkChange,
   onSaveRemark,
-  onAgreementToggle
+  onAgreementToggle,
+  userRole
 }: ClientsTableProps) {
   const isDark = theme === 'dark'
 
@@ -136,6 +138,7 @@ export default function ClientsTable({
                   } h-2.5 w-2.5`}
                   checked={selectedClients.size === clients.length && clients.length > 0}
                   onChange={(e) => onSelectAll(e.target.checked)}
+                  disabled={userRole === 'billcut'}
                 />
               </TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Start Date</TableHead>
@@ -166,6 +169,7 @@ export default function ClientsTable({
                     } h-2.5 w-2.5`}
                     checked={selectedClients.has(client.id)}
                     onChange={(e) => onSelectClient(client.id, e.target.checked)}
+                    disabled={userRole === 'billcut'}
                   />
                 </TableCell>
                 <TableCell className="p-1 text-[10px]">{formatStartDate(client.startDate)}</TableCell>
@@ -195,6 +199,7 @@ export default function ClientsTable({
                   <Select 
                     value={client.adv_status || 'Inactive'} 
                     onValueChange={(value) => onAdvocateStatusChange(client.id, value)}
+                    disabled={userRole === 'billcut'}
                   >
                     <SelectTrigger className={`w-[75px] h-4 px-1 py-0 text-[8px] border ${
                       client.adv_status === 'Active' 
@@ -220,7 +225,7 @@ export default function ClientsTable({
                         : isDark
                           ? 'bg-gray-900/50 text-gray-400 border-gray-700'
                           : 'bg-gray-50 text-gray-600 border-gray-200'
-                    }`}>
+                    } ${userRole === 'billcut' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className={isDark ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white text-gray-800 border-gray-300'}>
@@ -237,19 +242,20 @@ export default function ClientsTable({
                     <input
                       type="checkbox"
                       id={`agreement-${client.id}`}
-                      checked={client.sentAgreement || false}
-                      onChange={() => onAgreementToggle(client.id, client.sentAgreement || false)}
+                      checked={Boolean(client.sentAgreement)}
+                      onChange={() => onAgreementToggle(client.id, Boolean(client.sentAgreement))}
+                      disabled={userRole === 'billcut'}
                       className={`rounded ${
                         isDark 
                           ? 'border-gray-600 text-blue-400 focus:ring-blue-400 bg-gray-700' 
                           : 'border-gray-300 text-blue-500 focus:ring-blue-500 bg-white'
-                      } h-3 w-3`}
+                      } h-3 w-3 ${userRole === 'billcut' ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                     <label 
                       htmlFor={`agreement-${client.id}`} 
                       className={`ml-1 text-[8px] cursor-pointer ${
                         isDark ? 'text-gray-300' : 'text-gray-600'
-                      }`}
+                      } ${userRole === 'billcut' ? 'cursor-default' : ''}`}
                     >
                       Sent
                     </label>
@@ -261,31 +267,34 @@ export default function ClientsTable({
                       value={remarks[client.id] || ""}
                       onChange={(e) => onRemarkChange(client.id, e.target.value)}
                       placeholder="Enter remark..."
-                      className={`w-full px-1.5 py-1 ${isDark ? 'bg-gray-700 border-gray-600 text-gray-200' : 'bg-gray-100 border-gray-300 text-gray-800'} border rounded text-xs resize-none`}
+                      disabled={userRole === 'billcut'}
+                      className={`w-full px-1.5 py-1 ${isDark ? 'bg-gray-700 border-gray-600 text-gray-200' : 'bg-gray-100 border-gray-300 text-gray-800'} border rounded text-xs resize-none ${userRole === 'billcut' ? 'opacity-50 cursor-not-allowed' : ''}`}
                       rows={2}
                     />
-                    <div className="flex space-x-1.5">
-                      <button
-                        onClick={() => onSaveRemark(client.id)}
-                        className={`px-2 py-0.5 text-xs rounded transition-colors duration-200 ${
-                          isDark 
-                            ? 'bg-green-700 hover:bg-green-600 text-white' 
-                            : 'bg-green-600 hover:bg-green-500 text-white'
-                        }`}
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => onViewHistory(client.id)}
-                        className={`px-2 py-0.5 text-xs rounded transition-colors duration-200 ${
-                          isDark 
-                            ? 'bg-purple-700 hover:bg-purple-600 text-white' 
-                            : 'bg-purple-600 hover:bg-purple-500 text-white'
-                        }`}
-                      >
-                        History
-                      </button>
-                    </div>
+                    {userRole !== 'billcut' && (
+                      <div className="flex space-x-1.5">
+                        <button
+                          onClick={() => onSaveRemark(client.id)}
+                          className={`px-2 py-0.5 text-xs rounded transition-colors duration-200 ${
+                            isDark 
+                              ? 'bg-green-700 hover:bg-green-600 text-white' 
+                              : 'bg-green-600 hover:bg-green-500 text-white'
+                          }`}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => onViewHistory(client.id)}
+                          className={`px-2 py-0.5 text-xs rounded transition-colors duration-200 ${
+                            isDark 
+                              ? 'bg-purple-700 hover:bg-purple-600 text-white' 
+                              : 'bg-purple-600 hover:bg-purple-500 text-white'
+                          }`}
+                        >
+                          History
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="p-1">
@@ -298,9 +307,6 @@ export default function ClientsTable({
                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onViewDetails(client)}>
                       <Eye className="h-2.5 w-2.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onEditClient(client)}>
-                      <Edit className="h-2.5 w-2.5" />
-                    </Button>
                     {client.documentUrl && (
                       <Button
                         variant="ghost"
@@ -311,9 +317,16 @@ export default function ClientsTable({
                         <FileText className="h-2.5 w-2.5" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-5 w-5 text-red-500 hover:text-red-600" onClick={() => onDeleteClient(client)}>
-                      <Trash2 className="h-2.5 w-2.5" />
-                    </Button>
+                    {userRole !== 'billcut' && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onEditClient(client)}>
+                          <Edit className="h-2.5 w-2.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-5 w-5 text-red-500 hover:text-red-600" onClick={() => onDeleteClient(client)}>
+                          <Trash2 className="h-2.5 w-2.5" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
