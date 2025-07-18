@@ -1682,7 +1682,7 @@ function ClientsPageWithParams() {
           }
           .animate-fade-in {
             animation: fade-in 0.2s ease-out;
-          }
+          } 
           @keyframes slide-up {
             from { opacity: 0; transform: translateY(1rem); }
             to { opacity: 1; transform: translateY(0); }
