@@ -140,6 +140,7 @@ export default function SalesDashboard() {
     'Callback': '#ca8a04', // yellow-600
     'Converted': '#10b981', // emerald-500
     'Loan Required': '#9333ea', // purple-600
+    'Short Loan': '#0d9488', // teal-600
     'Cibil Issue': '#e11d48', // rose-600
     'Closed Lead': '#4b5563', // gray-600
     'No Status': '#6366f1', // indigo-500

@@ -106,6 +106,8 @@ const getStatusColor = (status: string) => {
       return 'bg-emerald-900 text-white';
     case 'loan required':
       return 'bg-purple-900 text-white';
+    case 'short loan':
+      return 'bg-teal-900 text-white';
     case 'cibil issue':
       return 'bg-rose-900 text-white';
     case 'retargeting':
@@ -168,6 +170,8 @@ const getStatusBadgeColor = (status: string) => {
       return 'bg-emerald-900 text-white border-emerald-700';
     case 'loan required':
       return 'bg-purple-900 text-white border-purple-700';
+    case 'short loan':
+      return 'bg-teal-900 text-white border-teal-700';
     case 'cibil issue':
       return 'bg-rose-900 text-white border-rose-700';
     case 'retargeting':

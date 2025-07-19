@@ -52,6 +52,7 @@ const statusOptions = [
   "Future Potential",
   "Converted",
   "Loan Required",
+  "Short Loan",
   "Cibil Issue",
   "Language Barrier",
   "Retargeting",

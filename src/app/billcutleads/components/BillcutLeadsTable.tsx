@@ -146,6 +146,8 @@ const BillcutLeadsTableOptimized = React.memo(
           return "bg-emerald-900 text-emerald-100 border-emerald-700"
         case "loan required":
           return "bg-purple-900 text-purple-100 border-purple-700"
+        case "short loan":
+          return "bg-teal-900 text-teal-100 border-teal-700"
         case "cibil issue":
           return "bg-rose-900 text-rose-100 border-rose-700"
         case "language barrier":
