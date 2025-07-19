@@ -90,6 +90,7 @@ interface LeadAnalytics {
   notInterestedLeads: number;
   notAnsweringLeads: number;
   loanRequiredLeads: number;
+  shortLoanLeads: number;
   cibilIssueLeads: number;
   closedLeads: number;
   statusDistribution: { status: string; count: number; percentage: number }[];
@@ -666,6 +667,7 @@ export default function SalesDashboard() {
     let notInterestedLeads = 0;
     let notAnsweringLeads = 0;
     let loanRequiredLeads = 0;
+    let shortLoanLeads = 0;
     let cibilIssueLeads = 0;
     let closedLeads = 0;
     let leadsNeedingWork = 0;
@@ -698,6 +700,9 @@ export default function SalesDashboard() {
       }
       if (status === 'Loan Required') {
         loanRequiredLeads++;
+      }
+      if (status === 'Short Loan') {
+        shortLoanLeads++;
       }
       if (status === 'Cibil Issue') {
         cibilIssueLeads++;
@@ -776,6 +781,7 @@ export default function SalesDashboard() {
       notInterestedLeads,
       notAnsweringLeads,
       loanRequiredLeads,
+      shortLoanLeads,
       cibilIssueLeads,
       closedLeads,
       statusDistribution,
@@ -1008,6 +1014,7 @@ export default function SalesDashboard() {
     let notInterestedLeads = 0;
     let notAnsweringLeads = 0;
     let loanRequiredLeads = 0;
+    let shortLoanLeads = 0;
     let cibilIssueLeads = 0;
     let closedLeads = 0;
     let leadsNeedingWork = 0;
@@ -1040,6 +1047,9 @@ export default function SalesDashboard() {
       }
       if (status === 'Loan Required') {
         loanRequiredLeads++;
+      }
+      if (status === 'Short Loan') {
+        shortLoanLeads++;
       }
       if (status === 'Cibil Issue') {
         cibilIssueLeads++;
@@ -1120,6 +1130,7 @@ export default function SalesDashboard() {
       notInterestedLeads,
       notAnsweringLeads,
       loanRequiredLeads,
+      shortLoanLeads,
       cibilIssueLeads,
       closedLeads,
       statusDistribution,
