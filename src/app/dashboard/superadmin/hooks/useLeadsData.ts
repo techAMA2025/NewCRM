@@ -113,6 +113,7 @@ export const useLeadsData = ({
           'Callback': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Converted': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Loan Required': { settleloans: 0, credsettlee: 0, ama: 0 },
+          'Short Loan': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Cibil Issue': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Closed Lead': { settleloans: 0, credsettlee: 0, ama: 0 },
           'Language Barrier': { settleloans: 0, credsettlee: 0, ama: 0 },

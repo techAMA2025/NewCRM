@@ -205,17 +205,19 @@ interface ProductivityDateRange {
 
 // All possible statuses in uniform sequence
 const getAllStatuses = () => [
-  'interested',
-  'not interested', 
-  'not answering',
-  'callback',
-  'converted',
-  'loan required',
-  'cibil issue',
-  'retargeting',
-  'closed lead',
-  'language barrier',
-  'future potential'
+  'No Status',
+  'Interested',
+  'Not Interested',
+  'Not Answering',
+  'Callback',
+  'Future Potential',
+  'Converted',
+  'Loan Required',
+  'Short Loan',
+  'Cibil Issue',
+  'Language Barrier',
+  'Retargeting',
+  'Closed Lead'
 ];
 
 const BillcutLeadReportContent = () => {
@@ -781,6 +783,10 @@ const BillcutLeadReportContent = () => {
     const convertedLeads = leads.filter(lead => lead.category === 'Converted').length;
     const conversionRate = (convertedLeads / totalLeads) * 100;
 
+    // NEW: Short Loan Analytics
+    const shortLoanLeads = leads.filter(lead => lead.category === 'Short Loan').length;
+    const shortLoanRate = (shortLoanLeads / totalLeads) * 100;
+
     // NEW: Conversion Time Analysis
     const convertedLeadsWithTime = leads.filter(lead => 
       lead.category === 'Converted' && 
@@ -1257,6 +1263,8 @@ const BillcutLeadReportContent = () => {
       uniqueAssignees,
       averageDebt,
       conversionRate: Math.round(conversionRate * 100) / 100,
+      // NEW: Short Loan Analytics
+      shortLoanRate: Math.round(shortLoanRate * 100) / 100,
       // NEW: Conversion time analytics
       conversionTimeData,
       avgConversionTimeDays,
@@ -1668,6 +1676,12 @@ const BillcutLeadReportContent = () => {
               value={`${analytics.conversionRate}%`}
               icon={<FiTrendingUp size={24} />}
               color="#EF4444"
+            />
+            <MetricCard
+              title="Short Loan Rate"
+              value={`${analytics.shortLoanRate}%`}
+              icon={<FiDollarSign size={24} />}
+              color="#0D9488"
             />
           </div>
 
