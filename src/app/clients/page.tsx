@@ -71,6 +71,7 @@ function ClientsPageWithParams() {
   const [secondaryAdvocateFilter, setSecondaryAdvocateFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [documentFilter, setDocumentFilter] = useState<string>('all')
+  const [bankNameFilter, setBankNameFilter] = useState<string>('all')
   
   // Lists for filter dropdowns
   const [allAdvocates, setAllAdvocates] = useState<string[]>([])
@@ -82,6 +83,7 @@ function ClientsPageWithParams() {
     'manual'
   ]);
   const [allStatuses, setAllStatuses] = useState<string[]>(['Active', 'Dropped', 'Not Responding', 'On Hold', 'Inactive'])
+  const [allBankNames, setAllBankNames] = useState<string[]>([])
 
   // Filtered clients based on search and filters
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
@@ -257,6 +259,22 @@ function ClientsPageWithParams() {
         setFilteredClients(combinedClients);
         
         const advocates = Array.from(new Set(combinedClients.map(client => client.alloc_adv).filter(Boolean) as string[]));
+        
+        // Extract unique bank names from all clients
+        const bankNames: string[] = [];
+        combinedClients.forEach(client => {
+          if (client.banks && Array.isArray(client.banks)) {
+            client.banks.forEach(bank => {
+              if (bank.bankName && typeof bank.bankName === 'string') {
+                const trimmedName = bank.bankName.trim();
+                if (trimmedName && !bankNames.includes(trimmedName)) {
+                  bankNames.push(trimmedName);
+                }
+              }
+            });
+          }
+        });
+        setAllBankNames(bankNames.sort());
 
       } catch (err) {
         console.error('Detailed error fetching clients:', err);
@@ -281,8 +299,9 @@ function ClientsPageWithParams() {
     const sourceFromUrl = searchParams.get('source');
     const searchFromUrl = searchParams.get('search');
     const documentFromUrl = searchParams.get('document');
+    const bankNameFromUrl = searchParams.get('bankName');
     
-    console.log('URL Parameters detected:', { statusFromUrl, advocateFromUrl, sourceFromUrl, searchFromUrl, documentFromUrl });
+    console.log('URL Parameters detected:', { statusFromUrl, advocateFromUrl, sourceFromUrl, searchFromUrl, documentFromUrl, bankNameFromUrl });
     
     if (statusFromUrl) {
       console.log('Setting status filter to:', statusFromUrl);
@@ -305,6 +324,10 @@ function ClientsPageWithParams() {
     if (documentFromUrl) {
       console.log('Setting document filter to:', documentFromUrl);
       setDocumentFilter(documentFromUrl);
+    }
+    if (bankNameFromUrl) {
+      console.log('Setting bank name filter to:', bankNameFromUrl);
+      setBankNameFilter(bankNameFromUrl);
     }
   }, [searchParams, userRole]); // Add userRole dependency to prevent overriding billcut filter
 
@@ -627,6 +650,7 @@ function ClientsPageWithParams() {
       statusFilter,
       sourceFilter,
       documentFilter,
+      bankNameFilter,
       clientsCount: clients.length
     });
     
@@ -716,10 +740,30 @@ function ClientsPageWithParams() {
       });
       console.log('After document filter:', results.length, 'clients');
     }
+
+    // Apply bank name filter
+    if (bankNameFilter !== 'all') {
+      console.log('Filtering by bank name:', bankNameFilter);
+      results = results.filter(client => {
+        if (!client.banks || !Array.isArray(client.banks)) return false;
+        const hasMatchingBank = client.banks.some(bank => 
+          bank.bankName && bank.bankName.toLowerCase().includes(bankNameFilter.toLowerCase())
+        );
+        if (!hasMatchingBank) {
+          console.log('Bank name mismatch:', { 
+            expected: bankNameFilter, 
+            clientName: client.name,
+            clientBanks: client.banks.map(bank => bank.bankName).join(', ')
+          });
+        }
+        return hasMatchingBank;
+      });
+      console.log('After bank name filter:', results.length, 'clients');
+    }
     
     console.log('Final filtered results:', results.length, 'clients');
     setFilteredClients(results)
-  }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter, documentFilter])
+  }, [clients, searchTerm, primaryAdvocateFilter, secondaryAdvocateFilter, statusFilter, sourceFilter, documentFilter, bankNameFilter])
   
   // Reset all filters
   const resetFilters = () => {
@@ -729,6 +773,7 @@ function ClientsPageWithParams() {
     setSecondaryAdvocateFilter('all')
     setSourceFilter('all')
     setDocumentFilter('all')
+    setBankNameFilter('all')
   }
 
   // Function to format source display name
@@ -1331,6 +1376,25 @@ function ClientsPageWithParams() {
                 <SelectItem value="all">All Documents</SelectItem>
                 <SelectItem value="with_document">With Document</SelectItem>
                 <SelectItem value="no_document">No Document</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={bankNameFilter} onValueChange={setBankNameFilter}>
+              <SelectTrigger className={`w-[100px] ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-gray-200'
+                  : 'bg-white border-gray-300 text-gray-800'
+              } text-[10px] h-5`}>
+                <SelectValue placeholder="Filter by bank" />
+              </SelectTrigger>
+              <SelectContent className={`${
+                theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 border-gray-700'
+                  : 'bg-white text-gray-800 border-gray-300'
+              } text-[10px]`}>
+                <SelectItem value="all">All Banks</SelectItem>
+                {allBankNames.map(bankName => (
+                  <SelectItem key={bankName} value={bankName}>{bankName}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Button 
