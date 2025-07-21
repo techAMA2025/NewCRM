@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { collection, getDocs, query, where } from "firebase/firestore"
+import { getFunctions, httpsCallable } from "firebase/functions"
+import { app } from "@/firebase/firebase"
 import BillcutLeadNotesCell from "./BillcutLeadNotesCell"
 import CallbackSchedulingModal from "./CallbackSchedulingModal"
+import StatusChangeConfirmationModal from "./StatusChangeConfirmationModal"
 import type { Lead } from "../types"
 import { toast } from "react-toastify"
 
@@ -83,6 +86,13 @@ const BillcutLeadsTableOptimized = React.memo(
     const [callbackLeadName, setCallbackLeadName] = useState("")
     const [isEditingCallback, setIsEditingCallback] = useState(false)
     const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null)
+
+    // Status change confirmation modal states
+    const [showStatusConfirmModal, setShowStatusConfirmModal] = useState(false)
+    const [statusConfirmLeadId, setStatusConfirmLeadId] = useState("")
+    const [statusConfirmLeadName, setStatusConfirmLeadName] = useState("")
+    const [pendingStatusChange, setPendingStatusChange] = useState("")
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
     // Get user info from localStorage
     const userRole = typeof window !== "undefined" ? localStorage.getItem("userRole") || "" : ""
@@ -291,6 +301,14 @@ const BillcutLeadsTableOptimized = React.memo(
             const lead = leads.find((l) => l.id === id)
             onStatusChangeToConverted(id, lead?.name || "Unknown Lead")
             return
+          } else if (value === "Interested" || value === "Not Answering") {
+            // Show confirmation modal for Interested and Not Answering statuses
+            const lead = leads.find((l) => l.id === id)
+            setStatusConfirmLeadId(id)
+            setStatusConfirmLeadName(lead?.name || "Unknown Lead")
+            setPendingStatusChange(value)
+            setShowStatusConfirmModal(true)
+            return
           } else {
             // Check if changing from "Converted" to another status
             if (currentStatus === 'Converted' && value !== 'Converted') {
@@ -483,6 +501,192 @@ const BillcutLeadsTableOptimized = React.memo(
       setIsEditingCallback(true)
       setEditingCallbackInfo(lead.callbackInfo)
       setShowCallbackModal(true)
+    }, [])
+
+    // Status change confirmation handlers
+    const handleStatusConfirmation = useCallback(async () => {
+      if (!statusConfirmLeadId || !pendingStatusChange) return
+
+      setIsUpdatingStatus(true)
+      try {
+        const currentLead = leads.find((l) => l.id === statusConfirmLeadId);
+        const currentStatus = currentLead?.status || 'Select Status';
+        
+        // Check if changing from "Converted" to another status
+        if (currentStatus === 'Converted' && pendingStatusChange !== 'Converted') {
+          // Show a toast notification about the conversion being removed
+          toast.info(
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-lg"></div>
+                </div>
+                <div className="ml-3 flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">⚠️</span>
+                    <p className="text-sm font-bold text-white">
+                      Conversion Removed
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm text-orange-100 font-medium">
+                    {currentLead?.name || 'Unknown Lead'}
+                  </p>
+                  <p className="mt-1 text-sm text-orange-200">
+                    Lead status changed from "Converted" to "{pendingStatusChange}". Conversion timestamp has been removed and targets count will be updated.
+                  </p>
+                </div>
+              </div>
+            </div>,
+            {
+              position: "top-right",
+              autoClose: 4000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+              className: "bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-600 border-2 border-orange-400 shadow-xl",
+            }
+          );
+        }
+
+        const dbData = { status: pendingStatusChange }
+        const success = await updateLead(statusConfirmLeadId, dbData)
+        
+        if (success) {
+          setEditingData((prev) => {
+            const newData = { ...prev }
+            delete newData[statusConfirmLeadId]
+            return newData
+          })
+          
+          // Send email message after successful status update
+          try {
+            console.log("🔍 Starting email send process...", {
+              hasEmail: !!currentLead?.email,
+              email: currentLead?.email,
+              status: pendingStatusChange,
+              leadName: currentLead?.name,
+              fullLeadData: currentLead
+            });
+            
+            if (currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")) {
+              console.log("📧 Preparing to send email...");
+              const functions = getFunctions(app);
+              const sendStatusChangeMessage = httpsCallable(functions, 'sendStatusChangeMessage')
+              
+              console.log("📤 Calling cloud function...");
+              const emailResult = await sendStatusChangeMessage({
+                leadName: currentLead.name || 'Dear Sir/Ma\'am',
+                leadEmail: currentLead.email,
+                leadId: statusConfirmLeadId,
+                newStatus: pendingStatusChange
+              })
+              
+              console.log("✅ Email function result:", emailResult);
+              
+              // Show success message with email confirmation
+              toast.success(
+                <div>
+                  <p className="font-medium">Status Updated & Message Sent!</p>
+                  <p className="text-sm">Status changed to "{pendingStatusChange}" and email sent to {currentLead.name}</p>
+                </div>,
+                {
+                  position: "top-right",
+                  autoClose: 4000,
+                }
+              )
+            } else {
+              console.log("❌ Email conditions not met:", {
+                hasEmail: !!currentLead?.email,
+                emailValue: currentLead?.email,
+                status: pendingStatusChange,
+                validStatus: pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering",
+                emailLength: currentLead?.email?.length || 0
+              });
+              
+              // Show success message without email (if no email address)
+              toast.success(
+                `Status updated to "${pendingStatusChange}" successfully!`,
+                {
+                  position: "top-right",
+                  autoClose: 3000,
+                }
+              )
+              
+              if (!currentLead?.email) {
+                toast.warning(
+                  "No email address found for this lead. Message could not be sent.",
+                  {
+                    position: "top-right",
+                    autoClose: 3000,
+                  }
+                )
+              }
+            }
+          } catch (emailError) {
+            console.error("❌ Error sending status change email:", emailError);
+            console.error("❌ Error details:", {
+              name: emailError instanceof Error ? emailError.name : 'Unknown',
+              message: emailError instanceof Error ? emailError.message : String(emailError),
+              stack: emailError instanceof Error ? emailError.stack : 'No stack'
+            });
+            
+            // Extract more specific error information
+            let errorMessage = "Failed to send email. Please try again.";
+            
+            if (emailError instanceof Error) {
+              if (emailError.message.includes("unauthenticated")) {
+                errorMessage = "Authentication error. Please refresh the page and try again.";
+              } else if (emailError.message.includes("invalid-argument")) {
+                errorMessage = "Invalid email address or missing lead information.";
+              } else if (emailError.message.includes("failed-precondition")) {
+                errorMessage = "Email service not configured properly. Please contact support.";
+              } else if (emailError.message.includes("unavailable")) {
+                errorMessage = "Email service temporarily unavailable. Please try again later.";
+              } else {
+                errorMessage = `Email error: ${emailError.message}`;
+              }
+            }
+            
+            // Still show success for status update but warn about email failure
+            toast.success(
+              `Status updated to "${pendingStatusChange}" successfully!`,
+              {
+                position: "top-right",
+                autoClose: 3000,
+              }
+            )
+            
+            toast.error(
+              errorMessage,
+              {
+                position: "top-right",
+                autoClose: 5000,
+              }
+            )
+          }
+        }
+      } catch (error) {
+        console.error("Error updating status:", error)
+        toast.error("Failed to update status", {
+          position: "top-right",
+          autoClose: 3000,
+        })
+      } finally {
+        setIsUpdatingStatus(false)
+        setShowStatusConfirmModal(false)
+        setStatusConfirmLeadId("")
+        setStatusConfirmLeadName("")
+        setPendingStatusChange("")
+      }
+    }, [statusConfirmLeadId, pendingStatusChange, leads, updateLead])
+
+    const handleStatusConfirmClose = useCallback(() => {
+      setShowStatusConfirmModal(false)
+      setStatusConfirmLeadId("")
+      setStatusConfirmLeadName("")
+      setPendingStatusChange("")
+      setIsUpdatingStatus(false)
     }, [])
 
     // Memoized table rows to prevent unnecessary re-renders
@@ -808,6 +1012,16 @@ const BillcutLeadsTableOptimized = React.memo(
           crmDb={crmDb}
           isEditing={isEditingCallback}
           existingCallbackInfo={editingCallbackInfo}
+        />
+
+        {/* Status Change Confirmation Modal */}
+        <StatusChangeConfirmationModal
+          isOpen={showStatusConfirmModal}
+          onClose={handleStatusConfirmClose}
+          onConfirm={handleStatusConfirmation}
+          leadName={statusConfirmLeadName}
+          newStatus={pendingStatusChange}
+          isLoading={isUpdatingStatus}
         />
       </>
     )
