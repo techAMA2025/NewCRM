@@ -3,6 +3,7 @@ name: Backup Firestore
 on:
   schedule:
     - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 env:
   PROJECT_ID: amacrm-76fd1
