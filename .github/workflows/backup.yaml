@@ -2,7 +2,7 @@ name: Backup Firestore
 
 on:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: '*/5 * * * *'
 
 env:
   PROJECT_ID: amacrm-76fd1
@@ -12,10 +12,12 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
+    - uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.BACKUP_KEY_GCP }}
     - uses: google-github-actions/setup-gcloud@v2
       with:
-        service_account_key: ${{ secrets.BACKUP_KEY_GCP }}
-        export_default_credentials: true
+        project_id: ${{ env.PROJECT_ID }}
     - run: gcloud info
     - run: gcloud config set project $PROJECT_ID
     - run: gcloud firestore export $BUCKET
