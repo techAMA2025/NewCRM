@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import GlobalCallbackAlert from '@/components/GlobalCallbackAlert';
 import SalesLeadsCallbackAlert from '@/components/SalesLeadsCallbackAlert';
 import AdminCloseAllButton from '@/components/AdminCloseAllButton';
+import ComplaintReminder from '@/components/ComplaintReminder';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -38,6 +39,7 @@ export default function RootLayout({
           <GlobalCallbackAlert />
           <SalesLeadsCallbackAlert />
           <AdminCloseAllButton />
+          <ComplaintReminder />
           <ToastContainer
             position="top-right"
             autoClose={3000}
