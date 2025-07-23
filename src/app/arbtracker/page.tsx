@@ -8,38 +8,9 @@ import { FaPlus, FaSearch, FaLink, FaCheck, FaTimes, FaFileSignature, FaEnvelope
 import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewArbitrationCaseModel'
 import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
 import { v4 as uuidv4 } from 'uuid'
-import { db } from '@/firebase/firebase'
+import { db, app, functions } from '@/firebase/firebase'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, deleteDoc } from 'firebase/firestore'
-import { getFunctions, httpsCallable } from 'firebase/functions'
-import { initializeApp, getApp } from 'firebase/app'
-
-// Firebase configuration - copy this from your firebase.ts file
-// You may want to move this to an environment variable or config file
-const firebaseConfig = {
-    apiKey: "AIzaSyD72I02Uf1sg8TEJuanvXuwrA00LqWlbls",
-
-    authDomain: "amacrm-76fd1.firebaseapp.com",
-  
-    databaseURL: "https://amacrm-76fd1-default-rtdb.firebaseio.com",
-  
-    projectId: "amacrm-76fd1",
-  
-    storageBucket: "amacrm-76fd1.firebasestorage.app",
-  
-    messagingSenderId: "1008668372239",
-   
-    appId: "1:1008668372239:web:03cca86d1675df6450227a",
-  
-    measurementId: "G-X1B7CKLRST",
-};
-
-// Initialize Firebase if it hasn't been initialized yet
-let app: any;
-try {
-  app = getApp();
-} catch (error) {
-  app = initializeApp(firebaseConfig);
-}
+import { httpsCallable } from 'firebase/functions'
 
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -215,7 +186,6 @@ export default function ArbitrationTracker() {
       endDate.setHours(endDate.getHours() + 1); // Default to 1 hour meeting
       
       // Use the Firebase app that we initialized at the top of the file
-      const functions = getFunctions(app);
       const createCalendarEventFunction = httpsCallable(functions, 'createCalendarEvent');
       
       // Add console log to see what we're sending
