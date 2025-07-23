@@ -10,7 +10,7 @@ import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
 import { v4 as uuidv4 } from 'uuid'
 import { db, app, functions } from '@/firebase/firebase'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, deleteDoc } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
+import { httpsCallable } from 'firebase/functions' 
 
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
