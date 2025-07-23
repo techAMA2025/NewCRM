@@ -328,7 +328,7 @@ const ComplaintTable: React.FC<ComplaintTableProps> = ({ complaints, onEdit, onD
                         </svg>
                       )}
                       {savingRemarks[complaint.id] ? "Saving..." : "Save"}
-                    </button>
+                    </button> 
                     <button
                       onClick={() => onViewHistory(complaint.id)}
                       className="px-2 py-0.5 bg-purple-700 hover:bg-purple-600 text-white text-xs rounded transition-colors duration-200 flex items-center"
