@@ -33,7 +33,7 @@ const BillcutLeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV, loa
               className="flex items-center gap-2 px-4 py-2 bg-green-500/80 hover:bg-green-600/80 text-gray-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-green-400/20"
             >
               <FiDownload className="w-4 h-4" />
-              Export to CSV
+              Export to CSV 
             </button>
           )}
         </div>
