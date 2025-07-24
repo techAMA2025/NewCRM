@@ -16,7 +16,7 @@ const BillcutLeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV, loa
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-100 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">Bill Cut Leads Management</h1>
         <div className="flex gap-4">
-          {(userRole === 'overlord' || userRole === 'billcut') && (
+          {(userRole === 'overlord' || userRole === 'billcut' || userRole === 'admin') && (
             <button
               onClick={loadAllLeads}
               disabled={isLoading || isLoadAllLoading}
