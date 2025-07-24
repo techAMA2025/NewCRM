@@ -117,6 +117,7 @@ const LeadsPage = () => {
   // Pagination state
   const [hasMoreLeads, setHasMoreLeads] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadAllLoading, setIsLoadAllLoading] = useState(false);
 
   // Callback modal state
   const [showCallbackModal, setShowCallbackModal] = useState(false);
@@ -624,6 +625,63 @@ const LeadsPage = () => {
       setIsLoadingMore(false);
     }
   }, [hasMoreLeads, isLoadingMore, leads.length, allFilteredLeads, fetchCallbackInfoBatch]);
+
+  // Load all leads function
+  const loadAllLeads = useCallback(async () => {
+    if (isLoadAllLoading || allFilteredLeads.length <= leads.length) return;
+    
+    setIsLoadAllLoading(true);
+    
+    try {
+      // Get remaining leads that haven't been loaded yet
+      const remainingLeads = allFilteredLeads.slice(leads.length);
+      
+      if (remainingLeads.length === 0) {
+        toast.info("All leads are already loaded", {
+          position: "top-right",
+          autoClose: 3000
+        });
+        return;
+      }
+      
+      // Fetch callback information for remaining leads
+      const remainingLeadsWithCallbackInfo = await fetchCallbackInfoBatch(remainingLeads);
+      
+      // Set all leads (existing + remaining)
+      const allLeadsWithCallbackInfo = [...leads, ...remainingLeadsWithCallbackInfo];
+      setLeads(allLeadsWithCallbackInfo);
+      setFilteredLeads(allLeadsWithCallbackInfo);
+      
+      // Update editing state for new leads
+      setEditingLeads(prev => {
+        const updated = { ...prev };
+        remainingLeadsWithCallbackInfo.forEach(lead => {
+          updated[lead.id] = {
+            ...lead,
+            salesNotes: lead.salesNotes || ''
+          };
+        });
+        return updated;
+      });
+      
+      // Update pagination state
+      setHasMoreLeads(false);
+      
+      toast.success(`Loaded all ${allLeadsWithCallbackInfo.length} leads successfully`, {
+        position: "top-right",
+        autoClose: 3000
+      });
+      
+    } catch (error) {
+      console.error("Error loading all leads: ", error);
+      toast.error("Failed to load all leads", {
+        position: "top-right",
+        autoClose: 3000
+      });
+    } finally {
+      setIsLoadAllLoading(false);
+    }
+  }, [isLoadAllLoading, allFilteredLeads, leads, fetchCallbackInfoBatch]);
 
   // Optimized filter function with memoization
   const filterLeads = useCallback(() => {
@@ -1728,6 +1786,8 @@ const LeadsPage = () => {
             userRole={userRole} 
             currentUser={currentUser} 
             exportToCSV={exportToCSV}
+            loadAllLeads={loadAllLeads}
+            isLoadAllLoading={isLoadAllLoading}
           />
           
           {/* Tabs */}

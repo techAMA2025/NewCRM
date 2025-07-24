@@ -1,13 +1,16 @@
 import { FaFilter, FaPlus, FaChevronDown, FaFileExport } from 'react-icons/fa';
+import { FiRefreshCw } from 'react-icons/fi';
 
 type LeadsHeaderProps = {
   isLoading: boolean;
   userRole: string;
   currentUser: any;
   exportToCSV?: () => void;
+  loadAllLeads: () => void;
+  isLoadAllLoading: boolean;
 };
 
-const LeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV }: LeadsHeaderProps) => {
+const LeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV, loadAllLeads, isLoadAllLoading }: LeadsHeaderProps) => {
   return (
     <div className="bg-gray-900 px-6 py-2 rounded-xl border border-gray-700 shadow-lg mb-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
@@ -16,7 +19,17 @@ const LeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV }: LeadsHea
 
         </div>
         <div className="mt-2 md:mt-0 flex items-center space-x-3">
-          {userRole === 'admin' || userRole === 'overlord' && (
+          {(userRole === 'overlord' || userRole === 'admin') && (
+            <button
+              onClick={loadAllLeads}
+              disabled={isLoading || isLoadAllLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500/80 hover:bg-blue-600/80 text-gray-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-400/20"
+            >
+              <FiRefreshCw className={`w-4 h-4 ${isLoadAllLoading ? 'animate-spin' : ''}`} />
+              {isLoadAllLoading ? 'Loading All Leads...' : 'Load All Leads'}
+            </button>
+          )}
+          {(userRole === 'admin' || userRole === 'overlord') && (
             <button
               onClick={exportToCSV}
               className="inline-flex items-center px-4 py-2 border border-gray-700 rounded-md shadow-sm text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
