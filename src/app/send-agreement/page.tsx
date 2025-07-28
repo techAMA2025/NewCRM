@@ -104,6 +104,10 @@ export default function SendAgreementPage() {
   // State for client search
   const [clientSearchTerm, setClientSearchTerm] = useState("");
 
+  // State for part-payment amounts
+  const [amountReceived, setAmountReceived] = useState("");
+  const [totalSignupAmount, setTotalSignupAmount] = useState("");
+
   // Multiple agreement templates
   const agreementTemplates = {
     "agreement-draft": {
@@ -181,9 +185,9 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
       name: "Part-payment BILLCUT",
       content: `Dear Client,
 
-Thank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee of Rs. {{Amount_Received}}. We are excited to assist you in your journey toward financial freedom.
+Thank you for choosing our Loan Settlement Program! We are pleased to confirm the receipt of your sign-up fee of Rs. [AMOUNT_RECEIVED]. We are excited to assist you in your journey toward financial freedom.
 
-Please note that your total sign-up amount is Rs. {{Total_SignUp_Amount}}, out of which Rs. {{Amount_Received}} has been received as of today.
+Please note that your total sign-up amount is Rs. [TOTAL_SIGNUP_AMOUNT], out of which Rs. [AMOUNT_RECEIVED] has been received as of today.
 
 Our program includes the following key services designed to provide you with end-to-end support:
 
@@ -215,6 +219,31 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
   // Get current template
   const getCurrentTemplate = () => {
     return agreementTemplates[selectedAgreement as keyof typeof agreementTemplates] || agreementTemplates["agreement-draft"];
+  };
+
+  // Process email content to replace placeholders
+  const processEmailContent = (content: string) => {
+    let processedContent = content;
+    
+    // Replace client placeholders
+    const clientRecipients = recipients.filter(r => r.type === "client");
+    const clientCcRecipients = ccRecipients.filter(r => r.type === "client");
+    const firstClientRecipient = clientRecipients[0] || clientCcRecipients[0];
+    
+    if (firstClientRecipient) {
+      processedContent = processedContent
+        .replace(/\[CLIENT_NAME\]/g, firstClientRecipient.name || '[Client Name]')
+        .replace(/\[CLIENT_EMAIL\]/g, firstClientRecipient.email || '[Client Email]');
+    }
+    
+    // Replace amount placeholders for part-payment template
+    if (selectedAgreement === "part-payment-billcut") {
+      processedContent = processedContent
+        .replace(/\[AMOUNT_RECEIVED\]/g, amountReceived || '[Amount Received]')
+        .replace(/\[TOTAL_SIGNUP_AMOUNT\]/g, totalSignupAmount || '[Total Signup Amount]');
+    }
+    
+    return processedContent;
   };
 
   // Single agreement template (for backward compatibility)
@@ -284,7 +313,9 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
         .replace(/\[CLIENT_EMAIL\]/g, selectedClient.email || '[Client Email]');
     }
     
-    setEmailContent(content);
+    // Process content with all placeholders
+    const processedContent = processEmailContent(content);
+    setEmailContent(processedContent);
 
     // Set subject
     let subjectText = getCurrentTemplate().subject;
@@ -292,7 +323,7 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
       subjectText = subjectText.replace(/\[CLIENT_NAME\]/g, selectedClient.name || '[Client Name]');
     }
     setCustomSubject(subjectText);
-  }, [tempClientId, clients, selectedAgreement]);
+  }, [tempClientId, clients, selectedAgreement, amountReceived, totalSignupAmount]);
 
   // Update email content and subject when client recipients change
   useEffect(() => {
@@ -308,7 +339,10 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
       content = content
         .replace(/\[CLIENT_NAME\]/g, firstClientRecipient.name || '[Client Name]')
         .replace(/\[CLIENT_EMAIL\]/g, firstClientRecipient.email || '[Client Email]');
-      setEmailContent(content);
+      
+      // Process content with all placeholders
+      const processedContent = processEmailContent(content);
+      setEmailContent(processedContent);
 
       // Update subject
       let subjectText = getCurrentTemplate().subject;
@@ -318,12 +352,13 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
       setSelectedSubject("custom");
     } else {
       // No client recipients, reset to template
-      setEmailContent(getCurrentTemplate().content);
+      const processedContent = processEmailContent(getCurrentTemplate().content);
+      setEmailContent(processedContent);
       setCustomSubject(getCurrentTemplate().subject);
       setIsCustomSubject(false);
       setSelectedSubject(`${selectedAgreement}-subject`);
     }
-  }, [recipients, ccRecipients, selectedAgreement]);
+  }, [recipients, ccRecipients, selectedAgreement, amountReceived, totalSignupAmount]);
 
   // Handle subject selection
   const handleSubjectChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -389,6 +424,12 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
       setCustomSubject(newTemplate.subject);
       setIsCustomSubject(false);
       setSelectedSubject(`${newTemplateId}-subject`);
+      
+      // Initialize amount fields for part-payment template
+      if (newTemplateId === "part-payment-billcut") {
+        setAmountReceived("");
+        setTotalSignupAmount("");
+      }
     }
   };
 
@@ -680,6 +721,18 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
       return;
     }
 
+    // Validate amount fields for part-payment template
+    if (selectedAgreement === "part-payment-billcut") {
+      if (!amountReceived.trim()) {
+        toast.error("Please enter the amount received");
+        return;
+      }
+      if (!totalSignupAmount.trim()) {
+        toast.error("Please enter the total signup amount");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -697,7 +750,7 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
 
       const emailData = {
         subject: currentSubject,
-        content: emailContent,
+        content: processEmailContent(emailContent),
         recipients: recipients,
         ccRecipients: ccRecipients,
         attachments: processedAttachments,
@@ -734,6 +787,8 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
           setEmailContent("");
           setAttachments([]);
           setTempClientId("");
+          setAmountReceived("");
+          setTotalSignupAmount("");
         } else {
           console.error("Cloud function reported failure without throwing error");
           throw new Error("Failed to send email: Cloud function returned success=false");
@@ -949,6 +1004,44 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
                   )}
                 </div>
               </div>
+
+              {/* Amount Fields for Part-Payment Template */}
+              {selectedAgreement === "part-payment-billcut" && (
+                <div className="mb-6">
+                  <h2 className="text-lg font-medium text-white mb-3">
+                    Payment Details
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Amount Received (Rs.)
+                      </label>
+                      <input
+                        type="text"
+                        value={amountReceived}
+                        onChange={(e) => setAmountReceived(e.target.value)}
+                        placeholder="Enter amount received"
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Total Signup Amount (Rs.)
+                      </label>
+                      <input
+                        type="text"
+                        value={totalSignupAmount}
+                        onChange={(e) => setTotalSignupAmount(e.target.value)}
+                        placeholder="Enter total signup amount"
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">
+                    These values will replace the placeholders [AMOUNT_RECEIVED] and [TOTAL_SIGNUP_AMOUNT] in the email content.
+                  </p>
+                </div>
+              )}
 
               {/* Recipients Section */}
               <div className="mb-6">
