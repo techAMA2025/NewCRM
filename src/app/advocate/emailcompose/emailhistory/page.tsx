@@ -33,6 +33,14 @@ interface EmailHistory {
   status: string;
   subject: string;
   userId: string;
+  // Additional fields for lead-based emails
+  leadId?: string;
+  leadEmail?: string;
+  leadName?: string;
+  emailType?: string;
+  newStatus?: string;
+  messageId?: string;
+  response?: string;
 }
 
 export default function EmailHistoryPage() {
@@ -64,10 +72,14 @@ export default function EmailHistoryPage() {
         const historyData: EmailHistory[] = [];
         
         snapshot.forEach((doc) => {
-          historyData.push({
-            id: doc.id,
-            ...doc.data(),
-          } as EmailHistory);
+          const data = doc.data();
+          // Filter out emails that have leadId field or emailType "agreement"
+          if (!data.leadId && data.emailType !== "agreement") {
+            historyData.push({
+              id: doc.id,
+              ...data,
+            } as EmailHistory);
+          }
         });
         
         setEmailHistory(historyData);
@@ -127,8 +139,10 @@ export default function EmailHistoryPage() {
 
   const filteredEmails = emailHistory.filter(email => 
     email.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    email.recipients.some(r => r.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    email.recipients.some(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (email.recipients && email.recipients.some(r => r.email.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+    (email.recipients && email.recipients.some(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+    (email.leadEmail && email.leadEmail.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (email.leadName && email.leadName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
   return (
@@ -210,7 +224,8 @@ export default function EmailHistoryPage() {
                               {email.subject}
                             </p>
                             <p className="text-gray-400 text-xs truncate max-w-[200px] sm:max-w-[250px] md:max-w-[300px] md:hidden">
-                              To: {email.recipients.map(r => r.name || r.email).join(', ')}
+                              To: {email.recipients ? email.recipients.map(r => r.name || r.email).join(', ') : 
+                                   email.leadEmail ? (email.leadName ? `${email.leadName} <${email.leadEmail}>` : email.leadEmail) : 'No recipients'}
                             </p>
                           </div>
                           {email.attachments && email.attachments.length > 0 && (
@@ -222,10 +237,12 @@ export default function EmailHistoryPage() {
                       </td>
                       <td className="p-4 hidden md:table-cell">
                         <p className="text-gray-300 truncate max-w-[150px]">
-                          {email.recipients.length > 0
+                          {email.recipients && email.recipients.length > 0
                             ? (email.recipients[0].name || email.recipients[0].email) + 
                               (email.recipients.length > 1 ? ` +${email.recipients.length - 1}` : '')
-                            : 'No recipients'}
+                            : email.leadEmail 
+                              ? (email.leadName || email.leadEmail)
+                              : 'No recipients'}
                         </p>
                       </td>
                       <td className="p-4 text-gray-300 text-sm hidden lg:table-cell">
@@ -312,6 +329,59 @@ export default function EmailHistoryPage() {
                         {recipient.name ? `${recipient.name} <${recipient.email}>` : recipient.email}
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+              
+              {!selectedEmail.recipients && selectedEmail.leadEmail && (
+                <div className="mb-6">
+                  <p className="text-gray-400 text-sm mb-2">
+                    <span className="font-medium text-gray-300">Recipient:</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="bg-gray-700/30 rounded-md px-3 py-1.5 text-sm text-gray-300">
+                      {selectedEmail.leadName ? `${selectedEmail.leadName} <${selectedEmail.leadEmail}>` : selectedEmail.leadEmail}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {selectedEmail.leadId && (
+                <div className="mb-6">
+                  <p className="text-gray-400 text-sm mb-2">
+                    <span className="font-medium text-gray-300">Lead Information:</span>
+                  </p>
+                  <div className="bg-gray-700/20 border border-gray-700/30 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-400">Lead ID: </span>
+                        <span className="text-gray-300">{selectedEmail.leadId}</span>
+                      </div>
+                      {selectedEmail.emailType && (
+                        <div>
+                          <span className="text-gray-400">Email Type: </span>
+                          <span className="text-gray-300">{selectedEmail.emailType}</span>
+                        </div>
+                      )}
+                      {selectedEmail.newStatus && (
+                        <div>
+                          <span className="text-gray-400">New Status: </span>
+                          <span className="text-gray-300">{selectedEmail.newStatus}</span>
+                        </div>
+                      )}
+                      {selectedEmail.messageId && (
+                        <div>
+                          <span className="text-gray-400">Message ID: </span>
+                          <span className="text-gray-300 text-xs break-all">{selectedEmail.messageId}</span>
+                        </div>
+                      )}
+                      {selectedEmail.response && (
+                        <div>
+                          <span className="text-gray-400">Response: </span>
+                          <span className="text-gray-300">{selectedEmail.response}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
