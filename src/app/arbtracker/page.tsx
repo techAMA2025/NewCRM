@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
-import { FaPlus, FaSearch, FaLink, FaCheck, FaTimes, FaFileSignature, FaEnvelope } from 'react-icons/fa'
+import { FaPlus, FaSearch, FaLink, FaCheck, FaTimes, FaFileSignature, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewArbitrationCaseModel'
 import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
 import { v4 as uuidv4 } from 'uuid'
@@ -58,9 +58,19 @@ interface RemarkHistory {
   advocateName: string;
 }
 
+// Date formatting function
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB'); // This formats as dd/mm/yyyy
+}
+
 export default function ArbitrationTracker() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [cases, setCases] = useState<any[]>([])
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -115,7 +125,7 @@ export default function ArbitrationTracker() {
     fetchCases()
   }, [])
   
-  // Filter cases based on search term and status filter
+  // Filter cases based on search term, status filter, and date filter
   const filteredCases = cases.filter(arbitrationCase => {
     const matchesSearch = 
       searchTerm === '' || 
@@ -127,8 +137,90 @@ export default function ArbitrationTracker() {
       filterStatus === '' || 
       arbitrationCase.status?.toLowerCase() === filterStatus.toLowerCase()
     
-    return matchesSearch && matchesStatus
-  })
+    // Date filtering logic
+    const matchesDate = (() => {
+      if (!dateFilter || !arbitrationCase.startDate) return true;
+      
+      const caseDate = new Date(arbitrationCase.startDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      
+      switch (dateFilter) {
+        case '7days':
+          const nextWeek = new Date(today);
+          nextWeek.setDate(today.getDate() + 7);
+          return caseDate >= today && caseDate <= nextWeek;
+        
+        case '2weeks':
+          const twoWeeks = new Date(today);
+          twoWeeks.setDate(today.getDate() + 14);
+          return caseDate >= today && caseDate <= twoWeeks;
+        
+        case '30days':
+          const thirtyDays = new Date(today);
+          thirtyDays.setDate(today.getDate() + 30);
+          return caseDate >= today && caseDate <= thirtyDays;
+        
+        case 'custom':
+          if (!customStartDate || !customEndDate) return true;
+          const startDate = new Date(customStartDate);
+          const endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999); // Set to end of day
+          return caseDate >= startDate && caseDate <= endDate;
+        
+        default:
+          return true;
+      }
+    })();
+    
+    return matchesSearch && matchesStatus && matchesDate;
+  }).sort((a, b) => {
+    // Sort by date with priority: today first, then future dates, then past dates
+    if (!a.startDate && !b.startDate) return 0;
+    if (!a.startDate) return 1; // Cases without dates go to the end
+    if (!b.startDate) return -1;
+    
+    const dateA = new Date(a.startDate);
+    const dateB = new Date(b.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    // Check if dates are today, future, or past
+    const isAToday = dateA.getTime() === today.getTime();
+    const isBToday = dateB.getTime() === today.getTime();
+    const isAFuture = dateA > today;
+    const isBFuture = dateB > today;
+    const isAPast = dateA < today;
+    const isBPast = dateB < today;
+    
+    // Today's cases come first
+    if (isAToday && !isBToday) return -1;
+    if (!isAToday && isBToday) return 1;
+    
+    // If both are today, sort by time if available
+    if (isAToday && isBToday) {
+      if (a.time && b.time) {
+        return a.time.localeCompare(b.time);
+      }
+      return 0;
+    }
+    
+    // Future dates come next, sorted in ascending order
+    if (isAFuture && isBFuture) {
+      return dateA.getTime() - dateB.getTime();
+    }
+    if (isAFuture && !isBFuture) return -1;
+    if (!isAFuture && isBFuture) return 1;
+    
+    // Past dates come last, sorted in descending order (most recent past first)
+    if (isAPast && isBPast) {
+      return dateB.getTime() - dateA.getTime();
+    }
+    if (isAPast && !isBPast) return 1;
+    if (!isAPast && isBPast) return -1;
+    
+    return 0;
+  });
   
   const handleOpenModal = () => {
     setIsModalOpen(true)
@@ -418,6 +510,41 @@ export default function ArbitrationTracker() {
                   <option value="pending decision">Pending Decision</option>
                   <option value="completed">Completed</option>
                 </select>
+
+                {/* Date Filter */}
+                <div className="flex items-center space-x-2">
+                  <select 
+                    className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                  >
+                    <option value="">All Dates</option>
+                    <option value="7days">Next 7 Days</option>
+                    <option value="2weeks">Next 2 Weeks</option>
+                    <option value="30days">Next 30 Days</option>
+                    <option value="custom">Custom Range</option>
+                  </select>
+                  
+                  {dateFilter === 'custom' && (
+                    <div className="flex items-center space-x-1">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs"
+                        placeholder="Start Date"
+                      />
+                      <span className="text-gray-500 text-xs">to</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs"
+                        placeholder="End Date"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="relative">
@@ -434,19 +561,19 @@ export default function ArbitrationTracker() {
              {/* Summary Cards */}
              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
               <div className="bg-white rounded-xl shadow-md p-4">
-                <p className="text-xs text-gray-500 font-medium">Total Cases</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">{cases.length}</p>
+                <p className="text-xs text-gray-500 font-medium">Filtered Cases</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">{filteredCases.length}</p>
               </div>
               <div className="bg-white rounded-xl shadow-md p-4">
                 <p className="text-xs text-gray-500 font-medium">In Progress</p>
                 <p className="text-2xl font-bold text-gray-800 mt-1">
-                  {cases.filter(c => c.status?.toLowerCase() === 'in progress').length}
+                  {filteredCases.filter(c => c.status?.toLowerCase() === 'in progress').length}
                 </p>
               </div>
               <div className="bg-white rounded-xl shadow-md p-4">
                 <p className="text-xs text-gray-500 font-medium">Upcoming (7 days)</p>
                 <p className="text-2xl font-bold text-gray-800 mt-1">
-                  {cases.filter(c => {
+                  {filteredCases.filter(c => {
                     if (!c.startDate) return false;
                     const caseDate = new Date(c.startDate);
                     const today = new Date();
@@ -459,7 +586,7 @@ export default function ArbitrationTracker() {
               <div className="bg-white rounded-xl shadow-md p-4">
                 <p className="text-xs text-gray-500 font-medium">Missing Documents</p>
                 <p className="text-2xl font-bold text-gray-800 mt-1">
-                  {cases.filter(c => !c.vakalatnama || !c.onlineLinkLetter).length}
+                  {filteredCases.filter(c => !c.vakalatnama || !c.onlineLinkLetter).length}
                 </p>
               </div>
             </div>
@@ -539,7 +666,7 @@ export default function ArbitrationTracker() {
                               {arbitrationCase.type}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                              {arbitrationCase.startDate}
+                              {formatDate(arbitrationCase.startDate)}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                               {arbitrationCase.time}
@@ -674,6 +801,41 @@ export default function ArbitrationTracker() {
                   <option value="pending decision">Pending Decision</option>
                   <option value="completed">Completed</option>
                 </select>
+
+                {/* Date Filter */}
+                <div className="flex items-center space-x-2">
+                  <select 
+                    className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                  >
+                    <option value="">All Dates</option>
+                    <option value="7days">Next 7 Days</option>
+                    <option value="2weeks">Next 2 Weeks</option>
+                    <option value="30days">Next 30 Days</option>
+                    <option value="custom">Custom Range</option>
+                  </select>
+                  
+                  {dateFilter === 'custom' && (
+                    <div className="flex items-center space-x-1">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs"
+                        placeholder="Start Date"
+                      />
+                      <span className="text-gray-500 text-xs">to</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs"
+                        placeholder="End Date"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="relative">
@@ -690,19 +852,19 @@ export default function ArbitrationTracker() {
              {/* Summary Cards */}
              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
               <div className="bg-white rounded-xl shadow-md p-4">
-                <p className="text-xs text-gray-500 font-medium">Total Cases</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">{cases.length}</p>
+                <p className="text-xs text-gray-500 font-medium">Filtered Cases</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">{filteredCases.length}</p>
               </div>
               <div className="bg-white rounded-xl shadow-md p-4">
                 <p className="text-xs text-gray-500 font-medium">In Progress</p>
                 <p className="text-2xl font-bold text-gray-800 mt-1">
-                  {cases.filter(c => c.status?.toLowerCase() === 'in progress').length}
+                  {filteredCases.filter(c => c.status?.toLowerCase() === 'in progress').length}
                 </p>
               </div>
               <div className="bg-white rounded-xl shadow-md p-4">
                 <p className="text-xs text-gray-500 font-medium">Upcoming (7 days)</p>
                 <p className="text-2xl font-bold text-gray-800 mt-1">
-                  {cases.filter(c => {
+                  {filteredCases.filter(c => {
                     if (!c.startDate) return false;
                     const caseDate = new Date(c.startDate);
                     const today = new Date();
@@ -715,7 +877,7 @@ export default function ArbitrationTracker() {
               <div className="bg-white rounded-xl shadow-md p-4">
                 <p className="text-xs text-gray-500 font-medium">Missing Documents</p>
                 <p className="text-2xl font-bold text-gray-800 mt-1">
-                  {cases.filter(c => !c.vakalatnama || !c.onlineLinkLetter).length}
+                  {filteredCases.filter(c => !c.vakalatnama || !c.onlineLinkLetter).length}
                 </p>
               </div>
             </div>
@@ -795,7 +957,7 @@ export default function ArbitrationTracker() {
                               {arbitrationCase.type}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                              {arbitrationCase.startDate}
+                              {formatDate(arbitrationCase.startDate)}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                               {arbitrationCase.time}
