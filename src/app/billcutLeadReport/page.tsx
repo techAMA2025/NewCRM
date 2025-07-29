@@ -484,24 +484,41 @@ const BillcutLeadReportContent = () => {
 
   // Helper function to convert IST to UTC for Firestore queries
   const toUTC = (istDate: Date): Date => {
-    const istTime = new Date(istDate).getTime();
+    // Create a new Date object from the IST date components
+    // This ensures we're treating the input as IST local time
+    const year = istDate.getFullYear();
+    const month = istDate.getMonth();
+    const day = istDate.getDate();
+    const hours = istDate.getHours();
+    const minutes = istDate.getMinutes();
+    const seconds = istDate.getSeconds();
+    const milliseconds = istDate.getMilliseconds();
+    
+    // Create a new date in IST timezone
+    const istTime = new Date(year, month, day, hours, minutes, seconds, milliseconds);
+    
+    // Convert to UTC by subtracting IST offset (5.5 hours)
     const istOffset = 5.5 * 60 * 60 * 1000;
-    const utcTime = istTime - istOffset;
+    const utcTime = istTime.getTime() - istOffset;
+    
     return new Date(utcTime);
   };
 
   // Helper function to get productivity date range
   const getProductivityDateRange = (range: string): ProductivityDateRange => {
     const nowIST = toIST(new Date());
-    const todayIST = new Date(nowIST);
-    todayIST.setHours(23, 59, 59, 999);
     
+    // Get start of today in IST
     const startOfTodayIST = new Date(nowIST);
     startOfTodayIST.setHours(0, 0, 0, 0);
+    
+    // Get end of today in IST  
+    const endOfTodayIST = new Date(nowIST);
+    endOfTodayIST.setHours(23, 59, 59, 999);
 
     switch (range) {
       case 'today':
-        return { startDate: startOfTodayIST, endDate: todayIST };
+        return { startDate: startOfTodayIST, endDate: endOfTodayIST };
       case 'yesterday':
         const yesterdayStartIST = new Date(startOfTodayIST);
         yesterdayStartIST.setDate(yesterdayStartIST.getDate() - 1);
@@ -509,13 +526,13 @@ const BillcutLeadReportContent = () => {
         yesterdayEndIST.setHours(23, 59, 59, 999);
         return { startDate: yesterdayStartIST, endDate: yesterdayEndIST };
       case 'last7days':
-        const last7IST = new Date(startOfTodayIST);
-        last7IST.setDate(last7IST.getDate() - 6);
-        return { startDate: last7IST, endDate: todayIST };
+        const last7StartIST = new Date(startOfTodayIST);
+        last7StartIST.setDate(last7StartIST.getDate() - 6);
+        return { startDate: last7StartIST, endDate: endOfTodayIST };
       case 'last30days':
-        const last30IST = new Date(startOfTodayIST);
-        last30IST.setDate(last30IST.getDate() - 29);
-        return { startDate: last30IST, endDate: todayIST };
+        const last30StartIST = new Date(startOfTodayIST);
+        last30StartIST.setDate(last30StartIST.getDate() - 29);
+        return { startDate: last30StartIST, endDate: endOfTodayIST };
       case 'custom':
         const customStartIST = new Date(productivityDateRange.startDate);
         customStartIST.setHours(0, 0, 0, 0);
@@ -523,7 +540,7 @@ const BillcutLeadReportContent = () => {
         customEndIST.setHours(23, 59, 59, 999);
         return { startDate: customStartIST, endDate: customEndIST };
       default:
-        return { startDate: startOfTodayIST, endDate: todayIST };
+        return { startDate: startOfTodayIST, endDate: endOfTodayIST };
     }
   };
 

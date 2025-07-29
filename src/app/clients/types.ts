@@ -12,10 +12,12 @@ export interface Client {
   alloc_adv?: string
   alloc_adv_at?: any
   alloc_adv_secondary?: string
+  alloc_adv_secondary_at?: any
   convertedAt?: any
   convertedFromLead?: boolean
   creditCardDues?: string
   lastModified?: any
+  lastUpdated?: any
   leadId: string
   monthlyFees?: string
   monthlyIncome?: string
@@ -32,6 +34,15 @@ export interface Client {
     loanAmount: string;
     loanType: string;
   }>
+  documents?: Array<{
+    name: string;
+    type: string;
+    bankName: string;
+    accountType: string;
+    url: string;
+    htmlUrl: string;
+    createdAt: string;
+  }>
   adv_status?: string
   documentUrl?: string
   documentName?: string
@@ -39,6 +50,7 @@ export interface Client {
   dob?: string
   message: string
   sentAgreement?: boolean
+  request_letter?: boolean
   latestRemark?: {
     remark: string;
     advocateName: string;
