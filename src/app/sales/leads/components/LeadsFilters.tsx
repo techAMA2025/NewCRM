@@ -171,7 +171,7 @@ const LeadsFilters = ({
           {/* Results counter moved to the right */}
           <div className="ml-auto">
             <p className="text-sm text-gray-400">
-              {searchQuery ? (
+              {searchQuery || sourceFilter !== 'all' || statusFilter !== 'all' || salesPersonFilter !== 'all' || convertedFilter !== null ? (
                 <>
                   Found <span className="text-blue-400 font-medium">{filteredLeads.length}</span> of <span className="text-blue-400 font-medium">{totalLeadsCount}</span> leads
                 </>

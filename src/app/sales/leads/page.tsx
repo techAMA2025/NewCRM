@@ -725,10 +725,7 @@ const LeadsPage = () => {
     if (statusFilter !== 'all') {
       if (statusFilter === 'No Status') {
         result = result.filter(lead => 
-          lead.status === undefined || 
-          lead.status === null || 
-          lead.status === '' || 
-          lead.status === 'No Status'
+          !lead.status || lead.status === '' || lead.status === 'No Status'
         );
       } else {
         result = result.filter(lead => lead.status === statusFilter);
@@ -1593,6 +1590,11 @@ const LeadsPage = () => {
     }
   };
 
+  // Add a memoized calculation for totalLeadsCount based on allFilteredLeads
+  const dynamicTotalLeadsCount = useMemo(() => {
+    return allFilteredLeads.length;
+  }, [allFilteredLeads]);
+
   // Update lead handler
   const updateLead = async (id: any, data: any) => {
     try {
@@ -1627,6 +1629,99 @@ const LeadsPage = () => {
       setAllFilteredLeads(prevLeads => {
         const updatedLeads = updateLeadsInState(prevLeads);
         return reapplyFiltersToLeads(updatedLeads);
+      });
+      
+      // Immediately update filteredLeads to ensure count is updated in real-time
+      setFilteredLeads(prevFilteredLeads => {
+        const updatedFilteredLeads = updateLeadsInState(prevFilteredLeads);
+        // Apply current filters to ensure lead is removed if it no longer matches
+        return updatedFilteredLeads.filter(lead => {
+          // Tab-based filtering
+          if (activeTab === 'callback') {
+            if (typeof window !== 'undefined') {
+              const currentUserName = localStorage.getItem('userName');
+              const currentUserRole = localStorage.getItem('userRole');
+              
+              if (currentUserRole === 'admin' || currentUserRole === 'overlord') {
+                if (lead.status !== 'Callback') return false;
+              } else {
+                if (lead.status !== 'Callback' || lead.assignedTo !== currentUserName) return false;
+              }
+            }
+          }
+          
+          // Source filter
+          if (sourceFilter !== 'all' && lead.source_database !== sourceFilter) return false;
+          
+          // Status filter
+          if (statusFilter !== 'all') {
+            if (statusFilter === 'No Status') {
+              if (lead.status && lead.status !== '' && lead.status !== 'No Status') return false;
+            } else {
+              if (lead.status !== statusFilter) return false;
+            }
+          }
+          
+          // Salesperson filter
+          if (salesPersonFilter !== 'all') {
+            if (salesPersonFilter === '') {
+              if (lead.assignedTo) return false;
+            } else {
+              if (lead.assignedTo !== salesPersonFilter) return false;
+            }
+          }
+          
+          // Search query
+          if (searchQuery) {
+            const lowercasedQuery = searchQuery.toLowerCase().trim();
+            const name = lead.name || lead.Name || lead.fullName || lead.customerName || '';
+            const email = lead.email || lead.Email || lead.emailAddress || '';
+            const phone = lead.phone || lead.Phone || lead.phoneNumber || lead.mobileNumber || lead['Mobile Number'] || lead.number || '';
+            
+            if (!name.toLowerCase().includes(lowercasedQuery) && 
+                !email.toLowerCase().includes(lowercasedQuery) && 
+                !phone.toLowerCase().includes(lowercasedQuery)) {
+              return false;
+            }
+          }
+          
+          // Converted filter
+          if (convertedFilter !== null && lead.convertedToClient !== convertedFilter) return false;
+          
+          // Date range filter
+          if (fromDate || toDate) {
+            const fromDateTime = fromDate ? new Date(fromDate) : null;
+            if (fromDateTime) fromDateTime.setHours(0, 0, 0, 0);
+            
+            const toDateTime = toDate ? new Date(toDate) : null;
+            if (toDateTime) toDateTime.setHours(23, 59, 59, 999);
+            
+            const leadDate = lead.synced_at || lead.timestamp || lead.created || lead.lastModified || lead.createdAt;
+            
+            if (leadDate) {
+              let dateObj: Date;
+              if (leadDate.toDate) {
+                dateObj = leadDate.toDate();
+              } else if (leadDate instanceof Date) {
+                dateObj = leadDate;
+              } else {
+                dateObj = new Date(leadDate);
+              }
+              
+              if (!isNaN(dateObj.getTime())) {
+                if (fromDateTime && toDateTime) {
+                  if (!(dateObj >= fromDateTime && dateObj <= toDateTime)) return false;
+                } else if (fromDateTime) {
+                  if (!(dateObj >= fromDateTime)) return false;
+                } else if (toDateTime) {
+                  if (!(dateObj <= toDateTime)) return false;
+                }
+              }
+            }
+          }
+          
+          return true;
+        });
       });
       
       // Increment counter to trigger count recalculation
@@ -1813,7 +1908,7 @@ const LeadsPage = () => {
             userRole={userRole}
             filteredLeads={filteredLeads}
             leads={leads}
-            totalLeadsCount={totalLeadsCount}
+            totalLeadsCount={dynamicTotalLeadsCount}
             convertedFilter={convertedFilter}
             setConvertedFilter={setConvertedFilter}
             fromDate={fromDate}
