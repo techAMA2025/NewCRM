@@ -629,6 +629,8 @@ function ClientsPageWithParams() {
   };
 
   const openDocumentViewer = (url: string, name: string) => {
+    console.log('Opening document viewer:', { url, name });
+    console.log('Proxy URL:', getProxyUrl(url));
     setViewingDocumentUrl(url);
     setViewingDocumentName(name || "Document");
     setIsDocViewerOpen(true);
@@ -806,7 +808,7 @@ function ClientsPageWithParams() {
       return;
     }
 
-    // Define CSV headers
+    // Define CSV headers with all fields
     const headers = [
       'Name',
       'Phone',
@@ -815,26 +817,61 @@ function ClientsPageWithParams() {
       'Occupation',
       'Aadhar Number',
       'PAN Number',
+      'Date of Birth',
       'Primary Advocate',
+      'Primary Advocate Assigned At',
       'Secondary Advocate',
+      'Secondary Advocate Assigned At',
       'Status',
-      'Source',
+      'Advocate Status',
+      'Source Database',
       'Monthly Income',
-      'Monthly Fees',
       'Personal Loan Dues',
       'Credit Card Dues',
       'Start Date',
       'Tenure',
       'Sales By',
+      'Lead ID',
+      'Converted From Lead',
+      'Converted At',
+      'Request Letter',
+      'Sent Agreement',
+      'Last Modified',
+      'Last Updated',
       'Latest Remark',
       'Remark By',
-      'Last Modified'
+      'Bank Details (JSON)',
+      'Document Details (JSON)'
     ];
 
     // Convert clients data to CSV rows
     const csvRows = [headers];
 
     filteredClients.forEach(client => {
+      // Format bank details as JSON string
+      const bankDetails = client.banks && Array.isArray(client.banks) 
+        ? JSON.stringify(client.banks.map(bank => ({
+            bankName: bank.bankName || '',
+            accountNumber: bank.accountNumber || '',
+            loanAmount: bank.loanAmount || '',
+            loanType: bank.loanType || '',
+            id: bank.id || ''
+          })))
+        : '';
+
+      // Format document details as JSON string
+      const documentDetails = client.documents && Array.isArray(client.documents)
+        ? JSON.stringify(client.documents.map(doc => ({
+            name: doc.name || '',
+            type: doc.type || '',
+            bankName: doc.bankName || '',
+            accountType: doc.accountType || '',
+            url: doc.url || '',
+            htmlUrl: doc.htmlUrl || '',
+            createdAt: doc.createdAt || ''
+          })))
+        : '';
+
       const row = [
         client.name || '',
         client.phone || '',
@@ -843,20 +880,31 @@ function ClientsPageWithParams() {
         client.occupation || '',
         client.aadharNumber || '',
         client.panNumber || '',
+        client.dob || '',
         client.alloc_adv || '',
+        client.alloc_adv_at ? formatTimestamp(client.alloc_adv_at) : '',
         client.alloc_adv_secondary || '',
+        client.alloc_adv_secondary_at ? formatTimestamp(client.alloc_adv_secondary_at) : '',
+        client.status || '',
         client.adv_status || '',
         formatSourceName(client.source_database || ''),
         client.monthlyIncome || '',
-        client.monthlyFees || '',
         client.personalLoanDues || '',
         client.creditCardDues || '',
-        client.startDate || '', // Keep empty if no startDate
+        client.startDate || '',
         client.tenure || '',
         client.assignedTo || '',
+        client.leadId || '',
+        client.convertedFromLead ? 'Yes' : 'No',
+        client.convertedAt ? formatTimestamp(client.convertedAt) : '',
+        client.request_letter ? 'Yes' : 'No',
+        client.sentAgreement ? 'Yes' : 'No',
+        client.lastModified ? formatTimestamp(client.lastModified) : '',
+        client.lastUpdated ? formatTimestamp(client.lastUpdated) : '',
         client.latestRemark?.remark || '',
         client.latestRemark?.advocateName || '',
-        client.lastModified ? formatTimestamp(client.lastModified) : ''
+        bankDetails,
+        documentDetails
       ];
 
       // Escape commas and quotes in CSV values
@@ -887,7 +935,7 @@ function ClientsPageWithParams() {
 
     showToast(
       "CSV Downloaded",
-      `Successfully exported ${filteredClients.length} clients to CSV.`,
+      `Successfully exported ${filteredClients.length} clients to CSV with all fields.`,
       "success"
     );
   };
@@ -1211,6 +1259,144 @@ function ClientsPageWithParams() {
     }
   };
 
+  // Function to extract Firebase Storage path from URL
+  const extractStoragePath = (url: string): string | null => {
+    try {
+      console.log('Input URL:', url);
+      
+      // Extract path from Firebase Storage URL
+      const urlObj = new URL(url);
+      
+      // Handle Firebase Storage URL format: https://firebasestorage.googleapis.com/v0/b/bucket/o/path?alt=media&token=...
+      if (urlObj.hostname === 'firebasestorage.googleapis.com' && urlObj.pathname.includes('/o/')) {
+        const pathMatch = urlObj.pathname.match(/\/o\/(.+)$/);
+        if (pathMatch) {
+          // The path after /o/ is already URL encoded, we need to decode it
+          let path = decodeURIComponent(pathMatch[1]);
+          console.log('Extracted storage path:', path);
+          return path;
+        }
+      }
+      
+      // Handle storage.googleapis.com format
+      if (urlObj.hostname === 'storage.googleapis.com') {
+        // Remove the bucket name from the path
+        const pathParts = urlObj.pathname.split('/');
+        if (pathParts.length > 2) {
+          const path = pathParts.slice(2).join('/');
+          console.log('Extracted storage path (storage.googleapis.com):', path);
+          return path;
+        }
+      }
+      
+      console.warn('Could not extract storage path from URL:', url);
+      return null;
+    } catch (error) {
+      console.error('Error extracting storage path:', error);
+      return null;
+    }
+  };
+
+  // Function to get proxy URL for document viewing
+  const getProxyUrl = (documentUrl: string): string => {
+    const storagePath = extractStoragePath(documentUrl);
+    if (storagePath) {
+      const proxyUrl = `/api/document-proxy?path=${encodeURIComponent(storagePath)}`;
+      console.log('Generated proxy URL:', proxyUrl);
+      return proxyUrl;
+    }
+    console.warn('Falling back to original URL:', documentUrl);
+    return documentUrl; // Fallback to original URL
+  };
+
+  // Function to determine the best viewer method based on file type
+  const getBestViewerMethod = (documentUrl: string, documentName: string): 'google' | 'office' | 'direct' | 'viewer' => {
+    const fileName = documentName || documentUrl;
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    if (extension === 'pdf') {
+      // PDFs work well with direct proxy viewer
+      return 'direct';
+    } else if (extension === 'docx' || extension === 'doc') {
+      // .docx files work better with our custom viewer API that provides download option
+      return 'viewer';
+    } else {
+      // Default to custom viewer for other file types
+      return 'viewer';
+    }
+  };
+
+  // Function to get document viewer URL
+  const getViewerUrl = (documentUrl: string, documentName: string): string => {
+    return `/api/document-viewer?url=${encodeURIComponent(documentUrl)}&name=${encodeURIComponent(documentName)}`;
+  };
+
+  // Add new state for document viewer fallback
+  const [showFallback, setShowFallback] = useState(false)
+  const [viewerMethod, setViewerMethod] = useState<'google' | 'office' | 'direct' | 'viewer' | 'fallback'>('viewer')
+  const [iframeLoaded, setIframeLoaded] = useState(false)
+
+  // Add useEffect to handle document viewer fallback
+  useEffect(() => {
+    if (isDocViewerOpen && viewingDocumentUrl) {
+      // Reset states when opening new document
+      setShowFallback(false)
+      // Set the best viewer method based on file type
+      const bestMethod = getBestViewerMethod(viewingDocumentUrl, viewingDocumentName)
+      setViewerMethod(bestMethod)
+      setIframeLoaded(false)
+      
+      // Set a timeout to show fallback if iframe doesn't load properly
+      const timeout = setTimeout(() => {
+        if (!iframeLoaded) {
+          setShowFallback(true)
+        }
+      }, 10000) // 10 seconds timeout for better chance of loading
+      
+      return () => clearTimeout(timeout)
+    }
+  }, [isDocViewerOpen, viewingDocumentUrl, viewingDocumentName])
+
+  // Function to handle iframe load success
+  const handleIframeLoad = () => {
+    setIframeLoaded(true)
+    setShowFallback(false)
+  }
+
+  // Function to handle iframe load error
+  const handleIframeError = () => {
+    console.error('Iframe failed to load document')
+    setShowFallback(true)
+  }
+
+  // Function to switch to Microsoft Office Online viewer
+  const switchToOfficeViewer = () => {
+    setViewerMethod('office')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
+  // Function to switch back to Google Docs viewer
+  const switchToGoogleViewer = () => {
+    setViewerMethod('google')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
+  // Function to switch to direct proxy viewer
+  const switchToDirectViewer = () => {
+    setViewerMethod('direct')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
+  // Function to switch to custom viewer
+  const switchToCustomViewer = () => {
+    setViewerMethod('viewer')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
   if (loading) return (
     <div className="flex min-h-screen bg-white">
       {renderSidebar()}
@@ -1478,6 +1664,12 @@ function ClientsPageWithParams() {
                     <polyline points="14 2 14 8 20 8"></polyline>
                   </svg>
                   {viewingDocumentName}
+                  <span className="ml-2 text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">
+                    {viewerMethod === 'google' && 'Google Docs'}
+                    {viewerMethod === 'office' && 'Office Online'}
+                    {viewerMethod === 'direct' && 'Direct View'}
+                    {viewerMethod === 'viewer' && 'Custom Viewer'}
+                  </span>
                 </h3>
                 <div className="flex gap-3">
                   <Button
@@ -1501,12 +1693,198 @@ function ClientsPageWithParams() {
                 </div>
               </div>
               
-              <div className="flex-1 bg-white rounded overflow-hidden">
-                <iframe 
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
-                  className="w-full h-full border-0"
-                  title="Document Viewer"
-                ></iframe>
+              <div className="flex-1 bg-white rounded overflow-hidden relative">
+                {/* Loading indicator */}
+                {!iframeLoaded && !showFallback && (
+                  <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center">
+                    <div className="h-8 w-8 border-4 border-t-blue-500 border-b-blue-500 border-l-transparent border-r-transparent rounded-full animate-spin"></div>
+                    <p className="mt-2 text-gray-600 text-sm">Loading document...</p>
+                  </div>
+                )}
+
+                {/* Google Docs Viewer */}
+                {viewerMethod === 'google' && (
+                  <iframe 
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                    className="w-full h-full border-0"
+                    title="Document Viewer"
+                    onLoad={handleIframeLoad}
+                    onError={handleIframeError}
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  ></iframe>
+                )}
+                
+                {/* Microsoft Office Online Viewer */}
+                {viewerMethod === 'office' && (
+                  <iframe 
+                    src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewingDocumentUrl)}`}
+                    className="w-full h-full border-0"
+                    title="Document Viewer"
+                    onLoad={handleIframeLoad}
+                    onError={handleIframeError}
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  ></iframe>
+                )}
+
+                {/* Direct Proxy Viewer */}
+                {viewerMethod === 'direct' && (
+                  <iframe 
+                    src={getProxyUrl(viewingDocumentUrl)}
+                    className="w-full h-full border-0"
+                    title="Document Viewer"
+                    onLoad={handleIframeLoad}
+                    onError={handleIframeError}
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  ></iframe>
+                )}
+                
+                {/* Custom Viewer */}
+                {viewerMethod === 'viewer' && (
+                  <iframe 
+                    src={getViewerUrl(viewingDocumentUrl, viewingDocumentName)}
+                    className="w-full h-full border-0"
+                    title="Document Viewer"
+                    onLoad={handleIframeLoad}
+                    onError={handleIframeError}
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  ></iframe>
+                )}
+                
+                {/* Fallback message overlay */}
+                {showFallback && (
+                  <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center p-8 text-center">
+                    <div className="max-w-md">
+                      <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center mb-4 mx-auto">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                          <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">Document Preview Unavailable</h3>
+                      <p className="text-gray-600 mb-4">
+                        This document cannot be previewed with the current viewer. Firebase Storage URLs may not be accessible to external viewers due to authentication requirements.
+                      </p>
+                      <div className="flex flex-col gap-2 mb-4">
+                        {viewerMethod === 'direct' && (
+                          <>
+                            <p className="text-sm text-gray-500 mb-2">
+                              The direct viewer failed. This might be a network issue or the file may be corrupted.
+                            </p>
+                            <Button
+                              onClick={switchToCustomViewer}
+                              className="bg-purple-500 hover:bg-purple-600 text-white"
+                            >
+                              Try Custom Viewer (Recommended)
+                            </Button>
+                            <Button
+                              onClick={switchToGoogleViewer}
+                              className="bg-green-500 hover:bg-green-600 text-white"
+                            >
+                              Try Google Docs Viewer (may not work with private files)
+                            </Button>
+                            <Button
+                              onClick={switchToOfficeViewer}
+                              className="bg-blue-500 hover:bg-blue-600 text-white"
+                            >
+                              Try Microsoft Office Viewer (may not work with private files)
+                            </Button>
+                          </>
+                        )}
+                        {viewerMethod === 'google' && (
+                          <>
+                            <p className="text-sm text-gray-500 mb-2">
+                              Google Docs viewer cannot access this file. This is common with private Firebase Storage URLs.
+                            </p>
+                            <Button
+                              onClick={switchToCustomViewer}
+                              className="bg-purple-500 hover:bg-purple-600 text-white"
+                            >
+                              Try Custom Viewer (Recommended)
+                            </Button>
+                            <Button
+                              onClick={switchToDirectViewer}
+                              className="bg-purple-500 hover:bg-purple-600 text-white"
+                            >
+                              Try Direct Viewer
+                            </Button>
+                            <Button
+                              onClick={switchToOfficeViewer}
+                              className="bg-blue-500 hover:bg-blue-600 text-white"
+                            >
+                              Try Microsoft Office Viewer
+                            </Button>
+                          </>
+                        )}
+                        {viewerMethod === 'office' && (
+                          <>
+                            <p className="text-sm text-gray-500 mb-2">
+                              Microsoft Office viewer cannot access this file. This is common with private Firebase Storage URLs.
+                            </p>
+                            <Button
+                              onClick={switchToCustomViewer}
+                              className="bg-purple-500 hover:bg-purple-600 text-white"
+                            >
+                              Try Custom Viewer (Recommended)
+                            </Button>
+                            <Button
+                              onClick={switchToDirectViewer}
+                              className="bg-purple-500 hover:bg-purple-600 text-white"
+                            >
+                              Try Direct Viewer
+                            </Button>
+                            <Button
+                              onClick={switchToGoogleViewer}
+                              className="bg-green-500 hover:bg-green-600 text-white"
+                            >
+                              Try Google Docs Viewer
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex gap-3 justify-center">
+                        <Button
+                          onClick={() => {
+                            const proxyUrl = getProxyUrl(viewingDocumentUrl);
+                            console.log('Testing proxy URL:', proxyUrl);
+                            window.open(proxyUrl, '_blank');
+                          }}
+                          className="bg-purple-500 hover:bg-purple-600 text-white"
+                        >
+                          Test Proxy URL
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const storagePath = extractStoragePath(viewingDocumentUrl);
+                            const testUrl = `/api/test-storage?path=${encodeURIComponent(storagePath || '')}`;
+                            console.log('Testing storage access:', testUrl);
+                            window.open(testUrl, '_blank');
+                          }}
+                          className="bg-orange-500 hover:bg-orange-600 text-white"
+                        >
+                          Debug Storage
+                        </Button>
+                        <Button
+                          onClick={() => window.open(viewingDocumentUrl, '_blank')}
+                          className="bg-blue-500 hover:bg-blue-600 text-white"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                          </svg>
+                          Download Original
+                        </Button>
+                        <Button
+                          onClick={() => setIsDocViewerOpen(false)}
+                          variant="outline"
+                          className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
