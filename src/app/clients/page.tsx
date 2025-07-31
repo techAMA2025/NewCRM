@@ -1432,7 +1432,7 @@ function ClientsPageWithParams() {
             <h1 className={`text-base font-bold ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
               Clients Management
             </h1>
-            {selectedClients.size > 0 && userRole !== 'billcut' && (
+            {selectedClients.size > 0 && userRole !== 'billcut' && userRole !== 'assistant' && (
               <div className="flex gap-1">
                 <Button
                   onClick={() => setIsBulkAssignModalOpen(true)}
@@ -1450,7 +1450,7 @@ function ClientsPageWithParams() {
             )}
           </div>
           <div className="flex gap-1.5">
-            {userRole !== 'billcut' && (
+            {userRole !== 'billcut' && userRole !== 'assistant' && (
               <Button
                 onClick={downloadCSV}
                 className={`${

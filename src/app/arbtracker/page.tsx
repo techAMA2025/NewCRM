@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
+import AssistantSidebar from '@/components/navigation/AssistantSidebar'
 import { FaPlus, FaSearch, FaLink, FaCheck, FaTimes, FaFileSignature, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewArbitrationCaseModel'
 import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
@@ -87,10 +88,19 @@ export default function ArbitrationTracker() {
   // Get user role from localStorage
   useEffect(() => {
     const storedRole = localStorage.getItem('userRole')
+    console.log('Raw stored role from localStorage:', storedRole)
     if (storedRole) {
-      setUserRole(storedRole.toLowerCase())
+      const normalizedRole = storedRole.toLowerCase().trim()
+      console.log('Normalized role:', normalizedRole)
+      setUserRole(normalizedRole)
     }
+    console.log('Final userRole state:', userRole)
   }, [])
+
+  // Add another useEffect to log when userRole changes
+  useEffect(() => {
+    console.log('UserRole state updated to:', userRole)
+  }, [userRole])
   
   // Fetch arbitration cases from Firestore
   useEffect(() => {
@@ -768,6 +778,297 @@ export default function ArbitrationTracker() {
             )}
           </div>
         </OverlordSidebar>
+      ) : userRole === 'assistant' ? (
+        <>
+          <AssistantSidebar />
+          <div className="flex-1 p-4">
+            <Toaster position="top-right" />
+            
+            <div className="mb-4">
+              <h1 className="text-2xl font-bold text-gray-800">Arbitration Tracker</h1>
+              <p className="text-gray-600 mt-1 text-sm">Monitor and manage all your arbitration cases</p>
+            </div>
+            
+            {/* Action Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={handleOpenModal}
+                  className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg flex items-center hover:bg-indigo-700 transition-colors text-sm"
+                >
+                  <FaPlus className="mr-1.5 text-xs" />
+                  New Case
+                </button>
+                
+                <select 
+                  className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="in progress">In Progress</option>
+                  <option value="pending decision">Pending Decision</option>
+                  <option value="completed">Completed</option>
+                </select>
+
+                {/* Date Filter */}
+                <div className="flex items-center space-x-2">
+                  <select 
+                    className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                  >
+                    <option value="">All Dates</option>
+                    <option value="7days">Next 7 Days</option>
+                    <option value="2weeks">Next 2 Weeks</option>
+                    <option value="30days">Next 30 Days</option>
+                    <option value="custom">Custom Range</option>
+                  </select>
+                  
+                  {dateFilter === 'custom' && (
+                    <div className="flex items-center space-x-1">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs"
+                        placeholder="Start Date"
+                      />
+                      <span className="text-gray-500 text-xs">to</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-xs"
+                        placeholder="End Date"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="relative">
+                <FaSearch className="absolute left-2.5 top-2.5 text-gray-400 text-xs" />
+                <input
+                  type="text"
+                  placeholder="Search cases..."
+                  className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg w-48 text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+             {/* Summary Cards */}
+             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <p className="text-xs text-gray-500 font-medium">Filtered Cases</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">{filteredCases.length}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <p className="text-xs text-gray-500 font-medium">In Progress</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">
+                  {filteredCases.filter(c => c.status?.toLowerCase() === 'in progress').length}
+                </p>
+              </div>
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <p className="text-xs text-gray-500 font-medium">Upcoming (7 days)</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">
+                  {filteredCases.filter(c => {
+                    if (!c.startDate) return false;
+                    const caseDate = new Date(c.startDate);
+                    const today = new Date();
+                    const nextWeek = new Date();
+                    nextWeek.setDate(today.getDate() + 7);
+                    return caseDate >= today && caseDate <= nextWeek;
+                  }).length}
+                </p>
+              </div>
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <p className="text-xs text-gray-500 font-medium">Missing Documents</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">
+                  {filteredCases.filter(c => !c.vakalatnama || !c.onlineLinkLetter).length}
+                </p>
+              </div>
+            </div>
+            {/* Loading State */}
+            {loading && (
+              <div className="flex justify-center items-center h-48 mt-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+              </div>
+            )}
+            
+            {/* Cases Table */}
+            {!loading && (
+              <div className="bg-white rounded-xl shadow-md overflow-hidden mt-4">
+                {filteredCases.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <p className="text-gray-500 text-sm">No arbitration cases found. Click "New Case" to add one.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                             Name
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Advocate
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Type
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                             Date
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Time
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Bank 
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Meet 
+                          </th>
+                          <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Vakalatnama
+                          </th>
+                          <th className="px-3 py-2 text-center text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Online Link Letter
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Email Sent
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Last Edited By
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Remarks
+                          </th>
+                          <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredCases.map((arbitrationCase, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                              {arbitrationCase.clientName}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              {arbitrationCase.adv_name || 'Not assigned'}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              {arbitrationCase.type}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              {formatDate(arbitrationCase.startDate)}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              {arbitrationCase.time}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <StatusBadge status={arbitrationCase.status} />
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              {arbitrationCase.bankName}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              {arbitrationCase.meetLink ? (
+                                <a 
+                                  href={arbitrationCase.meetLink} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 flex items-center"
+                                >
+                                  <FaLink className="mr-1 text-xs" /> Join
+                                </a>
+                              ) : (
+                                "Not available"
+                              )}
+                            </td>
+                            <td className="px-12 py-2 whitespace-nowrap text-xs text-center">
+                              <BooleanIndicator value={arbitrationCase.vakalatnama} />
+                            </td>
+                            <td className="px-12 py-2 whitespace-nowrap text-xs text-center">
+                              <BooleanIndicator value={arbitrationCase.onlineLinkLetter} />
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs">
+                              {arbitrationCase.emailSent ? (
+                                <div className="text-green-600" title={`Sent by ${arbitrationCase.emailSentBy || 'Unknown'}`}>
+                                  <FaCheck className="inline mr-1 text-xs" /> Sent
+                                </div>
+                              ) : (
+                                <div className="text-gray-500">
+                                  <FaTimes className="inline mr-1 text-xs" /> Not sent
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              {arbitrationCase.lastEditedBy || 'Unknown'}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="text"
+                                  value={remarks[arbitrationCase.id] || ''}
+                                  onChange={(e) => handleRemarkChange(arbitrationCase.id, e.target.value)}
+                                  placeholder="Add remark..."
+                                  className="w-20 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                                <button
+                                  onClick={() => handleSaveRemark(arbitrationCase.id)}
+                                  className="px-1 py-0.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => handleViewHistory(arbitrationCase.id)}
+                                  className="px-1 py-0.5 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                                >
+                                  History
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs">
+                              <div className="flex items-center space-x-1">
+                                <button
+                                  onClick={() => handleOpenEditModal(arbitrationCase)}
+                                  className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCase(arbitrationCase.id)}
+                                  className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                                >
+                                  Delete
+                                </button>
+                                {!arbitrationCase.emailSent && (
+                                  <button
+                                    onClick={() => handleSendEmailAndCalendar(arbitrationCase)}
+                                    className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                  >
+                                    Send Email
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         <>
           <AdvocateSidebar />

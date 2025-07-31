@@ -138,7 +138,7 @@ export default function ClientsTable({
                   } h-2.5 w-2.5`}
                   checked={selectedClients.size === clients.length && clients.length > 0}
                   onChange={(e) => onSelectAll(e.target.checked)}
-                  disabled={userRole === 'billcut'}
+                  disabled={userRole === 'billcut' || userRole === 'assistant'}
                 />
               </TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Start Date</TableHead>
@@ -169,7 +169,7 @@ export default function ClientsTable({
                     } h-2.5 w-2.5`}
                     checked={selectedClients.has(client.id)}
                     onChange={(e) => onSelectClient(client.id, e.target.checked)}
-                    disabled={userRole === 'billcut'}
+                    disabled={userRole === 'billcut' || userRole === 'assistant'}
                   />
                 </TableCell>
                 <TableCell className="p-1 text-[10px]">{formatStartDate(client.startDate)}</TableCell>
@@ -244,18 +244,18 @@ export default function ClientsTable({
                       id={`agreement-${client.id}`}
                       checked={Boolean(client.sentAgreement)}
                       onChange={() => onAgreementToggle(client.id, Boolean(client.sentAgreement))}
-                      disabled={userRole === 'billcut'}
+                      disabled={userRole === 'billcut' || userRole === 'assistant'}
                       className={`rounded ${
                         isDark 
                           ? 'border-gray-600 text-blue-400 focus:ring-blue-400 bg-gray-700' 
                           : 'border-gray-300 text-blue-500 focus:ring-blue-500 bg-white'
-                      } h-3 w-3 ${userRole === 'billcut' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      } h-3 w-3 ${(userRole === 'billcut' || userRole === 'assistant') ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                     <label 
                       htmlFor={`agreement-${client.id}`} 
                       className={`ml-1 text-[8px] cursor-pointer ${
                         isDark ? 'text-gray-300' : 'text-gray-600'
-                      } ${userRole === 'billcut' ? 'cursor-default' : ''}`}
+                      } ${(userRole === 'billcut' || userRole === 'assistant') ? 'cursor-default' : ''}`}
                     >
                       Sent
                     </label>
@@ -317,7 +317,7 @@ export default function ClientsTable({
                         <FileText className="h-2.5 w-2.5" />
                       </Button>
                     )}
-                    {userRole !== 'billcut' && (
+                    {userRole !== 'billcut' && userRole !== 'assistant' && (
                       <>
                         <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onEditClient(client)}>
                           <Edit className="h-2.5 w-2.5" />
