@@ -1,5 +1,4 @@
 "use client"
-
 import { useEffect, useState, Suspense } from "react"
 import {
   collection,
@@ -84,17 +83,15 @@ interface RemarkHistory {
 
 function formatIndianCurrency(amount: string | number | undefined): string {
   if (!amount) return "—"
-
   // Convert to string if it's not already a string
   const amountStr = typeof amount === "string" ? amount : String(amount)
-
   // Check if it's a range (contains hyphen)
-  if (amountStr.includes('-')) {
-    const parts = amountStr.split('-')
+  if (amountStr.includes("-")) {
+    const parts = amountStr.split("-")
     if (parts.length === 2) {
       const firstAmount = parts[0].trim().replace(/[^\d.]/g, "")
       const secondAmount = parts[1].trim().replace(/[^\d.]/g, "")
-      
+
       // Format both parts if they are valid numbers
       if (firstAmount && secondAmount) {
         const formatter = new Intl.NumberFormat("en-IN", {
@@ -103,18 +100,16 @@ function formatIndianCurrency(amount: string | number | undefined): string {
           minimumFractionDigits: 0,
           maximumFractionDigits: 0,
         })
-        
+
         const formattedFirst = formatter.format(Number(firstAmount))
         const formattedSecond = formatter.format(Number(secondAmount))
-        
+
         return `${formattedFirst} - ${formattedSecond}`
       }
     }
   }
-
   // Remove any existing currency symbols or non-numeric characters except decimal point
   const numericValue = amountStr.replace(/[^\d.]/g, "")
-
   // Format with ₹ symbol and thousands separators (e.g., ₹1,50,000)
   const formatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -122,31 +117,26 @@ function formatIndianCurrency(amount: string | number | undefined): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })
-
   return formatter.format(Number(numericValue))
 }
 
 function formatIndianPhoneNumber(phone: string): string {
   // Remove any non-digit characters
   const digits = phone.replace(/\D/g, "")
-
   // Check if it's a 10-digit number without country code
   if (digits.length === 10) {
     return `+91 ${digits.substring(0, 5)} ${digits.substring(5)}`
   }
-
   // If it already has country code (usually 12 digits with 91)
   if (digits.length === 12 && digits.startsWith("91")) {
     return `+${digits.substring(0, 2)} ${digits.substring(2, 7)} ${digits.substring(7)}`
   }
-
   // Return the original if it doesn't match expected patterns
   return phone
 }
 
 function formatIndianDate(date: any): string {
   if (!date) return "Not specified"
-
   if (date.toDate && typeof date.toDate === "function") {
     const dateObj = date.toDate()
     return dateObj.toLocaleDateString("en-IN", {
@@ -155,7 +145,6 @@ function formatIndianDate(date: any): string {
       year: "numeric",
     }) // DD-MM-YYYY format
   }
-
   // If it's a string already, try to format it
   if (typeof date === "string") {
     // Try to parse and format if it's a date string
@@ -169,16 +158,13 @@ function formatIndianDate(date: any): string {
     }
     return date
   }
-
   return "Not specified"
 }
 
 // Helper function to get week number based on day of month from startDate
 function getWeekFromStartDate(startDate: any): number {
   if (!startDate) return 0
-
   let dateObj: Date
-
   if (startDate.toDate && typeof startDate.toDate === "function") {
     dateObj = startDate.toDate()
   } else if (typeof startDate === "string") {
@@ -188,16 +174,12 @@ function getWeekFromStartDate(startDate: any): number {
   } else {
     return 0
   }
-
   if (isNaN(dateObj.getTime())) return 0
-
   const dayOfMonth = dateObj.getDate()
-
   if (dayOfMonth >= 1 && dayOfMonth <= 7) return 1
   if (dayOfMonth >= 8 && dayOfMonth <= 14) return 2
   if (dayOfMonth >= 15 && dayOfMonth <= 21) return 3
   if (dayOfMonth >= 22 && dayOfMonth <= 31) return 4
-
   return 0
 }
 
@@ -215,6 +197,487 @@ function getWeekLabel(weekNumber: number): string {
     default:
       return "Unknown Week"
   }
+}
+
+// Enhanced Document Viewer Component with multiple viewer methods and fallback support
+function DocumentViewer({
+  isOpen,
+  documentUrl,
+  documentName,
+  onClose,
+}: {
+  isOpen: boolean
+  documentUrl: string
+  documentName: string
+  onClose: () => void
+}) {
+  const [showFallback, setShowFallback] = useState(false)
+  const [viewerMethod, setViewerMethod] = useState<'google' | 'office' | 'direct' | 'viewer' | 'fallback'>('viewer')
+  const [iframeLoaded, setIframeLoaded] = useState(false)
+
+  // Function to validate and sanitize URLs for safe iframe usage
+  const sanitizeUrl = (url: string): string | null => {
+    try {
+      // Create URL object to validate the URL
+      const urlObj = new URL(url);
+      
+      // Only allow HTTP and HTTPS protocols
+      if (!['http:', 'https:'].includes(urlObj.protocol)) {
+        console.warn('Unsafe URL protocol detected:', urlObj.protocol);
+        return null;
+      }
+      
+      // Additional validation for known safe domains
+      const allowedDomains = [
+        'firebasestorage.googleapis.com',
+        'storage.googleapis.com',
+        'docs.google.com',
+        'view.officeapps.live.com'
+      ];
+      
+      // If it's our own domain (API routes), allow it
+      if (urlObj.pathname.startsWith('/api/')) {
+        return url;
+      }
+      
+      // For external domains, check if they're in our allowed list
+      const isAllowedDomain = allowedDomains.some(domain => 
+        urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+      );
+      
+      if (!isAllowedDomain) {
+        console.warn('URL from non-allowed domain:', urlObj.hostname);
+        // Still allow it but log for monitoring
+      }
+      
+      return url;
+    } catch (error) {
+      console.error('Invalid URL:', error);
+      return null;
+    }
+  };
+
+  // Function to extract Firebase Storage path from URL
+  const extractStoragePath = (url: string): string | null => {
+    try {
+      console.log('Input URL:', url);
+      
+      // Extract path from Firebase Storage URL
+      const urlObj = new URL(url);
+      
+      // Handle Firebase Storage URL format: https://firebasestorage.googleapis.com/v0/b/bucket/o/path?alt=media&token=...
+      if (urlObj.hostname === 'firebasestorage.googleapis.com' && urlObj.pathname.includes('/o/')) {
+        const pathMatch = urlObj.pathname.match(/\/o\/(.+)$/);
+        if (pathMatch) {
+          // The path after /o/ is already URL encoded, we need to decode it
+          let path = decodeURIComponent(pathMatch[1]);
+          console.log('Extracted storage path:', path);
+          return path;
+        }
+      }
+      
+      // Handle storage.googleapis.com format
+      if (urlObj.hostname === 'storage.googleapis.com') {
+        // Remove the bucket name from the path
+        const pathParts = urlObj.pathname.split('/');
+        if (pathParts.length > 2) {
+          const path = pathParts.slice(2).join('/');
+          console.log('Extracted storage path (storage.googleapis.com):', path);
+          return path;
+        }
+      }
+      
+      console.warn('Could not extract storage path from URL:', url);
+      return null;
+    } catch (error) {
+      console.error('Error extracting storage path:', error);
+      return null;
+    }
+  };
+
+  // Function to get proxy URL for document viewing
+  const getProxyUrl = (documentUrl: string): string => {
+    // First sanitize the input URL
+    const sanitizedUrl = sanitizeUrl(documentUrl);
+    if (!sanitizedUrl) {
+      console.error('URL failed sanitization:', documentUrl);
+      return '/api/document-error?error=invalid-url';
+    }
+
+    const storagePath = extractStoragePath(sanitizedUrl);
+    if (storagePath) {
+      const proxyUrl = `/api/document-proxy?path=${encodeURIComponent(storagePath)}`;
+      console.log('Generated proxy URL:', proxyUrl);
+      return proxyUrl;
+    }
+    console.warn('Falling back to original URL:', sanitizedUrl);
+    return sanitizedUrl; // Fallback to sanitized URL
+  };
+
+  // Function to determine the best viewer method based on file type
+  const getBestViewerMethod = (documentUrl: string, documentName: string): 'google' | 'office' | 'direct' | 'viewer' => {
+    const fileName = documentName || documentUrl;
+    const extension = fileName.toLowerCase().split('.').pop();
+    
+    if (extension === 'pdf') {
+      // PDFs work well with direct proxy viewer
+      return 'direct';
+    } else if (extension === 'docx' || extension === 'doc') {
+      // .docx files work better with our custom viewer API that provides download option
+      return 'viewer';
+    } else {
+      // Default to custom viewer for other file types
+      return 'viewer';
+    }
+  };
+
+  // Function to get document viewer URL
+  const getViewerUrl = (documentUrl: string, documentName: string): string => {
+    // Sanitize the document URL before using it
+    const sanitizedUrl = sanitizeUrl(documentUrl);
+    if (!sanitizedUrl) {
+      console.error('URL failed sanitization for viewer:', documentUrl);
+      return '/api/document-error?error=invalid-url';
+    }
+    return `/api/document-viewer?url=${encodeURIComponent(sanitizedUrl)}&name=${encodeURIComponent(documentName)}`;
+  };
+
+  // Helper function to safely generate iframe source URLs
+  const getSafeIframeSrc = (baseUrl: string, documentUrl: string): string => {
+    // Double-check URL safety before using in iframe
+    const sanitizedUrl = sanitizeUrl(documentUrl);
+    if (!sanitizedUrl) {
+      console.error('URL failed safety check for iframe:', documentUrl);
+      return '/api/document-error?error=unsafe-url';
+    }
+    return `${baseUrl}${encodeURIComponent(sanitizedUrl)}`;
+  };
+
+  useEffect(() => {
+    if (isOpen && documentUrl) {
+      // Reset states when opening new document
+      setShowFallback(false)
+      // Set the best viewer method based on file type
+      const bestMethod = getBestViewerMethod(documentUrl, documentName)
+      setViewerMethod(bestMethod)
+      setIframeLoaded(false)
+      
+      // Set a timeout to show fallback if iframe doesn't load properly
+      const timeout = setTimeout(() => {
+        if (!iframeLoaded) {
+          setShowFallback(true)
+        }
+      }, 10000) // 10 seconds timeout for better chance of loading
+      
+      return () => clearTimeout(timeout)
+    }
+  }, [isOpen, documentUrl, documentName])
+
+  // Function to handle iframe load success
+  const handleIframeLoad = () => {
+    setIframeLoaded(true)
+    setShowFallback(false)
+  }
+
+  // Function to handle iframe load error
+  const handleIframeError = () => {
+    console.error('Iframe failed to load document')
+    setShowFallback(true)
+  }
+
+  // Function to switch to Microsoft Office Online viewer
+  const switchToOfficeViewer = () => {
+    setViewerMethod('office')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
+  // Function to switch back to Google Docs viewer
+  const switchToGoogleViewer = () => {
+    setViewerMethod('google')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
+  // Function to switch to direct proxy viewer
+  const switchToDirectViewer = () => {
+    setViewerMethod('direct')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
+  // Function to switch to custom viewer
+  const switchToCustomViewer = () => {
+    setViewerMethod('viewer')
+    setShowFallback(false)
+    setIframeLoaded(false)
+  }
+
+  const handleDownload = () => {
+    const safeUrl = sanitizeUrl(documentUrl);
+    if (safeUrl) {
+      window.open(safeUrl, '_blank');
+    } else {
+      toast.error("Invalid URL: Cannot download document")
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+      <div className="bg-gray-800/90 rounded-xl border border-gray-600/50 p-4 w-[95vw] max-w-6xl h-[90vh] animate-fade-in shadow-2xl flex flex-col">
+        <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-600/50">
+          <h3 className="text-xl font-semibold text-gray-200 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            {documentName}
+            <span className="ml-2 text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">
+              {viewerMethod === 'google' && 'Google Docs'}
+              {viewerMethod === 'office' && 'Office Online'}
+              {viewerMethod === 'direct' && 'Direct View'}
+              {viewerMethod === 'viewer' && 'Custom Viewer'}
+            </span>
+          </h3>
+          <div className="flex gap-3">
+            <button
+              onClick={handleDownload}
+              className="px-3 py-1.5 bg-blue-500/80 hover:bg-blue-600/80 text-white text-sm rounded transition-colors duration-200 flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+              Download
+            </button>
+            <button 
+              onClick={onClose}
+              className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-700/60 hover:bg-gray-600/60 text-gray-300 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex-1 bg-white rounded overflow-hidden relative">
+          {/* Loading indicator */}
+          {!iframeLoaded && !showFallback && (
+            <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center">
+              <div className="h-8 w-8 border-4 border-t-blue-500 border-b-blue-500 border-l-transparent border-r-transparent rounded-full animate-spin"></div>
+              <p className="mt-2 text-gray-600 text-sm">Loading document...</p>
+            </div>
+          )}
+
+          {/* Google Docs Viewer */}
+          {viewerMethod === 'google' && (
+            <iframe 
+              src={getSafeIframeSrc('https://docs.google.com/viewer?url=', documentUrl) + '&embedded=true'}
+              className="w-full h-full border-0"
+              title="Document Viewer"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            ></iframe>
+          )}
+          
+          {/* Microsoft Office Online Viewer */}
+          {viewerMethod === 'office' && (
+            <iframe 
+              src={getSafeIframeSrc('https://view.officeapps.live.com/op/embed.aspx?src=', documentUrl)}
+              className="w-full h-full border-0"
+              title="Document Viewer"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            ></iframe>
+          )}
+
+          {/* Direct Proxy Viewer */}
+          {viewerMethod === 'direct' && (
+            <iframe 
+              src={getProxyUrl(documentUrl)}
+              className="w-full h-full border-0"
+              title="Document Viewer"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            ></iframe>
+          )}
+          
+          {/* Custom Viewer */}
+          {viewerMethod === 'viewer' && (
+            <iframe 
+              src={getViewerUrl(documentUrl, documentName)}
+              className="w-full h-full border-0"
+              title="Document Viewer"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            ></iframe>
+          )}
+          
+          {/* Fallback message overlay */}
+          {showFallback && (
+            <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center p-8 text-center">
+              <div className="max-w-md">
+                <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center mb-4 mx-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Document Preview Unavailable</h3>
+                <p className="text-gray-600 mb-4">
+                  This document cannot be previewed with the current viewer. Firebase Storage URLs may not be accessible to external viewers due to authentication requirements.
+                </p>
+                <div className="flex flex-col gap-2 mb-4">
+                  {viewerMethod === 'direct' && (
+                    <>
+                      <p className="text-sm text-gray-500 mb-2">
+                        The direct viewer failed. This might be a network issue or the file may be corrupted.
+                      </p>
+                      <button
+                        onClick={switchToCustomViewer}
+                        className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Custom Viewer (Recommended)
+                      </button>
+                      <button
+                        onClick={switchToGoogleViewer}
+                        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Google Docs Viewer (may not work with private files)
+                      </button>
+                      <button
+                        onClick={switchToOfficeViewer}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Microsoft Office Viewer (may not work with private files)
+                      </button>
+                    </>
+                  )}
+                  {viewerMethod === 'google' && (
+                    <>
+                      <p className="text-sm text-gray-500 mb-2">
+                        Google Docs viewer cannot access this file. This is common with private Firebase Storage URLs.
+                      </p>
+                      <button
+                        onClick={switchToCustomViewer}
+                        className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Custom Viewer (Recommended)
+                      </button>
+                      <button
+                        onClick={switchToDirectViewer}
+                        className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Direct Viewer
+                      </button>
+                      <button
+                        onClick={switchToOfficeViewer}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Microsoft Office Viewer
+                      </button>
+                    </>
+                  )}
+                  {viewerMethod === 'office' && (
+                    <>
+                      <p className="text-sm text-gray-500 mb-2">
+                        Microsoft Office viewer cannot access this file. This is common with private Firebase Storage URLs.
+                      </p>
+                      <button
+                        onClick={switchToCustomViewer}
+                        className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Custom Viewer (Recommended)
+                      </button>
+                      <button
+                        onClick={switchToDirectViewer}
+                        className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Direct Viewer
+                      </button>
+                      <button
+                        onClick={switchToGoogleViewer}
+                        className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition-colors duration-200"
+                      >
+                        Try Google Docs Viewer
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => {
+                      const safeUrl = sanitizeUrl(documentUrl);
+                      if (safeUrl) {
+                        const proxyUrl = getProxyUrl(safeUrl);
+                        console.log('Testing proxy URL:', proxyUrl);
+                        window.open(proxyUrl, '_blank');
+                      } else {
+                        toast.error("Invalid URL: Cannot test proxy")
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded transition-colors duration-200"
+                  >
+                    Test Proxy URL
+                  </button>
+                  <button
+                    onClick={() => {
+                      const safeUrl = sanitizeUrl(documentUrl);
+                      if (safeUrl) {
+                        const storagePath = extractStoragePath(safeUrl);
+                        const testUrl = `/api/test-storage?path=${encodeURIComponent(storagePath || '')}`;
+                        console.log('Testing storage access:', testUrl);
+                        window.open(testUrl, '_blank');
+                      } else {
+                        toast.error("Invalid URL: Cannot debug storage")
+                      }
+                    }}
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded transition-colors duration-200"
+                  >
+                    Debug Storage
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors duration-200"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2 inline">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    Download Original
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add CSS for animations */}
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: scale(0.98); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        } 
+      `}</style>
+    </div>
+  )
 }
 
 function ClientViewModal({
@@ -268,14 +731,13 @@ function ClientViewModal({
               </svg>
             </button>
           </div>
-
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="text-gray-300 mb-1 flex items-center">
                 Client Profile
                 <span
                   className={`ml-3 px-3 py-0.5 rounded-full text-xs font-medium ${
-                    client.adv_status === "Active" 
+                    client.adv_status === "Active"
                       ? "bg-blue-800 text-blue-200"
                       : !client.adv_status || client.adv_status === "Inactive"
                         ? "bg-gray-700 text-gray-300"
@@ -377,7 +839,6 @@ function ClientViewModal({
                 </div>
               </div>
             </div>
-
             <div className="flex flex-col md:items-end space-y-1">
               {client.createdAt && (
                 <div className="flex items-center gap-2">
@@ -458,7 +919,7 @@ function ClientViewModal({
                 </div>
                 <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Alternate Phone</span>
-                  <span className="text-white w-2/3">{(client.altPhone) || "Not specified"}</span>
+                  <span className="text-white w-2/3">{client.altPhone || "Not specified"}</span>
                 </div>
                 <div className="flex border-b border-gray-700 pb-2">
                   <span className="text-gray-400 w-1/3">Email</span>
@@ -512,7 +973,6 @@ function ClientViewModal({
                 </svg>
                 Bank Details
               </h3>
-
               {client.banks && client.banks.length > 0 ? (
                 <div className="space-y-4">
                   {client.banks.map((bank, index) => (
@@ -572,7 +1032,6 @@ function ClientViewModal({
                 </svg>
                 Notes & Queries
               </h3>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {client.remarks && (
                   <div className="bg-gray-900/50 rounded-lg p-4">
@@ -598,7 +1057,6 @@ function ClientViewModal({
                     </div>
                   </div>
                 )}
-
                 {client.salesNotes && (
                   <div className="bg-gray-900/50 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-purple-300 mb-2 flex items-center">
@@ -623,7 +1081,6 @@ function ClientViewModal({
                     </div>
                   </div>
                 )}
-
                 {client.queries && (
                   <div className="bg-gray-900/50 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-purple-300 mb-2 flex items-center">
@@ -648,7 +1105,6 @@ function ClientViewModal({
                     </div>
                   </div>
                 )}
-
                 {!client.remarks && !client.salesNotes && !client.queries && (
                   <div className="md:col-span-3 flex items-center justify-center h-32 text-gray-400 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
                     No notes or queries available
@@ -657,7 +1113,7 @@ function ClientViewModal({
               </div>
             </div>
 
-            {/* Document Section - Add this after Notes & Remarks */}
+            {/* Document Section */}
             <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm md:col-span-2 mt-5">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
                 <svg
@@ -676,7 +1132,6 @@ function ClientViewModal({
                 </svg>
                 Client Documents
               </h3>
-
               <div className="bg-gray-900/50 rounded-lg p-4">
                 {/* Document List Section */}
                 {client.documents && client.documents.length > 0 ? (
@@ -1037,7 +1492,6 @@ function ClientViewModal({
 function LegalNoticeForm({ client, onClose }: { client: Client; onClose: () => void }) {
   // Similar implementation to RequestLetterForm
   // This is a placeholder - you would customize this for the legal notice fields
-
   return (
     <div className="text-center py-8">
       <p className="text-white mb-4">Legal Notice form will be implemented here</p>
@@ -1053,7 +1507,6 @@ function LegalNoticeForm({ client, onClose }: { client: Client; onClose: () => v
 
 function isNewClient(startDate: any): boolean {
   if (!startDate) return false
-
   let dateObj: Date
   if (startDate.toDate && typeof startDate.toDate === "function") {
     dateObj = startDate.toDate()
@@ -1064,9 +1517,7 @@ function isNewClient(startDate: any): boolean {
   } else {
     return false
   }
-
   if (isNaN(dateObj.getTime())) return false
-
   const now = new Date()
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   return dateObj >= oneWeekAgo
@@ -1115,7 +1566,6 @@ function ClientsList() {
     if (typeof window !== "undefined") {
       const userName = localStorage.getItem("userName")
       setAdvocateName(userName || "")
-
       // Check for status filter in URL
       const status = searchParams.get("status")
       if (status && ["Active", "Dropped", "Not Responding", "On Hold"].includes(status)) {
@@ -1127,11 +1577,9 @@ function ClientsList() {
   useEffect(() => {
     async function fetchClients() {
       if (!advocateName) return
-
       setLoading(true)
       try {
         const clientsRef = collection(db, "clients")
-
         const primaryQuery = query(clientsRef, where("alloc_adv", "==", advocateName))
         const secondaryQuery = query(clientsRef, where("alloc_adv_secondary", "==", advocateName))
 
@@ -1147,7 +1595,6 @@ function ClientsList() {
             isPrimary: true,
             isSecondary: false,
           } as Client)
-
           // Initialize request letter states
           setRequestLetterStates((prev) => ({
             ...prev,
@@ -1158,7 +1605,6 @@ function ClientsList() {
         secondarySnapshot.forEach((doc) => {
           const clientData = doc.data()
           const existingIndex = clientsList.findIndex((c) => c.id === doc.id)
-
           if (existingIndex >= 0) {
             clientsList[existingIndex].isSecondary = true
             // Initialize request letter states for existing clients (both primary and secondary)
@@ -1182,7 +1628,6 @@ function ClientsList() {
         })
 
         setClients(clientsList)
-
         // Fetch latest remarks for all clients
         await Promise.all(clientsList.map((client) => fetchLatestRemark(client.id)))
       } catch (error) {
@@ -1218,7 +1663,6 @@ function ClientsList() {
   const handleClientUpdated = (updatedClient: Client) => {
     // Update the clients array with the updated client
     setClients((prevClients) => prevClients.map((client) => (client.id === updatedClient.id ? updatedClient : client)))
-
     // If the view modal is also open for this client, update that as well
     if (viewClient?.id === updatedClient.id) {
       setViewClient(updatedClient)
@@ -1228,7 +1672,7 @@ function ClientsList() {
   const handleStatusChange = async (clientId: string, newStatus: string) => {
     try {
       const clientRef = doc(db, "clients", clientId)
-      
+
       if (newStatus === "Inactive") {
         // Remove the adv_status field when setting to Inactive
         await updateDoc(clientRef, {
@@ -1243,19 +1687,15 @@ function ClientsList() {
 
       // Update local state
       setClients((prevClients) =>
-        prevClients.map((client) => 
-          client.id === clientId 
-            ? { ...client, adv_status: newStatus === "Inactive" ? undefined : newStatus } 
-            : client
+        prevClients.map((client) =>
+          client.id === clientId ? { ...client, adv_status: newStatus === "Inactive" ? undefined : newStatus } : client,
         ),
       )
 
       // Also update viewClient if the modal is open
       if (viewClient?.id === clientId) {
-        setViewClient((prev) => 
-          prev 
-            ? { ...prev, adv_status: newStatus === "Inactive" ? undefined : newStatus } 
-            : null
+        setViewClient((prev) =>
+          prev ? { ...prev, adv_status: newStatus === "Inactive" ? undefined : newStatus } : null,
         )
       }
 
@@ -1323,6 +1763,7 @@ function ClientsList() {
 
       // Clear the input after saving
       setRemarks((prev) => ({ ...prev, [clientId]: remarkText }))
+
       toast.success("Remark saved successfully")
     } catch (error) {
       console.error("Error saving remark:", error)
@@ -1370,13 +1811,11 @@ function ClientsList() {
       toast.success(`Request letter status ${checked ? "enabled" : "disabled"}`)
     } catch (error) {
       console.error("Error updating request letter status:", error)
-
       // Revert local state on error
       setRequestLetterStates((prev) => ({
         ...prev,
         [clientId]: !checked,
       }))
-
       toast.error("Failed to update request letter status")
     }
   }
@@ -1393,7 +1832,7 @@ function ClientsList() {
         const matchesStatus =
           statusFilter === "all" ||
           (statusFilter === "Inactive" && !client.adv_status) ||
-          (client.adv_status === statusFilter)
+          client.adv_status === statusFilter
 
         const matchesSource = sourceFilter === "all" || client.source_database === sourceFilter
 
@@ -1417,8 +1856,8 @@ function ClientsList() {
       })
       .sort((a, b) => {
         // Sort by startDate instead of createdAt
-        const dateA = typeof a.startDate === 'string' ? new Date(a.startDate).getTime() : a.startDate?.toMillis?.() || 0
-        const dateB = typeof b.startDate === 'string' ? new Date(b.startDate).getTime() : b.startDate?.toMillis?.() || 0
+        const dateA = typeof a.startDate === "string" ? new Date(a.startDate).getTime() : a.startDate?.toMillis?.() || 0
+        const dateB = typeof b.startDate === "string" ? new Date(b.startDate).getTime() : b.startDate?.toMillis?.() || 0
         return dateB - dateA // Sort in descending order (latest first)
       })
   }
@@ -1495,7 +1934,6 @@ function ClientsList() {
     const filteredClients = getFilteredClients()
     const uniqueCities = getUniqueCities()
     const uniqueSources = getUniqueSources()
-
     const weekStats = getWeekStats()
 
     return (
@@ -1868,23 +2306,40 @@ function ClientsList() {
     setEditingDocument({ url, name, index, clientId })
   }
 
-  // Function to generate BillCut document URL
+  // Function to generate BillCut document URL - Fixed version
   const generateBillCutDocumentUrl = (clientName: string) => {
-    // Clean the client name for URL (remove special characters, replace spaces with %20)
-    const cleanName = encodeURIComponent(clientName.replace(/[^a-zA-Z0-9\s]/g, '').trim())
+    // For BillCut documents, we should check if the document actually exists
+    // Instead of generating a potentially non-existent URL, we should handle this differently
+    const cleanName = encodeURIComponent(clientName.replace(/[^a-zA-Z0-9\s]/g, "").trim())
+
+    // Note: This URL structure might not be correct for all clients
+    // Consider implementing a proper document existence check or use a different approach
     return `https://firebasestorage.googleapis.com/v0/b/amacrm-76fd1.firebasestorage.app/o/clients%2Fbillcut%2Fdocuments%2F${cleanName}_billcut_agreement.docx?alt=media&token=fdc2eb03-04e9-4343-b8a6-6129f460823b`
   }
 
-  // Function to open BillCut document
+  // Function to open BillCut document - Enhanced with error handling
   const openBillCutDocument = (client: Client) => {
     const billCutUrl = generateBillCutDocumentUrl(client.name)
     const documentName = `${client.name} - BillCut Agreement`
-    openDocumentViewer(billCutUrl, documentName)
+
+    // Check if document exists before opening viewer
+    fetch(billCutUrl, { method: "HEAD" })
+      .then((response) => {
+        if (response.ok) {
+          openDocumentViewer(billCutUrl, documentName)
+        } else {
+          toast.error("BillCut agreement document not found for this client")
+        }
+      })
+      .catch(() => {
+        toast.error("Unable to access BillCut agreement document")
+      })
   }
 
   return (
     <div className="flex-1">
       {renderContent()}
+
       <ClientViewModal
         client={viewClient}
         isOpen={isViewModalOpen}
@@ -1897,12 +2352,14 @@ function ClientsList() {
         openDocumentEditor={openDocumentEditor}
         openBillCutDocument={openBillCutDocument}
       />
+
       <ClientEditModal
         client={editClient}
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
         onClientUpdated={handleClientUpdated}
       />
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -1925,79 +2382,13 @@ function ClientsList() {
         }}
       />
 
-      {/* Add document viewer modal */}
-      {isDocViewerOpen && viewingDocumentUrl && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 w-[95vw] max-w-6xl h-[90vh] shadow-2xl flex flex-col">
-            <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-800">
-              <h3 className="text-xl font-semibold text-white flex items-center">{viewingDocumentName}</h3>
-              <button
-                onClick={() => setIsDocViewerOpen(false)}
-                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 bg-white rounded overflow-hidden">
-              {(() => {
-                // Validate and sanitize the URL
-                const allowedHosts = [
-                  'firebasestorage.googleapis.com',
-                  'docs.google.com'
-                ];
-                
-                try {
-                  const url = new URL(viewingDocumentUrl);
-                  const isAllowedHost = allowedHosts.some(host => 
-                    url.hostname === host || url.hostname.endsWith('.' + host)
-                  );
-                  
-                  if (!isAllowedHost) {
-                    console.warn('Blocked access to untrusted URL:', viewingDocumentUrl);
-                    return (
-                      <div className="flex items-center justify-center h-full text-gray-600">
-                        <p>Access to this document type is not allowed for security reasons.</p>
-                      </div>
-                    );
-                  }
-                  
-                  if (url.hostname === 'firebasestorage.googleapis.com') {
-                    // For Firebase Storage URLs (like BillCut documents), try direct viewing first
-                    return (
-                      <iframe
-                        src={viewingDocumentUrl}
-                        className="w-full h-full border-0"
-                        title="Document Viewer"
-                        onError={(e) => {
-                          // Fallback to Google Docs viewer if direct viewing fails
-                          const iframe = e.target as HTMLIFrameElement;
-                          iframe.src = `https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`;
-                        }}
-                      />
-                    );
-                  } else {
-                    // For other allowed URLs, use Google Docs viewer
-                    return (
-                      <iframe
-                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
-                        className="w-full h-full border-0"
-                        title="Document Viewer"
-                      />
-                    );
-                  }
-                } catch (error) {
-                  console.error('Invalid URL:', viewingDocumentUrl, error);
-                  return (
-                    <div className="flex items-center justify-center h-full text-gray-600">
-                      <p>Invalid document URL provided.</p>
-                    </div>
-                  );
-                }
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Enhanced Document Viewer */}
+      <DocumentViewer
+        isOpen={isDocViewerOpen}
+        documentUrl={viewingDocumentUrl}
+        documentName={viewingDocumentName}
+        onClose={() => setIsDocViewerOpen(false)}
+      />
 
       {/* Request Letter Modal */}
       {isRequestLetterModalOpen && selectedClientForDoc && (
@@ -2012,7 +2403,6 @@ function ClientsList() {
                 ✕
               </button>
             </div>
-
             <RequestLetterForm client={selectedClientForDoc} onClose={() => setIsRequestLetterModalOpen(false)} />
           </div>
         </div>
@@ -2031,7 +2421,6 @@ function ClientsList() {
                 ✕
               </button>
             </div>
-
             <LegalNoticeForm client={selectedClientForDoc} onClose={() => setIsLegalNoticeModalOpen(false)} />
           </div>
         </div>
@@ -2050,7 +2439,6 @@ function ClientsList() {
                 ✕
               </button>
             </div>
-
             <DemandNoticeForm client={selectedClientForDoc} onClose={() => setIsDemandNoticeModalOpen(false)} />
           </div>
         </div>
@@ -2069,7 +2457,6 @@ function ClientsList() {
                 ✕
               </button>
             </div>
-
             <ComplaintForHarassmentForm
               client={selectedClientForDoc}
               onClose={() => setIsHarassmentComplaintModalOpen(false)}
@@ -2091,7 +2478,6 @@ function ClientsList() {
                 ✕
               </button>
             </div>
-
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
               {selectedClientHistory.map((history, index) => (
                 <div key={index} className="bg-gray-800 rounded-lg p-4">
@@ -2104,7 +2490,6 @@ function ClientsList() {
                   <p className="text-white">{history.remark}</p>
                 </div>
               ))}
-
               {selectedClientHistory.length === 0 && (
                 <div className="text-center text-gray-400 py-8">No remarks history available</div>
               )}
