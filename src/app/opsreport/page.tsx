@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
+import AssistantSidebar from '@/components/navigation/AssistantSidebar';
 
 interface BankStats {
   bankName: string;
@@ -116,7 +117,7 @@ export default function OpsReport() {
     setUserRole(storedRole || '');
     
     // Check if user has permission to access this page
-    if (storedRole !== 'admin' && storedRole !== 'overlord') {
+    if (storedRole !== 'admin' && storedRole !== 'overlord' && storedRole !== 'assistant') {
       router.push('/dashboard');
       return;
     }
@@ -540,7 +541,9 @@ export default function OpsReport() {
 
   return (
     <div className="flex">
-      {userRole === 'admin' ? <AdminSidebar /> : <OverlordSidebar />}
+      {userRole === 'admin' ? <AdminSidebar /> : 
+       userRole === 'assistant' ? <AssistantSidebar /> : 
+       <OverlordSidebar />}
       <div className="flex-1 p-5 bg-gray-900 min-h-screen">
         <h1 className="text-2xl font-bold text-gray-100 mb-6 border-b border-gray-700 pb-3">
           Operations Analytics Dashboard
