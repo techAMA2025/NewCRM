@@ -633,8 +633,21 @@ function ClientsPageWithParams() {
 
   const openDocumentViewer = (url: string, name: string) => {
     console.log('Opening document viewer:', { url, name });
-    console.log('Proxy URL:', getProxyUrl(url));
-    setViewingDocumentUrl(url);
+    
+    // Validate and sanitize the URL before storing it
+    const sanitizedUrl = sanitizeUrl(url);
+    if (!sanitizedUrl) {
+      console.error('Cannot open document viewer: invalid or unsafe URL:', url);
+      showToast(
+        "Invalid Document URL",
+        "The document URL is not safe to open.",
+        "error"
+      );
+      return;
+    }
+    
+    console.log('Proxy URL:', getProxyUrl(sanitizedUrl));
+    setViewingDocumentUrl(sanitizedUrl);
     setViewingDocumentName(name || "Document");
     setIsDocViewerOpen(true);
   };
@@ -1300,16 +1313,65 @@ function ClientsPageWithParams() {
     }
   };
 
+  // Function to validate and sanitize URLs for safe iframe usage
+  const sanitizeUrl = (url: string): string | null => {
+    try {
+      // Create URL object to validate the URL
+      const urlObj = new URL(url);
+      
+      // Only allow HTTP and HTTPS protocols
+      if (!['http:', 'https:'].includes(urlObj.protocol)) {
+        console.warn('Unsafe URL protocol detected:', urlObj.protocol);
+        return null;
+      }
+      
+      // Additional validation for known safe domains
+      const allowedDomains = [
+        'firebasestorage.googleapis.com',
+        'storage.googleapis.com',
+        'docs.google.com',
+        'view.officeapps.live.com'
+      ];
+      
+      // If it's our own domain (API routes), allow it
+      if (urlObj.pathname.startsWith('/api/')) {
+        return url;
+      }
+      
+      // For external domains, check if they're in our allowed list
+      const isAllowedDomain = allowedDomains.some(domain => 
+        urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+      );
+      
+      if (!isAllowedDomain) {
+        console.warn('URL from non-allowed domain:', urlObj.hostname);
+        // Still allow it but log for monitoring
+      }
+      
+      return url;
+    } catch (error) {
+      console.error('Invalid URL:', error);
+      return null;
+    }
+  };
+
   // Function to get proxy URL for document viewing
   const getProxyUrl = (documentUrl: string): string => {
-    const storagePath = extractStoragePath(documentUrl);
+    // First sanitize the input URL
+    const sanitizedUrl = sanitizeUrl(documentUrl);
+    if (!sanitizedUrl) {
+      console.error('URL failed sanitization:', documentUrl);
+      return '/api/document-error?error=invalid-url';
+    }
+
+    const storagePath = extractStoragePath(sanitizedUrl);
     if (storagePath) {
       const proxyUrl = `/api/document-proxy?path=${encodeURIComponent(storagePath)}`;
       console.log('Generated proxy URL:', proxyUrl);
       return proxyUrl;
     }
-    console.warn('Falling back to original URL:', documentUrl);
-    return documentUrl; // Fallback to original URL
+    console.warn('Falling back to original URL:', sanitizedUrl);
+    return sanitizedUrl; // Fallback to sanitized URL
   };
 
   // Function to determine the best viewer method based on file type
@@ -1331,7 +1393,24 @@ function ClientsPageWithParams() {
 
   // Function to get document viewer URL
   const getViewerUrl = (documentUrl: string, documentName: string): string => {
-    return `/api/document-viewer?url=${encodeURIComponent(documentUrl)}&name=${encodeURIComponent(documentName)}`;
+    // Sanitize the document URL before using it
+    const sanitizedUrl = sanitizeUrl(documentUrl);
+    if (!sanitizedUrl) {
+      console.error('URL failed sanitization for viewer:', documentUrl);
+      return '/api/document-error?error=invalid-url';
+    }
+    return `/api/document-viewer?url=${encodeURIComponent(sanitizedUrl)}&name=${encodeURIComponent(documentName)}`;
+  };
+
+  // Helper function to safely generate iframe source URLs
+  const getSafeIframeSrc = (baseUrl: string, documentUrl: string): string => {
+    // Double-check URL safety before using in iframe
+    const sanitizedUrl = sanitizeUrl(documentUrl);
+    if (!sanitizedUrl) {
+      console.error('URL failed safety check for iframe:', documentUrl);
+      return '/api/document-error?error=unsafe-url';
+    }
+    return `${baseUrl}${encodeURIComponent(sanitizedUrl)}`;
   };
 
   // Add new state for document viewer fallback
@@ -1676,7 +1755,18 @@ function ClientsPageWithParams() {
                 </h3>
                 <div className="flex gap-3">
                   <Button
-                    onClick={() => window.open(viewingDocumentUrl, '_blank')}
+                    onClick={() => {
+                      const safeUrl = sanitizeUrl(viewingDocumentUrl);
+                      if (safeUrl) {
+                        window.open(safeUrl, '_blank');
+                      } else {
+                        showToast(
+                          "Invalid URL",
+                          "Cannot download: document URL is not safe",
+                          "error"
+                        );
+                      }
+                    }}
                     size="sm"
                     className="bg-blue-500/80 hover:bg-blue-600/80"
                   >
@@ -1708,7 +1798,7 @@ function ClientsPageWithParams() {
                 {/* Google Docs Viewer */}
                 {viewerMethod === 'google' && (
                   <iframe 
-                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocumentUrl)}&embedded=true`}
+                    src={getSafeIframeSrc('https://docs.google.com/viewer?url=', viewingDocumentUrl) + '&embedded=true'}
                     className="w-full h-full border-0"
                     title="Document Viewer"
                     onLoad={handleIframeLoad}
@@ -1720,7 +1810,7 @@ function ClientsPageWithParams() {
                 {/* Microsoft Office Online Viewer */}
                 {viewerMethod === 'office' && (
                   <iframe 
-                    src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewingDocumentUrl)}`}
+                    src={getSafeIframeSrc('https://view.officeapps.live.com/op/embed.aspx?src=', viewingDocumentUrl)}
                     className="w-full h-full border-0"
                     title="Document Viewer"
                     onLoad={handleIframeLoad}
@@ -1847,9 +1937,14 @@ function ClientsPageWithParams() {
                       <div className="flex gap-3 justify-center">
                         <Button
                           onClick={() => {
-                            const proxyUrl = getProxyUrl(viewingDocumentUrl);
-                            console.log('Testing proxy URL:', proxyUrl);
-                            window.open(proxyUrl, '_blank');
+                            const safeUrl = sanitizeUrl(viewingDocumentUrl);
+                            if (safeUrl) {
+                              const proxyUrl = getProxyUrl(safeUrl);
+                              console.log('Testing proxy URL:', proxyUrl);
+                              window.open(proxyUrl, '_blank');
+                            } else {
+                              showToast("Invalid URL", "Cannot test proxy: document URL is not safe", "error");
+                            }
                           }}
                           className="bg-purple-500 hover:bg-purple-600 text-white"
                         >
@@ -1857,17 +1952,29 @@ function ClientsPageWithParams() {
                         </Button>
                         <Button
                           onClick={() => {
-                            const storagePath = extractStoragePath(viewingDocumentUrl);
-                            const testUrl = `/api/test-storage?path=${encodeURIComponent(storagePath || '')}`;
-                            console.log('Testing storage access:', testUrl);
-                            window.open(testUrl, '_blank');
+                            const safeUrl = sanitizeUrl(viewingDocumentUrl);
+                            if (safeUrl) {
+                              const storagePath = extractStoragePath(safeUrl);
+                              const testUrl = `/api/test-storage?path=${encodeURIComponent(storagePath || '')}`;
+                              console.log('Testing storage access:', testUrl);
+                              window.open(testUrl, '_blank');
+                            } else {
+                              showToast("Invalid URL", "Cannot debug storage: document URL is not safe", "error");
+                            }
                           }}
                           className="bg-orange-500 hover:bg-orange-600 text-white"
                         >
                           Debug Storage
                         </Button>
                         <Button
-                          onClick={() => window.open(viewingDocumentUrl, '_blank')}
+                          onClick={() => {
+                            const safeUrl = sanitizeUrl(viewingDocumentUrl);
+                            if (safeUrl) {
+                              window.open(safeUrl, '_blank');
+                            } else {
+                              showToast("Invalid URL", "Cannot download: document URL is not safe", "error");
+                            }
+                          }}
                           className="bg-blue-500 hover:bg-blue-600 text-white"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
