@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
+import AssistantSidebar from "@/components/navigation/AssistantSidebar";
 import toast, { Toaster } from "react-hot-toast";
 import RequestLetterForm from "./requestletter";
 import DemandNoticeForm from "./demandnotice";
@@ -84,7 +85,9 @@ const DocumentsPage = () => {
 
   return (
     <div className="flex bg-gray-900 min-h-screen">
-      {userRole === 'advocate' ? <AdvocateSidebar /> : <OverlordSidebar />}
+      {userRole === 'advocate' ? <AdvocateSidebar /> : 
+       userRole === 'assistant' ? <AssistantSidebar /> :
+       <OverlordSidebar />}
       <div className="flex-1 p-6">
         <h1 className="text-2xl font-bold mb-6 text-white">Document Generation</h1>
         

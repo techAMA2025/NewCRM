@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import BillcutSidebar from '@/components/navigation/BillcutSidebar'
+import AssistantSidebar from '@/components/navigation/AssistantSidebar'
 
 // Define user interface
 interface User {
@@ -223,7 +224,8 @@ const UserManagementPage = () => {
       advocate: 0,
       sales: 0,
       overlord: 0,
-      billcut: 0
+      billcut: 0,
+      assistant: 0
     };
     
     users.forEach(user => {
@@ -235,10 +237,45 @@ const UserManagementPage = () => {
     return counts;
   };
 
+  // Download CSV function
+  const downloadCSV = () => {
+    // CSV headers
+    const headers = ['First Name', 'Last Name', 'Email', 'Role', 'Phone Number', 'Status', 'Created At'];
+    
+    // Convert users to CSV rows
+    const csvRows = [
+      headers.join(','),
+      ...users.map(user => [
+        `"${user.firstName}"`,
+        `"${user.lastName}"`,
+        `"${user.email}"`,
+        `"${user.role}"`,
+        `"${user.phoneNumber || ''}"`,
+        `"${user.status || 'active'}"`,
+        `"${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}"`
+      ].join(','))
+    ];
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950">
       {userRole === 'overlord' ? <OverlordSidebar /> : 
        userRole === 'billcut' ? <BillcutSidebar /> :
+       userRole === 'assistant' ? <AssistantSidebar /> :
        <AdminSidebar />}
       <div className="flex-1 p-6 text-gray-200">
         <h1 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">
@@ -326,6 +363,7 @@ const UserManagementPage = () => {
                   <option value="sales">Sales</option>
                   <option value="overlord">Overlord</option>
                   <option value="billcut">Billcut</option>
+                  <option value="assistant">Assistant</option>
                 </select>
               </div>
               <div>
@@ -386,24 +424,38 @@ const UserManagementPage = () => {
               </svg>
               User List
             </h2>
-            <div className="flex space-x-1.5">
-              {Object.entries(getUserCountByRole()).map(([role, count]) => (
-                count > 0 && (
-                  <span key={role} className={`
-                    text-xs px-2 py-0.5 rounded-full
-                    ${role === 'overlord' ? 'bg-purple-900/30 text-purple-300' :
-                      role === 'admin' ? 'bg-red-900/30 text-red-300' :
-                      role === 'advocate' ? 'bg-green-900/30 text-green-300' :
-                      role === 'billcut' ? 'bg-yellow-900/30 text-yellow-300' :
-                      'bg-blue-900/30 text-blue-300'}
-                  `}>
-                    {count} {role}
-                  </span>
-                )
-              ))}
-              <span className="bg-blue-600/30 text-blue-300 text-xs px-2 py-0.5 rounded-full">
-                {users.length} total
-              </span>
+            <div className="flex items-center space-x-3">
+              <div className="flex space-x-1.5">
+                {Object.entries(getUserCountByRole()).map(([role, count]) => (
+                  count > 0 && (
+                    <span key={role} className={`
+                      text-xs px-2 py-0.5 rounded-full
+                      ${role === 'overlord' ? 'bg-purple-900/30 text-purple-300' :
+                        role === 'admin' ? 'bg-red-900/30 text-red-300' :
+                        role === 'advocate' ? 'bg-green-900/30 text-green-300' :
+                        role === 'billcut' ? 'bg-yellow-900/30 text-yellow-300' :
+                        role === 'assistant' ? 'bg-cyan-900/30 text-cyan-300' :
+                        'bg-blue-900/30 text-blue-300'}
+                    `}>
+                      {count} {role}
+                    </span>
+                  )
+                ))}
+                <span className="bg-blue-600/30 text-blue-300 text-xs px-2 py-0.5 rounded-full">
+                  {users.length} total
+                </span>
+              </div>
+              <button
+                onClick={downloadCSV}
+                disabled={users.length === 0}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1.5 rounded-md hover:from-green-600 hover:to-emerald-700 transition-all duration-300 flex items-center text-xs font-medium shadow-lg shadow-green-700/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download CSV"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export CSV
+              </button>
             </div>
           </div>
           {loading && !editingUser ? (
@@ -460,6 +512,7 @@ const UserManagementPage = () => {
                           user.role === 'admin' ? 'bg-red-900 text-red-200' :
                           user.role === 'advocate' ? 'bg-green-900 text-green-200' :
                           user.role === 'billcut' ? 'bg-yellow-900 text-yellow-200' :
+                          user.role === 'assistant' ? 'bg-cyan-900 text-cyan-200' :
                           'bg-blue-900 text-blue-200'
                         }`}>
                           {user.role}
@@ -592,6 +645,7 @@ const UserManagementPage = () => {
                       <option value="sales">Sales</option>
                       <option value="overlord">Overlord</option>
                       <option value="billcut">Billcut</option>
+                      <option value="assistant">Assistant</option>
                     </select>
                   </div>
                   <div>

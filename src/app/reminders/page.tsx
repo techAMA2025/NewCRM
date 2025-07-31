@@ -7,6 +7,7 @@ import { FiCalendar, FiClock, FiTrash2, FiAlertCircle, FiEdit2 } from "react-ico
 import { format } from "date-fns";
 import toast, { Toaster } from "react-hot-toast";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
+import AssistantSidebar from "@/components/navigation/AssistantSidebar";
 
 interface Reminder {
   id: string;
@@ -21,6 +22,7 @@ interface Reminder {
 
 export default function RemindersPage() {
   const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -35,10 +37,14 @@ export default function RemindersPage() {
   const [showExpiredPrompt, setShowExpiredPrompt] = useState(true);
 
   useEffect(() => {
-    // Fetch username from localStorage
+    // Fetch username and role from localStorage
     const storedUserName = localStorage.getItem('userName');
+    const storedUserRole = localStorage.getItem('userRole');
     if (storedUserName) {
       setUserName(storedUserName);
+    }
+    if (storedUserRole) {
+      setUserRole(storedUserRole);
     }
   }, []);
 
@@ -203,7 +209,11 @@ export default function RemindersPage() {
         },
       }} />
       
-      <AdvocateSidebar />
+      {userName && userRole === 'assistant' ? (
+        <AssistantSidebar />
+      ) : (
+        <AdvocateSidebar />
+      )}
       
       <div className="flex-1 min-h-screen bg-gray-900 text-white">
         <div className="flex flex-col md:flex-row w-full">
