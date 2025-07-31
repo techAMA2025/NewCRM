@@ -20,7 +20,7 @@ const AssistantSidebar = () => {
   }, [])
   
   const isActive = (path: string) => {
-    return pathname === path ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : ''
+    return pathname === path ? 'bg-gray-800 text-white border-l-4 border-blue-500' : ''
   }
 
   const handleLogout = async () => {
@@ -44,63 +44,80 @@ const AssistantSidebar = () => {
   }
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 to-black text-gray-100 w-64 min-h-screen flex-shrink-0 py-6 border-r border-gray-800 shadow-xl">
+    <div className="bg-gray-900 text-gray-300 w-64 min-h-screen flex-shrink-0 py-6 border-r border-gray-700">
       <div className="px-6 mb-8">
-        <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">{userName}'s Portal</h2>
-        <p className="text-gray-400 text-sm mt-2">Assistant Dashboard</p>
+        <div className="relative">
+          <h2 className="text-xl font-semibold text-white">
+            {userName}'s Portal
+          </h2>
+          <p className="text-gray-400 text-sm mt-1">Assistant Dashboard</p>
+          <div className="h-px w-12 bg-blue-500 mt-3"></div>
+        </div>
       </div>
       
-      <nav className="mt-4">
-        <ul className="space-y-1">
+      <nav className="mt-6">
+        <ul className="space-y-1 px-3">
           <li>
-            <Link href="/dashboard" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/dashboard')}`}>
-              <FaChartPie className="mr-3 text-indigo-400" />
-              <span>Dashboard</span>
+            <Link href="/dashboard" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/dashboard')}`}>
+              <FaChartPie className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Dashboard</span>
             </Link>
           </li>
           <li>
-            <Link href="/clients" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/clients')}`}>
-              <FaUserFriends className="mr-3 text-indigo-400" />
-              <span>Clients</span>
+            <Link href="/clients" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/clients')}`}>
+              <FaUserFriends className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Clients</span>
             </Link>
           </li>
           <li>
-            <Link href="/advocate/complaints" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/complaints')}`}>
-              <FaCompressAlt className="mr-3 text-indigo-400" />
-              <span>Complaints</span>
+            <Link href="/advocate/complaints" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/advocate/complaints')}`}>
+              <FaCompressAlt className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Complaints</span>
             </Link>
           </li>
           <li>
-            <Link href="/reminders" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/reminders')}`}>
-              <FaBell className="mr-3 text-indigo-400" />
-              <span>Reminders</span>
+            <Link href="/reminders" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/reminders')}`}>
+              <FaBell className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Reminders</span>
             </Link>
           </li>
           <li>
-            <Link href="/assigntasks" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/assigntasks')}`}>
-              <FaCheckSquare className="mr-3 text-indigo-400" />
-              <span>Assign Tasks</span>
+            <Link href="/assigntasks" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/assigntasks')}`}>
+              <FaCheckSquare className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Assign Tasks</span>
             </Link>
           </li>
           <li>
-            <Link href="/advocate/documents" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/documents')}`}>
-              <FaFileAlt className="mr-3 text-indigo-400" />
-              <span>Documents</span>
+            <Link href="/arbtracker" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/arbtracker')}`}>
+              <FaBalanceScale className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Arbitration Tracker</span>
             </Link>
           </li>
           <li>
-            <Link href="/advocate/emailcompose" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/emailcompose')}`}>
-              <FaEnvelopeOpenText className="mr-3 text-indigo-400" />
-              <span>Email Compose</span>
+            <Link href="/advocate/documents" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/advocate/documents')}`}>
+              <FaFileAlt className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Documents</span>
             </Link>
           </li>
-          <li className="mt-8 pt-4 border-t border-gray-800">
+          <li>
+            <Link href="/advocate/emailcompose" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/advocate/emailcompose')}`}>
+              <FaEnvelopeOpenText className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Email Compose</span>
+            </Link>
+          </li>
+          
+          {/* Divider */}
+          <li className="pt-4">
+            <div className="h-px bg-gray-700 mx-4 mb-4"></div>
+          </li>
+          
+          <li>
             <button
               onClick={handleLogout}
-              className="flex items-center w-full px-6 py-3 text-gray-300 transition-all duration-200 hover:bg-red-700/70 hover:text-white group"
+              className="flex items-center w-full px-4 py-3 mx-0 rounded-lg text-gray-300 transition-all duration-200 hover:bg-red-900/20 hover:text-red-300 group"
             >
-              <FaSignOutAlt className="mr-3 text-gray-500 group-hover:text-white transition-colors duration-200" />
-              <span>Logout</span>
+              <FaSignOutAlt className="mr-3 text-gray-400 group-hover:text-red-400 transition-colors duration-200" />
+              <span className="font-medium">Logout</span>
             </button>
           </li>
         </ul>
