@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/firebase/firebase';
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
+import AssistantSidebar from "@/components/navigation/AssistantSidebar";
 import { FaEnvelope, FaPaperclip, FaCheck, FaTimes, FaFile, FaDownload, FaSearch, FaEye, FaTimes as FaTimesCircle } from 'react-icons/fa';
 import { format } from 'date-fns';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
@@ -147,7 +148,9 @@ export default function EmailHistoryPage() {
   
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      {userRole === 'advocate' ? <AdvocateSidebar /> : <OverlordSidebar />}
+      {userRole === 'advocate' ? <AdvocateSidebar /> : 
+       userRole === 'assistant' ? <AssistantSidebar /> :
+       <OverlordSidebar />}
       
       <div className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">

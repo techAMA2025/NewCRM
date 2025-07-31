@@ -5,6 +5,7 @@ import { collection, getDocs, query, where, orderBy, serverTimestamp, addDoc, up
 import { db } from "@/firebase/firebase"
 import { Spinner } from "@/components/ui/spinner"
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar"
+import AssistantSidebar from "@/components/navigation/AssistantSidebar"
 import toast, { Toaster } from "react-hot-toast"
 import ComplaintTable from "@/app/advocate/complaints/components/ComplaintTable"
 import ComplaintFilters from "@/app/advocate/complaints/components/ComplaintFilters"
@@ -394,9 +395,18 @@ function ComplaintsPage() {
 }
 
 export default function AdvocateComplaintsPage() {
+  const [userRole, setUserRole] = useState<string>('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const role = localStorage.getItem('userRole')
+      setUserRole(role || '')
+    }
+  }, [])
+
   return (
     <div className="flex bg-gray-900 min-h-screen">
-      <AdvocateSidebar />
+      {userRole === 'assistant' ? <AssistantSidebar /> : <AdvocateSidebar />}
       <Suspense
         fallback={
           <div className="flex-1 flex justify-center items-center">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
+import AssistantSidebar from "@/components/navigation/AssistantSidebar";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import {
   FaEnvelope,
@@ -951,7 +952,9 @@ Below is a draft email you can send to your bank or financial institution to ini
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      {userRole === 'advocate' ? <AdvocateSidebar /> : <OverlordSidebar />}
+      {userRole === 'advocate' ? <AdvocateSidebar /> : 
+       userRole === 'assistant' ? <AssistantSidebar /> :
+       <OverlordSidebar />}
 
       <div className="flex-1 p-8">
         <div className="max-w-5xl mx-auto">

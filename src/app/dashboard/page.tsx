@@ -4,10 +4,12 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminDashboard from './admin'
 import AdvocateDashboard from './advocate'
+import AssistantDashboard from './assistant'
 import SalesDashboard from './sales'
 import { useAuth } from '@/context/AuthContext'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
+import AssistantSidebar from '@/components/navigation/AssistantSidebar'
 import SalesSidebar from '@/components/navigation/SalesSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import SuperAdminDashboard from './superadmin'
@@ -45,6 +47,8 @@ const DashboardPage = () => {
         return <AdminSidebar />
       case 'advocate':
         return <AdvocateSidebar />
+      case 'assistant':
+        return <AssistantSidebar />
       case 'sales':
         return <SalesSidebar />
       case 'overlord':
@@ -84,6 +88,8 @@ const DashboardPage = () => {
         return <AdminDashboard />
       case 'advocate':
         return <AdvocateDashboard />
+      case 'assistant':
+        return <AssistantDashboard />
       case 'sales':
         return <SalesDashboard />
       case 'overlord':

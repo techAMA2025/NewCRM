@@ -6,6 +6,7 @@ import { db } from "@/firebase/config";
 import { useRouter } from "next/navigation";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar";
+import AssistantSidebar from "@/components/navigation/AssistantSidebar";
 
 // Update the interface to make properties optional
 interface User {
@@ -223,18 +224,22 @@ export default function AssignTasks() {
   if (loading) {
     return (
       <div className="flex bg-gray-900 min-h-screen">
-        {userRole === "overlord" ? <OverlordSidebar /> : <AdvocateSidebar />}
+        {userRole === "overlord" ? <OverlordSidebar /> : 
+         userRole === "assistant" ? <AssistantSidebar /> :
+         <AdvocateSidebar />}
         <div className="flex-1 p-8 text-white">Loading data...</div>
       </div>
     );
   }
 
-  // Check if user is an overlord (able to create tasks)
-  const isOverlord = userRole === "overlord";
+  // Check if user can assign tasks (overlord or assistant)
+  const canAssignTasks = userRole === "overlord" || userRole === "assistant";
 
   return (
     <div className="flex bg-gray-900 min-h-screen">
-      {userRole === "overlord" ? <OverlordSidebar /> : <AdvocateSidebar />}
+      {userRole === "overlord" ? <OverlordSidebar /> : 
+       userRole === "assistant" ? <AssistantSidebar /> :
+       <AdvocateSidebar />}
       
       <div className="flex-1 flex flex-col md:flex-row p-3 gap-6">
         {/* Task Form - Left Side */}
@@ -248,9 +253,9 @@ export default function AssignTasks() {
               </div>
             )}
             
-            {!isOverlord && (
+            {!canAssignTasks && (
               <div className="bg-yellow-900 border border-yellow-700 text-yellow-100 px-3 py-2 rounded mb-3 text-sm">
-                Only Overlords can create tasks.
+                Only Overlords and Assistants can create tasks.
               </div>
             )}
             
@@ -260,8 +265,8 @@ export default function AssignTasks() {
                 <select
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
-                  className={`w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
-                  disabled={!isOverlord}
+                  className={`w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm ${!canAssignTasks ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={!canAssignTasks}
                 >
                   <option value="">Select a user</option>
                   {users.map((user) => (
@@ -278,9 +283,9 @@ export default function AssignTasks() {
                   type="text"
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
-                  className={`w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`w-full p-1.5 border rounded bg-gray-700 border-gray-600 text-white text-sm ${!canAssignTasks ? 'opacity-60 cursor-not-allowed' : ''}`}
                   placeholder="Enter task title"
-                  disabled={!isOverlord}
+                  disabled={!canAssignTasks}
                 />
               </div>
               
@@ -289,16 +294,16 @@ export default function AssignTasks() {
                 <textarea
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
-                  className={`w-full p-1.5 border rounded h-28 bg-gray-700 border-gray-600 text-white text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`w-full p-1.5 border rounded h-28 bg-gray-700 border-gray-600 text-white text-sm ${!canAssignTasks ? 'opacity-60 cursor-not-allowed' : ''}`}
                   placeholder="Enter task details"
-                  disabled={!isOverlord}
+                  disabled={!canAssignTasks}
                 />
               </div>
               
               <button
                 type="submit"
-                className={`bg-indigo-600 text-white py-1.5 px-3 rounded hover:bg-indigo-700 w-full text-sm ${!isOverlord ? 'opacity-60 cursor-not-allowed' : ''}`}
-                disabled={!isOverlord}
+                className={`bg-indigo-600 text-white py-1.5 px-3 rounded hover:bg-indigo-700 w-full text-sm ${!canAssignTasks ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={!canAssignTasks}
               >
                 Assign Task
               </button>
@@ -419,7 +424,7 @@ export default function AssignTasks() {
                         }`}>
                           {task.status}
                         </span>
-                        {isOverlord && (
+                        {canAssignTasks && (
                           <button
                             onClick={() => handleDeleteInitiate(task)}
                             className="text-red-400 hover:text-red-300 transition-colors"

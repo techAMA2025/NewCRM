@@ -17,6 +17,7 @@ import { Eye, Download } from 'lucide-react'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import BillcutSidebar from '@/components/navigation/BillcutSidebar'
+import AssistantSidebar from '@/components/navigation/AssistantSidebar'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import toast from 'react-hot-toast'
@@ -446,6 +447,8 @@ function ClientsPageWithParams() {
       return <AdminSidebar />;
     } else if (userRole === 'billcut') {
       return <BillcutSidebar />;
+    } else if (userRole === 'assistant') {
+      return <AssistantSidebar />;
     } else {
       // Default to AdminSidebar if role is unknown
       return <AdminSidebar />;
