@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt, FaEnvelopeOpenText, FaUniversity, FaCompass, FaCompressAlt, FaBell, FaCheckSquare } from 'react-icons/fa'
+import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt, FaEnvelopeOpenText, FaUniversity, FaCompass, FaCompressAlt, FaBell, FaCheckSquare, FaChartBar } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -103,6 +103,12 @@ const AssistantSidebar = () => {
             <Link href="/advocate/emailcompose" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/advocate/emailcompose')}`}>
               <FaEnvelopeOpenText className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
               <span className="font-medium">Email Compose</span>
+            </Link>
+          </li>
+          <li>
+            <Link href="/opsreport" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/opsreport')}`}>
+              <FaChartBar className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Operations Report</span>
             </Link>
           </li>
           

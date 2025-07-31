@@ -66,6 +66,22 @@ interface Task {
   feedback?: string;
 }
 
+// Define interface for complaint data
+interface Complaint {
+  id: string;
+  clientName: string;
+  clientPhone: string;
+  issue: string;
+  assignedTo: string;
+  status: string;
+  remarks: string;
+  createdAt: any;
+  createdBy: string;
+  updatedAt?: any;
+  updatedBy?: string;
+  completedAt?: any;
+}
+
 const AssistantDashboard = () => {
   const router = useRouter()
   const [clientStats, setClientStats] = useState({
@@ -80,6 +96,7 @@ const AssistantDashboard = () => {
   const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([])
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([])
   const [pendingLetters, setPendingLetters] = useState<Letter[]>([])
+  const [todayComplaints, setTodayComplaints] = useState<Complaint[]>([])
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -208,6 +225,44 @@ const AssistantDashboard = () => {
         });
         
         setTodayArbitrations(todayArbitrationsList);
+
+        // Fetch today's complaints
+        const complaintsRef = collection(db, 'complaints');
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+        
+        const complaintsQuery = query(
+          complaintsRef,
+          where("createdAt", ">=", todayStart),
+          where("createdAt", "<=", todayEnd),
+          orderBy("createdAt", "desc")
+        );
+        
+        const complaintsSnapshot = await getDocs(complaintsQuery);
+        
+        const todayComplaintsList: Complaint[] = [];
+        
+        complaintsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          todayComplaintsList.push({
+            id: doc.id,
+            clientName: data.clientName,
+            clientPhone: data.clientPhone,
+            issue: data.issue,
+            assignedTo: data.assignedTo,
+            status: data.status,
+            remarks: data.remarks,
+            createdAt: data.createdAt,
+            createdBy: data.createdBy,
+            updatedAt: data.updatedAt,
+            updatedBy: data.updatedBy,
+            completedAt: data.completedAt
+          });
+        });
+        
+        setTodayComplaints(todayComplaintsList);
         
         // Fetch upcoming reminders
         const remindersRef = collection(db, 'reminders');
@@ -680,6 +735,29 @@ const AssistantDashboard = () => {
       });
   };
 
+  // Function to get issue type color
+  const getIssueTypeColor = (issue: string) => {
+    switch (issue) {
+      case "NCH": return "bg-red-900/30 text-red-300 border border-red-700/50";
+      case "Harrasement Notice": return "bg-orange-900/30 text-orange-300 border border-orange-700/50";
+      case "Excessive Flow": return "bg-yellow-900/30 text-yellow-300 border border-yellow-700/50";
+      case "RBI/CYBER/NCW": return "bg-purple-900/30 text-purple-300 border border-purple-700/50";
+      default: return "bg-gray-900/30 text-gray-300 border border-gray-700/50";
+    }
+  };
+
+  // Function to get status color
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "pending": return "bg-yellow-900/30 text-yellow-300 border border-yellow-700/50";
+      case "in-progress": return "bg-blue-900/30 text-blue-300 border border-blue-700/50";
+      case "completed": return "bg-green-900/30 text-green-300 border border-green-700/50";
+      case "resolved": return "bg-green-900/30 text-green-300 border border-green-700/50";
+      case "cancelled": return "bg-red-900/30 text-red-300 border border-red-700/50";
+      default: return "bg-gray-900/30 text-gray-300 border border-gray-700/50";
+    }
+  };
+
   if (loading) {
     return <div className="p-6 min-h-screen bg-gray-900 text-gray-200 flex items-center justify-center">
       <div className="animate-pulse text-xl">Loading dashboard data...</div>
@@ -736,7 +814,14 @@ const AssistantDashboard = () => {
         </button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div 
+          onClick={() => navigateToClients('Active')}
+          className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-green-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
+        >
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Active Clients</h2>
+          <p className="text-4xl font-bold text-green-400">{clientStats.activeClients}</p>
+        </div>
        
         
         <div 
@@ -765,89 +850,6 @@ const AssistantDashboard = () => {
       </div>
 
 
-      <div id="tasks-section" className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 mb-10">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
-            {showHistory ? "Completed Tasks" : "Your Assigned Tasks"}
-          </h2>
-          <button 
-            onClick={() => setShowHistory(!showHistory)} 
-            className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 text-white rounded-md transition-colors"
-          >
-            {showHistory ? "Show Pending Tasks" : "History"}
-          </button>
-        </div>
-        <div className="space-y-4">
-          {assignedTasks.length > 0 ? (
-            assignedTasks
-              .filter(task => showHistory ? task.status === 'completed' : task.status !== 'completed')
-              .map(task => (
-              <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-white">{task.title}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      task.status === 'completed' 
-                        ? 'bg-green-900 text-green-200' 
-                        : task.status === 'partially-completed'
-                          ? 'bg-yellow-900 text-yellow-200'
-                          : 'bg-yellow-900 text-yellow-200'
-                    }`}>
-                      {task.status}
-                    </span>
-                    {task.status !== 'completed' && (
-                      <div className="flex ml-2 space-x-2">
-                        {task.status === 'partially-completed' ? (
-                          <button
-                            onClick={() => markTaskAs(task.id, "completed")}
-                            className="px-2 py-1 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded-md transition-colors"
-                          >
-                            Mark Complete
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => markTaskAs(task.id, "completed")}
-                              className="px-2 py-1 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded-md transition-colors"
-                            >
-                              Mark Complete
-                            </button>
-                            <button
-                              onClick={() => markTaskAs(task.id, "partially-completed")}
-                              className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors"
-                            >
-                              Partially Completed
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
-                {task.status === 'completed' && task.feedback && (
-                  <div className="mt-2 bg-gray-700/50 p-2 rounded border-l-2 border-green-500">
-                    <p className="text-xs text-green-400 font-medium mb-1">Completion Feedback:</p>
-                    <p className="text-sm text-gray-300">{task.feedback}</p>
-                  </div>
-                )}
-                <div className="mt-2 flex justify-between text-xs text-gray-500">
-                  <span>Assigned by: {task.assignedBy}</span>
-                  <span>{new Date(task.createdAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}</span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <p>{showHistory ? "No completed tasks" : "No pending tasks assigned to you"}</p>
-            </div>
-          )}
-        </div>
-      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
           <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Today's Arbitrations</h2>
@@ -952,6 +954,90 @@ const AssistantDashboard = () => {
       
       </div>
 
+      {/* Today's Scheduled Complaints Section */}
+      <div className="mt-6 bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+        <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Today's Scheduled Complaints</h2>
+        <div className="overflow-x-auto">
+          {todayComplaints.length > 0 ? (
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-900">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Client Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Issue Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Assigned To
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Time
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {todayComplaints.map((complaint) => (
+                  <tr key={complaint.id} className="hover:bg-gray-700 transition-colors duration-150">
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">
+                      {complaint.clientName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs rounded-full ${getIssueTypeColor(complaint.issue)}`}>
+                        {complaint.issue}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-cyan-300">
+                        {complaint.assignedTo}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                      {complaint.createdAt?.toDate ? 
+                        complaint.createdAt.toDate().toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        }) : 
+                        'N/A'
+                      }
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(complaint.status)}`}>
+                        {complaint.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button 
+                        onClick={() => router.push('/advocate/complaints')}
+                        className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No complaints scheduled for today</p>
+            </div>
+          )}
+        </div>
+        <div className="mt-4 text-right">
+          <a href="/advocate/complaints" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+            View all complaints →
+          </a>
+        </div>
+      </div>
+
       {/* Pending Letters Section - Updated */}
       <div className="mt-6 bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
         <h2 className="text-xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Pending Letters</h2>
@@ -1032,6 +1118,91 @@ const AssistantDashboard = () => {
           <a href="/clients" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
             View all clients →
           </a>
+        </div>
+      </div>
+
+      {/* Your Assigned Tasks Section - Moved to bottom */}
+      <div id="tasks-section" className="mt-6 bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+            {showHistory ? "Completed Tasks" : "Your Assigned Tasks"}
+          </h2>
+          <button 
+            onClick={() => setShowHistory(!showHistory)} 
+            className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 text-white rounded-md transition-colors"
+          >
+            {showHistory ? "Show Pending Tasks" : "History"}
+          </button>
+        </div>
+        <div className="space-y-4">
+          {assignedTasks.length > 0 ? (
+            assignedTasks
+              .filter(task => showHistory ? task.status === 'completed' : task.status !== 'completed')
+              .map(task => (
+              <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-white">{task.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      task.status === 'completed' 
+                        ? 'bg-green-900 text-green-200' 
+                        : task.status === 'partially-completed'
+                          ? 'bg-yellow-900 text-yellow-200'
+                          : 'bg-yellow-900 text-yellow-200'
+                    }`}>
+                      {task.status}
+                    </span>
+                    {task.status !== 'completed' && (
+                      <div className="flex ml-2 space-x-2">
+                        {task.status === 'partially-completed' ? (
+                          <button
+                            onClick={() => markTaskAs(task.id, "completed")}
+                            className="px-2 py-1 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded-md transition-colors"
+                          >
+                            Mark Complete
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => markTaskAs(task.id, "completed")}
+                              className="px-2 py-1 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded-md transition-colors"
+                            >
+                              Mark Complete
+                            </button>
+                            <button
+                              onClick={() => markTaskAs(task.id, "partially-completed")}
+                              className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors"
+                            >
+                              Partially Completed
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+                {task.status === 'completed' && task.feedback && (
+                  <div className="mt-2 bg-gray-700/50 p-2 rounded border-l-2 border-green-500">
+                    <p className="text-xs text-green-400 font-medium mb-1">Completion Feedback:</p>
+                    <p className="text-sm text-gray-300">{task.feedback}</p>
+                  </div>
+                )}
+                <div className="mt-2 flex justify-between text-xs text-gray-500">
+                  <span>Assigned by: {task.assignedBy}</span>
+                  <span>{new Date(task.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>{showHistory ? "No completed tasks" : "No pending tasks assigned to you"}</p>
+            </div>
+          )}
         </div>
       </div>
 
