@@ -289,8 +289,8 @@ export default function ClientEditModal({
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-1">Alternate Phone</label>
                   <input
                     type="tel"
-                    id="phone"
-                    name="phone"
+                    id="altPhone"
+                    name="altPhone"
                     value={formData.altPhone}
                     onChange={handleInputChange}
                     className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"

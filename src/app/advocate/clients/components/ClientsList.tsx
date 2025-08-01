@@ -119,6 +119,12 @@ export default function ClientsList() {
     clientId?: string
   } | null>(null)
 
+  // WATI Phone Selection Modal
+  const [showPhoneSelectionModal, setShowPhoneSelectionModal] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState("")
+  const [selectedClientForWATI, setSelectedClientForWATI] = useState<Client | null>(null)
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
+
   const searchParams = useSearchParams()
 
   const {
@@ -297,6 +303,75 @@ export default function ClientsList() {
     setIsHistoryModalOpen(true)
   }
 
+  // WATI Functions
+  const handleTemplateSelect = (templateName: string, client: Client) => {
+    setSelectedTemplate(templateName)
+    setSelectedClientForWATI(client)
+    setShowPhoneSelectionModal(true)
+  }
+
+  const sendWhatsAppMessage = async (templateName: string, phoneNumber: string) => {
+    if (!phoneNumber || !selectedClientForWATI) {
+      toast.error("No phone number available")
+      return
+    }
+
+    setIsSendingWhatsApp(true)
+    setShowPhoneSelectionModal(false)
+
+    try {
+      const { httpsCallable } = await import("firebase/functions")
+      const { functions } = await import("@/firebase/firebase")
+      const sendClientWhatsappMessageFn = httpsCallable(functions, "sendClientWhatsappMessage")
+
+      // Format phone number to ensure it's in the correct format
+      let formattedPhone = phoneNumber.replace(/\s+/g, "").replace(/[()-]/g, "")
+      if (formattedPhone.startsWith("+91")) {
+        formattedPhone = formattedPhone.substring(3)
+      }
+      if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
+        formattedPhone = "91" + formattedPhone
+      }
+
+      const messageData = {
+        phoneNumber: formattedPhone,
+        templateName: templateName,
+        clientId: selectedClientForWATI.id,
+        userId: localStorage.getItem("userName") || "Unknown",
+        userName: localStorage.getItem("userName") || "Unknown",
+        message: `Template message: ${templateName}`,
+        customParams: [
+          { name: "name", value: selectedClientForWATI.name || "Customer" },
+          { name: "Channel", value: "AMA Legal Solutions" },
+          { name: "agent_name", value: localStorage.getItem("userName") || "Agent" },
+          { name: "customer_mobile", value: formattedPhone }
+        ],
+        channelNumber: "919289622596",
+        broadcastName: `${templateName}_${Date.now()}`
+      }
+
+      const result = await sendClientWhatsappMessageFn(messageData)
+
+      if (result.data && (result.data as any).success) {
+        toast.success(`WhatsApp message sent successfully using "Send Feedback Message" template`)
+      } else {
+        console.log("Success check failed. Result data:", result.data)
+        toast.error("Failed to send WhatsApp message")
+      }
+    } catch (error: any) {
+      console.error("Error sending WhatsApp message:", error)
+      const errorMessage = error.message || error.details || "Unknown error"
+      toast.error(`Failed to send WhatsApp message: ${errorMessage}`)
+    } finally {
+      setIsSendingWhatsApp(false)
+      setSelectedClientForWATI(null)
+    }
+  }
+
+  const handlePhoneSelection = (phoneNumber: string) => {
+    sendWhatsAppMessage(selectedTemplate, phoneNumber)
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -336,6 +411,8 @@ export default function ClientsList() {
             onViewHistory={handleViewHistory}
             onViewDetails={handleViewDetails}
             onEditClient={handleEditClient}
+            onTemplateSelect={handleTemplateSelect}
+            isSendingWhatsApp={isSendingWhatsApp}
           />
         </div>
       </div>
@@ -367,6 +444,66 @@ export default function ClientsList() {
         documentName={viewingDocumentName}
         onClose={() => setIsDocViewerOpen(false)}
       />
+
+      {/* WATI Phone Selection Modal */}
+      {showPhoneSelectionModal && selectedClientForWATI && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 w-full max-w-md animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">Select Phone Number</h2>
+              <button
+                onClick={() => {
+                  setShowPhoneSelectionModal(false)
+                  setSelectedClientForWATI(null)
+                }}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-300 text-sm mb-4">
+                Choose which phone number to send the WhatsApp message to:
+              </p>
+              
+              <div className="space-y-3">
+                {selectedClientForWATI.phone && (
+                  <button
+                    onClick={() => handlePhoneSelection(selectedClientForWATI.phone)}
+                    disabled={isSendingWhatsApp}
+                    className="w-full p-4 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="text-left">
+                      <div className="text-white font-medium">Primary Phone</div>
+                      <div className="text-gray-400 text-sm">{selectedClientForWATI.phone}</div>
+                    </div>
+                  </button>
+                )}
+                
+                {selectedClientForWATI.altPhone && (
+                  <button
+                    onClick={() => handlePhoneSelection(selectedClientForWATI.altPhone)}
+                    disabled={isSendingWhatsApp}
+                    className="w-full p-4 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="text-left">
+                      <div className="text-white font-medium">Alternate Phone</div>
+                      <div className="text-gray-400 text-sm">{selectedClientForWATI.altPhone}</div>
+                    </div>
+                  </button>
+                )}
+              </div>
+              
+              {!selectedClientForWATI.phone && !selectedClientForWATI.altPhone && (
+                <div className="text-center text-gray-400 py-8">
+                  No phone numbers available for this client
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Document Generation Modals */}
       {isRequestLetterModalOpen && selectedClientForDoc && (

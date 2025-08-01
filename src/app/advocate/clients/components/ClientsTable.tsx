@@ -72,6 +72,8 @@ interface ClientsTableProps {
   onViewHistory: (clientId: string) => void
   onViewDetails: (client: Client) => void
   onEditClient: (client: Client) => void
+  onTemplateSelect: (templateName: string, client: Client) => void
+  isSendingWhatsApp: boolean
 }
 
 export default function ClientsTable({
@@ -84,6 +86,8 @@ export default function ClientsTable({
   onViewHistory,
   onViewDetails,
   onEditClient,
+  onTemplateSelect,
+  isSendingWhatsApp,
 }: ClientsTableProps) {
   if (clients.length === 0) {
     return (
@@ -129,6 +133,8 @@ export default function ClientsTable({
               onViewHistory={onViewHistory}
               onViewDetails={onViewDetails}
               onEditClient={onEditClient}
+              onTemplateSelect={onTemplateSelect}
+              isSendingWhatsApp={isSendingWhatsApp}
             />
           ))}
         </tbody>
