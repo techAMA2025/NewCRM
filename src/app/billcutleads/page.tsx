@@ -22,6 +22,8 @@ import {
 import { toast } from "react-toastify"
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"
 import { db as crmDb, auth } from "@/firebase/firebase"
+import { getFunctions, httpsCallable } from "firebase/functions"
+import { app } from "@/firebase/firebase"
 
 // Import Components
 import BillcutLeadsHeader from "./components/BillcutLeadsHeader"
@@ -35,6 +37,7 @@ import AdminSidebar from "@/components/navigation/AdminSidebar"
 import SalesSidebar from "@/components/navigation/SalesSidebar"
 import OverlordSidebar from "@/components/navigation/OverlordSidebar"
 import BillcutSidebar from "@/components/navigation/BillcutSidebar"
+import BulkWhatsAppModal from "./components/BulkWhatsAppModal"
 
 // Import types
 import type { Lead, User, EditingLeadsState, HistoryItem } from "./types"
@@ -276,6 +279,9 @@ const BillCutLeadsPage = () => {
   // Refs for infinite scroll
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  // Add new state for bulk WhatsApp
+  const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false)
 
   // Handle URL parameters on component mount
   useEffect(() => {
@@ -1702,6 +1708,161 @@ const BillCutLeadsPage = () => {
     }
   }
 
+  // NEW: Bulk WhatsApp function
+  const sendBulkWhatsApp = async (templateName: string, leadIds: string[]) => {
+    if (leadIds.length === 0) {
+      toast.error("No leads selected for WhatsApp messaging")
+      return
+    }
+
+    const functions = getFunctions(app)
+    const sendWhatsappMessageFn = httpsCallable(functions, 'sendWhatsappMessage')
+    
+    let successCount = 0
+    let errorCount = 0
+    const errors: string[] = []
+
+    // Show initial toast
+    const toastId = toast.loading(`Sending WhatsApp messages to ${leadIds.length} leads...`, {
+      position: "top-right",
+    })
+
+    try {
+      // Process leads in batches to avoid overwhelming the system
+      const batchSize = 5
+      for (let i = 0; i < leadIds.length; i += batchSize) {
+        const batch = leadIds.slice(i, i + batchSize)
+        
+        // Process batch in parallel
+        const batchPromises = batch.map(async (leadId) => {
+          const lead = leads.find(l => l.id === leadId)
+          if (!lead || !lead.phone) {
+            errorCount++
+            errors.push(`${lead?.name || 'Unknown'}: No phone number`)
+            return
+          }
+
+          try {
+            // Format phone number
+            let formattedPhone = lead.phone.replace(/\s+/g, "").replace(/[()-]/g, "")
+            if (formattedPhone.startsWith("+91")) {
+              formattedPhone = formattedPhone.substring(3)
+            }
+            if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
+              formattedPhone = "91" + formattedPhone
+            }
+
+            const messageData = {
+              phoneNumber: formattedPhone,
+              templateName: templateName,
+              leadId: lead.id,
+              userId: localStorage.getItem('userName') || 'Unknown',
+              userName: localStorage.getItem('userName') || 'Unknown',
+              message: `Template message: ${templateName}`,
+              customParams: [
+                { name: "name", value: lead.name || "Customer" },
+                { name: "Channel", value: "AMA Legal Solutions" },
+                { name: "agent_name", value: localStorage.getItem('userName') || "Agent" },
+                { name: "customer_mobile", value: formattedPhone }
+              ],
+              channelNumber: "919289622596",
+              broadcastName: `${templateName}_bulk_${Date.now()}`
+            }
+
+            const result = await sendWhatsappMessageFn(messageData)
+            
+            if (result.data && (result.data as any).success) {
+              successCount++
+            } else {
+              errorCount++
+              errors.push(`${lead.name}: Failed to send`)
+            }
+          } catch (error: any) {
+            errorCount++
+            const errorMessage = error.message || error.details || 'Unknown error'
+            errors.push(`${lead.name}: ${errorMessage}`)
+          }
+        })
+
+        await Promise.all(batchPromises)
+        
+        // Update progress toast
+        const progress = Math.min(((i + batchSize) / leadIds.length) * 100, 100)
+        toast.update(toastId, {
+          render: `Sending WhatsApp messages... ${Math.round(progress)}% complete`,
+        })
+
+        // Small delay between batches to avoid rate limiting
+        if (i + batchSize < leadIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      }
+
+      // Show final results
+      toast.dismiss(toastId)
+      
+      if (successCount > 0) {
+        toast.success(
+          <div>
+            <p className="font-medium">Bulk WhatsApp Complete</p>
+            <p className="text-sm">
+              {successCount} message{successCount !== 1 ? "s" : ""} sent successfully
+              {errorCount > 0 && `, ${errorCount} failed`}
+            </p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 5000,
+          }
+        )
+      }
+
+      if (errorCount > 0) {
+        console.error("Bulk WhatsApp errors:", errors)
+        toast.error(
+          <div>
+            <p className="font-medium">Some messages failed</p>
+            <p className="text-sm">Check console for details</p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 5000,
+          }
+        )
+      }
+
+      // Clear selection after successful send
+      if (successCount > 0) {
+        setSelectedLeads([])
+      }
+
+    } catch (error) {
+      toast.dismiss(toastId)
+      console.error("Error in bulk WhatsApp:", error)
+      toast.error("Failed to send bulk WhatsApp messages", {
+        position: "top-right",
+        autoClose: 3000,
+      })
+    }
+  }
+
+  // NEW: Handle bulk WhatsApp button click
+  const handleBulkWhatsApp = () => {
+    if (selectedLeads.length === 0) {
+      toast.error("Please select leads to send WhatsApp messages")
+      return
+    }
+
+    const canBulkWhatsApp = userRole === "admin" || userRole === "overlord" || userRole === "sales" || userRole === "billcut"
+
+    if (!canBulkWhatsApp) {
+      toast.error("You don't have permission to send bulk WhatsApp messages")
+      return
+    }
+
+    setShowBulkWhatsAppModal(true)
+  }
+
   // Render sidebar based on user role
   const SidebarComponent = useMemo(() => {
     if (userRole === "admin") {
@@ -1755,6 +1916,7 @@ const BillCutLeadsPage = () => {
             salesTeamMembers={salesTeamMembers}
             selectedLeads={selectedLeads}
             onBulkAssign={handleBulkAssign}
+            onBulkWhatsApp={handleBulkWhatsApp}  // NEW: Add bulk WhatsApp handler
             onClearSelection={() => setSelectedLeads([])}
             debtRangeSort={debtRangeSort}
             setDebtRangeSort={setDebtRangeSort}
@@ -1931,6 +2093,14 @@ const BillCutLeadsPage = () => {
                 onConfirm={handleConversionConfirm}
                 leadName={conversionLeadName}
                 isLoading={isConvertingLead}
+              />
+
+              {/* Bulk WhatsApp Modal */}
+              <BulkWhatsAppModal
+                isOpen={showBulkWhatsAppModal}
+                onClose={() => setShowBulkWhatsAppModal(false)}
+                selectedLeads={leads.filter(lead => selectedLeads.includes(lead.id))}
+                onSendBulkWhatsApp={sendBulkWhatsApp}
               />
             </>
           )}
