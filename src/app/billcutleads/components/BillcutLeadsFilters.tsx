@@ -27,6 +27,7 @@ type BillcutLeadsFiltersProps = {
   salesTeamMembers: any[]
   selectedLeads: string[]
   onBulkAssign: () => void
+  onBulkWhatsApp: () => void  // NEW: Add bulk WhatsApp handler
   onClearSelection: () => void
   debtRangeSort: "none" | "low-to-high" | "high-to-low"
   setDebtRangeSort: (sort: "none" | "low-to-high" | "high-to-low") => void
@@ -57,6 +58,7 @@ const BillcutLeadsFiltersOptimized = ({
   salesTeamMembers,
   selectedLeads,
   onBulkAssign,
+  onBulkWhatsApp,  // NEW: Add bulk WhatsApp handler
   onClearSelection,
   debtRangeSort,
   setDebtRangeSort,
@@ -462,6 +464,13 @@ const BillcutLeadsFiltersOptimized = ({
                   className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
                 >
                   Bulk Assign
+                </button>
+                {/* NEW: Bulk WhatsApp Button */}
+                <button
+                  onClick={onBulkWhatsApp}
+                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
+                >
+                  Bulk WhatsApp
                 </button>
                 <button
                   onClick={onClearSelection}
