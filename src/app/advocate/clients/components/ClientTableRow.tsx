@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
+import { FaEllipsisV, FaWhatsapp } from "react-icons/fa"
 import {
   formatIndianDate,
   formatIndianPhoneNumber,
@@ -81,6 +82,8 @@ interface ClientTableRowProps {
   onViewHistory: (clientId: string) => void
   onViewDetails: (client: Client) => void
   onEditClient: (client: Client) => void
+  onTemplateSelect: (templateName: string, client: Client) => void
+  isSendingWhatsApp: boolean
 }
 
 export default function ClientTableRow({
@@ -93,12 +96,48 @@ export default function ClientTableRow({
   onViewHistory,
   onViewDetails,
   onEditClient,
+  onTemplateSelect,
+  isSendingWhatsApp,
 }: ClientTableRowProps) {
   const [remarkText, setRemarkText] = useState(latestRemark || "")
+  const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   const clientWeek = getWeekFromStartDate(client.startDate)
+
+  // WATI template options
+  const whatsappTemplates = [
+    {
+      name: "Send Feedback Message",
+      templateName: "advocate_feedback_20250801",
+      description: "Send feedback request message to client"
+    }
+  ]
+
+  // Handle clicking outside the menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowWhatsAppMenu(false)
+      }
+    }
+
+    if (showWhatsAppMenu) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showWhatsAppMenu])
 
   const handleRemarkSave = () => {
     onRemarkSave(client.id, remarkText)
+  }
+
+  const handleTemplateSelect = (templateName: string) => {
+    onTemplateSelect(templateName, client)
+    setShowWhatsAppMenu(false)
   }
 
   return (
@@ -237,6 +276,53 @@ export default function ClientTableRow({
             >
               History
             </button>
+            
+            {/* WATI Templates Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
+                disabled={isSendingWhatsApp}
+                className={`px-2 py-0.5 rounded transition-colors duration-200 flex items-center ${
+                  isSendingWhatsApp
+                    ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                    : showWhatsAppMenu
+                    ? "bg-green-700 text-white"
+                    : "bg-green-600 hover:bg-green-700 text-white"
+                }`}
+                title="Send WhatsApp message"
+              >
+                {isSendingWhatsApp ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></div>
+                ) : (
+                  <FaEllipsisV className="w-3 h-3" />
+                )}
+              </button>
+
+              {/* WATI Menu Dropdown */}
+              {showWhatsAppMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50" ref={menuRef}>
+                  <div className="p-3 border-b border-gray-700">
+                    <div className="flex items-center space-x-2">
+                      <FaWhatsapp className="text-green-400" />
+                      <span className="text-sm font-medium text-gray-200">WhatsApp Templates</span>
+                    </div>
+                  </div>
+                  <div className="py-2">
+                    {whatsappTemplates.map((template, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleTemplateSelect(template.templateName)}
+                        disabled={isSendingWhatsApp}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="text-sm font-medium text-gray-200">{template.name}</div>
+                        <div className="text-xs text-gray-400 mt-1">{template.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </td>
