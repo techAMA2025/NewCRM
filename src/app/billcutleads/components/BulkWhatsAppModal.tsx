@@ -2,35 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { toast } from "react-toastify"
-
-// WhatsApp template options (same as in BillcutLeadNotesCell)
-const whatsappTemplates = [
-  {
-    name: "CIBIL",
-    templateName: "ama_dashboard_credit_report",
-    description: "Send CIBIL credit report information"
-  },
-  {
-    name: "Answered Call",
-    templateName: "ama_dashboard_after_call",
-    description: "Follow-up after answered call"
-  },
-  {
-    name: "Loan Settlement?",
-    templateName: "ama_dashboard_loan_settlement1",
-    description: "Ask about loan settlement"
-  },
-  {
-    name: "No Answer",
-    templateName: "ama_dashboard_no_answer",
-    description: "Follow-up for unanswered calls"
-  },
-  {
-    name: "What we do?",
-    templateName: "ama_dashboard_struggling1",
-    description: "Explain what AMA Legal Solutions does"
-  }
-]
+import { useWhatsAppTemplates } from "@/hooks/useWhatsAppTemplates"
 
 interface BulkWhatsAppModalProps {
   isOpen: boolean
@@ -48,6 +20,9 @@ const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [validLeads, setValidLeads] = useState<any[]>([])
+
+  // Use the custom hook to fetch sales templates
+  const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates('sales')
 
   // Filter leads with valid phone numbers
   useEffect(() => {
@@ -100,21 +75,28 @@ const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-300 mb-2">Select Template:</label>
-          <select
-            value={selectedTemplate}
-            onChange={(e) => setSelectedTemplate(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
-          >
-            <option value="">Choose a template</option>
-            {whatsappTemplates.map((template) => (
-              <option key={template.templateName} value={template.templateName}>
-                {template.name} - {template.description}
-              </option>
-            ))}
-          </select>
+          {templatesLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-400"></div>
+              <span className="ml-2 text-gray-400">Loading templates...</span>
+            </div>
+          ) : (
+            <select
+              value={selectedTemplate}
+              onChange={(e) => setSelectedTemplate(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
+            >
+              <option value="">Choose a template</option>
+              {whatsappTemplates.map((template) => (
+                <option key={template.id} value={template.templateName}>
+                  {template.name} - {template.description}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
-        {selectedTemplate && (
+        {selectedTemplate && !templatesLoading && (
           <div className="mb-4 p-3 bg-gray-700/50 rounded-lg">
             <p className="text-sm text-gray-300">
               <strong>Template:</strong> {whatsappTemplates.find(t => t.templateName === selectedTemplate)?.name}
@@ -125,10 +107,18 @@ const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
           </div>
         )}
 
+        {!templatesLoading && whatsappTemplates.length === 0 && (
+          <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+            <p className="text-yellow-400 text-sm">
+              No sales templates available. Please contact an administrator to add templates.
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             onClick={handleSend}
-            disabled={!selectedTemplate || isSending}
+            disabled={!selectedTemplate || isSending || templatesLoading || whatsappTemplates.length === 0}
             className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200"
           >
             {isSending ? (

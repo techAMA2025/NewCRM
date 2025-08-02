@@ -4,6 +4,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/firebase/firebase';
 import { toast } from 'react-toastify';
 import { FaEllipsisV, FaWhatsapp } from 'react-icons/fa';
+import { useWhatsAppTemplates } from '@/hooks/useWhatsAppTemplates';
 
 type BillcutLeadNotesCellProps = {
   lead: {
@@ -27,34 +28,8 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // WhatsApp template options
-  const whatsappTemplates = [
-    {
-      name: "CIBIL",
-      templateName: "ama_dashboard_credit_report",
-      description: "Send CIBIL credit report information"
-    },
-    {
-      name: "Answered Call",
-      templateName: "ama_dashboard_after_call",
-      description: "Follow-up after answered call"
-    },
-    {
-      name: "Loan Settlement?",
-      templateName: "ama_dashboard_loan_settlement1",
-      description: "Ask about loan settlement"
-    },
-    {
-      name: "No Answer",
-      templateName: "ama_dashboard_no_answer",
-      description: "Follow-up for unanswered calls"
-    },
-    {
-      name: "What we do?",
-      templateName: "ama_dashboard_struggling1",
-      description: "Explain what AMA Legal Solutions does"
-    }
-  ];
+  // Use the custom hook to fetch sales templates
+  const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates('sales');
 
   // Fetch the latest sales note on component mount
   useEffect(() => {
@@ -243,9 +218,9 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
           <div className="relative">
             <button
               onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
-              disabled={disabled || isSendingWhatsApp}
+              disabled={disabled || isSendingWhatsApp || templatesLoading}
               className={`p-2 rounded-lg transition-colors ${
-                disabled || isSendingWhatsApp
+                disabled || isSendingWhatsApp || templatesLoading
                   ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
                   : showWhatsAppMenu
                   ? 'bg-green-700 text-white'
@@ -253,7 +228,7 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
               }`}
               title="Send WhatsApp message"
             >
-              {isSendingWhatsApp ? (
+              {isSendingWhatsApp || templatesLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
               ) : (
                 <FaEllipsisV className="w-3 h-3" />
@@ -261,7 +236,7 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
             </button>
 
             {/* WhatsApp Menu Dropdown */}
-            {showWhatsAppMenu && (
+            {showWhatsAppMenu && !templatesLoading && (
               <div className="absolute right-0 mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50" ref={menuRef}>
                 <div className="p-3 border-b border-gray-700">
                   <div className="flex items-center space-x-2">
@@ -270,17 +245,23 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
                   </div>
                 </div>
                 <div className="py-2">
-                  {whatsappTemplates.map((template, index) => (
-                    <button
-                      key={index}
-                      onClick={() => sendWhatsAppMessage(template.templateName)}
-                      disabled={isSendingWhatsApp}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <div className="text-sm font-medium text-gray-200">{template.name}</div>
-                      <div className="text-xs text-gray-400 mt-1">{template.description}</div>
-                    </button>
-                  ))}
+                  {whatsappTemplates.length > 0 ? (
+                    whatsappTemplates.map((template, index) => (
+                      <button
+                        key={template.id}
+                        onClick={() => sendWhatsAppMessage(template.templateName)}
+                        disabled={isSendingWhatsApp}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="text-sm font-medium text-gray-200">{template.name}</div>
+                        <div className="text-xs text-gray-400 mt-1">{template.description}</div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-sm text-gray-400">
+                      No sales templates available
+                    </div>
+                  )}
                 </div>
               </div>
             )}

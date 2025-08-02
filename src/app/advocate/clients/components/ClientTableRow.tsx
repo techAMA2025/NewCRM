@@ -9,6 +9,7 @@ import {
   getWeekLabel,
   isNewClient,
 } from "../utils/formatters"
+import { useWhatsAppTemplates } from "@/hooks/useWhatsAppTemplates"
 
 // Use compatible Client type that matches parent component
 interface Bank {
@@ -105,14 +106,8 @@ export default function ClientTableRow({
 
   const clientWeek = getWeekFromStartDate(client.startDate)
 
-  // WATI template options
-  const whatsappTemplates = [
-    {
-      name: "Send Feedback Message",
-      templateName: "advocate_feedback_20250801",
-      description: "Send feedback request message to client"
-    }
-  ]
+  // Use the custom hook to fetch advocate templates
+  const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates('advocate')
 
   // Handle clicking outside the menu to close it
   useEffect(() => {
@@ -281,9 +276,9 @@ export default function ClientTableRow({
             <div className="relative">
               <button
                 onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
-                disabled={isSendingWhatsApp}
+                disabled={isSendingWhatsApp || templatesLoading}
                 className={`px-2 py-0.5 rounded transition-colors duration-200 flex items-center ${
-                  isSendingWhatsApp
+                  isSendingWhatsApp || templatesLoading
                     ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                     : showWhatsAppMenu
                     ? "bg-green-700 text-white"
@@ -291,7 +286,7 @@ export default function ClientTableRow({
                 }`}
                 title="Send WhatsApp message"
               >
-                {isSendingWhatsApp ? (
+                {isSendingWhatsApp || templatesLoading ? (
                   <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></div>
                 ) : (
                   <FaEllipsisV className="w-3 h-3" />
@@ -299,7 +294,7 @@ export default function ClientTableRow({
               </button>
 
               {/* WATI Menu Dropdown */}
-              {showWhatsAppMenu && (
+              {showWhatsAppMenu && !templatesLoading && (
                 <div className="absolute right-0 mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50" ref={menuRef}>
                   <div className="p-3 border-b border-gray-700">
                     <div className="flex items-center space-x-2">
@@ -308,17 +303,23 @@ export default function ClientTableRow({
                     </div>
                   </div>
                   <div className="py-2">
-                    {whatsappTemplates.map((template, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleTemplateSelect(template.templateName)}
-                        disabled={isSendingWhatsApp}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="text-sm font-medium text-gray-200">{template.name}</div>
-                        <div className="text-xs text-gray-400 mt-1">{template.description}</div>
-                      </button>
-                    ))}
+                    {whatsappTemplates.length > 0 ? (
+                      whatsappTemplates.map((template, index) => (
+                        <button
+                          key={template.id}
+                          onClick={() => handleTemplateSelect(template.templateName)}
+                          disabled={isSendingWhatsApp}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <div className="text-sm font-medium text-gray-200">{template.name}</div>
+                          <div className="text-xs text-gray-400 mt-1">{template.description}</div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-gray-400">
+                        No advocate templates available
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
