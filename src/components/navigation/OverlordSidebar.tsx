@@ -74,6 +74,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
     { href: '/arbtracker', icon: <FaBalanceScale />, label: 'Arbitration' },
     { href: '/pendingletters', icon: <FiClipboard/>, label: 'Pending Letters' },
     { href: '/payapproval', icon: <FaMoneyCheckAlt />, label: 'Payment Approvals' },
+    { href: '/manage-templates', icon: <FaFileAlt />, label: 'Manage Templates' },
     { href: '/advocate/documents', icon: <FaFileAlt />, label: 'Documents' },
     { href: '/advocate/emailcompose', icon: <FaEnvelopeOpenText />, label: 'Compose Email' },
     { href: '/send-agreement', icon: <FaEnvelopeOpenText />, label: 'Sales Email' },
