@@ -465,13 +465,14 @@ const BillcutLeadsFiltersOptimized = ({
                 >
                   Bulk Assign
                 </button>
-                {/* NEW: Bulk WhatsApp Button */}
+                {(userRole === 'admin' || userRole === 'overlord') && (
                 <button
                   onClick={onBulkWhatsApp}
                   className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
                 >
                   Bulk WhatsApp
                 </button>
+                )}
                 <button
                   onClick={onClearSelection}
                   className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
