@@ -57,24 +57,20 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
   };
 
   const navItems = [
-    // Dashboards & Analytics
     { href: '/dashboard', icon: <FiHome />, label: 'Dashboard' },
-    { href: '/billcutLeadReport', icon: <FiPieChart />, label: 'Billcut Analytics' },
-    { href: '/salesreport', icon: <FiPieChart />, label: 'Sales Report' },
-    { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report' },
-
-    // Leads, Targets, Payment Requests
+    { href: '/admin/users', icon: <FiUsers />, label: 'User Management' },
     { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads' },
     { href: '/billcutleads', icon: <FiBarChart2 />, label: 'Billcut Leads' },
+    { href: '/billcutLeadReport', icon: <FiPieChart />, label: 'Billcut Analytics' },
     { href: '/targets', icon: <FiClipboard />, label: 'Targets' },
-    { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'Payment Requests' },
+    { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'SalesPayment Requests' },
+    { href: '/advocate/ops-payments-approval', icon: <FaMoneyCheckAlt />, label: 'Ops Payment Approvals' },
     { href: '/monthlypayreq', icon: <FiCalendar />, label: 'Monthly Payment Requests' },
-
-    // Other Management & Utilities
-    { href: '/admin/users', icon: <FiUsers />, label: 'User Management' },
     { href: '/clients', icon: <FiBriefcase />, label: 'Clients' },
     { href: '/paymentreminder', icon: <FiCreditCard />, label: 'Payment Reminder' },
     { href: '/clientalloc', icon: <FiUserPlus />, label: 'Client Allocation' },
+    { href: '/salesreport', icon: <FiPieChart />, label: 'Sales Report' },
+    { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report' },
     { href: '/assigntasks', icon: <FiCheckSquare />, label: 'Assign Tasks' },
     { href: '/arbtracker', icon: <FaBalanceScale />, label: 'Arbitration' },
     { href: '/pendingletters', icon: <FiClipboard/>, label: 'Pending Letters' },
