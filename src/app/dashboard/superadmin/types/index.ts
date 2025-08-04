@@ -2,7 +2,7 @@
 export type StatusKey = 'Interested' | 'Not Interested' | 'Not Answering' | 'Callback' 
 | 'Converted' | 'Loan Required' | 'Cibil Issue' | 'Closed Lead' | 'Language Barrier' | 'Future Potential' | 'No Status';
 
-export type SourceKey = 'settleloans' | 'credsettlee' | 'ama';
+export type SourceKey = 'settleloans' | 'credsettlee' | 'ama' | 'billcut';
 
 // Define the dataset type for the chart
 export type ChartDataset = {
@@ -21,6 +21,7 @@ export type SourceTotals = {
   settleloans: number;
   credsettlee: number;
   ama: number;
+  billcut: number;
 };
 
 // Sales analytics types

@@ -14,6 +14,7 @@ import {
   useSalesAnalytics,
   useClientAnalytics,
   usePaymentAnalytics,
+  useOpsPaymentsAnalytics,
   useProgressiveDataLoading
 } from './hooks';
 
@@ -22,7 +23,6 @@ import {
   DateRangeFilter,
   SalesMetricsCards,
   CRMLeadsTable,
-  CRMLeadsPieChart,
   MetricCard,
   SalesMetricsSkeleton,
   ChartSkeleton,
@@ -203,6 +203,14 @@ const SuperAdminDashboard = React.memo(() => {
     onLoadComplete: useCallback(() => setStageLoaded('paymentAnalytics'), [setStageLoaded])
   });
 
+  const {
+    opsPaymentsAnalytics,
+    isLoading: opsPaymentsLoading
+  } = useOpsPaymentsAnalytics({
+    enabled: enabledStages.opsPayments, // Use the opsPayments stage
+    onLoadComplete: useCallback(() => setStageLoaded('opsPayments'), [setStageLoaded])
+  });
+
   // Memoized date filter handlers with cache invalidation
   const applyDateFilter = useCallback(() => {
     setIsFilterApplied(true);
@@ -357,23 +365,7 @@ const SuperAdminDashboard = React.memo(() => {
                     )}
                   </div>
                   
-                  {/* Salesperson Dropdown */}
-                  <div className="flex items-center">
-                    <label htmlFor="salesperson" className="mr-1 text-gray-300 text-xs">View:</label>
-                    <select
-                      id="salesperson"
-                      className="bg-gray-700 border border-gray-600 text-white px-2 py-1 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={selectedSalesperson || "all"}
-                      onChange={handleSalespersonChange}
-                    >
-                      <option value="all">All Salespeople</option>
-                      {salespeople.map((person) => (
-                        <option key={person.id} value={person.name}>
-                          {person.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                 
                 </div>
               </CardHeader>
               <CardContent>
@@ -382,12 +374,14 @@ const SuperAdminDashboard = React.memo(() => {
                   analyticsStats={analyticsStats}
                   selectedSalesperson={selectedSalesperson}
                   individualSalesData={individualSalesData}
+                  opsPaymentsAnalytics={opsPaymentsAnalytics}
+                  opsPaymentsLoading={opsPaymentsLoading}
                 />
 
                 {/* CRM Leads Analytics Section - Deferred loading */}
                 <div className="mt-4 flex flex-col lg:flex-row gap-3">
-                  {/* Left side: Table with filters */}
-                  <div className="lg:w-2/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl">
+                  {/* Left side: Table with filters - Now full width */}
+                  <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="text-lg font-semibold text-blue-100">CRM Leads Analytics</h3>
                       
@@ -432,12 +426,14 @@ const SuperAdminDashboard = React.memo(() => {
                         leadsBySourceData={leadsBySourceData}
                         sourceTotals={sourceTotals}
                         isLoading={leadsLoading}
+                        selectedAnalyticsMonth={selectedAnalyticsMonth}
+                        selectedAnalyticsYear={selectedAnalyticsYear}
                       />
                     )}
                   </div>
                   
-                  {/* Right side: Pie chart */}
-                  <div className="lg:w-1/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex flex-col">
+                  {/* Right side: Pie chart - COMMENTED OUT */}
+                  {/* <div className="lg:w-1/3 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-xl flex flex-col">
                     {showCharts ? (
                       <Suspense fallback={<LoadingFallback height="h-64" />}>
                         {!enabledStages.leadsData || leadsLoading ? (
@@ -452,7 +448,7 @@ const SuperAdminDashboard = React.memo(() => {
                     ) : (
                       <LoadingFallback height="h-64" />
                     )}
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>

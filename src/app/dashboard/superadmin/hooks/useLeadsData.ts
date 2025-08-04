@@ -23,7 +23,7 @@ export const useLeadsData = ({
   onLoadComplete
 }: UseLeadsDataParams) => {
   const [leadsBySourceData, setLeadsBySourceData] = useState<LeadsBySourceData>({
-    labels: ['Settleloans', 'Credsettlee', 'AMA'],
+    labels: ['Settleloans', 'Credsettlee', 'AMA', 'Billcut'],
     datasets: [],
   });
   
@@ -31,6 +31,7 @@ export const useLeadsData = ({
     settleloans: 0,
     credsettlee: 0,
     ama: 0,
+    billcut: 0,
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -96,32 +97,69 @@ export const useLeadsData = ({
         }
         
         const leadsSnapshot = await getDocs(leadsQuery);
-        console.log(`📊 Processing ${leadsSnapshot.size} leads...`);
+        console.log(`📊 Processing ${leadsSnapshot.size} leads from crm_leads...`);
+        
+        // Fetch billcutLeads data
+        const billcutCollection = collection(db, 'billcutLeads');
+        let billcutQuery: any = billcutCollection;
+        
+        // Apply date filters to billcutLeads if set
+        if (isFilterApplied && (startDate || endDate)) {
+          const constraints: QueryConstraint[] = [];
+          
+          if (startDate) {
+            constraints.push(where(
+              'synced_date', 
+              '>=', 
+              Timestamp.fromDate(new Date(startDate))
+            ));
+          }
+          
+          if (endDate) {
+            constraints.push(where(
+              'synced_date', 
+              '<=', 
+              Timestamp.fromDate(new Date(`${endDate}T23:59:59`))
+            ));
+          }
+          
+          billcutQuery = query(billcutQuery, ...constraints);
+        }
+        
+        // Add salesperson filter to billcutLeads if selected
+        if (selectedLeadsSalesperson) {
+          console.log('🔍 Applying salesperson filter to billcutLeads:', selectedLeadsSalesperson);
+          billcutQuery = query(billcutQuery, where('assigned_to', '==', selectedLeadsSalesperson));
+        }
+        
+        const billcutSnapshot = await getDocs(billcutQuery);
+        console.log(`📊 Processing ${billcutSnapshot.size} leads from billcutLeads...`);
         
         // Initialize direct counts for total leads by source
         const sourceTotalCounts = {
           settleloans: 0,
           credsettlee: 0,
           ama: 0,
+          billcut: 0,
         };
         
         // Initialize counters for each status and source combination (including new statuses)
         const statusCounts = {
-          'Interested': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Not Interested': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Not Answering': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Callback': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Converted': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Loan Required': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Short Loan': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Cibil Issue': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Closed Lead': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Language Barrier': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'Future Potential': { settleloans: 0, credsettlee: 0, ama: 0 },
-          'No Status': { settleloans: 0, credsettlee: 0, ama: 0 },
+          'Interested': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Not Interested': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Not Answering': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Callback': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Converted': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Loan Required': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Short Loan': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Cibil Issue': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Closed Lead': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Language Barrier': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'Future Potential': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
+          'No Status': { settleloans: 0, credsettlee: 0, ama: 0, billcut: 0 },
         };
         
-        // Process each lead document
+        // Process each lead document from crm_leads
         leadsSnapshot.forEach((doc) => {
           const lead = doc.data() as {
             source_database?: string;
@@ -135,7 +173,7 @@ export const useLeadsData = ({
           if (source) {
             source = source.toLowerCase();
             
-            // Map source to one of our three categories
+            // Map source to one of our four categories
             let mappedSource;
             if (source.includes('settleloans')) {
               mappedSource = 'settleloans';
@@ -161,11 +199,32 @@ export const useLeadsData = ({
           }
         });
         
+        // Process each lead document from billcutLeads
+        billcutSnapshot.forEach((doc) => {
+          const lead = doc.data() as {
+            category?: string;
+            assigned_to?: string;
+            [key: string]: any;
+          };
+          
+          // Count all billcut leads
+          sourceTotalCounts.billcut++;
+          
+          // Map category to status for billcut leads
+          const category = lead.category;
+          if (category && statusCounts[category as StatusKey]) {
+            statusCounts[category as StatusKey].billcut++;
+          } else {
+            // Count leads with invalid/missing category as "No Status"
+            statusCounts['No Status'].billcut++;
+          }
+        });
+        
         // Prepare chart data
         const datasets = Object.entries(statusCounts).map(([status, sources], index): ChartDataset => {
           return {
             label: status,
-            data: [sources.settleloans, sources.credsettlee, sources.ama],
+            data: [sources.settleloans, sources.credsettlee, sources.ama, sources.billcut],
             backgroundColor: statusColors[index % statusColors.length],
           };
         });
@@ -173,7 +232,7 @@ export const useLeadsData = ({
         // Update chart data
         const result = {
           leadsBySourceData: {
-            labels: ['Settleloans', 'Credsettlee', 'AMA'],
+            labels: ['Settleloans', 'Credsettlee', 'AMA', 'Billcut'],
             datasets,
           },
           sourceTotals: sourceTotalCounts,
@@ -187,7 +246,7 @@ export const useLeadsData = ({
         // Call the callback using the ref to avoid dependency issues
         onLoadCompleteRef.current?.();
         
-        console.log(`✅ Leads analytics complete: ${leadsSnapshot.size} leads processed`);
+        console.log(`✅ Leads analytics complete: ${leadsSnapshot.size + billcutSnapshot.size} leads processed (${leadsSnapshot.size} from crm_leads, ${billcutSnapshot.size} from billcutLeads)`);
       } catch (error) {
         console.error('Error fetching leads data:', error);
         setIsLoading(false);

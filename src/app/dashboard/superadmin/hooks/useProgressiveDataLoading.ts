@@ -6,6 +6,7 @@ export const useProgressiveDataLoading = () => {
     leadsData: true,         // Load after 10ms
     clientAnalytics: true,   // Load after 50ms
     paymentAnalytics: true,  // Load after 100ms
+    opsPayments: true,       // Load after 100ms (same as payment analytics)
   });
 
   const [enabledStages, setEnabledStages] = useState({
@@ -13,6 +14,7 @@ export const useProgressiveDataLoading = () => {
     leadsData: false,        // Enable after short delay
     clientAnalytics: false,  // Enable after short delay
     paymentAnalytics: false, // Enable after short delay
+    opsPayments: false,      // Enable after short delay
   });
 
   useEffect(() => {
@@ -26,9 +28,13 @@ export const useProgressiveDataLoading = () => {
       setEnabledStages(prev => ({ ...prev, clientAnalytics: true }));
     }, 50);
 
-    // Enable payment analytics after 100ms (faster)
+    // Enable payment analytics and ops payments after 100ms (faster)
     const timer3 = setTimeout(() => {
-      setEnabledStages(prev => ({ ...prev, paymentAnalytics: true }));
+      setEnabledStages(prev => ({ 
+        ...prev, 
+        paymentAnalytics: true,
+        opsPayments: true 
+      }));
     }, 100);
 
     return () => {

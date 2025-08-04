@@ -10,6 +10,11 @@ interface MetricCardProps {
   icon?: React.ReactNode;
   showProgress?: boolean;
   className?: string;
+  // New props for dual value display
+  collectedValue?: string | number;
+  targetValue?: string | number;
+  collectedColor?: string;
+  targetColor?: string;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -21,7 +26,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   progress = 0,
   icon,
   showProgress = false,
-  className = ""
+  className = "",
+  collectedValue,
+  targetValue,
+  collectedColor = "text-green-400",
+  targetColor = "text-gray-400"
 }) => {
   return (
     <div className={`bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-700 flex flex-col h-full ${className}`}>
@@ -29,12 +38,29 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         <h3 className={`${textColor} font-medium text-xs uppercase tracking-wider mb-1`}>
           {title}
         </h3>
-        <div className="flex items-baseline space-x-1 mb-2">
-          <p className="text-xl font-bold text-white">{value}</p>
-          {subtitle && (
-            <p className="text-xs text-gray-400">{subtitle}</p>
-          )}
-        </div>
+        
+        {/* Display dual values if provided, otherwise show single value */}
+        {collectedValue && targetValue ? (
+          <div className="mb-2">
+            <div className="flex items-baseline space-x-1">
+              <p className={`text-xl font-bold ${collectedColor}`}>{collectedValue}</p>
+              <span className="text-gray-500 text-lg">/</span>
+            </div>
+            <div className="flex items-baseline space-x-1">
+              <p className={`text-lg font-semibold ${targetColor}`}>{targetValue}</p>
+              {subtitle && (
+                <p className="text-xs text-gray-400">{subtitle}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-baseline space-x-1 mb-2">
+            <p className="text-xl font-bold text-white">{value}</p>
+            {subtitle && (
+              <p className="text-xs text-gray-400">{subtitle}</p>
+            )}
+          </div>
+        )}
         
         <div className="mt-auto">
           {showProgress ? (
