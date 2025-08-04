@@ -135,6 +135,7 @@ const LazyClientAnalytics: React.FC<LazyClientAnalyticsProps> = ({
                   <th className="py-2 px-2 text-center text-xs font-semibold text-blue-100">Dropped</th>
                   <th className="py-2 px-2 text-center text-xs font-semibold text-blue-100">Not Resp</th>
                   <th className="py-2 px-2 text-center text-xs font-semibold text-blue-100">On Hold</th>
+                  <th className="py-2 px-2 text-center text-xs font-semibold text-blue-100">Inactive</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,6 +146,7 @@ const LazyClientAnalytics: React.FC<LazyClientAnalyticsProps> = ({
                     Dropped: 0,
                     'Not Responding': 0,
                     'On Hold': 0,
+                    Inactive: 0,
                     total: advocate.clientCount
                   };
                   
@@ -161,6 +163,11 @@ const LazyClientAnalytics: React.FC<LazyClientAnalyticsProps> = ({
                   advocateStatusCounts.Dropped = Math.round(advocate.clientCount * droppedPercentage);
                   advocateStatusCounts['Not Responding'] = Math.round(advocate.clientCount * notRespondingPercentage);
                   advocateStatusCounts['On Hold'] = Math.round(advocate.clientCount * onHoldPercentage);
+                  
+                  // Calculate remaining clients as Inactive
+                  const calculatedTotal = advocateStatusCounts.Active + advocateStatusCounts.Dropped + 
+                                        advocateStatusCounts['Not Responding'] + advocateStatusCounts['On Hold'];
+                  advocateStatusCounts.Inactive = advocate.clientCount - calculatedTotal;
                   
                   return (
                     <tr key={`${advocate.name}-${index}`} className={index % 2 === 0 ? "bg-gray-800/40" : "bg-gray-800/60"}>
@@ -181,6 +188,9 @@ const LazyClientAnalytics: React.FC<LazyClientAnalyticsProps> = ({
                       </td>
                       <td className="py-2 px-2 text-xs text-center text-orange-300 font-semibold">
                         {advocateStatusCounts['On Hold']}
+                      </td>
+                      <td className="py-2 px-2 text-xs text-center text-gray-300 font-semibold">
+                        {advocateStatusCounts.Inactive}
                       </td>
                     </tr>
                   );
