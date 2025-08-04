@@ -70,6 +70,12 @@ const AssistantSidebar = () => {
             </Link>
           </li>
           <li>
+            <Link href="/advocate/ops-payments-request" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/advocate/ops-payments-request')}`}>
+              <FaMoneyCheckAlt className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
+              <span className="font-medium">Payment Request</span>
+            </Link>
+          </li>
+          <li>
             <Link href="/advocate/complaints" className={`flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all duration-200 group ${isActive('/advocate/complaints')}`}>
               <FaCompressAlt className="mr-3 text-gray-400 group-hover:text-blue-400 transition-colors duration-200" />
               <span className="font-medium">Complaints</span>

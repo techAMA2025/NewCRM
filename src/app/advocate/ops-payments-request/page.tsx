@@ -9,6 +9,7 @@ import {
 import { BiRupee } from 'react-icons/bi';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
+import AssistantSidebar from '@/components/navigation/AssistantSidebar';
 import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, setDoc, increment, deleteDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
@@ -151,6 +152,8 @@ export default function OpsPaymentsRequestPage() {
       return <AdvocateSidebar />;
     } else if (userRole === 'overlord') {
       return <OverlordSidebar />;
+    } else if (userRole === 'assistant') {
+      return <AssistantSidebar />;
     } else {
       return <SalesSidebar />;
     }
