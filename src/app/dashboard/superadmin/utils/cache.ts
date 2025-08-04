@@ -52,5 +52,6 @@ export const generateCacheKey = {
     `leads-${from || 'none'}-${to || 'none'}-${s ?? 'all'}-${applied}`,
   clientAnalytics: () => `clients-${new Date().toDateString()}`,
   paymentAnalytics: () => `payments-${new Date().toDateString()}`,
+  opsPaymentsAnalytics: () => `ops-payments-${new Date().toDateString()}`,
   salespeople: () => `salespeople-${new Date().toDateString()}`,
 }; 

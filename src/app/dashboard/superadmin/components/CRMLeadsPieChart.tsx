@@ -21,26 +21,28 @@ export const CRMLeadsPieChart: React.FC<CRMLeadsPieChartProps> = ({
   }
 
   const sourceTotalsPieData = {
-    labels: ['Settleloans', 'Credsettlee', 'AMA'],
+    labels: ['Settleloans', 'Credsettlee', 'AMA', 'Billcut'],
     datasets: [
       {
-        data: [sourceTotals.settleloans, sourceTotals.credsettlee, sourceTotals.ama],
+        data: [sourceTotals.settleloans, sourceTotals.credsettlee, sourceTotals.ama, sourceTotals.billcut],
         backgroundColor: [
           sourceColors.settleloans,  // Teal for Settleloans
           sourceColors.credsettlee,  // Indigo for Credsettlee
           sourceColors.ama,          // Orange for AMA
+          sourceColors.billcut,      // Pink for Billcut
         ],
         borderColor: [
           'rgba(52, 191, 163, 1)',
           'rgba(79, 70, 229, 1)',
           'rgba(249, 115, 22, 1)',
+          'rgba(236, 72, 153, 1)',
         ],
         borderWidth: 1,
       },
     ],
   };
 
-  const totalLeads = sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama;
+  const totalLeads = sourceTotals.settleloans + sourceTotals.credsettlee + sourceTotals.ama + sourceTotals.billcut;
 
   const getPercentage = (value: number) => {
     return totalLeads > 0 ? Math.round((value / totalLeads) * 100) : 0;
@@ -79,6 +81,15 @@ export const CRMLeadsPieChart: React.FC<CRMLeadsPieChartProps> = ({
           </div>
           <div className="text-white text-xs bg-orange-800/60 rounded-md px-2 py-1 font-medium">
             {getPercentage(sourceTotals.ama)}%
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-pink-900/70 to-pink-800/50 p-2 rounded-lg border border-pink-700/30 shadow-md flex justify-between items-center">
+          <div>
+            <p className="text-pink-300 font-medium text-xs">Billcut</p>
+            <p className="text-lg font-bold text-white">{sourceTotals.billcut}</p>
+          </div>
+          <div className="text-white text-xs bg-pink-800/60 rounded-md px-2 py-1 font-medium">
+            {getPercentage(sourceTotals.billcut)}%
           </div>
         </div>
         <div className="bg-gradient-to-r from-blue-900/70 to-purple-900/70 p-2 rounded-lg border border-blue-700/30 shadow-md">

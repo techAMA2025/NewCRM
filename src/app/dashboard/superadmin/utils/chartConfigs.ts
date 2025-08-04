@@ -181,4 +181,5 @@ export const sourceColors = {
   settleloans: 'rgba(52, 191, 163, 0.8)',  // Teal
   credsettlee: 'rgba(79, 70, 229, 0.8)',   // Indigo
   ama: 'rgba(249, 115, 22, 0.8)',          // Orange
+  billcut: 'rgba(236, 72, 153, 0.8)',      // Pink
 }; 
