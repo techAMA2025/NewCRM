@@ -697,7 +697,7 @@ export default function OpsPaymentsApprovalPage() {
 
                         {/* Confirmation Modals */}
                         {confirmingRequest === request.id && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Confirm Approval</h3>
@@ -741,7 +741,7 @@ export default function OpsPaymentsApprovalPage() {
                         )}
 
                         {rejectingRequest === request.id && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Confirm Rejection</h3>
@@ -785,7 +785,7 @@ export default function OpsPaymentsApprovalPage() {
                         )}
 
                         {editingRequest === request.id && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Edit Amount</h3>
@@ -840,7 +840,7 @@ export default function OpsPaymentsApprovalPage() {
                         )}
 
                         {deletingRequest === request.id && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Delete Request</h3>
@@ -1013,7 +1013,7 @@ export default function OpsPaymentsApprovalPage() {
 
                         {/* Edit and Delete Modals (similar to pending section) */}
                         {editingRequest === request.id && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Edit Amount</h3>
@@ -1068,7 +1068,7 @@ export default function OpsPaymentsApprovalPage() {
                         )}
 
                         {deletingRequest === request.id && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Delete Request</h3>
@@ -1221,7 +1221,7 @@ export default function OpsPaymentsApprovalPage() {
                         </div>
 
                         {deletingRequest === request.id && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Delete Request</h3>
