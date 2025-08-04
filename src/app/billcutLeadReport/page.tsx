@@ -39,6 +39,7 @@ import {
   FiMoon,
   FiFilter,
   FiX,
+  FiChevronDown,
 } from "react-icons/fi"
 
 // Types
@@ -266,6 +267,9 @@ const BillcutLeadReportContent = () => {
   const [showProductivityCustomRange, setShowProductivityCustomRange] = useState(false)
   const [selectedProductivityRange, setSelectedProductivityRange] = useState<string>("today")
   const [productivityLoading, setProductivityLoading] = useState(false)
+
+  // Add state for dropdown menu
+  const [showReportDropdown, setShowReportDropdown] = useState(false)
 
   // Helper function to navigate to billcut leads page with filters
   const navigateToLeadsWithFilters = (salesperson: string, status: string) => {
@@ -694,6 +698,21 @@ const BillcutLeadReportContent = () => {
       setCustomDateRange(dateRange)
     }
   }, [showDatePicker, dateRange])
+
+  // Handle clicking outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (showReportDropdown && !target.closest('.report-dropdown')) {
+        setShowReportDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showReportDropdown])
 
   // Toggle dark mode
   const toggleDarkMode = () => {
@@ -1701,18 +1720,58 @@ const BillcutLeadReportContent = () => {
           <div className="mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billcut Leads Dashboard</h1>
 
-            {/* Dark Mode Toggle Button */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              {isDarkMode ? (
-                <FiSun className="w-6 h-6 text-yellow-500" />
-              ) : (
-                <FiMoon className="w-6 h-6 text-gray-700" />
-              )}
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Report Navigation Dropdown */}
+              <div className="relative report-dropdown">
+                <button
+                  onClick={() => setShowReportDropdown(!showReportDropdown)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <span>Reports</span>
+                  <FiChevronDown className={`w-4 h-4 transition-transform ${showReportDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showReportDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          router.push('/billcutLeadReport')
+                          setShowReportDropdown(false)
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 flex items-center gap-2"
+                      >
+                        <FiActivity className="w-4 h-4" />
+                        Billcut Lead Report
+                      </button>
+                      <button
+                        onClick={() => {
+                          router.push('/sales-report')
+                          setShowReportDropdown(false)
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 flex items-center gap-2"
+                      >
+                        <FiUsers className="w-4 h-4" />
+                        Sales Report
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Dark Mode Toggle Button */}
+              <button
+                onClick={toggleDarkMode}
+                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {isDarkMode ? (
+                  <FiSun className="w-6 h-6 text-yellow-500" />
+                ) : (
+                  <FiMoon className="w-6 h-6 text-gray-700" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Date Range Filter - New User-Friendly Design */}
