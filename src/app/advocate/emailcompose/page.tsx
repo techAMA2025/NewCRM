@@ -101,6 +101,16 @@ export default function EmailComposePage() {
   const [manualCcRecipientName, setManualCcRecipientName] = useState("");
   const [manualCcRecipientEmail, setManualCcRecipientEmail] = useState("");
 
+  // Add states for searchable dropdowns
+  const [bankSearchQuery, setBankSearchQuery] = useState("");
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [showBankDropdown, setShowBankDropdown] = useState(false);
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+
+  // Add refs for click outside functionality
+  const bankDropdownRef = useRef<HTMLDivElement>(null);
+  const clientDropdownRef = useRef<HTMLDivElement>(null);
+
   // Add dynamic bank loading
   const { bankData: banks, isLoading: isLoadingBanks } = useBankDataSimple();
 
@@ -267,6 +277,23 @@ Below is a draft email you can send to your bank or financial institution to ini
     }
 
     fetchClients();
+  }, []);
+
+  // Add click outside functionality
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (bankDropdownRef.current && !bankDropdownRef.current.contains(event.target as Node)) {
+        setShowBankDropdown(false);
+      }
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+        setShowClientDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const router = useRouter();
@@ -441,6 +468,31 @@ Below is a draft email you can send to your bank or financial institution to ini
     const bankName = e.target.value;
     setSelectedBank(bankName);
   };
+
+  // Updated bank selection handler for searchable dropdown
+  const handleBankSelect = (bankName: string) => {
+    setSelectedBank(bankName);
+    setBankSearchQuery(bankName);
+    setShowBankDropdown(false);
+  };
+
+  // Updated client selection handler for searchable dropdown
+  const handleClientSelect = (clientId: string, clientName: string) => {
+    setTempClientId(clientId);
+    setClientSearchQuery(clientName);
+    setShowClientDropdown(false);
+  };
+
+  // Filter banks based on search query
+  const filteredBanks = Object.keys(banks).filter(bankName =>
+    bankName.toLowerCase().includes(bankSearchQuery.toLowerCase())
+  );
+
+  // Filter clients based on search query
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+    client.email.toLowerCase().includes(clientSearchQuery.toLowerCase())
+  );
 
   // Add bank emails as recipients
   const handleAddBankRecipient = () => {
@@ -830,6 +882,11 @@ Below is a draft email you can send to your bank or financial institution to ini
           setAttachments([]);
           setSelectedBank("");
           setTempClientId("");
+          // Reset search queries and dropdown states
+          setBankSearchQuery("");
+          setClientSearchQuery("");
+          setShowBankDropdown(false);
+          setShowClientDropdown(false);
         } else {
           console.error(
             "Cloud function reported failure without throwing error"
@@ -1068,21 +1125,51 @@ Below is a draft email you can send to your bank or financial institution to ini
                     Add Bank Recipients
                   </label>
                   <div className="flex flex-col gap-2">
-                    <select
-                      value={selectedBank}
-                      onChange={handleBankChange}
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      disabled={isLoadingBanks}
-                    >
-                      <option value="">
-                        {isLoadingBanks ? "Loading banks..." : "Select a bank"}
-                      </option>
-                      {Object.keys(banks).map((bankName) => (
-                        <option key={bankName} value={bankName}>
-                          {bankName}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative" ref={bankDropdownRef}>
+                      <input
+                        type="text"
+                        value={bankSearchQuery}
+                        onChange={(e) => {
+                          setBankSearchQuery(e.target.value);
+                          setShowBankDropdown(true);
+                          if (!e.target.value) {
+                            setSelectedBank("");
+                          }
+                        }}
+                        onFocus={() => setShowBankDropdown(true)}
+                        onBlur={() => {
+                          // Small delay to allow item selection
+                          setTimeout(() => setShowBankDropdown(false), 150);
+                        }}
+                        placeholder={isLoadingBanks ? "Loading banks..." : "Search banks..."}
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        disabled={isLoadingBanks}
+                      />
+                      
+                      {/* Bank Dropdown */}
+                      {showBankDropdown && !isLoadingBanks && filteredBanks.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          {filteredBanks.map((bankName) => (
+                            <button
+                              key={bankName}
+                              type="button"
+                              onMouseDown={() => handleBankSelect(bankName)}
+                              className="w-full text-left px-4 py-2 text-white hover:bg-gray-600 focus:bg-gray-600 focus:outline-none"
+                            >
+                              {bankName}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* No results message */}
+                      {showBankDropdown && !isLoadingBanks && bankSearchQuery && filteredBanks.length === 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg px-4 py-2">
+                          <span className="text-gray-400">No banks found</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -1122,23 +1209,54 @@ Below is a draft email you can send to your bank or financial institution to ini
                     Add Client Recipient
                   </label>
                   <div className="flex flex-col gap-2">
-                    <select
-                      value={tempClientId}
-                      onChange={handleClientChange}
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      disabled={loadingClients}
-                    >
-                      <option value="">
-                        {loadingClients
-                          ? "Loading clients..."
-                          : "Select a client"}
-                      </option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name} ({client.email})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative" ref={clientDropdownRef}>
+                      <input
+                        type="text"
+                        value={clientSearchQuery}
+                        onChange={(e) => {
+                          setClientSearchQuery(e.target.value);
+                          setShowClientDropdown(true);
+                          if (!e.target.value) {
+                            setTempClientId("");
+                          }
+                        }}
+                        onFocus={() => setShowClientDropdown(true)}
+                        onBlur={() => {
+                          // Small delay to allow item selection
+                          setTimeout(() => setShowClientDropdown(false), 150);
+                        }}
+                        placeholder={loadingClients ? "Loading clients..." : "Search clients..."}
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        disabled={loadingClients}
+                      />
+                      
+                      {/* Client Dropdown */}
+                      {showClientDropdown && !loadingClients && filteredClients.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          {filteredClients.map((client) => (
+                            <button
+                              key={client.id}
+                              type="button"
+                              onMouseDown={() => handleClientSelect(client.id, client.name)}
+                              className="w-full text-left px-4 py-2 text-white hover:bg-gray-600 focus:bg-gray-600 focus:outline-none"
+                            >
+                              <div>
+                                <div className="font-medium">{client.name}</div>
+                                <div className="text-sm text-gray-400">{client.email}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* No results message */}
+                      {showClientDropdown && !loadingClients && clientSearchQuery && filteredClients.length === 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg px-4 py-2">
+                          <span className="text-gray-400">No clients found</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex gap-2">
                       <button
                         type="button"
