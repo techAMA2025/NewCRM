@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
+import SearchableDropdown from "@/components/SearchableDropdown";
 
 interface Bank {
   id: string;
@@ -192,18 +193,16 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
         {/* Client Selector Dropdown - spans full width */}
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-400 mb-1">Select Client</label>
-          <select
+          <SearchableDropdown
+            options={clients.map(client => ({
+              value: client.id,
+              label: `${client.name} - ${client.phone}`
+            }))}
             value={selectedClientId}
-            onChange={handleClientChange}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-          >
-            <option value="">Select a client...</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name} - {client.phone}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => handleClientChange({ target: { value } } as React.ChangeEvent<HTMLSelectElement>)}
+            placeholder="Select a client..."
+            isLoading={false}
+          />
         </div>
       
         {/* Client Details */}
@@ -243,22 +242,18 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
         {/* Bank Selection Dropdown - spans full width */}
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-400 mb-1">Select Bank</label>
-          <select
-            name="selectedBank"
+          <SearchableDropdown
+            options={Object.keys(bankData).map(bank => ({
+              value: bank,
+              label: bank
+            }))}
             value={formData.selectedBank}
-            onChange={(e) => handleBankSelect(e.target.value)}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            onChange={handleBankSelect}
+            placeholder="Select a bank..."
+            isLoading={isLoadingBanks}
+            loadingText="Loading banks..."
             disabled={isLoadingBanks}
-          >
-            <option value="">
-              {isLoadingBanks ? "Loading banks..." : "Select a bank..."}
-            </option>
-            {Object.keys(bankData).map((bank) => (
-              <option key={bank} value={bank}>
-                {bank}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {/* Bank Name - Editable field that gets auto-populated */}

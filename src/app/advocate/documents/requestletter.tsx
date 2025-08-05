@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
+import SearchableDropdown from "@/components/SearchableDropdown";
 
 interface Bank {
   id: string;
@@ -235,18 +236,16 @@ export default function RequestLetterForm({
           <label className="block text-xs font-medium text-gray-400 mb-1">
             Select Client
           </label>
-          <select
+          <SearchableDropdown
+            options={clients.map(client => ({
+              value: client.id,
+              label: `${client.name} - ${client.phone}`
+            }))}
             value={selectedClientId}
-            onChange={handleClientChange}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-          >
-            <option value="">Select a client...</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name} - {client.phone}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => handleClientChange({ target: { value } } as React.ChangeEvent<HTMLSelectElement>)}
+            placeholder="Select a client..."
+            isLoading={false}
+          />
         </div>
 
         {/* Name field - should be editable */}
@@ -289,21 +288,18 @@ export default function RequestLetterForm({
           <label className="block text-xs font-medium text-gray-400 mb-1">
             Select Bank
           </label>
-          <select
+          <SearchableDropdown
+            options={Object.keys(bankData).map(bank => ({
+              value: bank,
+              label: bank
+            }))}
             value={selectedBank}
-            onChange={(e) => handleBankSelect(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            onChange={handleBankSelect}
+            placeholder="Select a bank..."
+            isLoading={isLoadingBanks}
+            loadingText="Loading banks..."
             disabled={isLoadingBanks}
-          >
-            <option value="">
-              {isLoadingBanks ? "Loading banks..." : "Select a bank"}
-            </option>
-            {Object.keys(bankData).map((bank) => (
-              <option key={bank} value={bank}>
-                {bank}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {/* Bank Address - spans full width */}
