@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
+import SearchableDropdown from "@/components/SearchableDropdown";
 
 interface Bank {
   id: string;
@@ -176,18 +177,16 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
           <label className="block text-sm font-medium text-gray-300">
             Select Client
           </label>
-          <select
+          <SearchableDropdown
+            options={clients.map(client => ({
+              value: client.id,
+              label: `${client.name} - ${client.phone}`
+            }))}
             value={selectedClientId}
-            onChange={handleClientChange}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
-          >
-            <option value="">Select a client...</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name} - {client.phone}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => handleClientChange({ target: { value } } as React.ChangeEvent<HTMLSelectElement>)}
+            placeholder="Select a client..."
+            isLoading={false}
+          />
         </div>
         
         {/* Bank Name */}
