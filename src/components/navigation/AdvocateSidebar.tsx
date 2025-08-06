@@ -43,7 +43,7 @@ const AdvocateSidebar = () => {
   }
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 to-black text-gray-100 w-64 min-h-screen flex-shrink-0 py-6 border-r border-gray-800 shadow-xl">
+    <div className="bg-gradient-to-b from-gray-900 to-black text-gray-100 w-64 min-h-screen flex-shrink-0 py-6 border-r border-gray-800 shadow-xl flex flex-col">
       <div className="px-6 mb-8">
         <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">{userName}'s Portal</h2>
         {/* <p className="text-gray-400 text-sm mt-2">{userName}</p> */}
@@ -51,7 +51,7 @@ const AdvocateSidebar = () => {
       
       
       
-      <nav className="mt-4">
+      <nav className="mt-4 flex-1">
         <ul className="space-y-1">
           <li>
             <Link href="/dashboard" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/dashboard')}`}>
@@ -130,22 +130,6 @@ const AdvocateSidebar = () => {
         </ul>
       </nav>
        
-      {/* <div className="px-6 mt-10">
-        <div className="p-4 rounded-lg bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-800/30">
-          <h3 className="text-sm font-medium text-indigo-300">Quick Stats</h3>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-black/20 p-2 rounded">
-              <p className="text-gray-400">Active Cases</p>
-              <p className="text-xl font-bold text-white">12</p>
-            </div>
-            <div className="bg-black/20 p-2 rounded">
-              <p className="text-gray-400">Pending</p>
-              <p className="text-xl font-bold text-white">5</p>
-            </div>
-          </div>
-        </div>
-      </div> */}
-      
       <div className="px-6 mt-auto pt-10">
         <button
           onClick={handleLogout}
@@ -159,4 +143,4 @@ const AdvocateSidebar = () => {
   )
 }
 
-export default AdvocateSidebar 
+export default AdvocateSidebar
