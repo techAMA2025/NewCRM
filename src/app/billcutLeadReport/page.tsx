@@ -1,7 +1,6 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
 import type React from "react"
-
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { db as crmDb } from "@/firebase/firebase"
 import { toast } from "react-toastify"
@@ -213,6 +212,7 @@ interface ProductivityStats {
   userName: string
   date: string
   leadsWorked: number
+  convertedLeads: number // NEW: Track converted leads separately
   lastActivity: Date
   statusBreakdown: { [key: string]: number }
 }
@@ -274,7 +274,6 @@ const BillcutLeadReportContent = () => {
   // Helper function to navigate to billcut leads page with filters
   const navigateToLeadsWithFilters = (salesperson: string, status: string) => {
     const params = new URLSearchParams()
-
     // Add salesperson filter
     if (salesperson && salesperson !== "Unassigned") {
       params.append("salesPerson", salesperson)
@@ -282,7 +281,6 @@ const BillcutLeadReportContent = () => {
       // For unassigned leads, pass empty string to match the billcut leads page logic
       params.append("salesPerson", "")
     }
-
     // Add status filter - map to exact case-sensitive values expected by billcut leads page
     if (status && status !== "No Status") {
       // Map status values to match the exact case-sensitive values in billcut leads page
@@ -297,7 +295,6 @@ const BillcutLeadReportContent = () => {
         "closed lead": "Closed Lead",
         "-": "No Status",
       }
-
       const mappedStatus = statusMapping[status.toLowerCase()] || status
       params.append("status", mappedStatus)
     } else if (status === "No Status") {
@@ -480,7 +477,6 @@ const BillcutLeadReportContent = () => {
     const lastDay = new Date(year, month + 1, 0)
     const daysInMonth = lastDay.getDate()
     const startingDayOfWeek = firstDay.getDay()
-
     const days: Array<{ day: number | string; isEmpty: boolean }> = []
 
     // Add empty cells for days before the first day of the month
@@ -517,7 +513,6 @@ const BillcutLeadReportContent = () => {
   // FIXED: Helper function to create IST date range
   const createISTDateRange = (startHour = 0, endHour = 23, endMinute = 59, endSecond = 59, endMs = 999) => {
     const now = new Date()
-
     // Get current IST date
     const istNow = getISTDate(now)
 
@@ -539,7 +534,6 @@ const BillcutLeadReportContent = () => {
   // FIXED: Helper function to get productivity date range with proper IST handling
   const getProductivityDateRange = (range: string): ProductivityDateRange => {
     const now = new Date()
-
     switch (range) {
       case "today": {
         const { startUTC, endUTC } = createISTDateRange()
@@ -548,7 +542,6 @@ const BillcutLeadReportContent = () => {
       case "yesterday": {
         const yesterday = new Date(now)
         yesterday.setDate(yesterday.getDate() - 1)
-
         const istYesterday = getISTDate(yesterday)
 
         // Create start of yesterday in IST
@@ -568,7 +561,6 @@ const BillcutLeadReportContent = () => {
       case "last7days": {
         const sevenDaysAgo = new Date(now)
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-
         const istSevenDaysAgo = getISTDate(sevenDaysAgo)
         const istNow = getISTDate(now)
 
@@ -589,7 +581,6 @@ const BillcutLeadReportContent = () => {
       case "last30days": {
         const thirtyDaysAgo = new Date(now)
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29)
-
         const istThirtyDaysAgo = getISTDate(thirtyDaysAgo)
         const istNow = getISTDate(now)
 
@@ -610,7 +601,6 @@ const BillcutLeadReportContent = () => {
       case "custom": {
         const customStartIST = getISTDate(productivityDateRange.startDate)
         customStartIST.setUTCHours(0, 0, 0, 0)
-
         const customEndIST = getISTDate(productivityDateRange.endDate)
         customEndIST.setUTCHours(23, 59, 59, 999)
 
@@ -707,7 +697,6 @@ const BillcutLeadReportContent = () => {
         setShowReportDropdown(false)
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
@@ -732,7 +721,6 @@ const BillcutLeadReportContent = () => {
       setIsLoading(true)
       try {
         const billcutLeadsRef = collection(crmDb, "billcutLeads")
-
         const queryConstraints = []
 
         if (dateRange.startDate) {
@@ -754,7 +742,6 @@ const BillcutLeadReportContent = () => {
 
         const q = queryConstraints.length > 0 ? query(billcutLeadsRef, ...queryConstraints) : billcutLeadsRef
         const querySnapshot = await getDocs(q)
-
         const fetchedLeads = querySnapshot.docs.map(
           (doc) =>
             ({
@@ -775,16 +762,15 @@ const BillcutLeadReportContent = () => {
     fetchLeads()
   }, [dateRange])
 
-  // FIXED: Separate useEffect for productivity tracking with proper timezone handling
+  // FIXED: Separate useEffect for productivity tracking with proper timezone handling and convertedAt support
   useEffect(() => {
     const fetchProductivityData = async () => {
       try {
         setProductivityLoading(true)
-
         // Get productivity date range with proper IST handling
         const { startDate, endDate } = getProductivityDateRange(selectedProductivityRange)
 
-        console.log("Productivity tracking (Fixed):", {
+        console.log("Productivity tracking (Fixed with field mapping):", {
           range: selectedProductivityRange,
           startDateUTC: startDate.toISOString(),
           endDateUTC: endDate.toISOString(),
@@ -792,27 +778,59 @@ const BillcutLeadReportContent = () => {
           endDateIST: new Date(endDate.getTime() + 5.5 * 60 * 60 * 1000).toISOString(),
         })
 
-        const productivityQuery = query(
+        // Query for general lead modifications (using lastModified)
+        const generalProductivityQuery = query(
           collection(crmDb, "billcutLeads"),
           where("lastModified", ">=", startDate),
           where("lastModified", "<=", endDate),
         )
 
-        const productivitySnapshot = await getDocs(productivityQuery)
-        console.log("Found leads for productivity tracking:", productivitySnapshot.docs.length)
+        // Query for converted leads (using convertedAt)
+        const convertedProductivityQuery = query(
+          collection(crmDb, "billcutLeads"),
+          where("convertedAt", ">=", startDate),
+          where("convertedAt", "<=", endDate),
+        )
+
+        const [generalSnapshot, convertedSnapshot] = await Promise.all([
+          getDocs(generalProductivityQuery),
+          getDocs(convertedProductivityQuery),
+        ])
+
+        console.log("Found leads for productivity tracking:", {
+          general: generalSnapshot.docs.length,
+          converted: convertedSnapshot.docs.length,
+        })
 
         // Group leads by user and date
         const productivityMap: { [key: string]: { [key: string]: ProductivityStats } } = {}
+        
+        // Debug: Track all leads processed
+        const debugLeads: any[] = []
 
-        productivitySnapshot.docs.forEach((doc) => {
+        // Process general lead modifications (non-converted)
+        generalSnapshot.docs.forEach((doc) => {
           const leadData = doc.data()
-
-          // Only process if lead has lastModified and status is not "-"
-          if (leadData.lastModified && leadData.category !== "-") {
+          
+          // FIXED: Use both category and status fields, prioritize category
+          const leadStatus = leadData.category || leadData.status || "No Status"
+          
+          // Only process if lead has lastModified and status is not "-" and not converted
+          if (leadData.lastModified && leadStatus !== "-" && leadStatus !== "Converted") {
             const lastModifiedUTC = leadData.lastModified.toDate()
-
             // Convert to IST for display purposes
             const lastModifiedIST = new Date(lastModifiedUTC.getTime() + 5.5 * 60 * 60 * 1000)
+
+            // Debug: Add to debug array
+            debugLeads.push({
+              id: doc.id,
+              name: leadData.name,
+              assignedTo: leadData.assigned_to,
+              status: leadStatus,
+              category: leadData.category,
+              lastModified: lastModifiedIST.toISOString(),
+              type: 'general'
+            })
 
             // For last7days and last30days, use a single date key to aggregate all data
             // For other ranges, use individual dates
@@ -832,7 +850,6 @@ const BillcutLeadReportContent = () => {
 
             const userId = leadData.assigned_to || "Unassigned"
             const userName = leadData.assigned_to || "Unassigned"
-            const status = leadData.category || "No Status"
 
             // Initialize user if not exists
             if (!productivityMap[userId]) {
@@ -846,6 +863,7 @@ const BillcutLeadReportContent = () => {
                 userName,
                 date: dateKey,
                 leadsWorked: 0,
+                convertedLeads: 0,
                 lastActivity: lastModifiedUTC, // Store as UTC
                 statusBreakdown: {},
               }
@@ -853,43 +871,120 @@ const BillcutLeadReportContent = () => {
 
             // Update stats
             productivityMap[userId][dateKey].leadsWorked += 1
-            productivityMap[userId][dateKey].statusBreakdown[status] =
-              (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1
+            productivityMap[userId][dateKey].statusBreakdown[leadStatus] =
+              (productivityMap[userId][dateKey].statusBreakdown[leadStatus] || 0) + 1
 
-            // Update last activity if this is more recent
-            if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
-              productivityMap[userId][dateKey].lastActivity = lastModifiedUTC
+          // Update last activity if this is more recent
+          if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
+            productivityMap[userId][dateKey].lastActivity = lastModifiedUTC
+          }
+        }
+      })
+
+      // Process converted leads separately (using convertedAt)
+      convertedSnapshot.docs.forEach((doc) => {
+        const leadData = doc.data()
+        // Only process if lead has convertedAt and is actually converted
+        if (leadData.convertedAt && (leadData.category === "Converted" || leadData.status === "Converted")) {
+          const convertedAtUTC = leadData.convertedAt.toDate()
+          // Convert to IST for display purposes
+          const convertedAtIST = new Date(convertedAtUTC.getTime() + 5.5 * 60 * 60 * 1000)
+
+          // Debug: Add to debug array
+          debugLeads.push({
+            id: doc.id,
+            name: leadData.name,
+            assignedTo: leadData.assigned_to,
+            status: leadData.category || leadData.status,
+            category: leadData.category,
+            convertedAt: convertedAtIST.toISOString(),
+            type: 'converted'
+          })
+
+          // For last7days and last30days, use a single date key to aggregate all data
+          // For other ranges, use individual dates
+          let dateKey: string
+          if (selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days") {
+            // Use a single key for the entire period
+            dateKey = selectedProductivityRange === "last7days" ? "Last 7 Days" : "Last 30 Days"
+          } else {
+            // Use individual date keys for other ranges
+            dateKey = convertedAtIST.toLocaleDateString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          }
+
+          const userId = leadData.assigned_to || "Unassigned"
+          const userName = leadData.assigned_to || "Unassigned"
+          const status = "Converted"
+
+          // Initialize user if not exists
+          if (!productivityMap[userId]) {
+            productivityMap[userId] = {}
+          }
+
+          // Initialize date if not exists
+          if (!productivityMap[userId][dateKey]) {
+            productivityMap[userId][dateKey] = {
+              userId,
+              userName,
+              date: dateKey,
+              leadsWorked: 0,
+              convertedLeads: 0,
+              lastActivity: convertedAtUTC, // Store as UTC
+              statusBreakdown: {},
             }
           }
-        })
 
-        // Convert to array format
-        const productivityArray: ProductivityStats[] = []
-        Object.values(productivityMap).forEach((userDates) => {
-          Object.values(userDates).forEach((stats) => {
-            productivityArray.push(stats)
-          })
-        })
+          // Update stats for converted leads
+          productivityMap[userId][dateKey].leadsWorked += 1
+          productivityMap[userId][dateKey].convertedLeads += 1
+          productivityMap[userId][dateKey].statusBreakdown[status] =
+            (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1
 
-        // Sort by date (newest first) and then by leads worked (descending)
-        productivityArray.sort((a, b) => {
-          if (a.date !== b.date) {
-            return b.date.localeCompare(a.date)
+          // Update last activity if this is more recent
+          if (convertedAtUTC > productivityMap[userId][dateKey].lastActivity) {
+            productivityMap[userId][dateKey].lastActivity = convertedAtUTC
           }
-          return b.leadsWorked - a.leadsWorked
+        }
+      })
+
+      // Debug: Log all processed leads
+      console.log("Debug - All processed leads:", debugLeads)
+      console.log("Debug - Leads for Aug 5, 2025:", debugLeads.filter(lead => 
+        lead.lastModified?.includes('2025-08-05') || lead.convertedAt?.includes('2025-08-05')
+      ))
+
+      // Convert to array format
+      const productivityArray: ProductivityStats[] = []
+      Object.values(productivityMap).forEach((userDates) => {
+        Object.values(userDates).forEach((stats) => {
+          productivityArray.push(stats)
         })
+      })
 
-        console.log("Productivity stats (Fixed):", productivityArray)
-        setProductivityStats(productivityArray)
-      } catch (error) {
-        console.error("Error fetching productivity data:", error)
-      } finally {
-        setProductivityLoading(false)
-      }
+      // Sort by date (newest first) and then by leads worked (descending)
+      productivityArray.sort((a, b) => {
+        if (a.date !== b.date) {
+          return b.date.localeCompare(a.date)
+        }
+        return b.leadsWorked - a.leadsWorked
+      })
+
+      console.log("Productivity stats (Fixed with field mapping):", productivityArray)
+      setProductivityStats(productivityArray)
+    } catch (error) {
+      console.error("Error fetching productivity data:", error)
+    } finally {
+      setProductivityLoading(false)
     }
+  }
 
-    fetchProductivityData()
-  }, [selectedProductivityRange, productivityDateRange])
+  fetchProductivityData()
+}, [selectedProductivityRange, productivityDateRange])
 
   // Analytics calculations
   const analytics = useMemo(() => {
@@ -932,7 +1027,6 @@ const BillcutLeadReportContent = () => {
       const leadCreationTime =
         lead.date || (lead.synced_date?.toMillis ? lead.synced_date.toMillis() : lead.synced_date)
       const conversionTime = lead.convertedAt?.toMillis ? lead.convertedAt.toMillis() : lead.convertedAt
-
       const timeDiffMs = conversionTime - leadCreationTime
       const timeDiffDays = Math.floor(timeDiffMs / (1000 * 60 * 60 * 24))
       const timeDiffHours = Math.floor((timeDiffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
@@ -1000,7 +1094,6 @@ const BillcutLeadReportContent = () => {
         }
 
         acc[dateKey].totalLeads++
-
         if (lead.category === "Converted") {
           acc[dateKey].convertedLeads++
         } else if (lead.category === "Interested") {
@@ -1030,7 +1123,6 @@ const BillcutLeadReportContent = () => {
             slowestDays: 0,
           }
         }
-
         acc[item.assignedTo].conversions.push(item.conversionTimeDays)
         return acc
       },
@@ -1164,11 +1256,10 @@ const BillcutLeadReportContent = () => {
         // Extract pincode (6 digits) from address
         const pincodeMatch = address.match(/\b\d{6}\b/)
         const pincode = pincodeMatch ? pincodeMatch[0] : ""
-
         let state = "Unknown"
+
         if (pincode) {
           const firstTwoDigits = Number.parseInt(pincode.substring(0, 2))
-
           if (firstTwoDigits === 11) state = "Delhi"
           else if (firstTwoDigits >= 12 && firstTwoDigits <= 13) state = "Haryana"
           else if (firstTwoDigits >= 14 && firstTwoDigits <= 16) state = "Punjab"
@@ -1217,11 +1308,18 @@ const BillcutLeadReportContent = () => {
       {} as Record<string, number>,
     )
 
-    // Sales performance
+    // FIXED: Sales performance with proper converted lead tracking using convertedAt
     const salesPerformance = Object.entries(assigneeDistribution).map(([name, count]) => {
       const assigneeLeads = leads.filter((lead) => lead.assigned_to === name)
       const interestedCount = assigneeLeads.filter((lead) => lead.category === "Interested").length
-      const convertedCount = assigneeLeads.filter((lead) => lead.category === "Converted").length
+      
+      // FIXED: For converted leads, we should ideally check convertedAt field exists
+      // But since we're working with the current leads array, we'll use category for now
+      // In a real implementation, you might want to fetch converted leads separately
+      const convertedCount = assigneeLeads.filter((lead) => 
+        lead.category === "Converted" && lead.convertedAt // Only count if convertedAt exists
+      ).length
+      
       const conversionRate = count > 0 ? ((interestedCount + convertedCount) / count) * 100 : 0
 
       return {
@@ -1299,7 +1397,6 @@ const BillcutLeadReportContent = () => {
         }
 
         acc[salesperson].languages[language] = (acc[salesperson].languages[language] || 0) + 1
-
         return acc
       },
       {} as Record<string, { name: string; totalLanguageBarrierLeads: number; languages: Record<string, number> }>,
@@ -1321,11 +1418,10 @@ const BillcutLeadReportContent = () => {
         const address = lead.address || ""
         const pincodeMatch = address.match(/\b\d{6}\b/)
         const pincode = pincodeMatch ? pincodeMatch[0] : ""
-
         let state = "Unknown"
+
         if (pincode) {
           const firstTwoDigits = Number.parseInt(pincode.substring(0, 2))
-
           if (firstTwoDigits === 11) state = "Delhi"
           else if (firstTwoDigits >= 12 && firstTwoDigits <= 13) state = "Haryana"
           else if (firstTwoDigits >= 14 && firstTwoDigits <= 16) state = "Punjab"
@@ -1372,7 +1468,6 @@ const BillcutLeadReportContent = () => {
         }
 
         acc[state].languages[language] = (acc[state].languages[language] || 0) + 1
-
         return acc
       },
       {} as Record<string, { name: string; totalLanguageBarrierLeads: number; languages: Record<string, number> }>,
@@ -1414,7 +1509,6 @@ const BillcutLeadReportContent = () => {
         }
 
         acc[language].totalLeads += 1
-
         if (lead.category === "Converted") {
           acc[language].convertedLeads += 1
         } else if (lead.category === "Interested") {
@@ -1555,13 +1649,16 @@ const BillcutLeadReportContent = () => {
           acc[stat.userId] = {
             userName: stat.userName,
             totalLeads: 0,
+            totalConvertedLeads: 0, // NEW: Track converted leads separately
             totalDays: new Set(),
             averageLeadsPerDay: 0,
+            averageConvertedPerDay: 0, // NEW: Track average converted per day
             lastActivity: new Date(0),
             statusBreakdown: {},
           }
         }
         acc[stat.userId].totalLeads += stat.leadsWorked
+        acc[stat.userId].totalConvertedLeads += stat.convertedLeads // NEW: Add converted leads
         acc[stat.userId].totalDays.add(stat.date)
         if (stat.lastActivity > acc[stat.userId].lastActivity) {
           acc[stat.userId].lastActivity = stat.lastActivity
@@ -1572,7 +1669,6 @@ const BillcutLeadReportContent = () => {
           // Normalize status name to match our expected format
           const normalizedStatus = status.toLowerCase().trim()
           let matchedStatus = null
-
           // Find matching status from our list
           for (const expectedStatus of getAllStatuses()) {
             if (expectedStatus.toLowerCase() === normalizedStatus) {
@@ -1580,7 +1676,6 @@ const BillcutLeadReportContent = () => {
               break
             }
           }
-
           if (matchedStatus) {
             acc[stat.userId].statusBreakdown[matchedStatus] =
               (acc[stat.userId].statusBreakdown[matchedStatus] || 0) + count
@@ -1596,8 +1691,10 @@ const BillcutLeadReportContent = () => {
         [key: string]: {
           userName: string
           totalLeads: number
+          totalConvertedLeads: number
           totalDays: Set<string>
           averageLeadsPerDay: number
+          averageConvertedPerDay: number
           lastActivity: Date
           statusBreakdown: { [key: string]: number }
         }
@@ -1613,11 +1710,14 @@ const BillcutLeadReportContent = () => {
       // For aggregated periods (last7days, last30days), calculate average based on the actual period length
       if (selectedProductivityRange === "last7days") {
         user.averageLeadsPerDay = user.totalLeads / 7
+        user.averageConvertedPerDay = user.totalConvertedLeads / 7
       } else if (selectedProductivityRange === "last30days") {
         user.averageLeadsPerDay = user.totalLeads / 30
+        user.averageConvertedPerDay = user.totalConvertedLeads / 30
       } else {
         // For other ranges, use the actual number of days with activity
         user.averageLeadsPerDay = user.totalLeads / user.totalDays.size
+        user.averageConvertedPerDay = user.totalConvertedLeads / user.totalDays.size
       }
     })
 
@@ -1639,6 +1739,12 @@ const BillcutLeadReportContent = () => {
                   <div className="text-right">
                     <p className="text-xs font-medium text-gray-500 mb-1">Total Worked</p>
                     <h3 className="text-xl font-bold text-gray-900">{user.totalLeads}</h3>
+                    {/* NEW: Show converted leads count */}
+                    {user.totalConvertedLeads > 0 && (
+                      <p className="text-xs text-emerald-600 font-medium">
+                        {user.totalConvertedLeads} converted
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1646,6 +1752,13 @@ const BillcutLeadReportContent = () => {
                     <span className="text-gray-600">Avg/Day:</span>
                     <span className="font-bold text-emerald-600">{user.averageLeadsPerDay.toFixed(1)}</span>
                   </div>
+                  {/* NEW: Show average converted per day */}
+                  {user.totalConvertedLeads > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">Conv/Day:</span>
+                      <span className="font-bold text-green-600">{user.averageConvertedPerDay.toFixed(1)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-600">
                       {selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days"
@@ -1675,7 +1788,6 @@ const BillcutLeadReportContent = () => {
                 </div>
                 <div className="mt-3">
                   <p className="text-sm font-bold text-gray-900 truncate mb-2">{user.userName}</p>
-
                   {/* Status Breakdown */}
                   <div className="overflow-x-auto">
                     <table className="text-xs w-full">
@@ -1719,7 +1831,6 @@ const BillcutLeadReportContent = () => {
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billcut Leads Dashboard</h1>
-
             <div className="flex items-center gap-4">
               {/* Report Navigation Dropdown */}
               <div className="relative report-dropdown">
@@ -1805,6 +1916,7 @@ const BillcutLeadReportContent = () => {
                     </div>
                   </div>
                 </div>
+
                 {/* Quick Filter Buttons */}
                 <div className="flex flex-wrap gap-2">
                   {[
@@ -1845,6 +1957,7 @@ const BillcutLeadReportContent = () => {
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
                       />
                     </div>
+
                     {/* End Date */}
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-900 dark:text-white">End Date</label>
@@ -1856,6 +1969,7 @@ const BillcutLeadReportContent = () => {
                       />
                     </div>
                   </div>
+
                   {/* Action Buttons */}
                   <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
                     <button
@@ -1874,6 +1988,7 @@ const BillcutLeadReportContent = () => {
                 </div>
               )}
             </div>
+
             {/* Active Filters Display */}
             {(dateRange.startDate || dateRange.endDate) && (
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
@@ -2095,6 +2210,7 @@ const BillcutLeadReportContent = () => {
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
+
             {/* Sales Performance */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
@@ -2162,6 +2278,7 @@ const BillcutLeadReportContent = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+
             {/* Income Distribution */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
@@ -2221,6 +2338,7 @@ const BillcutLeadReportContent = () => {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+
             {/* Geographic Distribution */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
@@ -2301,14 +2419,12 @@ const BillcutLeadReportContent = () => {
                   <p className="text-2xl font-bold text-red-600">{analytics.languageBarrierLeads.toLocaleString()}</p>
                 </div>
               </div>
-
               <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Languages Affected</p>
                   <p className="text-2xl font-bold text-orange-600">{analytics.languageDistribution.length}</p>
                 </div>
               </div>
-
               <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Most Common</p>
@@ -2322,7 +2438,6 @@ const BillcutLeadReportContent = () => {
                   </p>
                 </div>
               </div>
-
               <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Barrier Rate</p>
@@ -2341,7 +2456,6 @@ const BillcutLeadReportContent = () => {
                 <FiUsers className="mr-2" />
                 Language Barrier Breakdown
               </h4>
-
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -2460,7 +2574,14 @@ const BillcutLeadReportContent = () => {
                     const repLeads = leads.filter((lead) => lead.assigned_to === rep.name)
                     const statusBreakdown = analytics.categoryDistribution.reduce(
                       (acc, category) => {
-                        acc[category.name] = repLeads.filter((lead) => lead.category === category.name).length
+                        // FIXED: For converted status, only count leads that have convertedAt field
+                        if (category.name === "Converted") {
+                          acc[category.name] = repLeads.filter(
+                            (lead) => lead.category === category.name && lead.convertedAt
+                          ).length
+                        } else {
+                          acc[category.name] = repLeads.filter((lead) => lead.category === category.name).length
+                        }
                         return acc
                       },
                       {} as Record<string, number>,
@@ -2533,7 +2654,6 @@ const BillcutLeadReportContent = () => {
                   )
                 })()}
               </div>
-
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                 <h4 className="font-semibold text-green-900 dark:text-green-200 mb-2">Most Leads</h4>
                 {(() => {
@@ -2550,7 +2670,6 @@ const BillcutLeadReportContent = () => {
                   )
                 })()}
               </div>
-
               <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
                 <h4 className="font-semibold text-purple-900 dark:text-purple-200 mb-2">Most Converted</h4>
                 {(() => {
@@ -2663,7 +2782,7 @@ const BillcutLeadReportContent = () => {
                   <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-200/50">
                     <p className="text-xs text-emerald-700 font-medium mb-1">{getProductivityDisplayName()}</p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Shows leads worked on per day based on lastModified timestamps
+                      Shows leads worked on per day. Converted leads use convertedAt timestamp for accurate tracking.
                     </p>
                   </div>
                 </div>

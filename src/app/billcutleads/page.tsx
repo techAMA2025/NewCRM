@@ -453,10 +453,11 @@ const BillCutLeadsPage = () => {
               assignedTo: data.assigned_to || "",
               monthlyIncome: data.income || "",
               salesNotes: data.sales_notes || "",
-              lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+              lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : new Date(),
               date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
               callbackInfo: null,
               debtRange: data.debt_range || 0,
+              convertedAt: data.convertedAt || null,
             }
 
             // Fetch callback info for callback leads
@@ -690,10 +691,11 @@ const BillCutLeadsPage = () => {
               assignedTo: data.assigned_to || "",
               monthlyIncome: data.income || "",
               salesNotes: data.sales_notes || "",
-              lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+              lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : new Date(),
               date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
               callbackInfo: null,
               debtRange: data.debt_range || 0,
+              convertedAt: data.convertedAt || null,
             }
 
             // Fetch callback info for callback leads
@@ -1633,10 +1635,11 @@ const BillCutLeadsPage = () => {
             assignedTo: data.assigned_to || "",
             monthlyIncome: data.income || "",
             salesNotes: data.sales_notes || "",
-            lastModified: data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date(),
+            lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : new Date(),
             date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
             callbackInfo: null,
             debtRange: data.debt_range || 0,
+            convertedAt: data.convertedAt || null,
           }
 
           // Fetch callback info for callback leads

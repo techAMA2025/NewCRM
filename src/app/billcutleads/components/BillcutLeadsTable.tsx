@@ -772,6 +772,49 @@ const BillcutLeadsTableOptimized = React.memo(
                 >
                   {lead.status || "Select Status"}
                 </span>
+                
+                {/* Show lastModified and convertedAt info only for admin and overlord roles */}
+                {(userRole === "admin" || userRole === "overlord") && (
+                  <div className="flex flex-col gap-1 mt-2">
+                    {/* Last Modified timestamp */}
+                    <div className={`text-xs ${rowColors.textColor ? "text-white/70" : "text-gray-400"}`}>
+                      Last Modified:
+                    </div>
+                    <div className={`text-xs ${rowColors.textColor ? "text-white/90" : "text-gray-300"}`}>
+                      {lead.lastModified 
+                        ? new Date(lead.lastModified).toLocaleString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
+                        : "N/A"
+                      }
+                    </div>
+                    
+                    {/* Converted At timestamp - only show for converted leads */}
+                    {lead.status === "Converted" && lead.convertedAt && (
+                      <>
+                        <div className={`text-xs ${rowColors.textColor ? "text-white/70" : "text-emerald-400"} mt-1`}>
+                          Converted At:
+                        </div>
+                        <div className={`text-xs ${rowColors.textColor ? "text-white/90" : "text-emerald-300"}`}>
+                          {new Date(lead.convertedAt.seconds ? lead.convertedAt.seconds * 1000 : lead.convertedAt).toLocaleString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                
                 <select
                   value={editingData[lead.id]?.status || lead.status}
                   onChange={async (e) => {
