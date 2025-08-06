@@ -250,6 +250,12 @@ const BillCutLeadsPage = () => {
   const [toDate, setToDate] = useState("")
   const [activeTab, setActiveTab] = useState<"all" | "callback">("all")
   const [debtRangeSort, setDebtRangeSort] = useState<"none" | "low-to-high" | "high-to-low">("none")
+  
+  // Admin/Overlord only filter states
+  const [convertedFromDate, setConvertedFromDate] = useState("")
+  const [convertedToDate, setConvertedToDate] = useState("")
+  const [lastModifiedFromDate, setLastModifiedFromDate] = useState("")
+  const [lastModifiedToDate, setLastModifiedToDate] = useState("")
 
   // User and team states
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null)
@@ -534,6 +540,35 @@ const BillCutLeadsPage = () => {
         constraints.push(where("date", "<=", toDateEnd.getTime()))
       }
 
+      // Admin/Overlord only filters
+      if (userRole === "admin" || userRole === "overlord") {
+        // Converted date filters
+        if (convertedFromDate) {
+          const convertedFromStart = new Date(convertedFromDate)
+          convertedFromStart.setHours(0, 0, 0, 0)
+          constraints.push(where("convertedAt", ">=", convertedFromStart))
+        }
+
+        if (convertedToDate) {
+          const convertedToEnd = new Date(convertedToDate)
+          convertedToEnd.setHours(23, 59, 59, 999)
+          constraints.push(where("convertedAt", "<=", convertedToEnd))
+        }
+
+        // Last modified date filters
+        if (lastModifiedFromDate) {
+          const lastModifiedFromStart = new Date(lastModifiedFromDate)
+          lastModifiedFromStart.setHours(0, 0, 0, 0)
+          constraints.push(where("lastModified", ">=", lastModifiedFromStart))
+        }
+
+        if (lastModifiedToDate) {
+          const lastModifiedToEnd = new Date(lastModifiedToDate)
+          lastModifiedToEnd.setHours(23, 59, 59, 999)
+          constraints.push(where("lastModified", "<=", lastModifiedToEnd))
+        }
+      }
+
       // Status filter
       if (statusFilter !== "all") {
         if (statusFilter === "No Status") {
@@ -577,7 +612,7 @@ const BillCutLeadsPage = () => {
 
       return query(baseQuery, ...constraints)
     },
-    [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab],
+    [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate],
   )
 
   // Build count query to get total filtered results
@@ -596,6 +631,35 @@ const BillCutLeadsPage = () => {
       const toDateEnd = new Date(toDate)
       toDateEnd.setHours(23, 59, 59, 999)
       constraints.push(where("date", "<=", toDateEnd.getTime()))
+    }
+
+    // Admin/Overlord only filters
+    if (userRole === "admin" || userRole === "overlord") {
+      // Converted date filters
+      if (convertedFromDate) {
+        const convertedFromStart = new Date(convertedFromDate)
+        convertedFromStart.setHours(0, 0, 0, 0)
+        constraints.push(where("convertedAt", ">=", convertedFromStart))
+      }
+
+      if (convertedToDate) {
+        const convertedToEnd = new Date(convertedToDate)
+        convertedToEnd.setHours(23, 59, 59, 999)
+        constraints.push(where("convertedAt", "<=", convertedToEnd))
+      }
+
+      // Last modified date filters
+      if (lastModifiedFromDate) {
+        const lastModifiedFromStart = new Date(lastModifiedFromDate)
+        lastModifiedFromStart.setHours(0, 0, 0, 0)
+        constraints.push(where("lastModified", ">=", lastModifiedFromStart))
+      }
+
+      if (lastModifiedToDate) {
+        const lastModifiedToEnd = new Date(lastModifiedToDate)
+        lastModifiedToEnd.setHours(23, 59, 59, 999)
+        constraints.push(where("lastModified", "<=", lastModifiedToEnd))
+      }
     }
 
     // Status filter
@@ -630,7 +694,7 @@ const BillCutLeadsPage = () => {
     }
 
     return query(baseQuery, ...constraints)
-  }, [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab])
+  }, [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
 
   // Fetch total count of filtered results
   const fetchTotalCount = useCallback(async () => {
@@ -831,7 +895,7 @@ const BillCutLeadsPage = () => {
     }, 300) // Debounce filter changes
 
     return () => clearTimeout(timeoutId)
-  }, [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, debtRangeSort])
+  }, [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, debtRangeSort, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
 
   // Handle search with debouncing - now triggers database search
   useEffect(() => {
@@ -1574,6 +1638,35 @@ const BillCutLeadsPage = () => {
         constraints.push(where("date", "<=", toDateEnd.getTime()))
       }
 
+      // Admin/Overlord only filters
+      if (userRole === "admin" || userRole === "overlord") {
+        // Converted date filters
+        if (convertedFromDate) {
+          const convertedFromStart = new Date(convertedFromDate)
+          convertedFromStart.setHours(0, 0, 0, 0)
+          constraints.push(where("convertedAt", ">=", convertedFromStart))
+        }
+
+        if (convertedToDate) {
+          const convertedToEnd = new Date(convertedToDate)
+          convertedToEnd.setHours(23, 59, 59, 999)
+          constraints.push(where("convertedAt", "<=", convertedToEnd))
+        }
+
+        // Last modified date filters
+        if (lastModifiedFromDate) {
+          const lastModifiedFromStart = new Date(lastModifiedFromDate)
+          lastModifiedFromStart.setHours(0, 0, 0, 0)
+          constraints.push(where("lastModified", ">=", lastModifiedFromStart))
+        }
+
+        if (lastModifiedToDate) {
+          const lastModifiedToEnd = new Date(lastModifiedToDate)
+          lastModifiedToEnd.setHours(23, 59, 59, 999)
+          constraints.push(where("lastModified", "<=", lastModifiedToEnd))
+        }
+      }
+
       // Status filter
       if (statusFilter !== "all") {
         if (statusFilter === "No Status") {
@@ -1927,6 +2020,14 @@ const BillCutLeadsPage = () => {
             onSearchResults={handleSearchResults}
             isSearching={isSearching}
             setIsSearching={setIsSearching}
+            convertedFromDate={convertedFromDate}
+            setConvertedFromDate={setConvertedFromDate}
+            convertedToDate={convertedToDate}
+            setConvertedToDate={setConvertedToDate}
+            lastModifiedFromDate={lastModifiedFromDate}
+            setLastModifiedFromDate={setLastModifiedFromDate}
+            lastModifiedToDate={lastModifiedToDate}
+            setLastModifiedToDate={setLastModifiedToDate}
           />
 
           {/* Search Status Indicator */}

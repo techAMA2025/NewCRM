@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Allow users to read their own data
+      allow read: if request.auth.uid == userId;
+      // Allow admins and overlords to read and write all user data
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Overlord'];
+    }
+
+    // crm_leads collection
+    match /crm_leads/{leadId} {
+      // Allow sales, admins, and overlords to read, create, and update leads
+      allow read, create, update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Sales', 'Admin', 'Overlord'];
+      // Allow admins and overlords to delete leads
+      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Overlord'];
+    }
+
+    // clients collection
+    match /clients/{clientId} {
+      // Allow admins, overlords, and assistants to read and write all client data
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Overlord', 'Assistant'];
+      // Allow sales to read client data
+      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Sales';
+      // Allow advocates to read and update clients assigned to them
+      allow read, update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Advocate' && resource.data.advocate.uid == request.auth.uid;
+    }
+    
+    // billcutLeads collection
+    match /billcutLeads/{leadId} {
+        allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Overlord', 'Billcut'];
+    }
+
+    // Reminders collection
+    match /reminders/{reminderId} {
+      // Allow users to manage their own reminders
+      allow read, write, delete: if resource.data.userId == request.auth.uid;
+    }
+    
+    // ops_payments collection
+    match /ops_payments/{paymentId} {
+        // Allow users to create their own payment requests
+        allow create: if request.resource.data.submittedBy == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name;
+        // Allow users to read their own payment requests
+        allow read: if resource.data.submittedBy == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name;
+        // Allow Overlords to approve/read all payment requests
+        allow read, update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Overlord';
+    }
+
+    // whatsappTemplates collection
+    match /whatsappTemplates/{templateId} {
+      // Allow admins and overlords to manage templates
+      allow read, write, delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Overlord'];
+    }
+
+    // complaints collection
+    match /complaints/{complaintId} {
+        // Allow advocates and assistants to read/write complaints
+        allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Advocate', 'Assistant', 'Overlord'];
+    }
+  }
+} 

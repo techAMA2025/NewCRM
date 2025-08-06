@@ -36,6 +36,15 @@ type BillcutLeadsFiltersProps = {
   onSearchResults?: (results: any[]) => void
   isSearching?: boolean
   setIsSearching?: (searching: boolean) => void
+  // New props for convertedAt and lastModified filters (admin/overlord only)
+  convertedFromDate?: string
+  setConvertedFromDate?: (date: string) => void
+  convertedToDate?: string
+  setConvertedToDate?: (date: string) => void
+  lastModifiedFromDate?: string
+  setLastModifiedFromDate?: (date: string) => void
+  lastModifiedToDate?: string
+  setLastModifiedToDate?: (date: string) => void
 }
 
 const BillcutLeadsFiltersOptimized = ({
@@ -66,6 +75,15 @@ const BillcutLeadsFiltersOptimized = ({
   onSearchResults,
   isSearching = false,
   setIsSearching = () => {},
+  // New props for admin/overlord date filters
+  convertedFromDate = "",
+  setConvertedFromDate = () => {},
+  convertedToDate = "",
+  setConvertedToDate = () => {},
+  lastModifiedFromDate = "",
+  setLastModifiedFromDate = () => {},
+  lastModifiedToDate = "",
+  setLastModifiedToDate = () => {},
 }: BillcutLeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{ id: string; name: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -342,7 +360,12 @@ const BillcutLeadsFiltersOptimized = ({
     if (setSalesPersonFilter) {
       setSalesPersonFilter("all")
     }
-  }, [clearSearch, setStatusFilter, setFromDate, setToDate, setShowMyLeads, setDebtRangeSort, setSalesPersonFilter])
+    // Clear admin/overlord filters
+    setConvertedFromDate("")
+    setConvertedToDate("")
+    setLastModifiedFromDate("")
+    setLastModifiedToDate("")
+  }, [clearSearch, setStatusFilter, setFromDate, setToDate, setShowMyLeads, setDebtRangeSort, setSalesPersonFilter, setConvertedFromDate, setConvertedToDate, setLastModifiedFromDate, setLastModifiedToDate])
 
   // Check if any filters are active - memoized
   const hasActiveFilters = useMemo(() => {
@@ -353,9 +376,13 @@ const BillcutLeadsFiltersOptimized = ({
       toDate ||
       showMyLeads ||
       debtRangeSort !== "none" ||
-      (salesPersonFilter && salesPersonFilter !== "all")
+      (salesPersonFilter && salesPersonFilter !== "all") ||
+      convertedFromDate ||
+      convertedToDate ||
+      lastModifiedFromDate ||
+      lastModifiedToDate
     )
-  }, [searchQuery, statusFilter, fromDate, toDate, showMyLeads, debtRangeSort, salesPersonFilter])
+  }, [searchQuery, statusFilter, fromDate, toDate, showMyLeads, debtRangeSort, salesPersonFilter, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
 
   return (
     <div className="space-y-4 mb-8">
@@ -612,6 +639,68 @@ const BillcutLeadsFiltersOptimized = ({
             </button>
           </div>
         </div>
+
+        {/* Admin/Overlord Only Filters */}
+        {(userRole === "admin" || userRole === "overlord") && (
+          <div className="mt-6 pt-4 border-t border-gray-700/50">
+            <div className="flex items-center mb-4">
+              <svg className="w-4 h-4 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-medium text-yellow-400">Advanced Date Filters (Admin/Overlord Only)</span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Converted Date Range */}
+              <div className="space-y-1">
+                <label className="block text-xs text-emerald-400">Converted From</label>
+                <input
+                  type="date"
+                  value={convertedFromDate}
+                  onChange={(e) => setConvertedFromDate(e.target.value)}
+                  max={convertedToDate || getCurrentDate}
+                  className="block w-full pl-3 pr-3 py-2 text-sm border border-emerald-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-emerald-500 focus:border-emerald-400 rounded-lg transition-all duration-200"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs text-emerald-400">Converted To</label>
+                <input
+                  type="date"
+                  value={convertedToDate}
+                  onChange={(e) => setConvertedToDate(e.target.value)}
+                  min={convertedFromDate}
+                  max={getCurrentDate}
+                  className="block w-full pl-3 pr-3 py-2 text-sm border border-emerald-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-emerald-500 focus:border-emerald-400 rounded-lg transition-all duration-200"
+                />
+              </div>
+
+              {/* Last Modified Date Range */}
+              <div className="space-y-1">
+                <label className="block text-xs text-blue-400">Last Modified From</label>
+                <input
+                  type="date"
+                  value={lastModifiedFromDate}
+                  onChange={(e) => setLastModifiedFromDate(e.target.value)}
+                  max={lastModifiedToDate || getCurrentDate}
+                  className="block w-full pl-3 pr-3 py-2 text-sm border border-blue-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs text-blue-400">Last Modified To</label>
+                <input
+                  type="date"
+                  value={lastModifiedToDate}
+                  onChange={(e) => setLastModifiedToDate(e.target.value)}
+                  min={lastModifiedFromDate}
+                  max={getCurrentDate}
+                  className="block w-full pl-3 pr-3 py-2 text-sm border border-blue-600/50 bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-blue-500 focus:border-blue-400 rounded-lg transition-all duration-200"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
