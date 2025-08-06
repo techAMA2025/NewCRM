@@ -231,7 +231,7 @@ export default function OpsPaymentsRequestPage() {
   };
   
   return (
-    <div className="flex bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         {renderSidebar()}
@@ -338,7 +338,6 @@ export default function OpsPaymentsRequestPage() {
                         name="phoneNumber"
                         value={formData.phoneNumber}
                         onChange={handleChange}
-                        required
                         className="bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-3 transition-all duration-200"
                         placeholder="Enter phone number"
                       />

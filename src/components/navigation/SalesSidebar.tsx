@@ -84,7 +84,7 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
   };
 
   return (
-    <div className={`bg-green-800 dark:bg-gray-900 text-white flex-shrink-0 py-6 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+    <div className={`bg-green-800 dark:bg-gray-900 text-white flex-shrink-0 py-6 transition-all duration-300 min-h-screen flex flex-col ${isCollapsed ? 'w-16' : 'w-64'}`}>
       <div className={`px-6 mb-8 flex ${isCollapsed ? 'justify-center' : 'justify-between'} items-center`}>
         {!isCollapsed && <h2 className="text-xl font-bold">Sales Portal</h2>}
         <div className="flex items-center">
