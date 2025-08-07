@@ -540,6 +540,10 @@ const BillCutLeadsPage = () => {
         constraints.push(where("date", "<=", toDateEnd.getTime()))
       }
 
+      // Check if Advanced Date Filters are active
+      const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
+        (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
+
       // Admin/Overlord only filters
       if (userRole === "admin" || userRole === "overlord") {
         // Converted date filters
@@ -600,8 +604,21 @@ const BillCutLeadsPage = () => {
         constraints.push(where("category", "==", "Callback"))
       }
 
-      // Add ordering - use 'date' field for consistency
-      constraints.push(orderBy("date", "desc"))
+      // Add ordering based on whether Advanced Date Filters are active
+      if (hasAdvancedDateFilters) {
+        // When Advanced Date Filters are active, sort by lastModified and convertedAt
+        if (convertedFromDate || convertedToDate) {
+          // If converted date filters are active, sort by convertedAt first, then lastModified
+          constraints.push(orderBy("convertedAt", "desc"))
+          constraints.push(orderBy("lastModified", "desc"))
+        } else {
+          // If only lastModified filters are active, sort by lastModified
+          constraints.push(orderBy("lastModified", "desc"))
+        }
+      } else {
+        // Default sorting - use 'date' field for consistency
+        constraints.push(orderBy("date", "desc"))
+      }
 
       // Add pagination
       constraints.push(limit(LEADS_PER_PAGE))
@@ -772,9 +789,13 @@ const BillCutLeadsPage = () => {
           }),
         )
 
-        // Apply debt range sorting (client-side)
+        // Check if Advanced Date Filters are active
+        const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
+          (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
+
+        // Apply debt range sorting (client-side) - only if Advanced Date Filters are not active
         let filteredLeads = fetchedLeads
-        if (debtRangeSort !== "none") {
+        if (debtRangeSort !== "none" && !hasAdvancedDateFilters) {
           filteredLeads = [...filteredLeads].sort((a, b) => {
             const debtA = Number.parseFloat(a.debtRange?.toString() || "0")
             const debtB = Number.parseFloat(b.debtRange?.toString() || "0")
@@ -797,8 +818,8 @@ const BillCutLeadsPage = () => {
             combinedLeads = filteredLeads
           }
 
-          // Apply callback sorting to the entire combined list when on callback tab
-          if (activeTab === "callback") {
+          // Apply callback sorting to the entire combined list when on callback tab - only if Advanced Date Filters are not active
+          if (activeTab === "callback" && !hasAdvancedDateFilters) {
             combinedLeads = [...combinedLeads].sort((a, b) => {
               const priorityA = getCallbackPriority(a)
               const priorityB = getCallbackPriority(b)
@@ -855,7 +876,7 @@ const BillCutLeadsPage = () => {
         setIsLoadingMore(false)
       }
     },
-    [buildQuery, lastDoc, debtRangeSort, fetchTotalCount],
+    [buildQuery, lastDoc, debtRangeSort, fetchTotalCount, userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate],
   )
 
   // Setup infinite scroll
@@ -1638,6 +1659,10 @@ const BillCutLeadsPage = () => {
         constraints.push(where("date", "<=", toDateEnd.getTime()))
       }
 
+      // Check if Advanced Date Filters are active
+      const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
+        (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
+
       // Admin/Overlord only filters
       if (userRole === "admin" || userRole === "overlord") {
         // Converted date filters
@@ -1698,8 +1723,21 @@ const BillCutLeadsPage = () => {
         constraints.push(where("category", "==", "Callback"))
       }
 
-      // Add ordering - use 'date' field for consistency
-      constraints.push(orderBy("date", "desc"))
+      // Add ordering based on whether Advanced Date Filters are active
+      if (hasAdvancedDateFilters) {
+        // When Advanced Date Filters are active, sort by lastModified and convertedAt
+        if (convertedFromDate || convertedToDate) {
+          // If converted date filters are active, sort by convertedAt first, then lastModified
+          constraints.push(orderBy("convertedAt", "desc"))
+          constraints.push(orderBy("lastModified", "desc"))
+        } else {
+          // If only lastModified filters are active, sort by lastModified
+          constraints.push(orderBy("lastModified", "desc"))
+        }
+      } else {
+        // Default sorting - use 'date' field for consistency
+        constraints.push(orderBy("date", "desc"))
+      }
 
       // Load all leads (no limit)
       const allLeadsQuery = query(baseQuery, ...constraints)
@@ -1745,9 +1783,9 @@ const BillCutLeadsPage = () => {
         }),
       )
 
-      // Apply debt range sorting (client-side)
+      // Apply debt range sorting (client-side) - only if Advanced Date Filters are not active
       let filteredLeads = fetchedLeads
-      if (debtRangeSort !== "none") {
+      if (debtRangeSort !== "none" && !hasAdvancedDateFilters) {
         filteredLeads = [...filteredLeads].sort((a, b) => {
           const debtA = Number.parseFloat(a.debtRange?.toString() || "0")
           const debtB = Number.parseFloat(b.debtRange?.toString() || "0")
@@ -1760,8 +1798,8 @@ const BillCutLeadsPage = () => {
         })
       }
 
-      // Apply callback sorting to the entire list when on callback tab
-      if (activeTab === "callback") {
+      // Apply callback sorting to the entire list when on callback tab - only if Advanced Date Filters are not active
+      if (activeTab === "callback" && !hasAdvancedDateFilters) {
         filteredLeads = [...filteredLeads].sort((a, b) => {
           const priorityA = getCallbackPriority(a)
           const priorityB = getCallbackPriority(b)
