@@ -154,31 +154,56 @@ export default function RequestLetterForm({
   };
 
   const handleBankSelect = (value: string) => {
+    // Ignore separator selections
+    if (value === "separator") return;
+    
     setSelectedBank(value);
     
     if (!value) return;
 
-    // Get bank details from bankData
-    const bankDetails = bankData[value];
-    
-    if (bankDetails) {
-      // Find if the selected client has this bank
-      const selectedClientBank = selectedClientBanks.find(bank => bank.bankName === value);
+    // Check if this is a client bank selection (contains pipe separator)
+    if (value.includes('|')) {
+      // Client bank selection - extract bank name and account number
+      const [bankName, accountNumber] = value.split('|');
       
-      // Determine account type based on loan type if client has this bank
-      let accountType = "Loan Account";
-      if (selectedClientBank && selectedClientBank.loanType && selectedClientBank.loanType.toLowerCase().includes("credit")) {
-        accountType = "Credit Card Number";
-      }
+      // Get bank details from bankData
+      const bankDetails = bankData[bankName];
+      
+      if (bankDetails) {
+        // Find the specific account from client's banks
+        const selectedClientBank = selectedClientBanks.find(bank => 
+          bank.bankName === bankName && bank.accountNumber === accountNumber
+        );
+        
+        // Determine account type based on loan type
+        let accountType = "Loan Account";
+        if (selectedClientBank && selectedClientBank.loanType && selectedClientBank.loanType.toLowerCase().includes("credit")) {
+          accountType = "Credit Card Number";
+        }
 
-      setFormData(prev => ({
-        ...prev,
-        bankName: value,
-        bankAddress: bankDetails.address || "",
-        bankEmail: bankDetails.email || "",
-        number: selectedClientBank ? selectedClientBank.accountNumber || "" : "",
-        accountType: accountType,
-      }));
+        setFormData(prev => ({
+          ...prev,
+          bankName: bankName,
+          bankAddress: bankDetails.address || "",
+          bankEmail: bankDetails.email || "",
+          number: accountNumber,
+          accountType: accountType,
+        }));
+      }
+    } else {
+      // Other bank selection - no account number to auto-fill
+      const bankDetails = bankData[value];
+      
+      if (bankDetails) {
+        setFormData(prev => ({
+          ...prev,
+          bankName: value,
+          bankAddress: bankDetails.address || "",
+          bankEmail: bankDetails.email || "",
+          number: "",
+          accountType: "Loan Account",
+        }));
+      }
     }
   };
 
@@ -204,12 +229,33 @@ export default function RequestLetterForm({
     const clientBanks = allBanks.filter(bank => clientBankNames.includes(bank));
     const otherBanks = allBanks.filter(bank => !clientBankNames.includes(bank));
     
-    // Create options with visual indicators
-    const clientBankOptions = clientBanks.map(bankName => ({
-      value: bankName,
-      label: `✅ ${bankName} (Client has account)`,
-      className: "text-green-400 font-medium"
-    }));
+    // Create options with visual indicators for client banks
+    // Handle multiple accounts from same bank
+    const clientBankOptions: any[] = [];
+    
+    clientBanks.forEach(bankName => {
+      // Find all accounts for this bank
+      const bankAccounts = selectedClientBanks.filter(bank => bank.bankName === bankName);
+      
+      if (bankAccounts.length === 1) {
+        // Single account - show bank name with account number
+        const account = bankAccounts[0];
+        clientBankOptions.push({
+          value: `${bankName}|${account.accountNumber}`,
+          label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'})`,
+          className: "text-green-400 font-medium"
+        });
+      } else {
+        // Multiple accounts - show each account separately
+        bankAccounts.forEach((account, index) => {
+          clientBankOptions.push({
+            value: `${bankName}|${account.accountNumber}`,
+            label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'} #${index + 1})`,
+            className: "text-green-400 font-medium"
+          });
+        });
+      }
+    });
     
     const otherBankOptions = otherBanks.map(bankName => ({
       value: bankName,
@@ -218,7 +264,7 @@ export default function RequestLetterForm({
     }));
     
     // Add separator if there are both client banks and other banks
-    const separator = clientBanks.length > 0 && otherBanks.length > 0 ? [{
+    const separator = clientBankOptions.length > 0 && otherBankOptions.length > 0 ? [{
       value: "separator",
       label: "────────── Other Banks ──────────",
       className: "text-gray-500 text-xs font-semibold cursor-default"
@@ -362,14 +408,19 @@ export default function RequestLetterForm({
             loadingText="Loading banks..."
             disabled={isLoadingBanks}
           />
-          {selectedClientId && selectedBank && (
+          {selectedClientId && selectedBank && selectedBank.includes('|') && (
             <p className="text-xs text-green-500 mt-0.5">
-              Account number will be auto-filled if client has this bank
+              ✅ Client account selected - account number auto-filled
+            </p>
+          )}
+          {selectedClientId && selectedBank && !selectedBank.includes('|') && (
+            <p className="text-xs text-amber-500 mt-0.5">
+              Other bank selected - please enter account number manually
             </p>
           )}
           {selectedClientId && !selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
-              Select a bank to auto-fill the account number (if client has this bank)
+              Banks with ✅ show client's accounts with account numbers
             </p>
           )}
         </div>
@@ -468,21 +519,21 @@ export default function RequestLetterForm({
             onChange={handleChange}
             required
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder={selectedBank ? "Account number will be auto-filled if client has this bank" : "Select a bank to auto-fill account number"}
+            placeholder={selectedBank && selectedBank.includes('|') ? "Account number auto-filled from selected account" : "Select a client account or enter manually"}
           />
-          {selectedBank && formData.number && (
+          {selectedBank && selectedBank.includes('|') && formData.number && (
             <p className="text-xs text-green-500 mt-0.5">
-              Auto-filled from client's bank data (editable)
+              ✅ Auto-filled from selected client account (editable)
             </p>
           )}
-          {selectedBank && !formData.number && selectedClientId && (
+          {selectedBank && !selectedBank.includes('|') && selectedClientId && (
             <p className="text-xs text-amber-500 mt-0.5">
-              Client doesn't have an account with this bank - please enter manually
+              Other bank selected - please enter account number manually
             </p>
           )}
           {selectedClientId && !selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
-              Select a bank to auto-fill the account number
+              Select a client account to auto-fill the account number
             </p>
           )}
         </div>
