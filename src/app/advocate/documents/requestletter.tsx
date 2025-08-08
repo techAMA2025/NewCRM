@@ -76,6 +76,7 @@ export default function RequestLetterForm({
   const [clients, setClients] = useState<FirestoreClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedBank, setSelectedBank] = useState("");
+  const [selectedClientBanks, setSelectedClientBanks] = useState<Bank[]>([]);
   const [formData, setFormData] = useState({
     name1: client.name || "",
     bankAddress: "",
@@ -116,37 +117,68 @@ export default function RequestLetterForm({
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clientId = e.target.value;
     setSelectedClientId(clientId);
+    setSelectedBank(""); // Reset bank selection when client changes
+    setSelectedClientBanks([]); // Reset client banks
 
-    if (!clientId) return;
+    if (!clientId) {
+      // Reset form data when no client is selected
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        name1: "",
+        email: "",
+        number: "",
+        bankAddress: "",
+        bankEmail: "",
+        accountType: "Loan Account",
+      }));
+      return;
+    }
 
     const selectedClient = clients.find((c) => c.id === clientId);
 
     if (selectedClient) {
+      // Set the client's banks
+      setSelectedClientBanks(selectedClient.banks || []);
+      
       // Update form with selected client's data
       setFormData((prevFormData) => ({
         ...prevFormData,
         name1: selectedClient.name || "",
         email: selectedClient.email || "",
-        number:
-          selectedClient.banks && selectedClient.banks.length > 0
-            ? selectedClient.banks[0].accountNumber || ""
-            : "",
+        number: "",
+        bankAddress: "",
+        bankEmail: "",
+        accountType: "Loan Account",
       }));
     }
   };
 
   const handleBankSelect = (value: string) => {
     setSelectedBank(value);
-    if (value && bankData[value]) {
-      const selectedBankData = bankData[value];
-      if (selectedBankData) {
-        setFormData(prev => ({
-          ...prev,
-          bankName: value,
-          bankAddress: selectedBankData.address,
-          bankEmail: selectedBankData.email,
-        }));
+    
+    if (!value || !selectedClientBanks.length) return;
+
+    // Find the selected bank from client's banks
+    const selectedClientBank = selectedClientBanks.find(bank => bank.bankName === value);
+    
+    if (selectedClientBank) {
+      // Get bank details from bankData for address and email
+      const bankDetails = bankData[value];
+      
+      // Determine account type based on loan type
+      let accountType = "Loan Account";
+      if (selectedClientBank.loanType && selectedClientBank.loanType.toLowerCase().includes("credit")) {
+        accountType = "Credit Card Number";
       }
+
+      setFormData(prev => ({
+        ...prev,
+        bankName: value,
+        bankAddress: bankDetails?.address || "",
+        bankEmail: bankDetails?.email || "",
+        number: selectedClientBank.accountNumber || "",
+        accountType: accountType,
+      }));
     }
   };
 
@@ -289,17 +321,27 @@ export default function RequestLetterForm({
             Select Bank
           </label>
           <SearchableDropdown
-            options={Object.keys(bankData).map(bank => ({
-              value: bank,
-              label: bank
+            options={selectedClientBanks.map(bank => ({
+              value: bank.bankName,
+              label: bank.bankName
             }))}
             value={selectedBank}
             onChange={handleBankSelect}
-            placeholder="Select a bank..."
+            placeholder={selectedClientId ? "Select a bank from client's accounts..." : "Please select a client first"}
             isLoading={isLoadingBanks}
             loadingText="Loading banks..."
-            disabled={isLoadingBanks}
+            disabled={isLoadingBanks || !selectedClientId}
           />
+          {!selectedClientId && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select a client to see their banks
+            </p>
+          )}
+          {selectedClientId && selectedClientBanks.length === 0 && (
+            <p className="text-xs text-amber-500 mt-0.5">
+              No banks found for this client
+            </p>
+          )}
         </div>
 
         {/* Bank Address - spans full width */}
@@ -354,6 +396,11 @@ export default function RequestLetterForm({
             <option value="Loan Account">Loan Account</option>
             <option value="Credit Card Number">Credit Card Number</option>
           </select>
+          {selectedBank && (
+            <p className="text-xs text-green-500 mt-0.5">
+              Auto-determined from bank type (editable)
+            </p>
+          )}
         </div>
 
         {/* Reason (dropdown) */}
@@ -386,11 +433,16 @@ export default function RequestLetterForm({
             onChange={handleChange}
             required
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter account or card number"
+            placeholder={selectedBank ? "Account number will be auto-filled" : "Select a bank to auto-fill account number"}
           />
-          {selectedClientId && (
+          {selectedBank && (
+            <p className="text-xs text-green-500 mt-0.5">
+              Auto-filled from selected bank (editable)
+            </p>
+          )}
+          {selectedClientId && !selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
-              Auto-filled from client data (editable)
+              Select a bank to auto-fill the account number
             </p>
           )}
         </div>
