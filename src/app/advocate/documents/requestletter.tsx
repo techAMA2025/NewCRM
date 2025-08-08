@@ -156,27 +156,27 @@ export default function RequestLetterForm({
   const handleBankSelect = (value: string) => {
     setSelectedBank(value);
     
-    if (!value || !selectedClientBanks.length) return;
+    if (!value) return;
 
-    // Find the selected bank from client's banks
-    const selectedClientBank = selectedClientBanks.find(bank => bank.bankName === value);
+    // Get bank details from bankData
+    const bankDetails = bankData[value];
     
-    if (selectedClientBank) {
-      // Get bank details from bankData for address and email
-      const bankDetails = bankData[value];
+    if (bankDetails) {
+      // Find if the selected client has this bank
+      const selectedClientBank = selectedClientBanks.find(bank => bank.bankName === value);
       
-      // Determine account type based on loan type
+      // Determine account type based on loan type if client has this bank
       let accountType = "Loan Account";
-      if (selectedClientBank.loanType && selectedClientBank.loanType.toLowerCase().includes("credit")) {
+      if (selectedClientBank && selectedClientBank.loanType && selectedClientBank.loanType.toLowerCase().includes("credit")) {
         accountType = "Credit Card Number";
       }
 
       setFormData(prev => ({
         ...prev,
         bankName: value,
-        bankAddress: bankDetails?.address || "",
-        bankEmail: bankDetails?.email || "",
-        number: selectedClientBank.accountNumber || "",
+        bankAddress: bankDetails.address || "",
+        bankEmail: bankDetails.email || "",
+        number: selectedClientBank ? selectedClientBank.accountNumber || "" : "",
         accountType: accountType,
       }));
     }
@@ -193,6 +193,39 @@ export default function RequestLetterForm({
       ...formData,
       [name]: value,
     });
+  };
+
+  // Function to prepare bank options with client banks first and visual indicators
+  const getBankOptions = () => {
+    const allBanks = Object.keys(bankData);
+    const clientBankNames = selectedClientBanks.map(bank => bank.bankName);
+    
+    // Separate banks into client banks and other banks
+    const clientBanks = allBanks.filter(bank => clientBankNames.includes(bank));
+    const otherBanks = allBanks.filter(bank => !clientBankNames.includes(bank));
+    
+    // Create options with visual indicators
+    const clientBankOptions = clientBanks.map(bankName => ({
+      value: bankName,
+      label: `✅ ${bankName} (Client has account)`,
+      className: "text-green-400 font-medium"
+    }));
+    
+    const otherBankOptions = otherBanks.map(bankName => ({
+      value: bankName,
+      label: bankName,
+      className: ""
+    }));
+    
+    // Add separator if there are both client banks and other banks
+    const separator = clientBanks.length > 0 && otherBanks.length > 0 ? [{
+      value: "separator",
+      label: "────────── Other Banks ──────────",
+      className: "text-gray-500 text-xs font-semibold cursor-default"
+    }] : [];
+    
+    // Return client banks first, then separator, then other banks
+    return [...clientBankOptions, ...separator, ...otherBankOptions];
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -321,25 +354,22 @@ export default function RequestLetterForm({
             Select Bank
           </label>
           <SearchableDropdown
-            options={selectedClientBanks.map(bank => ({
-              value: bank.bankName,
-              label: bank.bankName
-            }))}
+            options={getBankOptions()}
             value={selectedBank}
             onChange={handleBankSelect}
-            placeholder={selectedClientId ? "Select a bank from client's accounts..." : "Please select a client first"}
+            placeholder="Select a bank..."
             isLoading={isLoadingBanks}
             loadingText="Loading banks..."
-            disabled={isLoadingBanks || !selectedClientId}
+            disabled={isLoadingBanks}
           />
-          {!selectedClientId && (
-            <p className="text-xs text-gray-500 mt-0.5">
-              Select a client to see their banks
+          {selectedClientId && selectedBank && (
+            <p className="text-xs text-green-500 mt-0.5">
+              Account number will be auto-filled if client has this bank
             </p>
           )}
-          {selectedClientId && selectedClientBanks.length === 0 && (
-            <p className="text-xs text-amber-500 mt-0.5">
-              No banks found for this client
+          {selectedClientId && !selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select a bank to auto-fill the account number (if client has this bank)
             </p>
           )}
         </div>
@@ -396,9 +426,14 @@ export default function RequestLetterForm({
             <option value="Loan Account">Loan Account</option>
             <option value="Credit Card Number">Credit Card Number</option>
           </select>
-          {selectedBank && (
+          {selectedBank && formData.number && (
             <p className="text-xs text-green-500 mt-0.5">
               Auto-determined from bank type (editable)
+            </p>
+          )}
+          {selectedBank && !formData.number && selectedClientId && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Please select account type manually
             </p>
           )}
         </div>
@@ -433,11 +468,16 @@ export default function RequestLetterForm({
             onChange={handleChange}
             required
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder={selectedBank ? "Account number will be auto-filled" : "Select a bank to auto-fill account number"}
+            placeholder={selectedBank ? "Account number will be auto-filled if client has this bank" : "Select a bank to auto-fill account number"}
           />
-          {selectedBank && (
+          {selectedBank && formData.number && (
             <p className="text-xs text-green-500 mt-0.5">
-              Auto-filled from selected bank (editable)
+              Auto-filled from client's bank data (editable)
+            </p>
+          )}
+          {selectedBank && !formData.number && selectedClientId && (
+            <p className="text-xs text-amber-500 mt-0.5">
+              Client doesn't have an account with this bank - please enter manually
             </p>
           )}
           {selectedClientId && !selectedBank && (

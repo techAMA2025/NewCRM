@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 interface Option {
   value: string;
   label: string;
+  className?: string;
 }
 
 interface SearchableDropdownProps {
@@ -157,13 +158,17 @@ export default function SearchableDropdown({
             filteredOptions.map((option, index) => (
               <div
                 key={option.value}
-                className={`px-3 py-2 cursor-pointer text-sm ${
-                  index === highlightedIndex
-                    ? "bg-purple-600 text-white"
-                    : "text-gray-300 hover:bg-gray-700"
-                } ${option.value === value ? "bg-purple-700 text-white" : ""}`}
-                onClick={() => handleSelect(option.value)}
-                onMouseEnter={() => setHighlightedIndex(index)}
+                className={`px-3 py-2 text-sm ${
+                  option.value === "separator" 
+                    ? "cursor-default text-gray-500 text-xs font-semibold border-t border-gray-600"
+                    : `cursor-pointer ${
+                        index === highlightedIndex
+                          ? "bg-purple-600 text-white"
+                          : "text-gray-300 hover:bg-gray-700"
+                      } ${option.value === value ? "bg-purple-700 text-white" : ""}`
+                } ${option.className || ""}`}
+                onClick={() => option.value !== "separator" && handleSelect(option.value)}
+                onMouseEnter={() => option.value !== "separator" && setHighlightedIndex(index)}
               >
                 {option.label}
               </div>
