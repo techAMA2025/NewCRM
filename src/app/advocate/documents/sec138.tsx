@@ -70,16 +70,17 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<FirestoreClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedBank, setSelectedBank] = useState("");
+  const [selectedClientBanks, setSelectedClientBanks] = useState<Bank[]>([]);
   const [formData, setFormData] = useState({
     name: client.name || "",
     referenceNumber: "",
     lawyerEmail: "", // Default lawyer email
-    selectedBank: "",
+    bankName: "",
     bankEmail: "",
     bankAddress: "", // Add bank address field
     date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
   });
-
 
   // Fetch clients when component mounts
   useEffect(() => {
@@ -107,32 +108,132 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clientId = e.target.value;
     setSelectedClientId(clientId);
+    setSelectedBank(""); // Reset bank selection when client changes
+    setSelectedClientBanks([]); // Reset client banks
 
-    if (!clientId) return;
+    if (!clientId) {
+      // Reset form data when no client is selected
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        name: "",
+        referenceNumber: "",
+        bankName: "",
+        bankEmail: "",
+        bankAddress: "",
+      }));
+      return;
+    }
 
     const selectedClient = clients.find((c) => c.id === clientId);
 
     if (selectedClient) {
+      // Set the client's banks
+      setSelectedClientBanks(selectedClient.banks || []);
+      
       setFormData((prevFormData) => ({
         ...prevFormData,
         name: selectedClient.name || "",
+        referenceNumber: "",
+        bankName: "",
+        bankEmail: "",
+        bankAddress: "",
       }));
     }
   };
 
   const handleBankSelect = (value: string) => {
-    if (value && bankData[value]) {
-      const selectedBankData = bankData[value];
-      if (selectedBankData) {
+    // Ignore separator selections
+    if (value === "separator") return;
+    
+    setSelectedBank(value);
+    
+    if (!value) return;
+
+    // Check if this is a client bank selection (contains pipe separator)
+    if (value.includes('|')) {
+      // Client bank selection - extract bank name and account number
+      const [bankName, accountNumber] = value.split('|');
+      
+      // Get bank details from bankData
+      const bankDetails = bankData[bankName];
+      
+      if (bankDetails) {
         setFormData(prev => ({
           ...prev,
-          selectedBank: value,
+          bankName: bankName,
+          bankEmail: bankDetails.email || "",
+          bankAddress: bankDetails.address || "",
+          referenceNumber: accountNumber,
+        }));
+      }
+    } else {
+      // Other bank selection - no account number to auto-fill
+      const bankDetails = bankData[value];
+      
+      if (bankDetails) {
+        setFormData(prev => ({
+          ...prev,
           bankName: value,
-          bankEmail: selectedBankData.email,
-          bankAddress: selectedBankData.address,
+          bankEmail: bankDetails.email || "",
+          bankAddress: bankDetails.address || "",
+          referenceNumber: "",
         }));
       }
     }
+  };
+
+  // Function to prepare bank options with client banks first and visual indicators
+  const getBankOptions = () => {
+    const allBanks = Object.keys(bankData);
+    const clientBankNames = selectedClientBanks.map(bank => bank.bankName);
+    
+    // Separate banks into client banks and other banks
+    const clientBanks = allBanks.filter(bank => clientBankNames.includes(bank));
+    const otherBanks = allBanks.filter(bank => !clientBankNames.includes(bank));
+    
+    // Create options with visual indicators for client banks
+    // Handle multiple accounts from same bank
+    const clientBankOptions: any[] = [];
+    
+    clientBanks.forEach(bankName => {
+      // Find all accounts for this bank
+      const bankAccounts = selectedClientBanks.filter(bank => bank.bankName === bankName);
+      
+      if (bankAccounts.length === 1) {
+        // Single account - show bank name with account number
+        const account = bankAccounts[0];
+        clientBankOptions.push({
+          value: `${bankName}|${account.accountNumber}`,
+          label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'})`,
+          className: "text-green-400 font-medium"
+        });
+      } else {
+        // Multiple accounts - show each account separately
+        bankAccounts.forEach((account, index) => {
+          clientBankOptions.push({
+            value: `${bankName}|${account.accountNumber}`,
+            label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'} #${index + 1})`,
+            className: "text-green-400 font-medium"
+          });
+        });
+      }
+    });
+    
+    const otherBankOptions = otherBanks.map(bankName => ({
+      value: bankName,
+      label: bankName,
+      className: ""
+    }));
+    
+    // Add separator if there are both client banks and other banks
+    const separator = clientBankOptions.length > 0 && otherBankOptions.length > 0 ? [{
+      value: "separator",
+      label: "────────── Other Banks ──────────",
+      className: "text-gray-500 text-xs font-semibold cursor-default"
+    }] : [];
+    
+    // Return client banks first, then separator, then other banks
+    return [...clientBankOptions, ...separator, ...otherBankOptions];
   };
 
   const handleChange = (
@@ -249,9 +350,24 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
             value={formData.referenceNumber}
             onChange={handleChange}
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            placeholder={selectedBank && selectedBank.includes('|') ? "Account number auto-filled from selected account" : "Select a client account or enter manually"}
             required
-            placeholder="Enter reference number"
           />
+          {selectedBank && selectedBank.includes('|') && formData.referenceNumber && (
+            <p className="text-xs text-green-500 mt-0.5">
+              ✅ Auto-filled from selected client account (editable)
+            </p>
+          )}
+          {selectedBank && !selectedBank.includes('|') && selectedClientId && (
+            <p className="text-xs text-amber-500 mt-0.5">
+              Other bank selected - please enter account number manually
+            </p>
+          )}
+          {selectedClientId && !selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select a client account to auto-fill the account number
+            </p>
+          )}
         </div>
 
         {/* Bank Selection */}
@@ -260,17 +376,29 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
             Select Bank
           </label>
           <SearchableDropdown
-            options={Object.keys(bankData).map(bank => ({
-              value: bank,
-              label: bank
-            }))}
-            value={formData.selectedBank}
+            options={getBankOptions()}
+            value={selectedBank}
             onChange={handleBankSelect}
             placeholder="Select a bank..."
             isLoading={isLoadingBanks}
             loadingText="Loading banks..."
             disabled={isLoadingBanks}
           />
+          {selectedClientId && selectedBank && selectedBank.includes('|') && (
+            <p className="text-xs text-green-500 mt-0.5">
+              ✅ Client account selected - account number auto-filled
+            </p>
+          )}
+          {selectedClientId && selectedBank && !selectedBank.includes('|') && (
+            <p className="text-xs text-amber-500 mt-0.5">
+              Other bank selected - please enter account number manually
+            </p>
+          )}
+          {selectedClientId && !selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Banks with ✅ show client's accounts with account numbers
+            </p>
+          )}
         </div>
 
         {/* Date */}

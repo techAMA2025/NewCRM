@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/firebase/firebase";
+import { useBankDataSimple } from "@/components/BankDataProvider";
+import SearchableDropdown from "@/components/SearchableDropdown";
 
 interface Bank {
   id: string;
@@ -26,8 +30,44 @@ interface Client {
   [key: string]: any; // For other potential properties
 }
 
+// Client interface from Firestore
+interface FirestoreClient {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  alloc_adv: string;
+  status: string;
+  personalLoanDues: string;
+  creditCardDues: string;
+  banks: Bank[];
+  monthlyIncome?: string;
+  monthlyFees?: string;
+  occupation?: string;
+  startDate?: string;
+  tenure?: string;
+  remarks?: string;
+  salesNotes?: string;
+  queries?: string;
+  alloc_adv_at?: any;
+  convertedAt?: any;
+  adv_status?: string;
+  panNumber?: string;
+  aadharNumber?: string;
+  dob?: string;
+  documentUrl?: string;
+  documentName?: string;
+  documentUploadedAt?: any;
+}
+
 export default function ComplaintForHarassmentForm({ client, onClose }: { client: Client, onClose: () => void }) {
+  const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<FirestoreClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedBank, setSelectedBank] = useState("");
+  const [selectedClientBanks, setSelectedClientBanks] = useState<Bank[]>([]);
   const [formData, setFormData] = useState({
     bankName: "",
     agentName: "",
@@ -39,18 +79,152 @@ export default function ComplaintForHarassmentForm({ client, onClose }: { client
     email: client.email || "",
     loanNumber: ""
   });
-  
-  // If client has banks, set the first bank as default
+
+  // Fetch clients when component mounts
   useEffect(() => {
-    if (client.banks && client.banks.length > 0) {
-      const firstBank = client.banks[0];
-      setFormData(prev => ({
-        ...prev,
-        bankName: firstBank.bankName || "",
-        loanNumber: firstBank.accountNumber || ""
+    const fetchClients = async () => {
+      try {
+        const clientsCollection = collection(db, "clients");
+        const clientSnapshot = await getDocs(clientsCollection);
+        const clientsList: FirestoreClient[] = [];
+
+        clientSnapshot.forEach((doc) => {
+          const data = doc.data() as Omit<FirestoreClient, "id">;
+          clientsList.push({ id: doc.id, ...data });
+        });
+
+        setClients(clientsList);
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+        toast.error("Failed to load clients");
+      }
+    };
+
+    fetchClients();
+  }, []);
+
+  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const clientId = e.target.value;
+    setSelectedClientId(clientId);
+    setSelectedBank(""); // Reset bank selection when client changes
+    setSelectedClientBanks([]); // Reset client banks
+
+    if (!clientId) {
+      // Reset form data when no client is selected
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        clientName: "",
+        email: "",
+        bankName: "",
+        loanNumber: "",
+      }));
+      return;
+    }
+
+    const selectedClient = clients.find((c) => c.id === clientId);
+
+    if (selectedClient) {
+      // Set the client's banks
+      setSelectedClientBanks(selectedClient.banks || []);
+      
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        clientName: selectedClient.name || "",
+        email: selectedClient.email || "",
+        bankName: "",
+        loanNumber: "",
       }));
     }
-  }, [client]);
+  };
+
+  const handleBankSelect = (value: string) => {
+    // Ignore separator selections
+    if (value === "separator") return;
+    
+    setSelectedBank(value);
+    
+    if (!value) return;
+
+    // Check if this is a client bank selection (contains pipe separator)
+    if (value.includes('|')) {
+      // Client bank selection - extract bank name and account number
+      const [bankName, accountNumber] = value.split('|');
+      
+      setFormData(prev => ({
+        ...prev,
+        bankName: bankName,
+        loanNumber: accountNumber,
+      }));
+    } else {
+      // Other bank selection - no account number to auto-fill
+      setFormData(prev => ({
+        ...prev,
+        bankName: value,
+        loanNumber: "",
+      }));
+    }
+  };
+
+  // Function to prepare bank options with client banks first and visual indicators
+  const getBankOptions = () => {
+    const allBanks = Object.keys(bankData);
+    const clientBankNames = selectedClientBanks.map(bank => bank.bankName);
+    
+    console.log('CFHAB Debug:', {
+      allBanks,
+      selectedClientBanks,
+      clientBankNames,
+      bankDataKeys: Object.keys(bankData)
+    });
+    
+    // Separate banks into client banks and other banks
+    const clientBanks = allBanks.filter(bank => clientBankNames.includes(bank));
+    const otherBanks = allBanks.filter(bank => !clientBankNames.includes(bank));
+    
+    // Create options with visual indicators for client banks
+    // Handle multiple accounts from same bank
+    const clientBankOptions: any[] = [];
+    
+    clientBanks.forEach(bankName => {
+      // Find all accounts for this bank
+      const bankAccounts = selectedClientBanks.filter(bank => bank.bankName === bankName);
+      
+      if (bankAccounts.length === 1) {
+        // Single account - show bank name with account number
+        const account = bankAccounts[0];
+        clientBankOptions.push({
+          value: `${bankName}|${account.accountNumber}`,
+          label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'})`,
+          className: "text-green-400 font-medium"
+        });
+      } else {
+        // Multiple accounts - show each account separately
+        bankAccounts.forEach((account, index) => {
+          clientBankOptions.push({
+            value: `${bankName}|${account.accountNumber}`,
+            label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'} #${index + 1})`,
+            className: "text-green-400 font-medium"
+          });
+        });
+      }
+    });
+    
+    const otherBankOptions = otherBanks.map(bankName => ({
+      value: bankName,
+      label: bankName,
+      className: ""
+    }));
+    
+    // Add separator if there are both client banks and other banks
+    const separator = clientBankOptions.length > 0 && otherBankOptions.length > 0 ? [{
+      value: "separator",
+      label: "────────── Other Banks ──────────",
+      className: "text-gray-500 text-xs font-semibold cursor-default"
+    }] : [];
+    
+    // Return client banks first, then separator, then other banks
+    return [...clientBankOptions, ...separator, ...otherBankOptions];
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -58,19 +232,6 @@ export default function ComplaintForHarassmentForm({ client, onClose }: { client
       ...prev,
       [name]: value
     }));
-  };
-
-  const handleBankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedBankId = e.target.value;
-    const selectedBank = client.banks.find(bank => bank.id === selectedBankId);
-    
-    if (selectedBank) {
-      setFormData(prev => ({
-        ...prev,
-        bankName: selectedBank.bankName || "",
-        loanNumber: selectedBank.accountNumber || ""
-      }));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,34 +287,51 @@ export default function ComplaintForHarassmentForm({ client, onClose }: { client
     <div className="bg-gray-800/50 rounded-lg p-4">
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
+          {/* Client Selection */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Select Client <span className="text-red-500">*</span>
+            </label>
+            <SearchableDropdown
+              options={clients.map(client => ({
+                value: client.id,
+                label: `${client.name} - ${client.phone}`
+              }))}
+              value={selectedClientId}
+              onChange={(value) => handleClientChange({ target: { value } } as React.ChangeEvent<HTMLSelectElement>)}
+              placeholder="Select a client..."
+              isLoading={false}
+            />
+          </div>
+
           {/* Bank Selection */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300">
               Select Bank <span className="text-red-500">*</span>
             </label>
-            {client.banks && client.banks.length > 0 ? (
-              <select
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
-                onChange={handleBankChange}
-                defaultValue=""
-              >
-                <option value="" disabled>Select a bank</option>
-                {client.banks.map(bank => (
-                  <option key={bank.id} value={bank.id}>
-                    {bank.bankName} - {bank.accountNumber} ({bank.loanType})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                name="bankName"
-                value={formData.bankName}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
-                placeholder="Enter bank name"
-                required
-              />
+            <SearchableDropdown
+              options={getBankOptions()}
+              value={selectedBank}
+              onChange={handleBankSelect}
+              placeholder="Select a bank..."
+              isLoading={isLoadingBanks}
+              loadingText="Loading banks..."
+              disabled={isLoadingBanks}
+            />
+            {selectedClientId && selectedBank && selectedBank.includes('|') && (
+              <p className="text-xs text-green-500 mt-0.5">
+                ✅ Client account selected - account number auto-filled
+              </p>
+            )}
+            {selectedClientId && selectedBank && !selectedBank.includes('|') && (
+              <p className="text-xs text-amber-500 mt-0.5">
+                Other bank selected - please enter account number manually
+              </p>
+            )}
+            {selectedClientId && !selectedBank && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                Banks with ✅ show client's accounts with account numbers
+              </p>
             )}
           </div>
           
@@ -286,9 +464,24 @@ export default function ComplaintForHarassmentForm({ client, onClose }: { client
               value={formData.loanNumber}
               onChange={handleInputChange}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-purple-500 focus:border-purple-500"
-              placeholder="Enter loan or credit card number"
+              placeholder={selectedBank && selectedBank.includes('|') ? "Account number auto-filled from selected account" : "Select a client account or enter manually"}
               required
             />
+            {selectedBank && selectedBank.includes('|') && formData.loanNumber && (
+              <p className="text-xs text-green-500 mt-0.5">
+                ✅ Auto-filled from selected client account (editable)
+              </p>
+            )}
+            {selectedBank && !selectedBank.includes('|') && selectedClientId && (
+              <p className="text-xs text-amber-500 mt-0.5">
+                Other bank selected - please enter account number manually
+              </p>
+            )}
+            {selectedClientId && !selectedBank && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                Select a client account to auto-fill the account number
+              </p>
+            )}
           </div>
           
           {/* Actions */}
