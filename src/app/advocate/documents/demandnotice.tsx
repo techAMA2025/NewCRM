@@ -50,9 +50,12 @@ interface DemandNoticeFormProps {
 }
 
 export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
+  const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<FirestoreClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedBank, setSelectedBank] = useState("");
+  const [selectedClientBanks, setSelectedClientBanks] = useState<Bank[]>([]);
   const [formData, setFormData] = useState({
     name2: "",
     email: "",
@@ -61,9 +64,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     bankEmail: "",
     reference: "",
     date: new Date().toISOString().split('T')[0],
-    selectedBank: "",
   });
-  const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   
   // Fetch clients when component mounts
   useEffect(() => {
@@ -88,24 +89,156 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     fetchClients();
   }, []);
 
-
-
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clientId = e.target.value;
     setSelectedClientId(clientId);
+    setSelectedBank(""); // Reset bank selection when client changes
+    setSelectedClientBanks([]); // Reset client banks
     
-    if (!clientId) return;
+    if (!clientId) {
+      // Reset form data when no client is selected
+      setFormData(prevFormData => ({
+        ...prevFormData,
+        name2: "",
+        email: "",
+        bankName: "",
+        bankAddress: "",
+        bankEmail: "",
+        reference: "",
+      }));
+      return;
+    }
     
     const selectedClient = clients.find(c => c.id === clientId);
     
     if (selectedClient) {
+      // Set the client's banks
+      setSelectedClientBanks(selectedClient.banks || []);
+      
       // Update form with selected client's data
       setFormData(prevFormData => ({
         ...prevFormData,
         name2: selectedClient.name || "",
         email: selectedClient.email || "",
+        bankName: "",
+        bankAddress: "",
+        bankEmail: "",
+        reference: "",
       }));
     }
+  };
+
+  const handleBankSelect = (value: string) => {
+    // Ignore separator selections
+    if (value === "separator") return;
+    
+    setSelectedBank(value);
+    
+    if (!value) return;
+
+    // Check if this is a client bank selection (contains pipe separator)
+    if (value.includes('|')) {
+      // Client bank selection - extract bank name and account number
+      const [bankName, accountNumber] = value.split('|');
+      
+      // Get bank details from bankData
+      const bankDetails = bankData[bankName];
+      
+      if (bankDetails) {
+        setFormData(prev => ({
+          ...prev,
+          bankName: bankName,
+          bankAddress: bankDetails.address || "",
+          bankEmail: bankDetails.email || "",
+          reference: accountNumber,
+        }));
+      }
+    } else {
+      // Other bank selection - no account number to auto-fill
+      const bankDetails = bankData[value];
+      
+      if (bankDetails) {
+        setFormData(prev => ({
+          ...prev,
+          bankName: value,
+          bankAddress: bankDetails.address || "",
+          bankEmail: bankDetails.email || "",
+          reference: "",
+        }));
+      }
+    }
+  };
+
+  // Function to prepare bank options with client banks first and visual indicators
+  const getBankOptions = () => {
+    const allBanks = Object.keys(bankData);
+    const clientBankNames = selectedClientBanks.map(bank => bank.bankName);
+    
+    console.log('Demand Notice Debug:', {
+      allBanks,
+      selectedClientBanks,
+      clientBankNames,
+      bankDataKeys: Object.keys(bankData),
+      selectedClientId,
+      hasClientBanks: selectedClientBanks.length > 0
+    });
+    
+    // If no client is selected, return all banks
+    if (!selectedClientId || selectedClientBanks.length === 0) {
+      return allBanks.map(bankName => ({
+        value: bankName,
+        label: bankName,
+        className: ""
+      }));
+    }
+    
+    // Separate banks into client banks and other banks
+    const clientBanks = allBanks.filter(bank => clientBankNames.includes(bank));
+    const otherBanks = allBanks.filter(bank => !clientBankNames.includes(bank));
+    
+    // Create options with visual indicators for client banks
+    // Handle multiple accounts from same bank
+    const clientBankOptions: any[] = [];
+    
+    clientBanks.forEach(bankName => {
+      // Find all accounts for this bank
+      const bankAccounts = selectedClientBanks.filter(bank => bank.bankName === bankName);
+      
+      if (bankAccounts.length === 1) {
+        // Single account - show bank name with account number
+        const account = bankAccounts[0];
+        clientBankOptions.push({
+          value: `${bankName}|${account.accountNumber}`,
+          label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'})`,
+          className: "text-green-400 font-medium"
+        });
+      } else {
+        // Multiple accounts - show each account separately
+        bankAccounts.forEach((account, index) => {
+          clientBankOptions.push({
+            value: `${bankName}|${account.accountNumber}`,
+            label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'} #${index + 1})`,
+            className: "text-green-400 font-medium"
+          });
+        });
+      }
+    });
+    
+    const otherBankOptions = otherBanks.map(bankName => ({
+      value: bankName,
+      label: bankName,
+      className: ""
+    }));
+    
+    // Add separator if there are both client banks and other banks
+    const separator = clientBankOptions.length > 0 && otherBankOptions.length > 0 ? [{
+      value: "separator",
+      label: "────────── Other Banks ──────────",
+      className: "text-gray-500 text-xs font-semibold cursor-default"
+    }] : [];
+    
+    // Return client banks first, then separator, then other banks
+    return [...clientBankOptions, ...separator, ...otherBankOptions];
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -115,21 +248,6 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
       ...formData,
       [name]: value
     });
-  };
-
-  const handleBankSelect = (value: string) => {
-    if (value && bankData[value]) {
-      const selectedBankData = bankData[value];
-      if (selectedBankData) {
-        setFormData(prev => ({
-          ...prev,
-          selectedBank: value,
-          bankName: value,
-          bankAddress: selectedBankData.address,
-          bankEmail: selectedBankData.email
-        }));
-      }
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -190,7 +308,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Client Selector Dropdown - spans full width */}
+        {/* Client Selector Dropdown */}
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-400 mb-1">Select Client</label>
           <SearchableDropdown
@@ -243,17 +361,34 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-400 mb-1">Select Bank</label>
           <SearchableDropdown
-            options={Object.keys(bankData).map(bank => ({
-              value: bank,
-              label: bank
-            }))}
-            value={formData.selectedBank}
+            options={getBankOptions()}
+            value={selectedBank}
             onChange={handleBankSelect}
-            placeholder="Select a bank..."
+            placeholder={selectedClientId ? "Select a bank..." : "Please select a client first"}
             isLoading={isLoadingBanks}
             loadingText="Loading banks..."
-            disabled={isLoadingBanks}
+            disabled={isLoadingBanks || !selectedClientId}
           />
+          {selectedClientId && selectedBank && selectedBank.includes('|') && (
+            <p className="text-xs text-green-500 mt-0.5">
+              ✅ Client account selected - account number auto-filled
+            </p>
+          )}
+          {selectedClientId && selectedBank && !selectedBank.includes('|') && (
+            <p className="text-xs text-amber-500 mt-0.5">
+              Other bank selected - please enter account number manually
+            </p>
+          )}
+          {selectedClientId && !selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Banks with ✅ show client's accounts with account numbers
+            </p>
+          )}
+          {!selectedClientId && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select a client to see their banks
+            </p>
+          )}
         </div>
 
         {/* Bank Name - Editable field that gets auto-populated */}
@@ -268,7 +403,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Enter bank name"
           />
-          {formData.selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from selection (editable)</p>}
+          {selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from selection (editable)</p>}
         </div>
 
         {/* Reference Number */}
@@ -281,8 +416,23 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             onChange={handleChange}
             required
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
-            placeholder="Enter reference number"
+            placeholder={selectedBank && selectedBank.includes('|') ? "Account number auto-filled from selected account" : "Select a client account or enter manually"}
           />
+          {selectedBank && selectedBank.includes('|') && formData.reference && (
+            <p className="text-xs text-green-500 mt-0.5">
+              ✅ Auto-filled from selected client account (editable)
+            </p>
+          )}
+          {selectedBank && !selectedBank.includes('|') && selectedClientId && (
+            <p className="text-xs text-amber-500 mt-0.5">
+              Other bank selected - please enter account number manually
+            </p>
+          )}
+          {selectedClientId && !selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select a client account to auto-fill the account number
+            </p>
+          )}
         </div>
 
         {/* Date */}
@@ -310,7 +460,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Enter bank address"
           />
-          {formData.selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from selection (editable)</p>}
+          {selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from selection (editable)</p>}
         </div>
 
         {/* Bank Email - spans full width */}
@@ -325,7 +475,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
             placeholder="Enter bank email (use commas to separate multiple emails)"
           />
-          {formData.selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from selection (editable)</p>}
+          {selectedBank && <p className="text-xs text-gray-500 mt-0.5">Auto-filled from selection (editable)</p>}
         </div>
       </div>
 
