@@ -21,7 +21,6 @@ interface OpsPayment {
   amount: string;
   source: string;
   type: string;
-  miscellaneousDetails?: string;
   submittedBy: string;
   timestamp: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -36,7 +35,6 @@ export default function OpsPaymentsRequestPage() {
     amount: '',
     source: '',
     type: '',
-    miscellaneousDetails: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,7 +108,6 @@ export default function OpsPaymentsRequestPage() {
         amount: formData.amount,
         source: formData.source,
         type: formData.type,
-        miscellaneousDetails: formData.miscellaneousDetails || '',
         submittedBy,
         timestamp: new Date().toISOString()
       };
@@ -134,7 +131,6 @@ export default function OpsPaymentsRequestPage() {
           amount: '',
           source: '',
           type: '',
-          miscellaneousDetails: '',
         });
       }, 3000);
     } catch (error) {
@@ -412,31 +408,10 @@ export default function OpsPaymentsRequestPage() {
                       <option value="Client visit">Client visit</option>
                       <option value="Arbitration">Arbitration</option>
                       <option value="Fees">Fees</option>
-                      <option value="Miscellaneous">Miscellaneous</option>
+                      <option value="Success Fees">Success Fees</option>
                     </select>
                   </motion.div>
                   
-                  {formData.type === 'Miscellaneous' && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-2 md:col-span-2"
-                    >
-                      <label htmlFor="miscellaneousDetails" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                        Miscellaneous Details
-                      </label>
-                      <textarea
-                        id="miscellaneousDetails"
-                        name="miscellaneousDetails"
-                        value={formData.miscellaneousDetails}
-                        onChange={handleChange}
-                        rows={3}
-                        className="bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full p-3 transition-all duration-200 resize-none"
-                        placeholder="Please provide details about the miscellaneous payment..."
-                      />
-                    </motion.div>
-                  )}
                 </div>
                 
                 <div className="pt-6">
