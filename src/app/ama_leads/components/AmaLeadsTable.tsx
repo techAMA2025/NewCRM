@@ -383,20 +383,34 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
               >
                 <option value="">Select Salesperson</option>
-                {(userRole === "admin" || userRole === "overlord"
-                  ? salesTeamMembers.filter((member) => member.role === "salesperson" || member.role === "sales")
-                  : salesTeamMembers.filter(
-                      (member) =>
-                        typeof window !== "undefined" &&
-                        member.name === localStorage.getItem("userName") &&
-                        (member.role === "salesperson" || member.role === "sales")
-                    )
-                ).map((member) => (
-                  <option key={member.id} value={member.name}>
-                    {member.name}
-                    {(userRole === "sales" || userRole === "salesperson") ? " (Me)" : ""}
-                  </option>
-                ))}
+                {(() => {
+                  // Get userRole from localStorage
+                  const loggedInUserRole = typeof window !== "undefined" ? localStorage.getItem("userRole") : "";
+                  const loggedInUserName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
+                  
+                  if (loggedInUserRole === "admin" || loggedInUserRole === "overlord") {
+                    // Admin/overlord can assign to any user with "sales" role only
+                    return salesTeamMembers
+                      .filter((member) => member.role === "sales")
+                      .map((member) => (
+                        <option key={member.id} value={member.name}>
+                          {member.name}
+                        </option>
+                      ));
+                  } else if (loggedInUserRole === "sales") {
+                    // Sales users can only assign to themselves
+                    return salesTeamMembers
+                      .filter((member) => member.name === loggedInUserName && member.role === "sales")
+                      .map((member) => (
+                        <option key={member.id} value={member.name}>
+                          {member.name} (Me)
+                        </option>
+                      ));
+                  } else {
+                    // No valid role, show no options
+                    return [];
+                  }
+                })()}
               </select>
             </div>
             <div className="flex gap-3">

@@ -20,7 +20,7 @@ import { toast } from "react-toastify";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { db as crmDb, auth } from "@/firebase/firebase";
 
-// Shared components from sales/leads for consistent design
+
 import LeadsHeader from "./components/AmaLeadsHeader";
 import LeadsFilters from "./components/AmaLeadsFilters";
 // Keep our AMA-specific table for now
@@ -159,7 +159,7 @@ const AmaLeadsPage = () => {
       // Salesperson filter
       if (salesPersonFilter !== "all") {
         if (salesPersonFilter === "") {
-          constraints.push(where("assignedTo", "in", ["", null, "-"] as any));
+          constraints.push(where("assignedTo", "in", ["", null, "-", "–"] as any));
         } else {
           constraints.push(where("assignedTo", "==", salesPersonFilter));
         }
@@ -358,7 +358,7 @@ const AmaLeadsPage = () => {
     // Salesperson filter
     if (salesPersonFilter !== 'all') {
       if (salesPersonFilter === '') {
-        result = result.filter(lead => !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-');
+        result = result.filter(lead => !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-' || lead.assignedTo === '–');
       } else {
         result = result.filter(lead => lead.assignedTo === salesPersonFilter);
       }
@@ -487,13 +487,13 @@ const AmaLeadsPage = () => {
       } as any);
 
       await updateDoc(leadRef, {
-        assigned_to: '',
-        assignedTo: '',
+        assigned_to: '-',
+        assignedTo: '-',
         assignedToId: '',
         lastModified: serverTimestamp()
       } as any);
 
-      const updateFn = (arr: any[]) => arr.map((l) => l.id === leadId ? { ...l, assignedTo: '', assignedToId: '', lastModified: new Date() } : l);
+      const updateFn = (arr: any[]) => arr.map((l) => l.id === leadId ? { ...l, assignedTo: '-', assignedToId: '', lastModified: new Date() } : l);
       setLeads(updateFn);
       setFilteredLeads(updateFn);
 
@@ -617,6 +617,7 @@ const AmaLeadsPage = () => {
         return lead?.assignedTo && 
                lead.assignedTo !== '' && 
                lead.assignedTo !== '-' && 
+               lead.assignedTo !== '–' &&
                lead.assignedTo !== currentUserName;
       });
 
