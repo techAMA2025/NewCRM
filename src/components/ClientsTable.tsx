@@ -317,7 +317,7 @@ export default function ClientsTable({
                         <FileText className="h-2.5 w-2.5" />
                       </Button>
                     )}
-                    {userRole !== 'billcut' && userRole !== 'assistant' && (
+                    {userRole !== 'billcut' && (
                       <>
                         <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onEditClient(client)}>
                           <Edit className="h-2.5 w-2.5" />
