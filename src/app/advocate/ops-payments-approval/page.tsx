@@ -303,9 +303,11 @@ export default function OpsPaymentsApprovalPage() {
     });
   }, [opsPaymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter, typeFilter, submittedByFilter]);
 
-  // Calculate total amount for filtered requests
+  // Calculate total amount for filtered requests (excluding rejected)
   const totalAmount = useMemo(() => {
-    return filteredRequests.reduce((total, request) => total + Number(request.amount), 0);
+    return filteredRequests
+      .filter(request => request.status !== 'rejected')
+      .reduce((total, request) => total + Number(request.amount), 0);
   }, [filteredRequests]);
 
   const pendingRequests = filteredRequests

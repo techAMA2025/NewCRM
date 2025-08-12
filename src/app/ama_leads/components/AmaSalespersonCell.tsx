@@ -98,7 +98,7 @@ const AmaSalespersonCell = ({
     
     if (userRole === 'sales' || userRole === 'salesperson') {
       // Sales can only assign to themselves if unassigned, or unassign if assigned to them
-      const isUnassigned = !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-';
+      const isUnassigned = !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-' || lead.assignedTo === '–';
       return isUnassigned || lead.assignedTo === currentUserName;
     }
     
@@ -113,7 +113,7 @@ const AmaSalespersonCell = ({
     
     if (userRole === 'sales' || userRole === 'salesperson') {
       // Sales can only unassign if lead is assigned to them
-      return lead.assignedTo && lead.assignedTo !== '' && lead.assignedTo !== '-' && lead.assignedTo === currentUserName;
+      return lead.assignedTo && lead.assignedTo !== '' && lead.assignedTo !== '-' && lead.assignedTo !== '–' && lead.assignedTo === currentUserName;
     }
     
     return false;
@@ -147,10 +147,17 @@ const AmaSalespersonCell = ({
   const badgeColorClass = getSalespersonBadgeColor(lead.assignedTo);
   const assignmentOptions = getAssignmentOptions();
 
+  // Explicitly check if lead is assigned (not empty, not null, not "-", not "–")
+  const isAssigned = lead.assignedTo && 
+                     lead.assignedTo !== '' && 
+                     lead.assignedTo !== '-' && 
+                     lead.assignedTo !== '–' &&
+                     lead.assignedTo.trim() !== '';
+
   return (
     <td className="px-4 py-3 text-sm">
       <div className="flex flex-col space-y-2">
-        {lead.assignedTo && lead.assignedTo !== '' && lead.assignedTo !== '-' ? (
+        {isAssigned ? (
           <div className="flex items-center">
             <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full border shadow-sm font-medium text-xs text-center ${badgeColorClass}`}>
               {getInitials(lead.assignedTo)}
@@ -176,7 +183,7 @@ const AmaSalespersonCell = ({
                     clipRule="evenodd"
                   />
                 </svg>
-              </button>
+                </button>
             )}
           </div>
         ) : (
@@ -191,9 +198,9 @@ const AmaSalespersonCell = ({
             <select
               className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               value={assignmentOptions.find(member => 
-                member.name === lead.assignedTo && lead.assignedTo !== '' && lead.assignedTo !== '-'
+                member.name === lead.assignedTo && isAssigned
               ) ? `${assignmentOptions.find(member => 
-                member.name === lead.assignedTo && lead.assignedTo !== '' && lead.assignedTo !== '-'
+                member.name === lead.assignedTo && isAssigned
               ).id}|${lead.assignedTo}` : ""}
               onChange={(e) => {
                 if (e.target.value) {
@@ -219,7 +226,7 @@ const AmaSalespersonCell = ({
         )}
 
         {/* Show message if user cannot modify assignment */}
-        {!canModifyAssignment() && lead.assignedTo && lead.assignedTo !== '' && lead.assignedTo !== '-' && lead.assignedTo !== currentUserName && (
+        {!canModifyAssignment() && isAssigned && lead.assignedTo !== currentUserName && (
           <div className="text-xs text-gray-500 italic">
             Assigned to another user
           </div>
