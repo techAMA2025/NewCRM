@@ -91,13 +91,13 @@ const AmaSalespersonCell = ({
   }, [crmDb]);
 
   // Determine if user can modify assignment
-  const canModifyAssignment = () => {
+  const canModifyAssignment = (lead: any) => {
     if (userRole === 'admin' || userRole === 'overlord') {
       return true; // Admin/overlord can always modify
     }
     
     if (userRole === 'sales' || userRole === 'salesperson') {
-      // Sales can only assign to themselves if unassigned, or unassign if assigned to them
+      // Sales can only modify unassigned leads or leads assigned to them
       const isUnassigned = !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-' || lead.assignedTo === '–';
       return isUnassigned || lead.assignedTo === currentUserName;
     }
@@ -105,8 +105,23 @@ const AmaSalespersonCell = ({
     return false;
   };
 
+  // Determine if we should show the assignment dropdown
+  const shouldShowDropdown = (lead: any) => {
+    if (userRole === 'admin' || userRole === 'overlord') {
+      return true; // Admin/overlord always see the dropdown
+    }
+    
+    if (userRole === 'sales' || userRole === 'salesperson') {
+      // Salesperson only sees dropdown for unassigned leads
+      const isUnassigned = !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-' || lead.assignedTo === '–';
+      return isUnassigned;
+    }
+    
+    return false;
+  };
+
   // Determine if user can unassign
-  const canUnassign = () => {
+  const canUnassign = (lead: any) => {
     if (userRole === 'admin' || userRole === 'overlord') {
       return true; // Admin/overlord can always unassign
     }
@@ -120,7 +135,7 @@ const AmaSalespersonCell = ({
   };
 
   // Get available options for assignment
-  const getAssignmentOptions = () => {
+  const getAssignmentOptions = (lead: any) => {
     if (userRole === 'admin' || userRole === 'overlord') {
       // Admin/overlord can assign to anyone with sales role
       return salesTeamMembers.filter(member => 
@@ -139,36 +154,50 @@ const AmaSalespersonCell = ({
   };
 
   const handleUnassign = async () => {
-    if (unassignLead && canUnassign()) {
+    if (unassignLead && canUnassign(lead)) {
       await unassignLead(lead.id);
     }
   };
 
-  const badgeColorClass = getSalespersonBadgeColor(lead.assignedTo);
-  const assignmentOptions = getAssignmentOptions();
+  const handleAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (e.target.value) {
+      const selected = e.target.value.split('|');
+      const salesPersonId = selected[0];
+      const salesPersonName = selected[1];
+      assignLeadToSalesperson(lead.id, salesPersonName, salesPersonId);
+    }
+  };
 
-  // Explicitly check if lead is assigned (not empty, not null, not "-", not "–")
-  const isAssigned = lead.assignedTo && 
-                     lead.assignedTo !== '' && 
-                     lead.assignedTo !== '-' && 
-                     lead.assignedTo !== '–' &&
-                     lead.assignedTo.trim() !== '';
+  const isUnassigned = (lead: any) => {
+    return !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-' || lead.assignedTo === '–';
+  };
+
+  const isCurrentUser = (person: any) => {
+    return person.name === currentUserName;
+  };
 
   return (
-    <td className="px-4 py-3 text-sm">
+    <td className="px-2 py-0.5 text-xs max-w-[150px]">
       <div className="flex flex-col space-y-2">
-        {isAssigned ? (
+        {/* Current Assignment Display */}
+        {!isUnassigned(lead) ? (
           <div className="flex items-center">
-            <div className={`inline-flex items-center justify-center h-8 w-8 rounded-full border shadow-sm font-medium text-xs text-center ${badgeColorClass}`}>
-              {getInitials(lead.assignedTo)}
+            <div className="flex items-center flex-1">
+              <div
+                className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${getSalespersonBadgeColor(lead.assignedTo)} shadow-sm font-medium text-[10px]`}
+              >
+                {getInitials(lead.assignedTo)}
+              </div>
+              <span
+                className={`ml-2 text-[10px] text-[#5A4C33] truncate`}
+              >
+                {lead.assignedTo}
+              </span>
             </div>
-            <span className="ml-2 text-xs text-gray-300 truncate">{lead.assignedTo}</span>
-            
-            {/* Unassign button (cross icon) */}
-            {canUnassign() && (
+            {canUnassign(lead) && (
               <button
-                onClick={handleUnassign}
-                className="ml-2 flex items-center justify-center h-5 w-5 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150"
+                onClick={() => unassignLead?.(lead.id)}
+                className="flex items-center justify-center h-5 w-5 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150"
                 title="Unassign lead"
               >
                 <svg
@@ -183,52 +212,39 @@ const AmaSalespersonCell = ({
                     clipRule="evenodd"
                   />
                 </svg>
-                </button>
+              </button>
             )}
           </div>
         ) : (
-          <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-800 text-gray-400 border border-gray-700 shadow-sm font-medium text-xs">
+          <div className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[#5A4C33]/20 text-[#5A4C33]/70 border border-[#5A4C33]/20 shadow-sm font-medium text-[10px]">
             UN
           </div>
         )}
 
-        {/* Assignment dropdown - only show if user can modify assignment */}
-        {canModifyAssignment() && assignmentOptions.length > 0 && (
+        {/* Assignment Dropdown */}
+        {shouldShowDropdown(lead) && (
           <div className="mt-1">
             <select
-              className="block w-full py-1 px-2 text-xs border border-gray-700 bg-gray-800 text-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              value={assignmentOptions.find(member => 
-                member.name === lead.assignedTo && isAssigned
-              ) ? `${assignmentOptions.find(member => 
-                member.name === lead.assignedTo && isAssigned
-              ).id}|${lead.assignedTo}` : ""}
-              onChange={(e) => {
-                if (e.target.value) {
-                  const selected = e.target.value.split('|');
-                  const salesPersonId = selected[0];
-                  const salesPersonName = selected[1];
-                  assignLeadToSalesperson(lead.id, salesPersonName, salesPersonId);
-                }
-              }}
+              value={(() => {
+                if (isUnassigned(lead)) return "";
+                // Find the assigned person in salesTeamMembers to get their proper ID
+                const assignedPerson = salesTeamMembers.find(member => member.name === lead.assignedTo);
+                return assignedPerson ? `${assignedPerson.id || assignedPerson.uid || ''}|${assignedPerson.name}` : "";
+              })()}
+              onChange={handleAssignmentChange}
+              className="w-full px-2 py-1 bg-[#ffffff] rounded-lg border border-[#5A4C33]/20 focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A] text-xs text-[#5A4C33]"
             >
-              <option value="">{loading ? 'Loading...' : 'Select assignee'}</option>
-              {assignmentOptions.map(member => (
-                <option 
-                  key={member.id || member.uid || `member-${member.email || member.name}`}
-                  value={`${member.id || member.uid || ''}|${member.name || member.email || 'Unknown'}`}
+              <option value="">Unassigned</option>
+              {getAssignmentOptions(lead).map((person) => (
+                <option
+                  key={person.id || person.uid || `person-${person.email || person.name}`}
+                  value={`${person.id || person.uid || ''}|${person.name || person.email || 'Unknown'}`}
                 >
-                  {member.name || member.email || 'Unknown member'}
-                  {userRole === 'sales' || userRole === 'salesperson' ? ' (Me)' : ''}
+                  {person.name || person.email || 'Unknown member'}
+                  {isCurrentUser(person) ? ' (Me)' : ''}
                 </option>
               ))}
             </select>
-          </div>
-        )}
-
-        {/* Show message if user cannot modify assignment */}
-        {!canModifyAssignment() && isAssigned && lead.assignedTo !== currentUserName && (
-          <div className="text-xs text-gray-500 italic">
-            Assigned to another user
           </div>
         )}
       </div>

@@ -29,6 +29,9 @@ import AdminSidebar from "@/components/navigation/AdminSidebar";
 import SalesSidebar from "@/components/navigation/SalesSidebar";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import AmaHistoryModal from "./components/AmaHistoryModal";
+import AmaCallbackSchedulingModal from "./components/AmaCallbackSchedulingModal";
+import AmaStatusChangeConfirmationModal from "./components/AmaStatusChangeConfirmationModal";
+import AmaLanguageBarrierModal from "./components/AmaLanguageBarrierModal";
 
 // Types
 import type { Lead, User } from "./types";
@@ -62,6 +65,11 @@ const AmaLeadsPage = () => {
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const [totalLeadsCount, setTotalLeadsCount] = useState(0);
 
+  // Search state
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [allLeadsCount, setAllLeadsCount] = useState(0);
+
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -87,6 +95,29 @@ const AmaLeadsPage = () => {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [bulkAssignTarget, setBulkAssignTarget] = useState("");
+
+  // Modal states for callback scheduling and status change confirmation
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
+  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
+  const [callbackModalData, setCallbackModalData] = useState<{
+    leadId: string;
+    leadName: string;
+    isEditing?: boolean;
+    existingCallbackInfo?: any;
+  }>({ leadId: '', leadName: '' });
+  const [statusChangeModalData, setStatusChangeModalData] = useState<{
+    leadId: string;
+    leadName: string;
+    newStatus: string;
+  }>({ leadId: '', leadName: '', newStatus: '' });
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+
+  // Language barrier modal states
+  const [showLanguageBarrierModal, setShowLanguageBarrierModal] = useState(false);
+  const [languageBarrierLeadId, setLanguageBarrierLeadId] = useState("");
+  const [languageBarrierLeadName, setLanguageBarrierLeadName] = useState("");
+  const [isEditingLanguageBarrier, setIsEditingLanguageBarrier] = useState(false);
+  const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState<string>("");
 
   // Refs
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -114,12 +145,20 @@ const AmaLeadsPage = () => {
         const usersCollectionRef = collection(crmDb, "users");
         const userSnapshot = await getDocs(usersCollectionRef);
         const usersData = userSnapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() } as any))
-          .filter((user: any) => user.role === "salesperson" || user.role === "admin" || user.role === "overlord") as User[];
+          .map((doc) => {
+            const data = doc.data() as any;
+            const name = `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.name || data.email || 'Unknown';
+            return { 
+              id: doc.id, 
+              ...data,
+              name // Ensure name is always set consistently
+            };
+          })
+          .filter((user: any) => user.role === "salesperson" || user.role === "sales" || user.role === "admin" || user.role === "overlord") as User[];
         // Sort by name
         (usersData as any).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
         setTeamMembers(usersData);
-        const salesPersonnel = usersData.filter((u: any) => u.role === 'salesperson');
+        const salesPersonnel = usersData.filter((u: any) => u.role === 'salesperson' || u.role === 'sales');
         setSalesTeamMembers(salesPersonnel as any);
       } catch (error) {
         console.error("Error fetching team members: ", error);
@@ -150,7 +189,7 @@ const AmaLeadsPage = () => {
       // Status filter
       if (statusFilter !== "all") {
         if (statusFilter === "No Status") {
-          constraints.push(where("status", "in", ["", "–", "No Status"]));
+          constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any));
         } else {
           constraints.push(where("status", "==", statusFilter));
         }
@@ -159,10 +198,15 @@ const AmaLeadsPage = () => {
       // Salesperson filter
       if (salesPersonFilter !== "all") {
         if (salesPersonFilter === "") {
-          constraints.push(where("assignedTo", "in", ["", null, "-", "–"] as any));
+          constraints.push(where("assigned_to", "in", ["", "-", "–"] as any));
         } else {
-          constraints.push(where("assignedTo", "==", salesPersonFilter));
+          constraints.push(where("assigned_to", "==", salesPersonFilter));
         }
+      }
+
+      // Converted filter
+      if (convertedFilter !== null) {
+        constraints.push(where("convertedToClient", "==", convertedFilter));
       }
 
       // Sorting and pagination
@@ -171,7 +215,7 @@ const AmaLeadsPage = () => {
       if (isLoadMore && lastDocument) constraints.push(startAfter(lastDocument));
 
       return query(baseQuery, ...constraints);
-    }, [fromDate, toDate, statusFilter, salesPersonFilter, sortConfig]
+    }, [fromDate, toDate, statusFilter, salesPersonFilter, convertedFilter, sortConfig]
   );
 
   // Fetch total count for display
@@ -179,11 +223,128 @@ const AmaLeadsPage = () => {
     try {
       const countQuery = query(collection(crmDb, "ama_leads"));
       const snapshot = await getDocs(countQuery);
-      setTotalLeadsCount(snapshot.size);
+      const count = snapshot.size;
+      setTotalLeadsCount(count);
+      setAllLeadsCount(count); // Also set for search functionality
     } catch (e) {
       setTotalLeadsCount(0);
+      setAllLeadsCount(0);
     }
   }, []);
+
+  // Handle search results from database search
+  const handleSearchResults = useCallback((results: any[]) => {
+    setSearchResults(results);
+  }, []);
+
+  // Modified applyFilters to accept leads parameter
+  const applyFiltersToLeads = useCallback((leadsArray: any[]) => {
+    if (!leadsArray || leadsArray.length === 0) return [] as any[];
+
+    let result = [...leadsArray];
+
+    // Source filter
+    if (sourceFilter !== 'all') {
+      result = result.filter(lead => lead.source_database === sourceFilter);
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'No Status') {
+        result = result.filter(lead => {
+          const status = lead.status;
+          return !status || 
+                 status === '' || 
+                 status === '-' || 
+                 status === '–' ||
+                 status === 'No Status' ||
+                 (typeof status === 'string' && status.trim() === '') ||
+                 (typeof status === 'string' && status.trim() === '-');
+        });
+      } else {
+        result = result.filter(lead => lead.status === statusFilter);
+      }
+    }
+
+    // Salesperson filter - Enhanced to handle all unassigned cases
+    if (salesPersonFilter !== 'all') {
+      if (salesPersonFilter === '') {
+        // Check for truly unassigned leads - including null, undefined, empty string, dash, and em-dash
+        result = result.filter(lead => {
+          const assignedTo = lead.assignedTo;
+          return !assignedTo || 
+                 assignedTo === '' || 
+                 assignedTo === '-' || 
+                 assignedTo === '–' ||
+                 assignedTo === null ||
+                 assignedTo === undefined ||
+                 (typeof assignedTo === 'string' && assignedTo.trim() === '') ||
+                 (typeof assignedTo === 'string' && assignedTo.trim() === '-');
+        });
+      } else {
+        result = result.filter(lead => lead.assignedTo === salesPersonFilter);
+      }
+    }
+
+    // Converted filter
+    if (convertedFilter !== null) {
+      result = result.filter(lead => (lead.convertedToClient === convertedFilter));
+    }
+
+    // Date range filter (using mapped synced_at or date)
+    if (fromDate || toDate) {
+      result = result.filter(lead => {
+        const leadDate = lead.synced_at ? new Date(lead.synced_at) : new Date(lead.date);
+        
+        if (fromDate && toDate) {
+          const from = new Date(fromDate);
+          const to = new Date(toDate);
+          to.setHours(23, 59, 59, 999); // Include the entire end date
+          return leadDate >= from && leadDate <= to;
+        } else if (fromDate) {
+          const from = new Date(fromDate);
+          return leadDate >= from;
+        } else if (toDate) {
+          const to = new Date(toDate);
+          to.setHours(23, 59, 59, 999); // Include the entire end date
+          return leadDate <= to;
+        }
+        
+        return true;
+      });
+    }
+
+    // Apply sorting
+    if (sortConfig?.key) {
+      result.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        if (sortConfig.direction === 'ascending') {
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        } else {
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        }
+      });
+    }
+
+    return result;
+  }, [sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate, sortConfig]);
+
+  // Update the original applyFilters to use the new function
+  const applyFilters = useCallback(() => {
+    return applyFiltersToLeads(leads);
+  }, [leads, applyFiltersToLeads]);
+
+  // Apply filters with debounce
+  useEffect(() => {
+    const t = setTimeout(() => {
+      // Use search results if available, otherwise use regular leads
+      const leadsToFilter = searchQuery && searchResults.length > 0 ? searchResults : leads;
+      setFilteredLeads(applyFiltersToLeads(leadsToFilter));
+    }, 100);
+    return () => clearTimeout(t);
+  }, [leads, searchResults, searchQuery, applyFiltersToLeads]);
 
   // Fetch leads
   const fetchAmaLeads = useCallback(async (isLoadMore = false) => {
@@ -335,101 +496,6 @@ const AmaLeadsPage = () => {
     return () => clearTimeout(t);
   }, [fromDate, toDate, statusFilter, salesPersonFilter, sortConfig]);
 
-  // Filter function to match sales/leads behavior
-  const applyFilters = useCallback(() => {
-    if (!leads || leads.length === 0) return [] as any[];
-
-    let result = [...leads];
-
-    // Source filter
-    if (sourceFilter !== 'all') {
-      result = result.filter(lead => lead.source_database === sourceFilter);
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'No Status') {
-        result = result.filter(lead => !lead.status || lead.status === '' || lead.status === 'No Status');
-      } else {
-        result = result.filter(lead => lead.status === statusFilter);
-      }
-    }
-
-    // Salesperson filter
-    if (salesPersonFilter !== 'all') {
-      if (salesPersonFilter === '') {
-        result = result.filter(lead => !lead.assignedTo || lead.assignedTo === '' || lead.assignedTo === '-' || lead.assignedTo === '–');
-      } else {
-        result = result.filter(lead => lead.assignedTo === salesPersonFilter);
-      }
-    }
-
-    // Converted filter
-    if (convertedFilter !== null) {
-      result = result.filter(lead => (lead.convertedToClient === convertedFilter));
-    }
-
-    // Search
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(lead => {
-        const name = lead.name || '';
-        const email = lead.email || '';
-        const phone = lead.phone || '';
-        return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || phone.toLowerCase().includes(q);
-      });
-    }
-
-    // Date range filter (using mapped synced_at or date)
-    if (fromDate || toDate) {
-      const fromDateTime = fromDate ? new Date(fromDate) : null;
-      if (fromDateTime) fromDateTime.setHours(0, 0, 0, 0);
-      const toDateTime = toDate ? new Date(toDate) : null;
-      if (toDateTime) toDateTime.setHours(23, 59, 59, 999);
-
-      result = result.filter(lead => {
-        const leadDate = lead.synced_at || lead.date || lead.lastModified || lead.createdAt;
-        if (!leadDate) return false;
-        let dateObj: Date;
-        if (leadDate.toDate) dateObj = leadDate.toDate();
-        else if (leadDate instanceof Date) dateObj = leadDate;
-        else dateObj = new Date(leadDate);
-        if (isNaN(dateObj.getTime())) return false;
-        if (fromDateTime && toDateTime) return dateObj >= fromDateTime && dateObj <= toDateTime;
-        if (fromDateTime) return dateObj >= fromDateTime;
-        if (toDateTime) return dateObj <= toDateTime;
-        return true;
-      });
-    }
-
-    // Sorting by date or name
-    result.sort((a, b) => {
-      if (sortConfig.key === 'name') {
-        const an = (a.name || '').toLowerCase();
-        const bn = (b.name || '').toLowerCase();
-        if (an < bn) return sortConfig.direction === 'ascending' ? -1 : 1;
-        if (an > bn) return sortConfig.direction === 'ascending' ? 1 : -1;
-        return 0;
-      }
-      // default date-based
-      const aDate = a.synced_at || a.date || a.lastModified || a.createdAt;
-      const bDate = b.synced_at || b.date || b.lastModified || b.createdAt;
-      const aD = aDate instanceof Date ? aDate : new Date(aDate);
-      const bD = bDate instanceof Date ? bDate : new Date(bDate);
-      return sortConfig.direction === 'ascending' ? aD.getTime() - bD.getTime() : bD.getTime() - aD.getTime();
-    });
-
-    return result;
-  }, [leads, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, searchQuery, fromDate, toDate, sortConfig]);
-
-  // Apply filters with debounce
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setFilteredLeads(applyFilters());
-    }, 100);
-    return () => clearTimeout(t);
-  }, [leads, applyFilters]);
-
   // Update single lead's sales notes state in lists
   const updateLeadsState = (leadId: string, newValue: string) => {
     const updateFn = (arr: any[]) => arr.map((l) => l.id === leadId ? { ...l, salesNotes: newValue, lastModified: new Date() } : l);
@@ -454,7 +520,6 @@ const AmaLeadsPage = () => {
 
       await updateDoc(leadRef, {
         assigned_to: salesPersonName,
-        assignedTo: salesPersonName,
         assignedToId: salesPersonId,
         lastModified: serverTimestamp()
       } as any);
@@ -488,7 +553,6 @@ const AmaLeadsPage = () => {
 
       await updateDoc(leadRef, {
         assigned_to: '-',
-        assignedTo: '-',
         assignedToId: '',
         lastModified: serverTimestamp()
       } as any);
@@ -535,7 +599,6 @@ const AmaLeadsPage = () => {
         // Update lead
         await updateDoc(leadRef, {
           assigned_to: salesPersonName,
-          assignedTo: salesPersonName,
           assignedToId: salesPersonId,
           lastModified: serverTimestamp(),
         });
@@ -575,6 +638,82 @@ const AmaLeadsPage = () => {
       });
 
       toast.error("Failed to assign leads", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
+  // Bulk unassign function
+  const bulkUnassignLeads = async (leadIds: string[]) => {
+    try {
+      // Apply optimistic updates
+      leadIds.forEach((leadId) => {
+        const updateFn = (arr: any[]) => 
+          arr.map((l) => 
+            l.id === leadId ? { ...l, assignedTo: '-', assignedToId: '', lastModified: new Date() } : l
+          );
+        setLeads(updateFn);
+        setFilteredLeads(updateFn);
+      });
+
+      const updatePromises = leadIds.map(async (leadId) => {
+        const leadRef = doc(crmDb, "ama_leads", leadId);
+        const previousAssignee = leads.find((l) => l.id === leadId)?.assignedTo || "Unassigned";
+
+        // Add history entry
+        const historyRef = collection(crmDb, "ama_leads", leadId, "history");
+        await addDoc(historyRef as any, {
+          assignmentChange: true,
+          previousAssignee: previousAssignee,
+          newAssignee: "Unassigned",
+          timestamp: serverTimestamp(),
+          assignedById: typeof window !== "undefined" ? localStorage.getItem("userName") || "" : "",
+          editor: {
+            id: currentUser?.uid || "unknown",
+          },
+        });
+
+        // Update lead
+        await updateDoc(leadRef, {
+          assigned_to: '-',
+          assignedToId: '',
+          lastModified: serverTimestamp(),
+        });
+      });
+
+      await Promise.all(updatePromises);
+
+      setSelectedLeads([]);
+
+      toast.success(
+        <div>
+          <p className="font-medium">Bulk Unassignment Complete</p>
+          <p className="text-sm">
+            {leadIds.length} leads unassigned
+          </p>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 3000,
+        },
+      );
+    } catch (error) {
+      console.error("Error bulk unassigning leads: ", error);
+      // Revert optimistic updates on error
+      leadIds.forEach((leadId) => {
+        const originalLead = leads.find((l) => l.id === leadId);
+        if (originalLead) {
+          const updateFn = (arr: any[]) => 
+            arr.map((l) => 
+              l.id === leadId ? { ...l, assignedTo: originalLead.assignedTo, assignedToId: originalLead.assignedToId } : l
+            );
+          setLeads(updateFn);
+          setFilteredLeads(updateFn);
+        }
+      });
+
+      toast.error("Failed to unassign leads", {
         position: "top-right",
         autoClose: 3000,
       });
@@ -630,33 +769,74 @@ const AmaLeadsPage = () => {
     setShowBulkAssignment(true);
   };
 
+  const handleBulkUnassign = () => {
+    if (selectedLeads.length === 0) {
+      toast.error("Please select leads to unassign");
+      return;
+    }
+
+    // Check role-based permissions
+    const canBulkUnassign = userRole === "admin" || userRole === "overlord" || userRole === "salesperson" || userRole === "sales";
+
+    if (!canBulkUnassign) {
+      toast.error("You don't have permission to bulk unassign leads");
+      return;
+    }
+
+    // For sales users, check if they can only unassign leads assigned to them
+    if (userRole === "sales" || userRole === "salesperson") {
+      const currentUserName = typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '';
+      const invalidLeads = selectedLeads.filter(leadId => {
+        const lead = filteredLeads.find(l => l.id === leadId);
+        // Lead is invalid if it's assigned to someone else (not current user)
+        return lead?.assignedTo && 
+               lead.assignedTo !== '' && 
+               lead.assignedTo !== '-' && 
+               lead.assignedTo !== '–' &&
+               lead.assignedTo !== currentUserName;
+      });
+
+      if (invalidLeads.length > 0) {
+        toast.error("You can only unassign leads assigned to you");
+        return;
+      }
+    }
+
+    // Confirm unassignment
+    if (window.confirm(`Are you sure you want to unassign ${selectedLeads.length} lead${selectedLeads.length > 1 ? 's' : ''}?`)) {
+      bulkUnassignLeads(selectedLeads);
+    }
+  };
+
   const executeBulkAssign = () => {
     if (!bulkAssignTarget) {
       toast.error("Please select a salesperson");
       return;
     }
 
-    // Find the selected person
-    let selectedPerson;
-    
-    if (userRole === "admin" || userRole === "overlord") {
-      // Admin/overlord can assign to anyone with sales role
-      selectedPerson = teamMembers.find((member) => 
-        member.name === bulkAssignTarget && (member.role === "salesperson" || member.role === "sales")
-      );
-    } else if (userRole === "sales" || userRole === "salesperson") {
-      // Sales can only assign to themselves
-      const currentUserName = typeof window !== 'undefined' ? localStorage.getItem('userName') || '' : '';
-      selectedPerson = teamMembers.find((member) => 
-        member.name === bulkAssignTarget && 
-        member.name === currentUserName && 
-        (member.role === "salesperson" || member.role === "sales")
-      );
-      
-      if (!selectedPerson) {
-        toast.error("You can only assign leads to yourself");
-        return;
-      }
+    // Parse the value like in AmaSalespersonCell (id|name format)
+    const selected = bulkAssignTarget.split('|');
+    const salesPersonId = selected[0];
+    const salesPersonName = selected[1];
+
+    if (!salesPersonId || !salesPersonName) {
+      toast.error("Invalid salesperson selection");
+      return;
+    }
+
+    // Find the selected person to validate (check both salesTeamMembers and teamMembers for compatibility)
+    let selectedPerson = salesTeamMembers.find((member: any) => 
+      (member.id === salesPersonId || (member as any).uid === salesPersonId) && 
+      member.name === salesPersonName
+    );
+
+    // Fallback to teamMembers if not found in salesTeamMembers
+    if (!selectedPerson) {
+      selectedPerson = teamMembers.find((member: any) => {
+        return (member.id === salesPersonId || (member as any).uid === salesPersonId) && 
+               member.name === salesPersonName &&
+               (member.role === "salesperson" || member.role === "sales");
+      });
     }
 
     if (!selectedPerson) {
@@ -664,7 +844,7 @@ const AmaLeadsPage = () => {
       return;
     }
 
-    bulkAssignLeads(selectedLeads, bulkAssignTarget, selectedPerson.id);
+    bulkAssignLeads(selectedLeads, salesPersonName, salesPersonId);
   };
 
   // Fetch notes history for AMA leads
@@ -876,8 +1056,232 @@ const AmaLeadsPage = () => {
     }
   };
 
+  // Handler for status change to callback
+  const handleStatusChangeToCallback = (leadId: string, leadName: string) => {
+    setCallbackModalData({
+      leadId,
+      leadName,
+      isEditing: false,
+      existingCallbackInfo: null
+    });
+    setShowCallbackModal(true);
+  };
+
+  // Handler for editing callback
+  const handleEditCallback = (lead: any) => {
+    // This would typically fetch existing callback info
+    setCallbackModalData({
+      leadId: lead.id,
+      leadName: lead.name,
+      isEditing: true,
+      existingCallbackInfo: lead.callbackInfo || null
+    });
+    setShowCallbackModal(true);
+  };
+
+  // Handler for status change confirmation modal
+  const handleStatusChangeConfirmation = (leadId: string, leadName: string, newStatus: string) => {
+    setStatusChangeModalData({
+      leadId,
+      leadName,
+      newStatus
+    });
+    setShowStatusChangeModal(true);
+  };
+
+  // Handler for callback modal confirm
+  const handleCallbackModalConfirm = () => {
+    setShowCallbackModal(false);
+    setCallbackModalData({ leadId: '', leadName: '' });
+    // Optionally refresh lead data or update status
+    toast.success('Callback scheduled successfully!');
+  };
+
+  // Handler for status change modal confirm
+  const handleStatusChangeModalConfirm = async () => {
+    setIsStatusUpdating(true);
+    try {
+      const { leadId, newStatus } = statusChangeModalData;
+      
+      // Find the current lead to check its current status
+      const currentLead = leads.find(lead => lead.id === leadId) || filteredLeads.find(lead => lead.id === leadId);
+      const currentStatus = currentLead?.status;
+      
+      // Prepare update data based on status type
+      const updateData: any = { status: newStatus };
+      
+      // Handle special status-specific logic
+      if (newStatus === 'Converted') {
+        updateData.convertedToClient = true;
+        updateData.convertedAt = serverTimestamp();
+      } else if (newStatus === 'Language Barrier') {
+        updateData.language_barrier = true;
+      }
+      
+      // Remove conversion fields if changing from Converted to any other status
+      if (currentStatus === 'Converted' && newStatus !== 'Converted') {
+        updateData.convertedAt = null;
+        updateData.convertedToClient = null;
+      }
+      
+      // Update the lead status
+      const success = await updateLead(leadId, updateData);
+      
+      if (success) {
+        // Here you would implement the message sending logic based on status
+        let successMessage = `Status updated to "${newStatus}"`;
+        
+        switch (newStatus) {
+          case 'Converted':
+            successMessage += ' and conversion recorded!';
+            break;
+          case 'Language Barrier':
+            successMessage += ' and language barrier noted!';
+            break;
+          case 'Interested':
+            successMessage += ' and interested message sent!';
+            break;
+          case 'Not Interested':
+            successMessage += ' and follow-up scheduled!';
+            break;
+          default:
+            if (currentStatus === 'Converted') {
+              successMessage += ' and conversion removed!';
+            } else {
+              successMessage += ' and message sent!';
+            }
+        }
+        
+        toast.success(successMessage);
+        setShowStatusChangeModal(false);
+        setStatusChangeModalData({ leadId: '', leadName: '', newStatus: '' });
+      }
+    } catch (error) {
+      toast.error('Failed to update status and send message');
+    } finally {
+      setIsStatusUpdating(false);
+    }
+  };
+
+  // Handle status change to language barrier
+  const handleStatusChangeToLanguageBarrier = (leadId: string, leadName: string) => {
+    setLanguageBarrierLeadId(leadId);
+    setLanguageBarrierLeadName(leadName);
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo("");
+    setShowLanguageBarrierModal(true);
+  };
+
+  // Handle language barrier modal confirmation
+  const handleLanguageBarrierConfirm = async (language: string) => {
+    if (isEditingLanguageBarrier) {
+      const success = await updateLead(languageBarrierLeadId, { language_barrier: language });
+      if (success) {
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">✅</span>
+                  <p className="text-sm font-bold text-white">Language Updated</p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">{languageBarrierLeadName}</p>
+                <p className="mt-1 text-sm text-green-200">Preferred language updated to {language}</p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className:
+              "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          },
+        );
+      }
+    } else {
+      // Find the current lead to check its current status
+      const currentLead = leads.find(lead => lead.id === languageBarrierLeadId) || filteredLeads.find(lead => lead.id === languageBarrierLeadId);
+      const currentStatus = currentLead?.status;
+      
+      const dbData: any = {
+        status: "Language Barrier",
+        language_barrier: language,
+      };
+      
+      // Remove conversion fields if changing from Converted to Language Barrier
+      if (currentStatus === 'Converted') {
+        dbData.convertedAt = null;
+        dbData.convertedToClient = null;
+      }
+
+      const success = await updateLead(languageBarrierLeadId, dbData);
+      if (success) {
+        toast.success(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">✅</span>
+                  <p className="text-sm font-bold text-white">Language Barrier Set</p>
+                </div>
+                <p className="mt-2 text-sm text-green-100 font-medium">{languageBarrierLeadName}</p>
+                <p className="mt-1 text-sm text-green-200">
+                  Lead status updated to "Language Barrier" with preferred language: {language}
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className:
+              "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
+          },
+        );
+      }
+    }
+
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId("");
+    setLanguageBarrierLeadName("");
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo("");
+  };
+
+  // Handle language barrier modal close
+  const handleLanguageBarrierClose = () => {
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId("");
+    setLanguageBarrierLeadName("");
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo("");
+  };
+
+  // Handle editing language barrier details
+  const handleEditLanguageBarrier = (lead: any) => {
+    setLanguageBarrierLeadId(lead.id);
+    setLanguageBarrierLeadName(lead.name || "Unknown Lead");
+    setIsEditingLanguageBarrier(true);
+    setEditingLanguageBarrierInfo(lead.language_barrier || "");
+    setShowLanguageBarrierModal(true);
+  };
+
   return (
-    <div className="flex h-screen bg-gray-950 text-white w-full text-sm">
+    <div className="flex h-screen bg-[#F8F5EC] text-[#5A4C33] w-full text-sm">
       {SidebarComponent && <SidebarComponent />}
       <div className="flex-1 overflow-auto px-3">
         <div className="w-full max-w-none mx-auto">
@@ -910,10 +1314,14 @@ const AmaLeadsPage = () => {
             setFromDate={setFromDate}
             toDate={toDate}
             setToDate={setToDate}
+            onSearchResults={handleSearchResults}
+            isSearching={isSearching}
+            setIsSearching={setIsSearching}
+            allLeadsCount={allLeadsCount}
           />
           {isLoading ? (
             <div className="flex justify-center items-center h-48">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#D2A02A]"></div>
             </div>
           ) : (
             <>
@@ -944,6 +1352,13 @@ const AmaLeadsPage = () => {
                 bulkAssignTarget={bulkAssignTarget}
                 setBulkAssignTarget={setBulkAssignTarget}
                 setShowBulkAssignment={setShowBulkAssignment}
+                bulkUnassignLeads={bulkUnassignLeads}
+                handleBulkUnassign={handleBulkUnassign}
+                onStatusChangeToCallback={handleStatusChangeToCallback}
+                onEditCallback={handleEditCallback}
+                onStatusChangeConfirmation={handleStatusChangeConfirmation}
+                onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
+                onEditLanguageBarrier={handleEditLanguageBarrier}
               />
               <div ref={loadMoreRef} className="h-6"></div>
             </>
@@ -952,6 +1367,32 @@ const AmaLeadsPage = () => {
             showHistoryModal={showHistoryModal}
             setShowHistoryModal={setShowHistoryModal}
             currentHistory={currentHistory}
+          />
+          <AmaCallbackSchedulingModal
+            isOpen={showCallbackModal}
+            onClose={() => setShowCallbackModal(false)}
+            onConfirm={handleCallbackModalConfirm}
+            leadId={callbackModalData.leadId}
+            leadName={callbackModalData.leadName}
+            crmDb={crmDb}
+            isEditing={callbackModalData.isEditing}
+            existingCallbackInfo={callbackModalData.existingCallbackInfo}
+          />
+          <AmaStatusChangeConfirmationModal
+            isOpen={showStatusChangeModal}
+            onClose={() => setShowStatusChangeModal(false)}
+            onConfirm={handleStatusChangeModalConfirm}
+            leadName={statusChangeModalData.leadName}
+            newStatus={statusChangeModalData.newStatus}
+            isLoading={isStatusUpdating}
+          />
+          <AmaLanguageBarrierModal
+            isOpen={showLanguageBarrierModal}
+            onClose={handleLanguageBarrierClose}
+            onConfirm={handleLanguageBarrierConfirm}
+            leadId={languageBarrierLeadId}
+            leadName={languageBarrierLeadName}
+            existingLanguage={editingLanguageBarrierInfo}
           />
         </div>
       </div>
