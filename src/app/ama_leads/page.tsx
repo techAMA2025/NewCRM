@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   collection,
   getDocs,
@@ -19,6 +19,8 @@ import {
 import { toast } from "react-toastify";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { db as crmDb, auth } from "@/firebase/firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { app } from "@/firebase/firebase";
 
 
 import LeadsHeader from "./components/AmaLeadsHeader";
@@ -29,6 +31,10 @@ import AdminSidebar from "@/components/navigation/AdminSidebar";
 import SalesSidebar from "@/components/navigation/SalesSidebar";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import AmaHistoryModal from "./components/AmaHistoryModal";
+import AmaStatusChangeConfirmationModal from "./components/AmaStatusChangeConfirmationModal";
+import AmaCallbackSchedulingModal from "./components/AmaCallbackSchedulingModal";
+import AmaLanguageBarrierModal from "./components/AmaLanguageBarrierModal";
+import AmaBulkWhatsAppModal from "./components/AmaBulkWhatsAppModal";
 
 // Types
 import type { Lead, User } from "./types";
@@ -93,6 +99,29 @@ const AmaLeadsPage = () => {
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [bulkAssignTarget, setBulkAssignTarget] = useState("");
 
+  // Status confirmation modal state
+  const [statusConfirmLeadId, setStatusConfirmLeadId] = useState("");
+  const [statusConfirmLeadName, setStatusConfirmLeadName] = useState("");
+  const [pendingStatusChange, setPendingStatusChange] = useState("");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  // Callback modal state
+  const [showCallbackModal, setShowCallbackModal] = useState(false);
+  const [callbackLeadId, setCallbackLeadId] = useState("");
+  const [callbackLeadName, setCallbackLeadName] = useState("");
+  const [isEditingCallback, setIsEditingCallback] = useState(false);
+  const [editingCallbackInfo, setEditingCallbackInfo] = useState<any>(null);
+
+  // Language barrier modal state
+  const [showLanguageBarrierModal, setShowLanguageBarrierModal] = useState(false);
+  const [languageBarrierLeadId, setLanguageBarrierLeadId] = useState("");
+  const [languageBarrierLeadName, setLanguageBarrierLeadName] = useState("");
+  const [isEditingLanguageBarrier, setIsEditingLanguageBarrier] = useState(false);
+  const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState("");
+
+  // Bulk WhatsApp modal state
+  const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
+
   // Refs
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -143,57 +172,55 @@ const AmaLeadsPage = () => {
   }, []);
 
   // Build query based on filters
-  const buildQuery = useCallback(
-    (isLoadMore = false, lastDocument: DocumentSnapshot | null = null) => {
-      const baseQuery = collection(crmDb, "ama_leads");
-      const constraints: any[] = [];
+  const buildQuery = (isLoadMore = false, lastDocument: DocumentSnapshot | null = null) => {
+    const baseQuery = collection(crmDb, "ama_leads");
+    const constraints: any[] = [];
 
-      // Date range uses 'date' epoch ms from normalized doc
-      if (fromDate) {
-        const fromDateStart = new Date(fromDate);
-        fromDateStart.setHours(0, 0, 0, 0);
-        constraints.push(where("date", ">=", fromDateStart.getTime()));
+    // Date range uses 'date' epoch ms from normalized doc
+    if (fromDate) {
+      const fromDateStart = new Date(fromDate);
+      fromDateStart.setHours(0, 0, 0, 0);
+      constraints.push(where("date", ">=", fromDateStart.getTime()));
+    }
+    if (toDate) {
+      const toDateEnd = new Date(toDate);
+      toDateEnd.setHours(23, 59, 59, 999);
+      constraints.push(where("date", "<=", toDateEnd.getTime()));
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      if (statusFilter === "No Status") {
+        constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any));
+      } else {
+        constraints.push(where("status", "==", statusFilter));
       }
-      if (toDate) {
-        const toDateEnd = new Date(toDate);
-        toDateEnd.setHours(23, 59, 59, 999);
-        constraints.push(where("date", "<=", toDateEnd.getTime()));
+    }
+
+    // Salesperson filter
+    if (salesPersonFilter !== "all") {
+      if (salesPersonFilter === "") {
+        constraints.push(where("assigned_to", "in", ["", "-", "–"] as any));
+      } else {
+        constraints.push(where("assigned_to", "==", salesPersonFilter));
       }
+    }
 
-      // Status filter
-      if (statusFilter !== "all") {
-        if (statusFilter === "No Status") {
-          constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any));
-        } else {
-          constraints.push(where("status", "==", statusFilter));
-        }
-      }
+    // Converted filter
+    if (convertedFilter !== null) {
+      constraints.push(where("convertedToClient", "==", convertedFilter));
+    }
 
-      // Salesperson filter
-      if (salesPersonFilter !== "all") {
-        if (salesPersonFilter === "") {
-          constraints.push(where("assigned_to", "in", ["", "-", "–"] as any));
-        } else {
-          constraints.push(where("assigned_to", "==", salesPersonFilter));
-        }
-      }
+    // Sorting and pagination
+    constraints.push(orderBy("date", sortConfig.direction === 'ascending' ? 'asc' : 'desc'));
+    constraints.push(limit(LEADS_PER_PAGE));
+    if (isLoadMore && lastDocument) constraints.push(startAfter(lastDocument));
 
-      // Converted filter
-      if (convertedFilter !== null) {
-        constraints.push(where("convertedToClient", "==", convertedFilter));
-      }
-
-      // Sorting and pagination
-      constraints.push(orderBy("date", sortConfig.direction === 'ascending' ? 'asc' : 'desc'));
-      constraints.push(limit(LEADS_PER_PAGE));
-      if (isLoadMore && lastDocument) constraints.push(startAfter(lastDocument));
-
-      return query(baseQuery, ...constraints);
-    }, [fromDate, toDate, statusFilter, salesPersonFilter, convertedFilter, sortConfig]
-  );
+    return query(baseQuery, ...constraints);
+  };
 
   // Fetch total count for display
-  const fetchTotalCount = useCallback(async () => {
+  const fetchTotalCount = async () => {
     try {
       const countQuery = query(collection(crmDb, "ama_leads"));
       const snapshot = await getDocs(countQuery);
@@ -204,15 +231,25 @@ const AmaLeadsPage = () => {
       setTotalLeadsCount(0);
       setAllLeadsCount(0);
     }
-  }, []);
+  };
 
   // Handle search results from database search
-  const handleSearchResults = useCallback((results: any[]) => {
+  const handleSearchResults = (results: any[]) => {
     setSearchResults(results);
-  }, []);
+  };
+
+  // Handle when search is cleared - reset to first page
+  const handleSearchCleared = () => {
+    if (leads.length > 50) {
+      console.log("🔄 Search cleared, resetting to first 50 leads");
+      setLeads(leads.slice(0, 50));
+      setLastDoc(null);
+      setHasMoreLeads(true);
+    }
+  };
 
   // Modified applyFilters to accept leads parameter
-  const applyFiltersToLeads = useCallback((leadsArray: any[]) => {
+  const applyFiltersToLeads = (leadsArray: any[]) => {
     if (!leadsArray || leadsArray.length === 0) return [] as any[];
 
     let result = [...leadsArray];
@@ -303,25 +340,29 @@ const AmaLeadsPage = () => {
     }
 
     return result;
-  }, [sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate, sortConfig]);
+  };
 
   // Update the original applyFilters to use the new function
-  const applyFilters = useCallback(() => {
+  const applyFilters = () => {
     return applyFiltersToLeads(leads);
-  }, [leads, applyFiltersToLeads]);
+  };
 
   // Apply filters with debounce
   useEffect(() => {
     const t = setTimeout(() => {
-      // Use search results if available, otherwise use regular leads
-      const leadsToFilter = searchQuery && searchResults.length > 0 ? searchResults : leads;
-      setFilteredLeads(applyFiltersToLeads(leadsToFilter));
+      if (searchQuery) {
+        // Use search results when searching
+        setFilteredLeads(applyFiltersToLeads(searchResults));
+      } else {
+        // When not searching, use regular leads (up to current pagination)
+        setFilteredLeads(applyFiltersToLeads(leads));
+      }
     }, 100);
     return () => clearTimeout(t);
-  }, [leads, searchResults, searchQuery, applyFiltersToLeads]);
+  }, [leads, searchResults, searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate, sortConfig]);
 
   // Fetch leads
-  const fetchAmaLeads = useCallback(async (isLoadMore = false) => {
+  const fetchAmaLeads = async (isLoadMore = false) => {
     if (isLoadMore) setIsLoadingMore(true); else setIsLoading(true);
     try {
       if (!isLoadMore) await fetchTotalCount();
@@ -445,7 +486,7 @@ const AmaLeadsPage = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [buildQuery, lastDoc, fetchTotalCount]);
+  };
 
   // Setup infinite scroll
   useEffect(() => {
@@ -694,6 +735,495 @@ const AmaLeadsPage = () => {
     }
   };
 
+  // Update lead
+  const updateLead = async (id: string, data: any) => {
+    try {
+      const leadRef = doc(crmDb, 'ama_leads', id);
+      const updateData: any = { ...data, lastModified: serverTimestamp() };
+
+      // If updating salesNotes, also reflect in lastNote and meta for quick access
+      if (Object.prototype.hasOwnProperty.call(data, 'salesNotes')) {
+        updateData.lastNote = data.salesNotes;
+        updateData.lastNoteDate = serverTimestamp();
+        try {
+          const userString = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+          const userObj = userString ? JSON.parse(userString) : {};
+          updateData.lastNoteBy = userObj?.userName || userObj?.name || userObj?.email || 'Unknown User';
+        } catch {
+          updateData.lastNoteBy = 'Unknown User';
+        }
+      }
+
+      await updateDoc(leadRef, updateData);
+      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...data, lastModified: new Date(), lastNote: updateData.lastNote ?? l.lastNote } : l)));
+      setFilteredLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...data, lastModified: new Date(), lastNote: updateData.lastNote ?? l.lastNote } : l)));
+      return true;
+    } catch (error) {
+      console.error("Error updating AMA lead: ", error);
+      toast.error("Failed to update lead");
+      return false;
+    }
+  };
+
+  // Status confirmation handlers
+  const handleStatusConfirmation = async () => {
+    if (!statusConfirmLeadId || !pendingStatusChange) return;
+
+    setIsUpdatingStatus(true);
+    try {
+      const currentLead = leads.find((l) => l.id === statusConfirmLeadId);
+      const currentStatus = currentLead?.status || 'Select Status';
+      
+      // Check if changing from "Converted" to another status
+      if (currentStatus === 'Converted' && pendingStatusChange !== 'Converted') {
+        // Show a toast notification about the conversion being removed
+        toast.info(
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-lg"></div>
+              </div>
+              <div className="ml-3 flex-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">⚠️</span>
+                  <p className="text-sm font-bold text-white">
+                    Conversion Removed
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-orange-100 font-medium">
+                  {currentLead?.name || 'Unknown Lead'}
+                </p>
+                <p className="mt-1 text-sm text-orange-200">
+                  Lead status changed from "Converted" to "{pendingStatusChange}". Conversion timestamp has been removed and targets count will be updated.
+                </p>
+              </div>
+            </div>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            className: "bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-600 border-2 border-orange-400 shadow-xl",
+          }
+        );
+      }
+
+      const dbData: any = { status: pendingStatusChange };
+      
+      // If changing to "Converted", add conversion timestamp
+      if (pendingStatusChange === 'Converted') {
+        dbData.convertedAt = serverTimestamp();
+        dbData.convertedToClient = true;
+      }
+      
+      // If changing to "Callback", add callback timestamp
+      if (pendingStatusChange === 'Callback') {
+        dbData.callbackScheduled = serverTimestamp();
+        dbData.callbackStatus = 'pending';
+      }
+      
+      // If changing to "Language Barrier", add language barrier timestamp
+      if (pendingStatusChange === 'Language Barrier') {
+        dbData.languageBarrierMarked = serverTimestamp();
+        dbData.language_barrier = true;
+      }
+      
+      // If changing from "Converted" to another status, remove conversion data
+      if (currentStatus === 'Converted' && pendingStatusChange !== 'Converted') {
+        dbData.convertedAt = null;
+        dbData.convertedToClient = null;
+      }
+
+      const success = await updateLead(statusConfirmLeadId, dbData);
+      
+      if (success) {
+        // Update local state
+        const updateFn = (arr: any[]) => arr.map((l) => 
+          l.id === statusConfirmLeadId 
+            ? { 
+                ...l, 
+                status: pendingStatusChange,
+                convertedAt: dbData.convertedAt ? new Date() : l.convertedAt,
+                convertedToClient: dbData.convertedToClient ?? l.convertedToClient,
+                callbackScheduled: dbData.callbackScheduled ? new Date() : l.callbackScheduled,
+                callbackStatus: dbData.callbackStatus ?? l.callbackStatus,
+                languageBarrierMarked: dbData.languageBarrierMarked ? new Date() : l.languageBarrierMarked,
+                language_barrier: dbData.language_barrier ?? l.language_barrier,
+                lastModified: new Date()
+              } 
+            : l
+        );
+        setLeads(updateFn);
+        setFilteredLeads(updateFn);
+
+        // Send email message after successful status update
+        try {
+          console.log("🔍 Starting email send process...", {
+            hasEmail: !!currentLead?.email,
+            email: currentLead?.email,
+            status: pendingStatusChange,
+            leadName: currentLead?.name,
+            fullLeadData: currentLead
+          });
+          
+          if (currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")) {
+            console.log("📧 Preparing to send email...");
+            const functions = getFunctions(app);
+            const sendStatusChangeMessage = httpsCallable(functions, 'sendStatusChangeMessage');
+            
+            console.log("📤 Calling cloud function...");
+            const emailResult = await sendStatusChangeMessage({
+              leadName: currentLead.name || 'Dear Sir/Ma\'am',
+              leadEmail: currentLead.email,
+              leadId: statusConfirmLeadId,
+              newStatus: pendingStatusChange
+            });
+            
+            console.log("✅ Email function result:", emailResult);
+            
+            // Show success message with email confirmation
+            toast.success(
+              <div>
+                <p className="font-medium">Status Updated & Message Sent!</p>
+                <p className="text-sm">Status changed to "{pendingStatusChange}" and email sent to {currentLead.name}</p>
+              </div>,
+              {
+                position: "top-right",
+                autoClose: 4000,
+              }
+            );
+          } else {
+            console.log("📧 No email conditions met:", {
+              hasEmail: !!currentLead?.email,
+              validStatus: pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering",
+              status: pendingStatusChange,
+              emailValidation: currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")
+            });
+
+            // Show appropriate success message based on status
+            let successMessage = "Status Updated Successfully";
+            let successDetail = `${statusConfirmLeadName} status changed to "${pendingStatusChange}"`;
+
+            if (pendingStatusChange === 'Callback') {
+              successMessage = "Callback Scheduled";
+              successDetail = `${statusConfirmLeadName} has been marked for callback`;
+            } else if (pendingStatusChange === 'Language Barrier') {
+              successMessage = "Language Barrier Marked";
+              successDetail = `${statusConfirmLeadName} has been marked with language barrier`;
+            } else if (pendingStatusChange === 'Converted') {
+              successMessage = "Lead Converted";
+              successDetail = `${statusConfirmLeadName} has been marked as converted`;
+            }
+
+            toast.success(
+              <div>
+                <p className="font-medium">{successMessage}</p>
+                <p className="text-sm">{successDetail}</p>
+              </div>,
+              {
+                position: "top-right",
+                autoClose: 3000,
+              }
+            );
+          }
+        } catch (emailError) {
+          console.error("❌ Error sending email:", emailError);
+          // Still show success for status update, but mention email failure
+          toast.success(
+            <div>
+              <p className="font-medium">Status Updated</p>
+              <p className="text-sm">Status changed to "{pendingStatusChange}" but email could not be sent</p>
+            </div>,
+            {
+              position: "top-right",
+              autoClose: 4000,
+            }
+          );
+        }
+
+      }
+    } catch (error) {
+      console.error("Error updating status: ", error);
+      toast.error("Failed to update status");
+    } finally {
+      setIsUpdatingStatus(false);
+      setStatusConfirmLeadId("");
+      setStatusConfirmLeadName("");
+      setPendingStatusChange("");
+    }
+  };
+
+  const handleStatusConfirmationClose = () => {
+    setStatusConfirmLeadId("");
+    setStatusConfirmLeadName("");
+    setPendingStatusChange("");
+  };
+
+  const handleStatusChangeConfirmation = (leadId: string, leadName: string, newStatus: string) => {
+    setStatusConfirmLeadId(leadId);
+    setStatusConfirmLeadName(leadName);
+    setPendingStatusChange(newStatus);
+  };
+
+  // Fetch callback information
+  const fetchCallbackInfo = async (leadId: string) => {
+    try {
+      const callbackInfoRef = collection(crmDb, "ama_leads", leadId, "callback_info");
+      const callbackSnapshot = await getDocs(callbackInfoRef);
+
+      if (!callbackSnapshot.empty) {
+        const callbackData = callbackSnapshot.docs[0].data();
+        return {
+          id: callbackData.id || "attempt_1",
+          scheduled_dt: callbackData.scheduled_dt?.toDate
+            ? callbackData.scheduled_dt.toDate()
+            : new Date(callbackData.scheduled_dt),
+          scheduled_by: callbackData.scheduled_by || "",
+          created_at: callbackData.created_at,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Refresh callback information for a specific lead
+  const refreshLeadCallbackInfo = async (leadId: string) => {
+    try {
+      const callbackInfo = await fetchCallbackInfo(leadId);
+      // Update lead state with callback info
+      const updateFn = (arr: any[]) => arr.map((l) => 
+        l.id === leadId ? { ...l, callbackInfo } : l
+      );
+      setLeads(updateFn);
+      setFilteredLeads(updateFn);
+    } catch (error) {
+      // Handle error silently
+    }
+  };
+
+  // Handle status change to callback
+  const handleStatusChangeToCallback = (leadId: string, leadName: string) => {
+    setCallbackLeadId(leadId);
+    setCallbackLeadName(leadName);
+    
+    // Check if lead already has callback info
+    const lead = leads.find((l) => l.id === leadId);
+    if (lead?.callbackInfo) {
+      setIsEditingCallback(true);
+      setEditingCallbackInfo(lead.callbackInfo);
+    } else {
+      setIsEditingCallback(false);
+      setEditingCallbackInfo(null);
+    }
+    setShowCallbackModal(true);
+  };
+
+  // Handle callback modal confirmation
+  const handleCallbackConfirm = async () => {
+    if (isEditingCallback) {
+      await refreshLeadCallbackInfo(callbackLeadId);
+    } else {
+      const dbData = { status: "Callback" };
+      const success = await updateLead(callbackLeadId, dbData);
+      if (success) {
+        await refreshLeadCallbackInfo(callbackLeadId);
+      }
+    }
+
+    setShowCallbackModal(false);
+    setCallbackLeadId("");
+    setCallbackLeadName("");
+    setIsEditingCallback(false);
+    setEditingCallbackInfo(null);
+  };
+
+  // Handle callback modal close
+  const handleCallbackClose = () => {
+    setShowCallbackModal(false);
+    setCallbackLeadId("");
+    setCallbackLeadName("");
+    setIsEditingCallback(false);
+    setEditingCallbackInfo(null);
+  };
+
+  // Handle status change to language barrier
+  const handleStatusChangeToLanguageBarrier = (leadId: string, leadName: string) => {
+    setLanguageBarrierLeadId(leadId);
+    setLanguageBarrierLeadName(leadName);
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo("");
+    setShowLanguageBarrierModal(true);
+  };
+
+  // Handle language barrier modal confirmation
+  const handleLanguageBarrierConfirm = async (language: string) => {
+    if (isEditingLanguageBarrier) {
+      const success = await updateLead(languageBarrierLeadId, { language_barrier: language });
+      if (success) {
+        toast.success('Language barrier updated successfully!');
+      }
+    } else {
+      const dbData = { status: "Language Barrier", language_barrier: language };
+      const success = await updateLead(languageBarrierLeadId, dbData);
+      if (success) {
+        toast.success('Language barrier status set successfully!');
+      }
+    }
+
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId("");
+    setLanguageBarrierLeadName("");
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo("");
+  };
+
+  // Handle language barrier modal close
+  const handleLanguageBarrierClose = () => {
+    setShowLanguageBarrierModal(false);
+    setLanguageBarrierLeadId("");
+    setLanguageBarrierLeadName("");
+    setIsEditingLanguageBarrier(false);
+    setEditingLanguageBarrierInfo("");
+  };
+
+  // Bulk WhatsApp function
+  const sendBulkWhatsApp = async (templateName: string, leadIds: string[]) => {
+    if (leadIds.length === 0) {
+      toast.error("No leads selected for WhatsApp messaging");
+      return;
+    }
+
+    const functions = getFunctions(app);
+    const sendWhatsappMessageFn = httpsCallable(functions, 'sendWhatsappMessage');
+    
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    // Show initial toast
+    const toastId = toast.loading(`Sending WhatsApp messages to ${leadIds.length} leads...`, {
+      position: "top-right",
+    });
+
+    try {
+      // Process leads in batches to avoid overwhelming the system
+      const batchSize = 5;
+      for (let i = 0; i < leadIds.length; i += batchSize) {
+        const batch = leadIds.slice(i, i + batchSize);
+        
+        // Process batch in parallel
+        const batchPromises = batch.map(async (leadId) => {
+          const lead = leads.find(l => l.id === leadId);
+          if (!lead || !lead.phone) {
+            errorCount++;
+            errors.push(`${lead?.name || 'Unknown'}: No phone number`);
+            return;
+          }
+
+          try {
+            // Format phone number
+            let formattedPhone = lead.phone.replace(/\s+/g, "").replace(/[()-]/g, "");
+            if (formattedPhone.startsWith("+91")) {
+              formattedPhone = formattedPhone.substring(3);
+            }
+            if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
+              formattedPhone = "91" + formattedPhone;
+            }
+
+            const messageData = {
+              phoneNumber: formattedPhone,
+              templateName: templateName,
+              leadId: lead.id,
+              userId: localStorage.getItem('userName') || 'Unknown',
+              userName: localStorage.getItem('userName') || 'Unknown',
+              message: `Template message: ${templateName}`,
+              customParams: [
+                { name: "name", value: lead.name || "Customer" },
+                { name: "Channel", value: "AMA Legal Solutions" },
+                { name: "agent_name", value: localStorage.getItem('userName') || "Agent" },
+                { name: "customer_mobile", value: formattedPhone }
+              ],
+              channelNumber: "919289622596",
+              broadcastName: `${templateName}_bulk_${Date.now()}`
+            };
+
+            const result = await sendWhatsappMessageFn(messageData);
+            
+            if (result.data && (result.data as any).success) {
+              successCount++;
+            } else {
+              errorCount++;
+              errors.push(`${lead.name}: Failed to send`);
+            }
+          } catch (error: any) {
+            errorCount++;
+            const errorMessage = error.message || error.details || 'Unknown error';
+            errors.push(`${lead.name}: ${errorMessage}`);
+          }
+        });
+
+        await Promise.all(batchPromises);
+        
+        // Update progress toast
+        const progress = Math.min(((i + batchSize) / leadIds.length) * 100, 100);
+        toast.update(toastId, {
+          render: `Sending WhatsApp messages... ${Math.round(progress)}% complete`,
+        });
+
+        // Small delay between batches to avoid rate limiting
+        if (i + batchSize < leadIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Show final results
+      toast.dismiss(toastId);
+      
+      if (successCount > 0) {
+        toast.success(
+          <div>
+            <p className="font-medium">Bulk WhatsApp Complete</p>
+            <p className="text-sm">
+              {successCount} message{successCount !== 1 ? "s" : ""} sent successfully
+              {errorCount > 0 && `, ${errorCount} failed`}
+            </p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 5000,
+          }
+        );
+      } else {
+        toast.error(
+          <div>
+            <p className="font-medium">Bulk WhatsApp Failed</p>
+            <p className="text-sm">No messages were sent successfully</p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 5000,
+          }
+        );
+      }
+
+      // Log detailed errors if any
+      if (errors.length > 0) {
+        console.log("WhatsApp sending errors:", errors);
+      }
+
+    } catch (error) {
+      toast.dismiss(toastId);
+      console.error("Error in bulk WhatsApp sending:", error);
+      toast.error("Failed to send bulk WhatsApp messages");
+    }
+  };
+
   // Selection handlers (from billcutleads)
   const handleSelectLead = (leadId: string) => {
     setSelectedLeads((prev) => (prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]));
@@ -780,6 +1310,23 @@ const AmaLeadsPage = () => {
     if (window.confirm(`Are you sure you want to unassign ${selectedLeads.length} lead${selectedLeads.length > 1 ? 's' : ''}?`)) {
       bulkUnassignLeads(selectedLeads);
     }
+  };
+
+  const handleBulkWhatsApp = () => {
+    if (selectedLeads.length === 0) {
+      toast.error("Please select leads to send WhatsApp messages");
+      return;
+    }
+
+    // Check role-based permissions
+    const canSendWhatsApp = userRole === "admin" || userRole === "overlord" || userRole === "salesperson" || userRole === "sales";
+
+    if (!canSendWhatsApp) {
+      toast.error("You don't have permission to send bulk WhatsApp messages");
+      return;
+    }
+
+    setShowBulkWhatsAppModal(true);
   };
 
   const executeBulkAssign = () => {
@@ -886,36 +1433,6 @@ const AmaLeadsPage = () => {
     setSortConfig({ key, direction });
   };
 
-  // Update lead
-  const updateLead = async (id: string, data: any) => {
-    try {
-      const leadRef = doc(crmDb, 'ama_leads', id);
-      const updateData: any = { ...data, lastModified: serverTimestamp() };
-
-      // If updating salesNotes, also reflect in lastNote and meta for quick access
-      if (Object.prototype.hasOwnProperty.call(data, 'salesNotes')) {
-        updateData.lastNote = data.salesNotes;
-        updateData.lastNoteDate = serverTimestamp();
-        try {
-          const userString = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-          const userObj = userString ? JSON.parse(userString) : {};
-          updateData.lastNoteBy = userObj?.userName || userObj?.name || userObj?.email || 'Unknown User';
-        } catch {
-          updateData.lastNoteBy = 'Unknown User';
-        }
-      }
-
-      await updateDoc(leadRef, updateData);
-      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...data, lastModified: new Date(), lastNote: updateData.lastNote ?? l.lastNote } : l)));
-      setFilteredLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...data, lastModified: new Date(), lastNote: updateData.lastNote ?? l.lastNote } : l)));
-      return true;
-    } catch (error) {
-      console.error("Error updating AMA lead: ", error);
-      toast.error("Failed to update lead");
-      return false;
-    }
-  };
-
   // Delete lead
   const deleteLead = async (leadId: string) => {
     try {
@@ -983,11 +1500,11 @@ const AmaLeadsPage = () => {
   };
 
   // Sidebar
-  const SidebarComponent = useMemo(() => {
+  const SidebarComponent = () => {
     if (userRole === 'admin') return AdminSidebar;
     if (userRole === 'overlord') return OverlordSidebar;
     return SalesSidebar;
-  }, [userRole]);
+  };
 
   // Export CSV
   const exportToCSV = () => {
@@ -1032,7 +1549,10 @@ const AmaLeadsPage = () => {
 
   return (
     <div className="flex h-screen bg-[#F8F5EC] text-[#5A4C33] w-full text-sm">
-      {SidebarComponent && <SidebarComponent />}
+      {(() => {
+        const Component = SidebarComponent();
+        return Component ? <Component /> : null;
+      })()}
       <div className="flex-1 overflow-auto px-3">
         <div className="w-full max-w-none mx-auto">
           <LeadsHeader
@@ -1068,6 +1588,7 @@ const AmaLeadsPage = () => {
             isSearching={isSearching}
             setIsSearching={setIsSearching}
             allLeadsCount={allLeadsCount}
+            onSearchCleared={handleSearchCleared}
           />
           {isLoading ? (
             <div className="flex justify-center items-center h-48">
@@ -1104,6 +1625,11 @@ const AmaLeadsPage = () => {
                 setShowBulkAssignment={setShowBulkAssignment}
                 bulkUnassignLeads={bulkUnassignLeads}
                 handleBulkUnassign={handleBulkUnassign}
+                onStatusChangeConfirmation={handleStatusChangeConfirmation}
+                onStatusChangeToCallback={handleStatusChangeToCallback}
+                onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
+                refreshLeadCallbackInfo={refreshLeadCallbackInfo}
+                handleBulkWhatsApp={handleBulkWhatsApp}
               />
               <div ref={loadMoreRef} className="h-6"></div>
             </>
@@ -1112,6 +1638,38 @@ const AmaLeadsPage = () => {
             showHistoryModal={showHistoryModal}
             setShowHistoryModal={setShowHistoryModal}
             currentHistory={currentHistory}
+          />
+          <AmaStatusChangeConfirmationModal
+            isOpen={!!statusConfirmLeadId}
+            onClose={handleStatusConfirmationClose}
+            onConfirm={handleStatusConfirmation}
+            leadName={statusConfirmLeadName}
+            newStatus={pendingStatusChange}
+            isLoading={isUpdatingStatus}
+          />
+          <AmaCallbackSchedulingModal
+            isOpen={showCallbackModal}
+            onClose={handleCallbackClose}
+            onConfirm={handleCallbackConfirm}
+            leadId={callbackLeadId}
+            leadName={callbackLeadName}
+            crmDb={crmDb}
+            isEditing={isEditingCallback}
+            existingCallbackInfo={editingCallbackInfo}
+          />
+          <AmaLanguageBarrierModal
+            isOpen={showLanguageBarrierModal}
+            onClose={handleLanguageBarrierClose}
+            onConfirm={handleLanguageBarrierConfirm}
+            leadId={languageBarrierLeadId}
+            leadName={languageBarrierLeadName}
+            existingLanguage={editingLanguageBarrierInfo}
+          />
+          <AmaBulkWhatsAppModal
+            isOpen={showBulkWhatsAppModal}
+            onClose={() => setShowBulkWhatsAppModal(false)}
+            selectedLeads={selectedLeads.map(id => filteredLeads.find(lead => lead.id === id)).filter(Boolean)}
+            onSendBulkWhatsApp={sendBulkWhatsApp}
           />
         </div>
       </div>

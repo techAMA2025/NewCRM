@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import { addDoc, collection, serverTimestamp, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
@@ -140,7 +142,7 @@ const AmaCallbackSchedulingModal = ({
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
               min={currentDate}
-              className="w-full px-3 py-2 bg-[#F8F5EC] border border-[#5A4C33]/20 rounded-lg text-[#5A4C33] focus:outline-none focus:border-[#D2A02A]"
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#5A4C33]/20 rounded-lg text-[#5A4C33] focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A]"
               required
             />
           </div>
@@ -155,14 +157,14 @@ const AmaCallbackSchedulingModal = ({
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
               min={scheduledDate === currentDate ? currentTime : undefined}
-              className="w-full px-3 py-2 bg-[#F8F5EC] border border-[#5A4C33]/20 rounded-lg text-[#5A4C33] focus:outline-none focus:border-[#D2A02A]"
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#5A4C33]/20 rounded-lg text-[#5A4C33] focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A]"
               required
             />
           </div>
 
           {/* Scheduled DateTime Preview */}
           {scheduledDate && scheduledTime && (
-            <div className="bg-[#F8F5EC] rounded-lg p-3 border border-[#5A4C33]/20">
+            <div className="bg-[#F8F5EC] rounded-lg p-3 border border-[#5A4C33]/10">
               <p className="text-sm text-[#5A4C33]/70">
                 <span className="font-medium">Scheduled for:</span>
               </p>
@@ -193,7 +195,7 @@ const AmaCallbackSchedulingModal = ({
             onClick={handleGoBack}
             className="flex-1 px-4 py-2 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] rounded-lg font-medium transition-colors duration-200"
           >
-            Clicked by mistake? Go back
+            Cancel
           </button>
         </div>
       </div>

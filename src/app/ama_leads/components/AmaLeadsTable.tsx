@@ -47,6 +47,7 @@ type LeadsTableProps = {
   setShowBulkAssignment?: (show: boolean) => void;
   bulkUnassignLeads?: (leadIds: string[]) => Promise<void>;
   handleBulkUnassign?: () => void;
+  handleBulkWhatsApp?: () => void;
 };
 
 const AmaLeadsTable = (props: LeadsTableProps) => {
@@ -91,6 +92,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
     setShowBulkAssignment = () => {},
     bulkUnassignLeads = async () => {},
     handleBulkUnassign = () => {},
+    handleBulkWhatsApp = () => {},
   } = props;
 
   const list = (filteredLeads ?? leads ?? []) as any[];
@@ -798,6 +800,12 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
               className="px-3 py-1.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] text-sm rounded-md transition-colors duration-200"
             >
               Bulk Unassign
+            </button>
+            <button
+              onClick={handleBulkWhatsApp}
+              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors duration-200"
+            >
+              Bulk WhatsApp
             </button>
           </div>
           <button

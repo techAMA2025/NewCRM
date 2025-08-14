@@ -89,7 +89,6 @@ const AmaStatusCell = ({
 
     if (newStatus === 'Callback' && onStatusChangeToCallback) {
       onStatusChangeToCallback(lead.id, lead.name || 'Unknown Lead');
-      toast.info('Schedule a callback for this lead');
       return;
     }
 
@@ -98,8 +97,8 @@ const AmaStatusCell = ({
       return;
     }
 
-    // For Converted status, use the confirmation modal
-    if (newStatus === 'Converted' && onStatusChangeConfirmation) {
+    // For Converted, Interested, and Not Answering statuses, use the confirmation modal
+    if ((newStatus === 'Converted' || newStatus === 'Interested' || newStatus === 'Not Answering') && onStatusChangeConfirmation) {
       onStatusChangeConfirmation(lead.id, lead.name || 'Unknown Lead', newStatus);
       return;
     }
@@ -122,7 +121,7 @@ const AmaStatusCell = ({
         <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(getDisplayStatus(lead.status))} ${!canEdit ? 'opacity-60' : ''}`}>
           {getDisplayStatus(lead.status)}
           {!canEdit && (
-            <span className="ml-1 text-xs opacity-75">🔒</span>
+            <span className="ml-1 text-xs opacity-75"></span>
           )}
         </span>
         
