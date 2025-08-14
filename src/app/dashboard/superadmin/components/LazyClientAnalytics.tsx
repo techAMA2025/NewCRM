@@ -85,6 +85,15 @@ const LazyClientAnalytics: React.FC<LazyClientAnalyticsProps> = ({
               </span>
             </div>
           </div>
+          
+          <div className="bg-gradient-to-r from-gray-900/50 to-gray-800/30 p-3 rounded-lg border border-gray-700/20">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-300 text-sm font-medium">Inactive</span>
+              <span className="text-white font-bold text-lg">
+                {clientAnalytics.statusDistribution?.Inactive || 0}
+              </span>
+            </div>
+          </div>
         </div>
         
         {/* Client stats cards */}
@@ -140,34 +149,14 @@ const LazyClientAnalytics: React.FC<LazyClientAnalyticsProps> = ({
               </thead>
               <tbody>
                 {(clientAnalytics.topAdvocates || []).map((advocate: any, index: number) => {
-                  // Calculate status distribution for this advocate
-                  const advocateStatusCounts = {
+                  // Get actual status distribution for this advocate
+                  const advocateStatusCounts = clientAnalytics.advocateStatusDistribution?.[advocate.name] || {
                     Active: 0,
                     Dropped: 0,
                     'Not Responding': 0,
                     'On Hold': 0,
-                    Inactive: 0,
-                    total: advocate.clientCount
+                    Inactive: 0
                   };
-                  
-                  // Note: This is a simplified calculation. In a real implementation,
-                  // you would need to fetch detailed status data per advocate
-                  // For now, we'll show the total and distribute based on overall percentages
-                  const totalClients = clientAnalytics.totalClients || 1;
-                  const activePercentage = (clientAnalytics.statusDistribution?.Active || 0) / totalClients;
-                  const droppedPercentage = (clientAnalytics.statusDistribution?.Dropped || 0) / totalClients;
-                  const notRespondingPercentage = (clientAnalytics.statusDistribution?.['Not Responding'] || 0) / totalClients;
-                  const onHoldPercentage = (clientAnalytics.statusDistribution?.['On Hold'] || 0) / totalClients;
-                  
-                  advocateStatusCounts.Active = Math.round(advocate.clientCount * activePercentage);
-                  advocateStatusCounts.Dropped = Math.round(advocate.clientCount * droppedPercentage);
-                  advocateStatusCounts['Not Responding'] = Math.round(advocate.clientCount * notRespondingPercentage);
-                  advocateStatusCounts['On Hold'] = Math.round(advocate.clientCount * onHoldPercentage);
-                  
-                  // Calculate remaining clients as Inactive
-                  const calculatedTotal = advocateStatusCounts.Active + advocateStatusCounts.Dropped + 
-                                        advocateStatusCounts['Not Responding'] + advocateStatusCounts['On Hold'];
-                  advocateStatusCounts.Inactive = advocate.clientCount - calculatedTotal;
                   
                   return (
                     <tr key={`${advocate.name}-${index}`} className={index % 2 === 0 ? "bg-gray-800/40" : "bg-gray-800/60"}>

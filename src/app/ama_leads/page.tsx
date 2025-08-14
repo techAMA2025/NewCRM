@@ -29,9 +29,6 @@ import AdminSidebar from "@/components/navigation/AdminSidebar";
 import SalesSidebar from "@/components/navigation/SalesSidebar";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import AmaHistoryModal from "./components/AmaHistoryModal";
-import AmaCallbackSchedulingModal from "./components/AmaCallbackSchedulingModal";
-import AmaStatusChangeConfirmationModal from "./components/AmaStatusChangeConfirmationModal";
-import AmaLanguageBarrierModal from "./components/AmaLanguageBarrierModal";
 
 // Types
 import type { Lead, User } from "./types";
@@ -95,29 +92,6 @@ const AmaLeadsPage = () => {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [bulkAssignTarget, setBulkAssignTarget] = useState("");
-
-  // Modal states for callback scheduling and status change confirmation
-  const [showCallbackModal, setShowCallbackModal] = useState(false);
-  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
-  const [callbackModalData, setCallbackModalData] = useState<{
-    leadId: string;
-    leadName: string;
-    isEditing?: boolean;
-    existingCallbackInfo?: any;
-  }>({ leadId: '', leadName: '' });
-  const [statusChangeModalData, setStatusChangeModalData] = useState<{
-    leadId: string;
-    leadName: string;
-    newStatus: string;
-  }>({ leadId: '', leadName: '', newStatus: '' });
-  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
-
-  // Language barrier modal states
-  const [showLanguageBarrierModal, setShowLanguageBarrierModal] = useState(false);
-  const [languageBarrierLeadId, setLanguageBarrierLeadId] = useState("");
-  const [languageBarrierLeadName, setLanguageBarrierLeadName] = useState("");
-  const [isEditingLanguageBarrier, setIsEditingLanguageBarrier] = useState(false);
-  const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState<string>("");
 
   // Refs
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -1056,230 +1030,6 @@ const AmaLeadsPage = () => {
     }
   };
 
-  // Handler for status change to callback
-  const handleStatusChangeToCallback = (leadId: string, leadName: string) => {
-    setCallbackModalData({
-      leadId,
-      leadName,
-      isEditing: false,
-      existingCallbackInfo: null
-    });
-    setShowCallbackModal(true);
-  };
-
-  // Handler for editing callback
-  const handleEditCallback = (lead: any) => {
-    // This would typically fetch existing callback info
-    setCallbackModalData({
-      leadId: lead.id,
-      leadName: lead.name,
-      isEditing: true,
-      existingCallbackInfo: lead.callbackInfo || null
-    });
-    setShowCallbackModal(true);
-  };
-
-  // Handler for status change confirmation modal
-  const handleStatusChangeConfirmation = (leadId: string, leadName: string, newStatus: string) => {
-    setStatusChangeModalData({
-      leadId,
-      leadName,
-      newStatus
-    });
-    setShowStatusChangeModal(true);
-  };
-
-  // Handler for callback modal confirm
-  const handleCallbackModalConfirm = () => {
-    setShowCallbackModal(false);
-    setCallbackModalData({ leadId: '', leadName: '' });
-    // Optionally refresh lead data or update status
-    toast.success('Callback scheduled successfully!');
-  };
-
-  // Handler for status change modal confirm
-  const handleStatusChangeModalConfirm = async () => {
-    setIsStatusUpdating(true);
-    try {
-      const { leadId, newStatus } = statusChangeModalData;
-      
-      // Find the current lead to check its current status
-      const currentLead = leads.find(lead => lead.id === leadId) || filteredLeads.find(lead => lead.id === leadId);
-      const currentStatus = currentLead?.status;
-      
-      // Prepare update data based on status type
-      const updateData: any = { status: newStatus };
-      
-      // Handle special status-specific logic
-      if (newStatus === 'Converted') {
-        updateData.convertedToClient = true;
-        updateData.convertedAt = serverTimestamp();
-      } else if (newStatus === 'Language Barrier') {
-        updateData.language_barrier = true;
-      }
-      
-      // Remove conversion fields if changing from Converted to any other status
-      if (currentStatus === 'Converted' && newStatus !== 'Converted') {
-        updateData.convertedAt = null;
-        updateData.convertedToClient = null;
-      }
-      
-      // Update the lead status
-      const success = await updateLead(leadId, updateData);
-      
-      if (success) {
-        // Here you would implement the message sending logic based on status
-        let successMessage = `Status updated to "${newStatus}"`;
-        
-        switch (newStatus) {
-          case 'Converted':
-            successMessage += ' and conversion recorded!';
-            break;
-          case 'Language Barrier':
-            successMessage += ' and language barrier noted!';
-            break;
-          case 'Interested':
-            successMessage += ' and interested message sent!';
-            break;
-          case 'Not Interested':
-            successMessage += ' and follow-up scheduled!';
-            break;
-          default:
-            if (currentStatus === 'Converted') {
-              successMessage += ' and conversion removed!';
-            } else {
-              successMessage += ' and message sent!';
-            }
-        }
-        
-        toast.success(successMessage);
-        setShowStatusChangeModal(false);
-        setStatusChangeModalData({ leadId: '', leadName: '', newStatus: '' });
-      }
-    } catch (error) {
-      toast.error('Failed to update status and send message');
-    } finally {
-      setIsStatusUpdating(false);
-    }
-  };
-
-  // Handle status change to language barrier
-  const handleStatusChangeToLanguageBarrier = (leadId: string, leadName: string) => {
-    setLanguageBarrierLeadId(leadId);
-    setLanguageBarrierLeadName(leadName);
-    setIsEditingLanguageBarrier(false);
-    setEditingLanguageBarrierInfo("");
-    setShowLanguageBarrierModal(true);
-  };
-
-  // Handle language barrier modal confirmation
-  const handleLanguageBarrierConfirm = async (language: string) => {
-    if (isEditingLanguageBarrier) {
-      const success = await updateLead(languageBarrierLeadId, { language_barrier: language });
-      if (success) {
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-sm font-bold text-white">Language Updated</p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">{languageBarrierLeadName}</p>
-                <p className="mt-1 text-sm text-green-200">Preferred language updated to {language}</p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className:
-              "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          },
-        );
-      }
-    } else {
-      // Find the current lead to check its current status
-      const currentLead = leads.find(lead => lead.id === languageBarrierLeadId) || filteredLeads.find(lead => lead.id === languageBarrierLeadId);
-      const currentStatus = currentLead?.status;
-      
-      const dbData: any = {
-        status: "Language Barrier",
-        language_barrier: language,
-      };
-      
-      // Remove conversion fields if changing from Converted to Language Barrier
-      if (currentStatus === 'Converted') {
-        dbData.convertedAt = null;
-        dbData.convertedToClient = null;
-      }
-
-      const success = await updateLead(languageBarrierLeadId, dbData);
-      if (success) {
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-sm font-bold text-white">Language Barrier Set</p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">{languageBarrierLeadName}</p>
-                <p className="mt-1 text-sm text-green-200">
-                  Lead status updated to "Language Barrier" with preferred language: {language}
-                </p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className:
-              "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          },
-        );
-      }
-    }
-
-    setShowLanguageBarrierModal(false);
-    setLanguageBarrierLeadId("");
-    setLanguageBarrierLeadName("");
-    setIsEditingLanguageBarrier(false);
-    setEditingLanguageBarrierInfo("");
-  };
-
-  // Handle language barrier modal close
-  const handleLanguageBarrierClose = () => {
-    setShowLanguageBarrierModal(false);
-    setLanguageBarrierLeadId("");
-    setLanguageBarrierLeadName("");
-    setIsEditingLanguageBarrier(false);
-    setEditingLanguageBarrierInfo("");
-  };
-
-  // Handle editing language barrier details
-  const handleEditLanguageBarrier = (lead: any) => {
-    setLanguageBarrierLeadId(lead.id);
-    setLanguageBarrierLeadName(lead.name || "Unknown Lead");
-    setIsEditingLanguageBarrier(true);
-    setEditingLanguageBarrierInfo(lead.language_barrier || "");
-    setShowLanguageBarrierModal(true);
-  };
-
   return (
     <div className="flex h-screen bg-[#F8F5EC] text-[#5A4C33] w-full text-sm">
       {SidebarComponent && <SidebarComponent />}
@@ -1354,11 +1104,6 @@ const AmaLeadsPage = () => {
                 setShowBulkAssignment={setShowBulkAssignment}
                 bulkUnassignLeads={bulkUnassignLeads}
                 handleBulkUnassign={handleBulkUnassign}
-                onStatusChangeToCallback={handleStatusChangeToCallback}
-                onEditCallback={handleEditCallback}
-                onStatusChangeConfirmation={handleStatusChangeConfirmation}
-                onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
-                onEditLanguageBarrier={handleEditLanguageBarrier}
               />
               <div ref={loadMoreRef} className="h-6"></div>
             </>
@@ -1367,32 +1112,6 @@ const AmaLeadsPage = () => {
             showHistoryModal={showHistoryModal}
             setShowHistoryModal={setShowHistoryModal}
             currentHistory={currentHistory}
-          />
-          <AmaCallbackSchedulingModal
-            isOpen={showCallbackModal}
-            onClose={() => setShowCallbackModal(false)}
-            onConfirm={handleCallbackModalConfirm}
-            leadId={callbackModalData.leadId}
-            leadName={callbackModalData.leadName}
-            crmDb={crmDb}
-            isEditing={callbackModalData.isEditing}
-            existingCallbackInfo={callbackModalData.existingCallbackInfo}
-          />
-          <AmaStatusChangeConfirmationModal
-            isOpen={showStatusChangeModal}
-            onClose={() => setShowStatusChangeModal(false)}
-            onConfirm={handleStatusChangeModalConfirm}
-            leadName={statusChangeModalData.leadName}
-            newStatus={statusChangeModalData.newStatus}
-            isLoading={isStatusUpdating}
-          />
-          <AmaLanguageBarrierModal
-            isOpen={showLanguageBarrierModal}
-            onClose={handleLanguageBarrierClose}
-            onConfirm={handleLanguageBarrierConfirm}
-            leadId={languageBarrierLeadId}
-            leadName={languageBarrierLeadName}
-            existingLanguage={editingLanguageBarrierInfo}
           />
         </div>
       </div>
