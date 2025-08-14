@@ -3,7 +3,7 @@
 import { FaFilter, FaUserTie } from 'react-icons/fa';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/firebase/firebase';
+import { db as crmDb } from '@/firebase/firebase';
 import { debounce } from 'lodash';
 
 type LeadsFiltersProps = {
@@ -33,6 +33,7 @@ type LeadsFiltersProps = {
   setIsSearching?: (searching: boolean) => void;
   allLeadsCount?: number;
   filteredLeadsCount?: number;
+  onSearchCleared?: () => void;
 };
 
 const AmaLeadsFilters = ({
@@ -62,6 +63,7 @@ const AmaLeadsFilters = ({
   setIsSearching = () => {},
   allLeadsCount = 0,
   filteredLeadsCount = 0,
+  onSearchCleared,
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,8 +73,8 @@ const AmaLeadsFilters = ({
   const [searchResultsCount, setSearchResultsCount] = useState(0);
 
   // Normalize phone number for search
-  const normalizePhoneNumber = (phone: string): string => {
-    return phone.replace(/[\s\-$$$$+]/g, "");
+  const normalizePhoneNumber = (phone: string | number): string => {
+    return String(phone).replace(/[\s\-$$$$+]/g, "");
   };
 
   // Perform database search using existing fields
@@ -90,23 +92,41 @@ const AmaLeadsFilters = ({
         const searchTermLower = searchTerm.toLowerCase().trim();
         const normalizedPhone = normalizePhoneNumber(searchTerm);
 
+        console.log("🔍 Starting AMA database search for:", { searchTerm, searchTermLower, normalizedPhone });
+
         const allResults = new Map(); // Use Map to avoid duplicates
 
-        // Search by phone number (exact match)
+        // Search by phone number (handle both string and number fields)
         if (normalizedPhone.length >= 10) {
           try {
-            const phoneQuery = query(
-              collection(db, "ama_leads"),
-              where("mobile", ">=", normalizedPhone),
-              where("mobile", "<=", normalizedPhone + "\uf8ff"),
+            // Try searching mobile as number first
+            const phoneAsNumber = parseInt(normalizedPhone);
+            if (!isNaN(phoneAsNumber)) {
+              const phoneQuery = query(
+                collection(crmDb, "ama_leads"),
+                where("mobile", "==", phoneAsNumber),
+                limit(50),
+              );
+              const phoneSnapshot = await getDocs(phoneQuery);
+              console.log("📱 Phone exact match results:", phoneSnapshot.docs.length);
+              phoneSnapshot.docs.forEach((doc) => {
+                allResults.set(doc.id, { id: doc.id, ...doc.data(), searchRelevance: 3 });
+              });
+            }
+
+            // Also try partial phone matching with string conversion
+            const phoneStringQuery = query(
+              collection(crmDb, "ama_leads"),
               orderBy("mobile"),
-              limit(50),
+              limit(200),
             );
-            const phoneSnapshot = await getDocs(phoneQuery);
-            phoneSnapshot.docs.forEach((doc) => {
+            const phoneStringSnapshot = await getDocs(phoneStringQuery);
+            console.log("📱 Phone partial search through:", phoneStringSnapshot.docs.length, "leads");
+            phoneStringSnapshot.docs.forEach((doc) => {
               const data = doc.data();
-              if (normalizePhoneNumber(data.mobile || data.phone || "").includes(normalizedPhone)) {
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: 1 });
+              const docPhone = normalizePhoneNumber(data.mobile || "");
+              if (docPhone.includes(normalizedPhone)) {
+                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: 2 });
               }
             });
           } catch (error) {
@@ -114,23 +134,49 @@ const AmaLeadsFilters = ({
           }
         }
 
-        // Search by name (case-insensitive prefix match)
+        // Search by name (case-insensitive)
         try {
+          // First try exact prefix match
           const nameQuery = query(
-            collection(db, "ama_leads"),
+            collection(crmDb, "ama_leads"),
             where("name", ">=", searchTermLower),
             where("name", "<=", searchTermLower + "\uf8ff"),
             orderBy("name"),
             limit(50),
           );
           const nameSnapshot = await getDocs(nameQuery);
+          console.log("📝 Name lowercase search results:", nameSnapshot.docs.length);
           nameSnapshot.docs.forEach((doc) => {
             const data = doc.data();
+            console.log("📝 Checking name:", data.name, "against:", searchTermLower);
             if (data.name?.toLowerCase().includes(searchTermLower)) {
-              const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 2 : 1;
+              const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2;
               allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
+              console.log("✅ Name match found:", data.name);
             }
           });
+
+          // Also try original case for names stored in proper case
+          if (searchTerm.length > 0) {
+            const properCaseQuery = query(
+              collection(crmDb, "ama_leads"),
+              where("name", ">=", searchTerm),
+              where("name", "<=", searchTerm + "\uf8ff"),
+              orderBy("name"),
+              limit(50),
+            );
+            const properCaseSnapshot = await getDocs(properCaseQuery);
+            console.log("📝 Name proper case search results:", properCaseSnapshot.docs.length);
+            properCaseSnapshot.docs.forEach((doc) => {
+              const data = doc.data();
+              console.log("📝 Checking proper case name:", data.name, "against:", searchTerm);
+              if (data.name?.toLowerCase().includes(searchTermLower)) {
+                const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2;
+                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
+                console.log("✅ Proper case name match found:", data.name);
+              }
+            });
+          }
         } catch (error) {
           console.log("Name search error:", error);
         }
@@ -139,7 +185,7 @@ const AmaLeadsFilters = ({
         if (searchTermLower.includes("@") || searchTermLower.length > 3) {
           try {
             const emailQuery = query(
-              collection(db, "ama_leads"),
+              collection(crmDb, "ama_leads"),
               where("email", ">=", searchTermLower),
               where("email", "<=", searchTermLower + "\uf8ff"),
               orderBy("email"),
@@ -149,7 +195,7 @@ const AmaLeadsFilters = ({
             emailSnapshot.docs.forEach((doc) => {
               const data = doc.data();
               if (data.email?.toLowerCase().includes(searchTermLower)) {
-                const relevance = data.email?.toLowerCase().startsWith(searchTermLower) ? 2 : 1;
+                const relevance = data.email?.toLowerCase().startsWith(searchTermLower) ? 3 : 2;
                 allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
               }
             });
@@ -158,29 +204,50 @@ const AmaLeadsFilters = ({
           }
         }
 
-        // Alternative search: Get recent leads and filter (fallback)
-        if (allResults.size === 0) {
+        // Enhanced fallback search: Get more recent leads and filter thoroughly
+        if (allResults.size === 0 || searchTermLower.length <= 3) {
           try {
+            console.log("🔄 Running fallback search...");
             const fallbackQuery = query(
-              collection(db, "ama_leads"),
+              collection(crmDb, "ama_leads"),
               orderBy("date", "desc"),
-              limit(1000), // Search through recent 1000 leads
+              limit(1500), // Increased limit for better search coverage
             );
             const fallbackSnapshot = await getDocs(fallbackQuery);
+            console.log("📊 Fallback search through", fallbackSnapshot.docs.length, "leads");
+            
             fallbackSnapshot.docs.forEach((doc) => {
               const data = doc.data();
-              const name = (data.name || "").toLowerCase();
-              const email = (data.email || "").toLowerCase();
-              const phone = normalizePhoneNumber(data.mobile || data.phone || "");
+              const name = (data.name || "").toString().toLowerCase();
+              const email = (data.email || "").toString().toLowerCase();
+              const phone = normalizePhoneNumber(data.mobile || "");
 
-              if (
-                name.includes(searchTermLower) ||
-                email.includes(searchTermLower) ||
-                phone.includes(normalizedPhone)
-              ) {
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: 1 });
+              let matched = false;
+              let relevance = 1;
+
+              // Name matching
+              if (name.includes(searchTermLower)) {
+                matched = true;
+                relevance = name.startsWith(searchTermLower) ? 2 : 1;
+              }
+
+              // Email matching
+              if (email.includes(searchTermLower)) {
+                matched = true;
+                relevance = Math.max(relevance, email.startsWith(searchTermLower) ? 2 : 1);
+              }
+
+              // Phone matching
+              if (phone.includes(normalizedPhone) && normalizedPhone.length >= 4) {
+                matched = true;
+                relevance = Math.max(relevance, 2);
+              }
+
+              if (matched) {
+                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
               }
             });
+            console.log("🎯 Fallback found", allResults.size, "matches");
           } catch (error) {
             console.log("Fallback search error:", error);
           }
@@ -191,38 +258,54 @@ const AmaLeadsFilters = ({
           .sort((a, b) => (b.searchRelevance || 0) - (a.searchRelevance || 0))
           .slice(0, 100); // Limit final results
 
+        console.log("✅ Total search results:", searchResults.length);
+
         // Transform results to match AMA Lead type
         const transformedResults = searchResults.map((data) => {
           return {
             id: data.id,
             name: data.name || "",
             email: data.email || "",
-            phone: String(data.mobile || data.phone || ""),
+            phone: String(data.mobile || ""), // Convert number to string
             address: data.address || "",
             city: data.city || "",
             status: data.status || "No Status",
             source: data.source || "",
-            source_database: data.source_database || data.source || "",
-            assignedTo: data.assigned_to || data.assignedTo || "",
-            assignedToId: data.assignedToId,
-            salesNotes: data.lastNote || data.salesNotes || "",
+            source_database: data.source || "", // Use source field
+            assignedTo: data.assigned_to || "",
+            assignedToId: data.assignedToId || "",
+            salesNotes: data.salesNotes || data.lastNote || "",
             lastNote: data.lastNote || "",
             query: data.query || "",
             language_barrier: data.language_barrier,
             convertedAt: data.convertedAt,
+            convertedToClient: data.convertedToClient,
             lastModified: data.lastModified,
-            debt_Range: data.debt_Range,
+            debt_Range: data.debt_range || data.debt_Range, // Handle both cases
             debt_range: data.debt_range,
-            debtRange: data.debtRange,
-            synced_at: data.date ? new Date(data.date) : undefined,
-            date: data.date || Date.now(),
+            debtRange: data.debt_range,
+            synced_at: data.synced_date ? new Date(data.synced_date) : (data.date ? new Date(data.date) : undefined),
+            date: data.date || data.synced_date || Date.now(),
+            income: data.income,
           };
         });
 
         setSearchResultsCount(transformedResults.length);
         onSearchResults?.(transformedResults);
+
+        if (transformedResults.length > 0) {
+          console.log("✅ Sample results:", transformedResults.slice(0, 3).map(r => ({ 
+            name: r.name, 
+            email: r.email, 
+            phone: r.phone,
+            source: r.source 
+          })));
+        } else {
+          console.log("📭 No search results found for:", searchTerm);
+        }
+
       } catch (error) {
-        console.error("Search error:", error);
+        console.error("❌ Search error:", error);
         onSearchResults?.([]);
         setSearchResultsCount(0);
       } finally {
@@ -270,7 +353,8 @@ const AmaLeadsFilters = ({
     onSearchResults?.([]);
     setSearchResultsCount(0);
     debouncedSearch.cancel();
-  }, [setSearchQuery, onSearchResults, debouncedSearch]);
+    onSearchCleared?.();
+  }, [setSearchQuery, onSearchResults, debouncedSearch, onSearchCleared]);
 
   // Clear all filters
   const clearAllFilters = useCallback(() => {
@@ -296,23 +380,12 @@ const AmaLeadsFilters = ({
     );
   }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate]);
 
-  // Debug log for lead counts
-  console.log('AMA Filters Debug:', {
-    'leads.length': leads.length,
-    'filteredLeads.length': filteredLeads.length,
-    'filteredLeadsCount': filteredLeadsCount,
-    'allLeadsCount': allLeadsCount,
-    'totalLeadsCount': totalLeadsCount,
-    'hasActiveFilters': hasActiveFilters,
-    'searchQuery': searchQuery
-  });
-
   // Fetch sales users
   useEffect(() => {
     const fetchSalesUsers = async () => {
       try {
         setIsLoading(true);
-        const salesQuery = query(collection(db, 'users'), where('role', '==', 'sales'));
+        const salesQuery = query(collection(crmDb, 'users'), where('role', '==', 'sales'));
         const querySnapshot = await getDocs(salesQuery);
         
         const users = querySnapshot.docs.map(doc => {
@@ -500,23 +573,7 @@ const AmaLeadsFilters = ({
             </select>
           </div>
 
-          {/* Converted Filter */}
-          <div className="space-y-1">
-            <label className="block text-xs text-[#5A4C33]/70">Converted</label>
-            <select
-              value={convertedFilter === null ? "all" : convertedFilter ? "true" : "false"}
-              onChange={e => {
-                const value = e.target.value;
-                if (value === "all") setConvertedFilter(null);
-                else setConvertedFilter(value === "true");
-              }}
-              className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
-            >
-              <option value="all">All Leads</option>
-              <option value="true">Converted</option>
-              <option value="false">Not Converted</option>
-            </select>
-          </div>
+       
           
           {/* Salesperson Filter */}
           <div className="space-y-1">

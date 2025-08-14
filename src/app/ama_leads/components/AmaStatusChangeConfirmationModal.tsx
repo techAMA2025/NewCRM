@@ -74,10 +74,28 @@ const AmaStatusChangeConfirmationModal: React.FC<AmaStatusChangeConfirmationModa
             {/* Main Question */}
             <div className="py-4">
               <h4 className="text-lg font-medium text-[#5A4C33] mb-2">
-                Do you want to send the message?
+                {newStatus === 'Callback' 
+                  ? 'Schedule Callback?'
+                  : newStatus === 'Language Barrier'
+                  ? 'Mark as Language Barrier?'
+                  : newStatus === 'Converted'
+                  ? 'Mark as Converted?'
+                  : newStatus === 'Interested' || newStatus === 'Not Answering'
+                  ? 'Do you want to send the message?'
+                  : 'Confirm Status Change?'
+                }
               </h4>
               <p className="text-sm text-[#5A4C33]/70">
-                Changing the status to "{newStatus}" will automatically send a message to the lead.
+                {newStatus === 'Callback' 
+                  ? 'This will change the status to "Callback" and may trigger follow-up actions.'
+                  : newStatus === 'Language Barrier'
+                  ? 'This will mark the lead as having language communication barriers.'
+                  : newStatus === 'Converted'
+                  ? 'This will mark the lead as converted and may send an automated message.'
+                  : newStatus === 'Interested' || newStatus === 'Not Answering'
+                  ? `Changing the status to "${newStatus}" will automatically send a message to the lead.`
+                  : `Changing the status to "${newStatus}" will update the lead information.`
+                }
               </p>
             </div>
           </div>
@@ -105,7 +123,18 @@ const AmaStatusChangeConfirmationModal: React.FC<AmaStatusChangeConfirmationModa
             ) : (
               <>
                 <FiCheck className="w-4 h-4" />
-                <span>Yes, Send Message</span>
+                <span>
+                  {newStatus === 'Callback' 
+                    ? 'Yes, Schedule Callback'
+                    : newStatus === 'Language Barrier'
+                    ? 'Yes, Mark as Language Barrier'
+                    : newStatus === 'Converted'
+                    ? 'Yes, Mark as Converted'
+                    : newStatus === 'Interested' || newStatus === 'Not Answering'
+                    ? 'Yes, Send Message'
+                    : 'Yes, Update Status'
+                  }
+                </span>
               </>
             )}
           </button>

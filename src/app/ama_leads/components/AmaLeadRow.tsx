@@ -4,8 +4,12 @@ import AmaStatusCell from './AmaStatusCell';
 import AmaSalespersonCell from './AmaSalespersonCell';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'react-toastify';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { FaEllipsisV, FaWhatsapp } from 'react-icons/fa';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/firebase/firebase';
+import { useWhatsAppTemplates } from '@/hooks/useWhatsAppTemplates';
 
 // Utility function to check if user can edit a lead
 const canUserEditLead = (lead: any) => {
@@ -141,6 +145,29 @@ const AmaLeadRow = ({
   }
 }: AmaLeadRowProps) => {
   const [showQueryModal, setShowQueryModal] = useState(false);
+  const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Use the custom hook to fetch sales templates
+  const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates('sales');
+
+  // Handle clicking outside the menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowWhatsAppMenu(false);
+      }
+    };
+
+    if (showWhatsAppMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showWhatsAppMenu]);
   
   const name = lead.name || 'Unknown';
   const email = lead.email || 'No email';
@@ -260,14 +287,82 @@ const AmaLeadRow = ({
     }
   };
 
+  // Send WhatsApp message function
+  const sendWhatsAppMessage = async (templateName: string) => {
+    if (!lead.phone) {
+      toast.error('No phone number available for this lead');
+      return;
+    }
+
+    setIsSendingWhatsApp(true);
+    setShowWhatsAppMenu(false);
+
+    try {
+      const sendWhatsappMessageFn = httpsCallable(functions, 'sendWhatsappMessage');
+      
+      // Format phone number to ensure it's in the correct format
+      let formattedPhone = lead.phone.replace(/\s+/g, '').replace(/[()-]/g, '');
+      if (formattedPhone.startsWith('+91')) {
+        formattedPhone = formattedPhone.substring(3);
+      }
+      if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+        formattedPhone = '91' + formattedPhone;
+      }
+      
+      const messageData = {
+        phoneNumber: formattedPhone,
+        templateName: templateName,
+        leadId: lead.id,
+        userId: localStorage.getItem('userName') || 'Unknown',
+        userName: localStorage.getItem('userName') || 'Unknown',
+        message: `Template message: ${templateName}`,
+        customParams: [
+          { name: "name", value: lead.name || "Customer" },
+          { name: "Channel", value: "AMA Legal Solutions" },
+          { name: "agent_name", value: localStorage.getItem('userName') || "Agent" },
+          { name: "customer_mobile", value: formattedPhone }
+        ],
+        channelNumber: "919289622596",
+        broadcastName: `${templateName}_${Date.now()}`
+      };
+
+      const result = await sendWhatsappMessageFn(messageData);
+      
+      console.log('WhatsApp function response:', result);
+      
+      if (result.data && (result.data as any).success) {
+        const templateDisplayName = whatsappTemplates.find(t => t.templateName === templateName)?.name || templateName;
+        toast.success(
+          <div>
+            <p className="font-medium">WhatsApp Message Sent!</p>
+            <p className="text-sm">"{templateDisplayName}" template sent to {lead.name}</p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+          }
+        );
+      } else {
+        console.log('Success check failed. Result data:', result.data);
+        toast.error('Failed to send WhatsApp message');
+      }
+    } catch (error: any) {
+      console.error('Error sending WhatsApp message:', error);
+      const errorMessage = error.message || error.details || 'Unknown error';
+      toast.error(`Failed to send WhatsApp message: ${errorMessage}`);
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
+  };
+
   return (
     <>
       <tr className={`hover:bg-[#F8F5EC] transition-colors duration-150 ${
-        !canEdit ? 'opacity-70' : ''
+        !canEdit ? 'opacity-100' : ''
       }`} role="row">
         {/* Selection Checkbox */}
         {columnVisibility.checkbox && (
-          <td className="px-1">
+          <td className="px-5">
             <input
               type="checkbox"
               checked={selectedLeads.includes(lead.id)}
@@ -281,7 +376,7 @@ const AmaLeadRow = ({
                   ? 'Only assigned salesperson can edit'
                   : 'Assign lead first to enable editing'
               }>
-                🔒
+                
               </div>
             )}
           </td>
@@ -289,7 +384,7 @@ const AmaLeadRow = ({
         
         {/* Date & Time */}
         {columnVisibility.date && (
-          <td className="px-1 py-0.5 whitespace-nowrap">
+          <td className="px-1 py-0.5 whitespace-nowrap px-2">
             <div className="flex flex-col">
               <span className="text-[11px] font-medium text-[#5A4C33]">{date}</span>
               <span className="text-[10px] text-[#5A4C33]/70">{time}</span>
@@ -301,7 +396,7 @@ const AmaLeadRow = ({
         {columnVisibility.name && (
           <td className="px-1 max-w-[200px]">  
             <div className="flex flex-col gap-0.5">
-              <div className="font-medium text-[#5A4C33] flex items-center text-[16px]">
+              <div className="font-medium text-[#5A4C33] flex items-center text-[16px] px-5">
                 {name}
                 {lead.convertedToClient && (
                   <span className="ml-1 text-green-400" title="Converted to client">
@@ -309,12 +404,12 @@ const AmaLeadRow = ({
                   </span>
                 )}
               </div>
-              <div className="flex items-center text-[10px]">
+              <div className="flex items-center text-[10px] px-5">
                 <a href={`mailto:${email}`} className="text-[#D2A02A] hover:underline truncate max-w-[180px]">
                   {email}
                 </a>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center px-5">
                 <a href={`tel:${phone}`} className="text-[#D2A02A] hover:underline font-medium text-[16px]">
                   {formatPhoneNumber(phone)}
                 </a>
@@ -325,7 +420,7 @@ const AmaLeadRow = ({
 
         {/* Location */}
         {columnVisibility.location && (
-          <td className="px-1 py-0.5 text-[11px] text-[#5A4C33]/70 max-w-[100px]">
+          <td className="px-1 py-0.5 text-[11px] text-[#5A4C33]/70 max-w-[100px] px-5">
             <div className="flex items-center truncate">
               <span>{location}</span>
             </div>
@@ -334,8 +429,8 @@ const AmaLeadRow = ({
 
         {/* Source - keeping original colors as requested */}
         {columnVisibility.source && (
-          <td className="py-0.5 text-[10px]">
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${sourceColorClass}`}>
+          <td className="py-0.5 text-[10px] px-5">
+            <span className={`inline-flex items-center px-3 py-0.5 rounded-full font-medium ${sourceColorClass}`}>
               {sourceDisplay}
             </span>
           </td>
@@ -343,10 +438,10 @@ const AmaLeadRow = ({
 
         {/* Debt Range (instead of Financials) */}
         {columnVisibility.debt && (
-          <td className="px-1 py-0.5 text-[11px]">
+          <td className="px-1 py-0.5 text-[11px] px-5">
             <div className="space-y-1">
               <div>
-                <span className="font-medium text-[#5A4C33]/70">Debt:</span> 
+                <span className="font-medium text-[#5A4C33]/70"></span> 
                 <span className={`text-[#5A4C33]`}>
                   {debtDisplay}
                 </span>
@@ -468,6 +563,56 @@ const AmaLeadRow = ({
                 >
                   History
                 </button>
+                
+                {/* WhatsApp Menu Button */}
+                <div className="relative" ref={menuRef}>
+                  <button
+                    onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
+                    disabled={!canEdit || isSendingWhatsApp || templatesLoading}
+                    className={`px-2 py-0.5 rounded text-xs transition-colors duration-200 ${
+                      !canEdit || isSendingWhatsApp || templatesLoading
+                        ? 'bg-[#5A4C33]/20 text-[#5A4C33]/30 cursor-not-allowed'
+                        : showWhatsAppMenu
+                        ? 'bg-green-600 text-white'
+                        : 'bg-green-500 hover:bg-green-600 text-white'
+                    }`}
+                    title="Send WhatsApp message"
+                  >
+                    {isSendingWhatsApp || templatesLoading ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border-t border-b border-white"></div>
+                    ) : (
+                      <FaEllipsisV className="w-2 h-2" />
+                    )}
+                  </button>
+
+                  {/* WhatsApp Menu Dropdown */}
+                  {showWhatsAppMenu && !templatesLoading && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-[#ffffff] border border-[#5A4C33]/20 rounded-lg shadow-lg z-50">
+                      <div className="p-2">
+                        <p className="text-xs text-[#5A4C33] font-medium mb-2">Send WhatsApp Message</p>
+                        {whatsappTemplates.length > 0 ? (
+                          <div className="space-y-1">
+                            {whatsappTemplates.map((template) => (
+                              <button
+                                key={template.id}
+                                onClick={() => sendWhatsAppMessage(template.templateName)}
+                                className="w-full text-left p-2 text-xs text-[#5A4C33] hover:bg-[#F8F5EC] rounded transition-colors flex items-center space-x-2"
+                              >
+                                <FaWhatsapp className="text-green-500" />
+                                <div>
+                                  <div className="font-medium">{template.name}</div>
+                                  <div className="text-[#5A4C33]/70">{template.description}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-[#5A4C33]/70">No templates available</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </td>
