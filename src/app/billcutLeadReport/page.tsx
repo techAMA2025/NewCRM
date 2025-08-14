@@ -125,6 +125,8 @@ const getStatusColor = (status: string) => {
       return "bg-emerald-900 text-white"
     case "loan required":
       return "bg-purple-900 text-white"
+    case "future potential":
+      return "bg-blue-900 text-white"
     case "short loan":
       return "bg-teal-900 text-white"
     case "cibil issue":
@@ -270,6 +272,22 @@ const BillcutLeadReportContent = () => {
 
   // Add state for dropdown menu
   const [showReportDropdown, setShowReportDropdown] = useState(false)
+
+  // Add state for hidden columns in salesperson analytics table
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
+
+  // Function to toggle column visibility
+  const toggleColumnVisibility = (columnName: string) => {
+    setHiddenColumns(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(columnName)) {
+        newSet.delete(columnName)
+      } else {
+        newSet.add(columnName)
+      }
+      return newSet
+    })
+  }
 
   // Helper function to navigate to billcut leads page with filters
   const navigateToLeadsWithFilters = (salesperson: string, status: string) => {
@@ -2032,12 +2050,7 @@ const BillcutLeadReportContent = () => {
               icon={<FiTrendingUp size={24} />}
               color="#EF4444"
             />
-            <MetricCard
-              title="Short Loan Rate"
-              value={`${analytics.shortLoanRate}%`}
-              icon={<FiDollarSign size={24} />}
-              color="#0D9488"
-            />
+          
           </div>
 
           {/* NEW: Conversion Time Metrics */}
@@ -2083,7 +2096,7 @@ const BillcutLeadReportContent = () => {
             />
           </div>
 
-          {/* NEW: Language Barrier Metrics */}
+          {/* NEW: Language Barrier Metrics
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <MetricCard
               title="Language Barrier Leads"
@@ -2113,7 +2126,7 @@ const BillcutLeadReportContent = () => {
               icon={<FiTrendingUp size={24} />}
               color="#F59E0B"
             />
-          </div>
+          </div> */}
 
           {/* NEW: Conversion Time Analytics Section */}
           <div className="w-full mb-6 lg:mb-8">
@@ -2544,27 +2557,96 @@ const BillcutLeadReportContent = () => {
               Salesperson-wise Lead Status Analytics
             </h3>
 
+            {/* Column Visibility Controls */}
+            <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <FiFilter className="h-4 w-4" />
+                Column Visibility Controls
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {analytics.categoryDistribution.map((category) => (
+                  <button
+                    key={category.name}
+                    onClick={() => toggleColumnVisibility(category.name)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 border-2 ${
+                      hiddenColumns.has(category.name)
+                        ? "bg-gray-200 text-gray-500 border-gray-300 dark:bg-gray-600 dark:text-gray-400 dark:border-gray-500"
+                        : `${getStatusColor(category.name)} border-current`
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${
+                      hiddenColumns.has(category.name) ? "bg-gray-400" : "bg-white"
+                    }`}></span>
+                    {category.name}
+                    {hiddenColumns.has(category.name) ? (
+                      <FiX className="w-3 h-3" />
+                    ) : (
+                      <FiFilter className="w-3 h-3" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Detailed Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead>
                   <tr>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
-                      Salesperson
+                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800 border-2 border-gray-600">
+                      <div className="flex items-center justify-between">
+                        <span>Salesperson</span>
+                        <button
+                          onClick={() => toggleColumnVisibility("Salesperson")}
+                          className="ml-2 p-1 rounded hover:bg-gray-700 transition-colors"
+                          title="Toggle Salesperson column"
+                        >
+                          <FiFilter className="w-3 h-3" />
+                        </button>
+                      </div>
                     </th>
                     {analytics.categoryDistribution.map((category) => (
                       <th
                         key={category.name}
-                        className={`px-3 lg:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${getStatusColor(category.name)}`}
+                        className={`px-3 lg:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-2 ${
+                          hiddenColumns.has(category.name) ? "hidden" : getStatusColor(category.name)
+                        }`}
                       >
-                        {category.name}
+                        <div className="flex items-center justify-between">
+                          <span>{category.name}</span>
+                          <button
+                            onClick={() => toggleColumnVisibility(category.name)}
+                            className="ml-2 p-1 rounded hover:bg-black/20 transition-colors"
+                            title={`Toggle ${category.name} column`}
+                          >
+                            <FiFilter className="w-3 h-3" />
+                          </button>
+                        </div>
                       </th>
                     ))}
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
-                      Total
+                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800 border-2 border-gray-600">
+                      <div className="flex items-center justify-between">
+                        <span>Total</span>
+                        <button
+                          onClick={() => toggleColumnVisibility("Total")}
+                          className="ml-2 p-1 rounded hover:bg-gray-700 transition-colors"
+                          title="Toggle Total column"
+                        >
+                          <FiFilter className="w-3 h-3" />
+                        </button>
+                      </div>
                     </th>
-                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800">
-                      Conversion Rate
+                    <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider bg-gray-800 border-2 border-gray-600">
+                      <div className="flex items-center justify-between">
+                        <span>Conversion Rate</span>
+                        <button
+                          onClick={() => toggleColumnVisibility("Conversion Rate")}
+                          className="ml-2 p-1 rounded hover:bg-gray-700 transition-colors"
+                          title="Toggle Conversion Rate column"
+                        >
+                          <FiFilter className="w-3 h-3" />
+                        </button>
+                      </div>
                     </th>
                   </tr>
                 </thead>
@@ -2589,13 +2671,17 @@ const BillcutLeadReportContent = () => {
 
                     return (
                       <tr key={rep.name} className="hover:opacity-80 transition-opacity duration-200">
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
+                        <td className={`px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800 border-2 border-gray-600 ${
+                          hiddenColumns.has("Salesperson") ? "hidden" : ""
+                        }`}>
                           {rep.name}
                         </td>
                         {analytics.categoryDistribution.map((category) => (
                           <td
                             key={category.name}
-                            className={`px-3 lg:px-6 py-4 whitespace-nowrap text-sm ${getStatusColor(category.name)}`}
+                            className={`px-3 lg:px-6 py-4 whitespace-nowrap text-sm border-2 ${
+                              hiddenColumns.has(category.name) ? "hidden" : getStatusColor(category.name)
+                            }`}
                           >
                             <div className="flex items-center">
                               <span
@@ -2613,10 +2699,14 @@ const BillcutLeadReportContent = () => {
                             </div>
                           </td>
                         ))}
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800">
+                        <td className={`px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-white bg-gray-800 border-2 border-gray-600 ${
+                          hiddenColumns.has("Total") ? "hidden" : ""
+                        }`}>
                           {rep.totalLeads}
                         </td>
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-white bg-gray-800">
+                        <td className={`px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-white bg-gray-800 border-2 border-gray-600 ${
+                          hiddenColumns.has("Conversion Rate") ? "hidden" : ""
+                        }`}>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${
                               rep.conversionRate >= 20
