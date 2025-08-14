@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   collection,
   getDocs,
@@ -27,6 +27,7 @@ import LeadsHeader from "./components/AmaLeadsHeader";
 import LeadsFilters from "./components/AmaLeadsFilters";
 // Keep our AMA-specific table for now
 import AmaLeadsTable from "./components/AmaLeadsTable";
+import AmaLeadsTabs from "./components/AmaLeadsTabs";
 import AdminSidebar from "@/components/navigation/AdminSidebar";
 import SalesSidebar from "@/components/navigation/SalesSidebar";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
@@ -72,6 +73,8 @@ const AmaLeadsPage = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [allLeadsCount, setAllLeadsCount] = useState(0);
+  const [databaseFilteredCount, setDatabaseFilteredCount] = useState(0);
+  const [searchResultsCount, setSearchResultsCount] = useState(0);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,6 +84,7 @@ const AmaLeadsPage = () => {
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "callback">("all");
 
   // Sorting
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
@@ -125,6 +129,66 @@ const AmaLeadsPage = () => {
   // Refs
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  // Helper function to get callback priority for sorting
+  const getCallbackPriority = (lead: any): number => {
+    if (!lead.callbackInfo || !lead.callbackInfo.scheduled_dt) {
+      return 4; // Blank/no callback info - lowest priority
+    }
+
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const dayAfterTomorrow = new Date(today);
+    dayAfterTomorrow.setDate(today.getDate() + 2);
+
+    const scheduledDate = new Date(lead.callbackInfo.scheduled_dt);
+    const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+    const dayAfterTomorrowOnly = new Date(
+      dayAfterTomorrow.getFullYear(),
+      dayAfterTomorrow.getMonth(),
+      dayAfterTomorrow.getDate(),
+    );
+
+    let priority = 4;
+    if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
+      priority = 1; // Red strap - today (highest priority)
+    } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
+      priority = 2; // Yellow strap - tomorrow
+    } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
+      priority = 3; // Green strap - day after tomorrow or later
+    } else {
+      priority = 4; // Gray/other dates - lowest priority
+    }
+
+    return priority;
+  };
+
+  // Fetch callback information
+  const fetchCallbackInfo = async (leadId: string) => {
+    try {
+      const callbackInfoRef = collection(crmDb, "ama_leads", leadId, "callback_info");
+      const callbackSnapshot = await getDocs(callbackInfoRef);
+
+      if (!callbackSnapshot.empty) {
+        const callbackData = callbackSnapshot.docs[0].data();
+        return {
+          id: callbackData.id || "attempt_1",
+          scheduled_dt: callbackData.scheduled_dt?.toDate
+            ? callbackData.scheduled_dt.toDate()
+            : new Date(callbackData.scheduled_dt),
+          scheduled_by: callbackData.scheduled_by || "",
+          created_at: callbackData.created_at,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  };
 
   // Auth effect
   useEffect(() => {
@@ -178,14 +242,36 @@ const AmaLeadsPage = () => {
 
     // Date range uses 'date' epoch ms from normalized doc
     if (fromDate) {
-      const fromDateStart = new Date(fromDate);
-      fromDateStart.setHours(0, 0, 0, 0);
-      constraints.push(where("date", ">=", fromDateStart.getTime()));
+      // Create date in local timezone, not UTC
+      const fromDateStart = new Date(fromDate + 'T00:00:00');
+      const fromTimestamp = fromDateStart.getTime();
+      console.log("🔍 Server-side FROM date filter:", {
+        fromDate,
+        fromDateStart: fromDateStart.toISOString(),
+        fromDateLocal: fromDateStart.toLocaleDateString(),
+        fromTimestamp
+      });
+      constraints.push(where("date", ">=", fromTimestamp));
     }
     if (toDate) {
-      const toDateEnd = new Date(toDate);
-      toDateEnd.setHours(23, 59, 59, 999);
-      constraints.push(where("date", "<=", toDateEnd.getTime()));
+      // Create date in local timezone, not UTC
+      const toDateEnd = new Date(toDate + 'T23:59:59.999');
+      const toTimestamp = toDateEnd.getTime();
+      console.log("📅 Adding TO date constraint:", toTimestamp);
+      constraints.push(where("date", "<=", toTimestamp));
+    }
+
+    // Source filter - this was missing!
+    if (sourceFilter !== "all") {
+      // Map filter values to database values
+      const sourceMap = {
+        'ama': 'AMA',
+        'credsettlee': 'CREDSETTLE', 
+        'settleloans': 'SETTLELOANS'
+      };
+      const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toUpperCase();
+      console.log("🔧 Adding source constraint:", sourceFilter, "→", dbSourceValue);
+      constraints.push(where("source", "==", dbSourceValue));
     }
 
     // Status filter
@@ -211,11 +297,17 @@ const AmaLeadsPage = () => {
       constraints.push(where("convertedToClient", "==", convertedFilter));
     }
 
+    // Tab-based filtering - Callback tab
+    if (activeTab === "callback") {
+      constraints.push(where("status", "==", "Callback"));
+    }
+
     // Sorting and pagination
     constraints.push(orderBy("date", sortConfig.direction === 'ascending' ? 'asc' : 'desc'));
     constraints.push(limit(LEADS_PER_PAGE));
     if (isLoadMore && lastDocument) constraints.push(startAfter(lastDocument));
 
+    console.log("🔍 Query constraints:", constraints.length);
     return query(baseQuery, ...constraints);
   };
 
@@ -233,13 +325,105 @@ const AmaLeadsPage = () => {
     }
   };
 
+  // Fetch filtered count from database based on current filters
+  const fetchFilteredCount = async (excludePagination = false) => {
+    try {
+      console.log("🔍 Fetching filtered count with filters:", {
+        sourceFilter,
+        statusFilter,
+        salesPersonFilter,
+        convertedFilter,
+        fromDate,
+        toDate,
+        activeTab
+      });
+
+      const baseQuery = collection(crmDb, "ama_leads");
+      const constraints: any[] = [];
+
+      // Date range uses 'date' epoch ms from normalized doc
+      if (fromDate) {
+        const fromDateStart = new Date(fromDate + 'T00:00:00');
+        const fromTimestamp = fromDateStart.getTime();
+        console.log("📅 Adding FROM date constraint:", fromTimestamp);
+        constraints.push(where("date", ">=", fromTimestamp));
+      }
+      if (toDate) {
+        const toDateEnd = new Date(toDate + 'T23:59:59.999');
+        const toTimestamp = toDateEnd.getTime();
+        console.log("📅 Adding TO date constraint:", toTimestamp);
+        constraints.push(where("date", "<=", toTimestamp));
+      }
+
+      // Source filter - this was missing!
+      if (sourceFilter !== "all") {
+        // Map filter values to database values
+        const sourceMap = { 'ama': 'AMA', 'credsettlee': 'CREDSETTLE', 'settleloans': 'SETTLELOANS' };
+        const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toUpperCase();
+        console.log("🔧 Adding source constraint:", sourceFilter, "→", dbSourceValue);
+        constraints.push(where("source", "==", dbSourceValue));
+      }
+
+      // Status filter
+      if (statusFilter !== "all") {
+        console.log("🏷️ Adding status constraint:", statusFilter);
+        if (statusFilter === "No Status") {
+          constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any));
+        } else {
+          constraints.push(where("status", "==", statusFilter));
+        }
+      }
+
+      // Salesperson filter
+      if (salesPersonFilter !== "all") {
+        console.log("👤 Adding salesperson constraint:", salesPersonFilter);
+        if (salesPersonFilter === "") {
+          constraints.push(where("assigned_to", "in", ["", "-", "–"] as any));
+        } else {
+          constraints.push(where("assigned_to", "==", salesPersonFilter));
+        }
+      }
+
+      // Converted filter
+      if (convertedFilter !== null) {
+        console.log("✅ Adding converted constraint:", convertedFilter);
+        constraints.push(where("convertedToClient", "==", convertedFilter));
+      }
+
+      // Tab-based filtering - Callback tab
+      if (activeTab === "callback") {
+        console.log("📞 Adding callback tab constraint");
+        constraints.push(where("status", "==", "Callback"));
+      }
+
+      console.log("🔧 Total constraints built:", constraints.length);
+
+      // Build query with constraints (no pagination for counting)
+      const countQuery = constraints.length > 0 
+        ? query(baseQuery, ...constraints)
+        : query(baseQuery);
+      
+      console.log("🔍 Executing count query...");
+      const countSnapshot = await getDocs(countQuery);
+      const count = countSnapshot.size;
+      
+      console.log("📊 Count query result:", count);
+      return count;
+    } catch (error) {
+      console.error("❌ Error fetching filtered count:", error);
+      return 0;
+    }
+  };
+
   // Handle search results from database search
   const handleSearchResults = (results: any[]) => {
     setSearchResults(results);
+    setSearchResultsCount(results.length);
   };
 
   // Handle when search is cleared - reset to first page
   const handleSearchCleared = () => {
+    setSearchResultsCount(0);
     if (leads.length > 50) {
       console.log("🔄 Search cleared, resetting to first 50 leads");
       setLeads(leads.slice(0, 50));
@@ -304,24 +488,78 @@ const AmaLeadsPage = () => {
 
     // Date range filter (using mapped synced_at or date)
     if (fromDate || toDate) {
+      console.log("🔍 Date filtering applied:", { fromDate, toDate, totalLeads: result.length });
+      
+      const originalResultLength = result.length;
+      
       result = result.filter(lead => {
-        const leadDate = lead.synced_at ? new Date(lead.synced_at) : new Date(lead.date);
+        // Handle date properly - lead.date is epoch milliseconds, synced_at is already a Date object
+        let leadDate: Date;
+        
+        if (lead.synced_at && lead.synced_at instanceof Date) {
+          leadDate = lead.synced_at;
+        } else if (lead.date) {
+          // If date is epoch milliseconds, convert to Date
+          leadDate = typeof lead.date === 'number' ? new Date(lead.date) : new Date(lead.date);
+        } else {
+          // Fallback to current date if no date available
+          leadDate = new Date();
+        }
+        
+        // Debug first few leads
+        if (result.indexOf(lead) < 5) {
+          console.log("📅 Lead date debug:", {
+            leadName: lead.name,
+            rawDate: lead.date,
+            rawSyncedAt: lead.synced_at,
+            processedDate: leadDate.toISOString(),
+            processedDateLocal: leadDate.toLocaleDateString(),
+            fromDate,
+            toDate
+          });
+        }
         
         if (fromDate && toDate) {
-          const from = new Date(fromDate);
-          const to = new Date(toDate);
-          to.setHours(23, 59, 59, 999); // Include the entire end date
-          return leadDate >= from && leadDate <= to;
+          // Create dates in local timezone, not UTC
+          const from = new Date(fromDate + 'T00:00:00');
+          const to = new Date(toDate + 'T23:59:59.999');
+          
+          // Check if lead date falls within the range
+          const matches = leadDate >= from && leadDate <= to;
+          
+          if (result.indexOf(lead) < 5) {
+            console.log("📅 Date range check:", {
+              leadName: lead.name,
+              leadDate: leadDate.toISOString(),
+              leadDateLocal: leadDate.toLocaleDateString(),
+              from: from.toISOString(),
+              fromLocal: from.toLocaleDateString(),
+              to: to.toISOString(),
+              toLocal: to.toLocaleDateString(),
+              isAfterFrom: leadDate >= from,
+              isBeforeTo: leadDate <= to,
+              matches
+            });
+          }
+          
+          return matches;
         } else if (fromDate) {
-          const from = new Date(fromDate);
+          // Create date in local timezone, not UTC
+          const from = new Date(fromDate + 'T00:00:00');
           return leadDate >= from;
         } else if (toDate) {
-          const to = new Date(toDate);
-          to.setHours(23, 59, 59, 999); // Include the entire end date
+          // Create date in local timezone, not UTC
+          const to = new Date(toDate + 'T23:59:59.999');
           return leadDate <= to;
         }
         
         return true;
+      });
+      
+      console.log("🔍 After date filtering:", { 
+        originalCount: originalResultLength,
+        filteredCount: result.length,
+        filtered: originalResultLength - result.length 
       });
     }
 
@@ -352,9 +590,18 @@ const AmaLeadsPage = () => {
     const t = setTimeout(() => {
       if (searchQuery) {
         // Use search results when searching
+        console.log("🔍 Using search results for filtering:", {
+          searchQuery,
+          searchResultsCount: searchResults.length,
+          hasDateFilters: !!(fromDate || toDate)
+        });
         setFilteredLeads(applyFiltersToLeads(searchResults));
       } else {
         // When not searching, use regular leads (up to current pagination)
+        console.log("🔍 Using regular leads for filtering:", {
+          leadsCount: leads.length,
+          hasDateFilters: !!(fromDate || toDate)
+        });
         setFilteredLeads(applyFiltersToLeads(leads));
       }
     }, 100);
@@ -378,6 +625,21 @@ const AmaLeadsPage = () => {
 
       const fetchedLeads: any[] = querySnapshot.docs.map((docSnap) => {
         const d = docSnap.data() as any;
+        
+        // Debug first few leads to see their date data
+        if (querySnapshot.docs.indexOf(docSnap) < 5) {
+          const debugDate = d.date ? new Date(d.date) : null;
+          console.log("📅 Raw lead data:", {
+            id: docSnap.id,
+            name: d.name,
+            rawDate: d.date,
+            rawSyncedDate: d.synced_date,
+            convertedDate: debugDate ? debugDate.toISOString() : 'No date',
+            convertedDateLocal: debugDate ? debugDate.toLocaleDateString() : 'No date',
+            convertedDateString: debugDate ? debugDate.toString() : 'No date'
+          });
+        }
+        
         return {
           id: docSnap.id,
           name: d.name || "",
@@ -404,10 +666,44 @@ const AmaLeadsPage = () => {
           // Provide a synced_at-like field for shared filters/sort (map from date)
           synced_at: d.date ? new Date(d.date) : undefined,
           date: d.date || Date.now(),
+          callbackInfo: null, // Initialize callback info
         } as any;
       });
 
-      setLeads((prev) => (isLoadMore ? [...prev, ...fetchedLeads] : fetchedLeads));
+      // Fetch callback info for callback leads
+      const leadsWithCallbackInfo = await Promise.all(
+        fetchedLeads.map(async (lead) => {
+          if (lead.status === "Callback") {
+            const callbackInfo = await fetchCallbackInfo(lead.id);
+            lead.callbackInfo = callbackInfo;
+          }
+          return lead;
+        })
+      );
+
+      setLeads((prev) => {
+        const newLeads = isLoadMore ? [...prev, ...leadsWithCallbackInfo] : leadsWithCallbackInfo;
+        
+        // Apply callback sorting to the entire list when on callback tab
+        if (activeTab === "callback") {
+          return [...newLeads].sort((a, b) => {
+            const priorityA = getCallbackPriority(a);
+            const priorityB = getCallbackPriority(b);
+            
+            // If priorities are the same, sort by scheduled time (earliest first)
+            if (priorityA === priorityB && a.callbackInfo && b.callbackInfo && 
+                a.callbackInfo.scheduled_dt && b.callbackInfo.scheduled_dt) {
+              const timeA = new Date(a.callbackInfo.scheduled_dt).getTime();
+              const timeB = new Date(b.callbackInfo.scheduled_dt).getTime();
+              return timeA - timeB;
+            }
+            
+            return priorityA - priorityB;
+          });
+        }
+        
+        return newLeads;
+      });
 
       const lastDocument = querySnapshot.docs[querySnapshot.docs.length - 1];
       setLastDoc(lastDocument);
@@ -415,7 +711,7 @@ const AmaLeadsPage = () => {
 
       // Initialize editing state for notes
       const initialEditingState: {[key:string]: any} = {};
-      (isLoadMore ? fetchedLeads : fetchedLeads).forEach((lead) => {
+      (isLoadMore ? leadsWithCallbackInfo : leadsWithCallbackInfo).forEach((lead) => {
         initialEditingState[lead.id] = {
           ...(initialEditingState[lead.id] || {}),
           salesNotes: lead.salesNotes || ''
@@ -424,7 +720,7 @@ const AmaLeadsPage = () => {
       setEditingLeads((prev) => isLoadMore ? ({ ...prev, ...initialEditingState }) : initialEditingState);
 
       // Prefill from history for leads without lastNote/salesNotes
-      const leadsNeedingHistory = fetchedLeads.filter((l) => !(l.lastNote && l.lastNote.trim()) && !(l.salesNotes && l.salesNotes.trim()));
+      const leadsNeedingHistory = leadsWithCallbackInfo.filter((l) => !(l.lastNote && l.lastNote.trim()) && !(l.salesNotes && l.salesNotes.trim()));
       for (const l of leadsNeedingHistory) {
         try {
           // Try indexed queries first
@@ -509,7 +805,121 @@ const AmaLeadsPage = () => {
       fetchAmaLeads(false);
     }, 300);
     return () => clearTimeout(t);
-  }, [fromDate, toDate, statusFilter, salesPersonFilter, sortConfig]);
+  }, [fromDate, toDate, statusFilter, salesPersonFilter, sortConfig, activeTab]);
+
+  // Calculate counts for tabs
+  const callbackCount = useMemo(() => {
+    if (typeof window === "undefined") return 0;
+    const currentUserName = localStorage.getItem("userName");
+    const currentUserRole = localStorage.getItem("userRole");
+
+    return leads.filter((lead) => {
+      if (lead.status === "Callback") {
+        if (currentUserRole === "admin" || currentUserRole === "overlord") {
+          return true;
+        } else {
+          return lead.assignedTo === currentUserName;
+        }
+      }
+      return false;
+    }).length;
+  }, [leads]);
+
+  const allLeadsDisplayCount = useMemo(() => {
+    return filteredLeads.length;
+  }, [filteredLeads]);
+
+  // Fetch callback count from database
+  const fetchCallbackCount = async () => {
+    try {
+      const currentUserRole = localStorage.getItem("userRole");
+      const currentUserName = localStorage.getItem("userName");
+      
+      const baseQuery = collection(crmDb, "ama_leads");
+      const constraints: any[] = [where("status", "==", "Callback")];
+      
+      // Role-based filtering for callback count
+      if (currentUserRole !== "admin" && currentUserRole !== "overlord") {
+        constraints.push(where("assigned_to", "==", currentUserName));
+      }
+      
+      const callbackQuery = query(baseQuery, ...constraints);
+      const callbackSnapshot = await getDocs(callbackQuery);
+      return callbackSnapshot.size;
+    } catch (error) {
+      console.error("Error fetching callback count:", error);
+      return 0;
+    }
+  };
+
+  // State for database counts
+  const [databaseCallbackCount, setDatabaseCallbackCount] = useState(0);
+
+  // Initialize databaseFilteredCount with totalLeadsCount when available
+  useEffect(() => {
+    if (totalLeadsCount > 0 && databaseFilteredCount === 0) {
+      setDatabaseFilteredCount(totalLeadsCount);
+    }
+  }, [totalLeadsCount, databaseFilteredCount]);
+
+  // Fetch database counts when relevant filters change
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        // Fetch callback count
+        const callbackCount = await fetchCallbackCount();
+        setDatabaseCallbackCount(callbackCount);
+        
+        // Determine if any filters are active (excluding search since it's handled separately)
+        const hasActiveFilters = sourceFilter !== "all" || statusFilter !== "all" || 
+                                salesPersonFilter !== "all" || convertedFilter !== null || 
+                                fromDate || toDate || activeTab === "callback";
+        
+        if (hasActiveFilters) {
+          // Fetch filtered count for specific filters
+          const filteredCount = await fetchFilteredCount();
+          setDatabaseFilteredCount(filteredCount);
+          
+          console.log("📊 Database counts updated:", {
+            callbackCount,
+            filteredCount: filteredCount,
+            hasActiveFilters,
+            activeTab,
+            currentDatabaseFilteredCount: databaseFilteredCount,
+            totalLeadsCount
+          });
+        } else {
+          // If no filters active, use total count
+          setDatabaseFilteredCount(totalLeadsCount);
+          
+          console.log("📊 Database counts updated:", {
+            callbackCount,
+            filteredCount: totalLeadsCount,
+            hasActiveFilters,
+            activeTab,
+            currentDatabaseFilteredCount: databaseFilteredCount,
+            totalLeadsCount
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching counts:", error);
+      }
+    };
+
+    if (totalLeadsCount > 0) {
+      fetchCounts();
+    }
+  }, [sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate, activeTab, totalLeadsCount]);
+
+  // Handle tab change
+  const handleTabChange = (tab: "all" | "callback") => {
+    setActiveTab(tab);
+    // Reset other filters when switching to callback tab
+    if (tab === "callback") {
+      setStatusFilter("all");
+      setSearchQuery("");
+    }
+  };
 
   // Update single lead's sales notes state in lists
   const updateLeadsState = (leadId: string, newValue: string) => {
@@ -966,30 +1376,6 @@ const AmaLeadsPage = () => {
     setStatusConfirmLeadId(leadId);
     setStatusConfirmLeadName(leadName);
     setPendingStatusChange(newStatus);
-  };
-
-  // Fetch callback information
-  const fetchCallbackInfo = async (leadId: string) => {
-    try {
-      const callbackInfoRef = collection(crmDb, "ama_leads", leadId, "callback_info");
-      const callbackSnapshot = await getDocs(callbackInfoRef);
-
-      if (!callbackSnapshot.empty) {
-        const callbackData = callbackSnapshot.docs[0].data();
-        return {
-          id: callbackData.id || "attempt_1",
-          scheduled_dt: callbackData.scheduled_dt?.toDate
-            ? callbackData.scheduled_dt.toDate()
-            : new Date(callbackData.scheduled_dt),
-          scheduled_by: callbackData.scheduled_by || "",
-          created_at: callbackData.created_at,
-        };
-      }
-
-      return null;
-    } catch (error) {
-      return null;
-    }
   };
 
   // Refresh callback information for a specific lead
@@ -1563,6 +1949,26 @@ const AmaLeadsPage = () => {
             loadAllLeads={loadAllLeads}
             isLoadAllLoading={isLoadAllLoading}
           />
+          
+          <AmaLeadsTabs
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            callbackCount={databaseCallbackCount}
+            allLeadsCount={searchQuery ? searchResultsCount : (databaseFilteredCount || totalLeadsCount)}
+          />
+          
+          {(() => {
+            const countToShow = searchQuery ? searchResultsCount : databaseFilteredCount;
+            console.log("🔢 Count being passed to AmaLeadsFilters:", {
+              searchQuery,
+              searchResultsCount,
+              databaseFilteredCount,
+              countToShow,
+              hasSearchQuery: !!searchQuery
+            });
+            return null;
+          })()}
+          
           <LeadsFilters
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -1587,7 +1993,7 @@ const AmaLeadsPage = () => {
             onSearchResults={handleSearchResults}
             isSearching={isSearching}
             setIsSearching={setIsSearching}
-            allLeadsCount={allLeadsCount}
+            allLeadsCount={searchQuery ? searchResultsCount : (databaseFilteredCount || totalLeadsCount)}
             onSearchCleared={handleSearchCleared}
           />
           {isLoading ? (
@@ -1613,7 +2019,7 @@ const AmaLeadsPage = () => {
                 crmDb={crmDb}
                 user={currentUser}
                 deleteLead={deleteLead}
-                activeTab={'all'}
+                activeTab={activeTab}
                 selectedLeads={selectedLeads}
                 handleSelectLead={handleSelectLead}
                 handleSelectAll={handleSelectAll}

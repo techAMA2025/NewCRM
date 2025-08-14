@@ -49,6 +49,84 @@ const getFormattedDate = (lead: any) => {
   return { date, time };
 };
 
+// Format callback information for display
+const formatCallbackInfo = (callbackInfo: any) => {
+  if (!callbackInfo || !callbackInfo.scheduled_dt) {
+    return {
+      scheduledTime: 'No callback scheduled',
+      scheduledBy: '',
+      scheduledDate: ''
+    };
+  }
+
+  const scheduledDate = new Date(callbackInfo.scheduled_dt);
+  
+  // Format like "Thu, Aug 14, 10:00 AM"
+  const scheduledTime = scheduledDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short', 
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).replace(',', ',');
+
+  // Format date like "13/8/2025"
+  const scheduledDateOnly = scheduledDate.toLocaleDateString('en-GB');
+
+  const scheduledBy = callbackInfo.scheduled_by || 'Unknown';
+
+  return {
+    scheduledTime,
+    scheduledBy,
+    scheduledDate: scheduledDateOnly
+  };
+};
+
+// Get callback date color based on scheduled date for visual priority indicators
+const getCallbackDateColor = (scheduledDate: Date) => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const dayAfterTomorrow = new Date(today);
+  dayAfterTomorrow.setDate(today.getDate() + 2);
+
+  const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+  const dayAfterTomorrowOnly = new Date(
+    dayAfterTomorrow.getFullYear(),
+    dayAfterTomorrow.getMonth(),
+    dayAfterTomorrow.getDate(),
+  );
+
+  if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
+    return {
+      textColor: "text-[#ffffff] font-bold",
+      dotColor: "bg-[#ffffff]",
+      rowBg: "bg-red-600",
+    };
+  } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
+    return {
+      textColor: "text-[#ffffff] font-bold",
+      dotColor: "bg-[#ffffff]",
+      rowBg: "bg-yellow-500",
+    };
+  } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
+    return {
+      textColor: "text-[#ffffff] font-bold",
+      dotColor: "bg-[#ffffff]",
+      rowBg: "bg-green-600",
+    };
+  } else {
+    return {
+      textColor: "text-[#ffffff]",
+      dotColor: "bg-[#ffffff]",
+      rowBg: "bg-gray-600",
+    };
+  }
+};
+
 // Simple status color mapping (fallback if StatusCell not used)
 const statusColorClass: Record<string, string> = {
   'Interested': 'text-green-400',
@@ -200,6 +278,23 @@ const AmaLeadRow = ({
   
   // Access control logic
   const canEdit = canUserEditLead(lead);
+  
+  // Get row background colors based on callback priority
+  const getRowBackground = () => {
+    if (activeTab === "callback" && lead.callbackInfo && lead.callbackInfo.scheduled_dt) {
+      const colors = getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt));
+      return {
+        rowBg: colors.rowBg,
+        textColor: colors.textColor,
+      };
+    }
+    return {
+      rowBg: "hover:bg-[#F8F5EC]",
+      textColor: "",
+    };
+  };
+
+  const rowColors = getRowBackground();
   
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditingLeads({
@@ -357,7 +452,7 @@ const AmaLeadRow = ({
 
   return (
     <>
-      <tr className={`hover:bg-[#F8F5EC] transition-colors duration-150 ${
+      <tr className={`transition-colors duration-150 ${rowColors.rowBg} ${
         !canEdit ? 'opacity-100' : ''
       }`} role="row">
         {/* Selection Checkbox */}
@@ -386,8 +481,8 @@ const AmaLeadRow = ({
         {columnVisibility.date && (
           <td className="px-1 py-0.5 whitespace-nowrap px-2">
             <div className="flex flex-col">
-              <span className="text-[11px] font-medium text-[#5A4C33]">{date}</span>
-              <span className="text-[10px] text-[#5A4C33]/70">{time}</span>
+              <span className={`text-[11px] font-medium ${rowColors.textColor || 'text-[#5A4C33]'}`}>{date}</span>
+              <span className={`text-[10px] ${rowColors.textColor ? 'text-[#ffffff]/70' : 'text-[#5A4C33]/70'}`}>{time}</span>
             </div>
           </td>
         )}
@@ -396,7 +491,7 @@ const AmaLeadRow = ({
         {columnVisibility.name && (
           <td className="px-1 max-w-[200px]">  
             <div className="flex flex-col gap-0.5">
-              <div className="font-medium text-[#5A4C33] flex items-center text-[16px] px-5">
+              <div className={`font-medium flex items-center text-[16px] px-5 ${rowColors.textColor || 'text-[#5A4C33]'}`}>
                 {name}
                 {lead.convertedToClient && (
                   <span className="ml-1 text-green-400" title="Converted to client">
@@ -405,12 +500,12 @@ const AmaLeadRow = ({
                 )}
               </div>
               <div className="flex items-center text-[10px] px-5">
-                <a href={`mailto:${email}`} className="text-[#D2A02A] hover:underline truncate max-w-[180px]">
+                <a href={`mailto:${email}`} className={`hover:underline truncate max-w-[180px] ${rowColors.textColor || 'text-[#D2A02A]'}`}>
                   {email}
                 </a>
               </div>
               <div className="flex items-center px-5">
-                <a href={`tel:${phone}`} className="text-[#D2A02A] hover:underline font-medium text-[16px]">
+                <a href={`tel:${phone}`} className={`hover:underline font-medium text-[16px] ${rowColors.textColor || 'text-[#D2A02A]'}`}>
                   {formatPhoneNumber(phone)}
                 </a>
               </div>
@@ -420,9 +515,9 @@ const AmaLeadRow = ({
 
         {/* Location */}
         {columnVisibility.location && (
-          <td className="px-1 py-0.5 text-[11px] text-[#5A4C33]/70 max-w-[100px] px-5">
+          <td className="px-1 py-0.5 text-[11px] max-w-[100px] px-5">
             <div className="flex items-center truncate">
-              <span>{location}</span>
+              <span className={rowColors.textColor || 'text-[#5A4C33]/70'}>{location}</span>
             </div>
           </td>
         )}
@@ -442,7 +537,7 @@ const AmaLeadRow = ({
             <div className="space-y-1">
               <div>
                 <span className="font-medium text-[#5A4C33]/70"></span> 
-                <span className={`text-[#5A4C33]`}>
+                <span className={rowColors.textColor || 'text-[#5A4C33]'}>
                   {debtDisplay}
                 </span>
               </div>
@@ -479,46 +574,73 @@ const AmaLeadRow = ({
         {activeTab === 'callback' && columnVisibility.callback && (
           <td className="px-1 py-0.5 text-[11px]">
             {lead.callbackInfo ? (
-              <div className={`text-sm text-[#5A4C33]`}>Callback scheduled</div>
+              <div className={`text-sm ${rowColors.textColor || 'text-[#5A4C33]'}`}>Callback scheduled</div>
             ) : (
-              <div className={`text-sm text-[#5A4C33]/50 italic`}>
+              <div className={`text-sm italic ${rowColors.textColor ? 'text-[#ffffff]/50' : 'text-[#5A4C33]/50'}`}>
                 No callback info
               </div>
             )}
           </td>
         )}
 
-        {/* Customer Query */}
+        {/* Customer Query / Callback Info */}
         {columnVisibility.customerQuery && (
-          <td className="px-1 py-0.5 text-[11px] text-[#5A4C33]/70 max-w-[200px]">
-            <div className="flex items-start gap-1">
-              <div className="flex-1 break-words whitespace-pre-wrap line-clamp-2">
-                {(lead.query && lead.query.length > 50) 
-                  ? `${lead.query.substring(0, 50)}...` 
-                  : (lead.query || 'N/A')
-                }
+          <td className="px-1 py-0.5 text-[11px] max-w-[200px]">
+            {activeTab === "callback" ? (
+              // Show callback information
+              <div className="flex flex-col gap-1">
+                {(() => {
+                  const callbackInfo = formatCallbackInfo(lead.callbackInfo);
+                  return (
+                    <>
+                      <div className={`font-medium ${rowColors.textColor || 'text-[#5A4C33]'}`}>
+                        {callbackInfo.scheduledTime}
+                      </div>
+                      {callbackInfo.scheduledBy && (
+                        <div className={rowColors.textColor ? 'text-[#ffffff]/60' : 'text-[#5A4C33]/60'}>
+                          Scheduled by: {callbackInfo.scheduledBy}
+                        </div>
+                      )}
+                      {callbackInfo.scheduledDate && (
+                        <div className={rowColors.textColor ? 'text-[#ffffff]/60' : 'text-[#5A4C33]/60'}>
+                          {callbackInfo.scheduledDate}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
-              {/* Temporary: Always show button for debugging */}
-              <button
-                onClick={() => {
-                  console.log('Query data:', { 
-                    query: lead.query, 
-                    leadId: lead.id, 
-                    leadName: lead.name,
-                    queryLength: lead.query?.length,
-                    wordCount: lead.query?.split(/\s+/)?.length,
-                    hasQuery: !!lead.query,
-                    isNotEmpty: lead.query?.trim() !== '',
-                    isNotNA: lead.query !== 'N/A'
-                  });
-                  setShowQueryModal(true);
-                }}
-                className="flex-shrink-0 text-[#D2A02A] hover:text-[#B8911E] text-[10px] px-1 py-0.5 border border-[#D2A02A]/50 rounded hover:border-[#D2A02A] transition-colors bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20"
-                title="View full query in modal"
-              >
-                View
-              </button>
-            </div>
+            ) : (
+              // Show customer query (original behavior)
+              <div className="flex items-start gap-1">
+                <div className="flex-1 break-words whitespace-pre-wrap line-clamp-2">
+                  {(lead.query && lead.query.length > 50) 
+                    ? `${lead.query.substring(0, 50)}...` 
+                    : (lead.query || 'N/A')
+                  }
+                </div>
+                {/* Temporary: Always show button for debugging */}
+                <button
+                  onClick={() => {
+                    console.log('Query data:', { 
+                      query: lead.query, 
+                      leadId: lead.id, 
+                      leadName: lead.name,
+                      queryLength: lead.query?.length,
+                      wordCount: lead.query?.split(/\s+/)?.length,
+                      hasQuery: !!lead.query,
+                      isNotEmpty: lead.query?.trim() !== '',
+                      isNotNA: lead.query !== 'N/A'
+                    });
+                    setShowQueryModal(true);
+                  }}
+                  className="flex-shrink-0 text-[#D2A02A] hover:text-[#B8911E] text-[10px] px-1 py-0.5 border border-[#D2A02A]/50 rounded hover:border-[#D2A02A] transition-colors bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20"
+                  title="View full query in modal"
+                >
+                  View
+                </button>
+              </div>
+            )}
           </td>
         )}
 

@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db as crmDb } from '@/firebase/firebase';
 import { debounce } from 'lodash';
+import CustomDateInput from './CustomDateInput';
 
 type LeadsFiltersProps = {
   searchQuery: string;
@@ -284,7 +285,7 @@ const AmaLeadsFilters = ({
             debt_Range: data.debt_range || data.debt_Range, // Handle both cases
             debt_range: data.debt_range,
             debtRange: data.debt_range,
-            synced_at: data.synced_date ? new Date(data.synced_date) : (data.date ? new Date(data.date) : undefined),
+            synced_at: data.date ? new Date(data.date) : (data.synced_date ? new Date(data.synced_date) : undefined),
             date: data.date || data.synced_date || Date.now(),
             income: data.income,
           };
@@ -520,7 +521,17 @@ const AmaLeadsFilters = ({
               Showing{" "}
               {/* <span className="text-[#D2A02A] font-medium">{searchQuery ? searchResultsCount : leads.length}</span>{" "} */}
               {/* of  */}
-              <span className="text-[#D2A02A] font-medium">{searchQuery ? searchResultsCount : (hasActiveFilters ? filteredLeadsCount : allLeadsCount || totalLeadsCount)}</span> leads
+              <span className="text-[#D2A02A] font-medium">{(() => {
+                const countToDisplay = searchQuery ? searchResultsCount : allLeadsCount;
+                console.log("🎯 AmaLeadsFilters displaying count:", {
+                  searchQuery,
+                  searchResultsCount,
+                  allLeadsCount,
+                  countToDisplay,
+                  hasActiveFilters
+                });
+                return countToDisplay;
+              })()}</span> leads
               {searchQuery && <span className="text-[#D2A02A] ml-1">(from database search)</span>}
               {salesPersonFilter && salesPersonFilter !== 'all' && salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '') && (
                 <span className="ml-2 text-[#D2A02A] text-xs">(My Leads)</span>
@@ -602,32 +613,32 @@ const AmaLeadsFilters = ({
           
           {/* Date Range Filters */}
           <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            <div className="flex space-x-4">
-              <div className="flex-1 space-y-1">
-                <label className="block text-xs text-[#5A4C33]/70">From Date</label>
-                <input
-                  type="date"
+            <div className="flex space-x-6">
+              <div className="flex-1 min-w-[180px] space-y-1">
+                <CustomDateInput
                   value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  onChange={(date) => setFromDate(date)}
                   max={toDate || today}
-                  className="block w-full pl-3 pr-3 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
+                  placeholder="From Date"
+                  label="From Date"
+                  className="w-full"
                 />
               </div>
               
-              <div className="flex-1 space-y-1">
-                <label className="block text-xs text-[#5A4C33]/70">To Date</label>
-                <input
-                  type="date"
+              <div className="flex-1 min-w-[180px] space-y-1">
+                <CustomDateInput
                   value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  onChange={(date) => setToDate(date)}
                   min={fromDate}
                   max={today}
-                  className="block w-full pl-3 pr-3 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
+                  placeholder="To Date"
+                  label="To Date"
+                  className="w-full"
                 />
               </div>
               
               {/* My Leads Toggle Switch */}
-              <div className="space-y-1">
+              <div className="space-y-1 flex-shrink-0">
                 <label className="block text-xs text-[#5A4C33]/70">My Leads</label>
                 <div className="flex items-center h-[38px]">
                   <button
