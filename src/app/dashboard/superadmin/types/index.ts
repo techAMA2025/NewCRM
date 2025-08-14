@@ -49,13 +49,20 @@ export type IndividualSalesData = {
 // Client analytics types
 export type ClientAnalytics = {
   totalClients: number;
-  statusDistribution: { Active: number; Pending: number; Inactive: number; Converted: number };
+  statusDistribution: { 
+    Active: number; 
+    Dropped: number; 
+    'Not Responding': number; 
+    'On Hold': number; 
+    Inactive: number; 
+  };
   topAdvocates: { name: string; clientCount: number }[];
   loanTypeDistribution: Record<string, number>;
   sourceDistribution: Record<string, number>;
   cityDistribution: Record<string, number>;
   totalLoanAmount: number;
   avgLoanAmount: number;
+  advocateStatusDistribution: Record<string, Record<string, number>>;
 };
 
 // Payment analytics types

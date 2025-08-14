@@ -19,17 +19,34 @@ const processClientsBatch = (clientsBatch: any[], analytics: any) => {
   clientsBatch.forEach((client) => {
     analytics.totalClients++;
     
-    // Count by status - optimized lookup
-    const status = client.adv_status || client.status || 'Pending';
-    if (analytics.statusDistribution[status] !== undefined) {
-      analytics.statusDistribution[status]++;
-    } else {
-      analytics.statusDistribution[status] = 1;
+    // Count by status - optimized lookup with proper status mapping
+    const status = client.adv_status || client.status || 'Inactive';
+    
+    // Initialize status if it doesn't exist
+    if (analytics.statusDistribution[status] === undefined) {
+      analytics.statusDistribution[status] = 0;
     }
+    analytics.statusDistribution[status]++;
     
     // Count by advocate
     const advocate = client.alloc_adv || 'Unassigned';
     analytics.advocateCount[advocate] = (analytics.advocateCount[advocate] || 0) + 1;
+    
+    // Track status distribution per advocate
+    if (!analytics.advocateStatusDistribution[advocate]) {
+      analytics.advocateStatusDistribution[advocate] = {
+        Active: 0,
+        Dropped: 0,
+        'Not Responding': 0,
+        'On Hold': 0,
+        Inactive: 0
+      };
+    }
+    if (analytics.advocateStatusDistribution[advocate][status] !== undefined) {
+      analytics.advocateStatusDistribution[advocate][status]++;
+    } else {
+      analytics.advocateStatusDistribution[advocate][status] = 1;
+    }
     
     // Count by source
     const source = client.source || 'Unknown';
@@ -97,13 +114,20 @@ const loadClientAnalyticsProgressive = async (onProgress?: (partial: ClientAnaly
   // Initialize analytics object
   const analytics = {
     totalClients: 0,
-    statusDistribution: { Active: 0, Pending: 0, Inactive: 0, Converted: 0 },
+    statusDistribution: { 
+      Active: 0, 
+      Dropped: 0, 
+      'Not Responding': 0, 
+      'On Hold': 0, 
+      Inactive: 0 
+    },
     advocateCount: {} as Record<string, number>,
     loanTypeDistribution: {} as Record<string, number>,
     sourceDistribution: {} as Record<string, number>,
     cityDistribution: {} as Record<string, number>,
     totalLoanAmount: 0,
-    loanCount: 0
+    loanCount: 0,
+    advocateStatusDistribution: {} as Record<string, Record<string, number>>
   };
   
   const clientsCollection = collection(db, 'clients');
@@ -139,7 +163,8 @@ const loadClientAnalyticsProgressive = async (onProgress?: (partial: ClientAnaly
     sourceDistribution: analytics.sourceDistribution,
     cityDistribution: analytics.cityDistribution,
     totalLoanAmount: analytics.totalLoanAmount,
-    avgLoanAmount
+    avgLoanAmount,
+    advocateStatusDistribution: analytics.advocateStatusDistribution
   };
   
   const duration = perfMonitor.safeEnd(timerId);
@@ -161,13 +186,20 @@ export const useClientAnalytics = ({
 }: UseClientAnalyticsParams = {}) => {
   const [clientAnalytics, setClientAnalytics] = useState<ClientAnalytics>({
     totalClients: 0,
-    statusDistribution: { Active: 0, Pending: 0, Inactive: 0, Converted: 0 },
+    statusDistribution: { 
+      Active: 0, 
+      Dropped: 0, 
+      'Not Responding': 0, 
+      'On Hold': 0, 
+      Inactive: 0 
+    },
     topAdvocates: [],
     loanTypeDistribution: {},
     sourceDistribution: {},
     cityDistribution: {},
     totalLoanAmount: 0,
-    avgLoanAmount: 0
+    avgLoanAmount: 0,
+    advocateStatusDistribution: {}
   });
 
   const [isLoading, setIsLoading] = useState(true);

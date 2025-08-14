@@ -32,6 +32,7 @@ type LeadsFiltersProps = {
   isSearching?: boolean;
   setIsSearching?: (searching: boolean) => void;
   allLeadsCount?: number;
+  filteredLeadsCount?: number;
 };
 
 const AmaLeadsFilters = ({
@@ -60,6 +61,7 @@ const AmaLeadsFilters = ({
   isSearching = false,
   setIsSearching = () => {},
   allLeadsCount = 0,
+  filteredLeadsCount = 0,
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -270,6 +272,41 @@ const AmaLeadsFilters = ({
     debouncedSearch.cancel();
   }, [setSearchQuery, onSearchResults, debouncedSearch]);
 
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    clearSearch();
+    setSourceFilter("all");
+    setStatusFilter("all");
+    setSalesPersonFilter("all");
+    setConvertedFilter(null);
+    setFromDate("");
+    setToDate("");
+  }, [clearSearch, setSourceFilter, setStatusFilter, setSalesPersonFilter, setConvertedFilter, setFromDate, setToDate]);
+
+  // Check if any filters are active - memoized
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery ||
+      sourceFilter !== "all" ||
+      statusFilter !== "all" ||
+      salesPersonFilter !== "all" ||
+      convertedFilter !== null ||
+      fromDate ||
+      toDate
+    );
+  }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate]);
+
+  // Debug log for lead counts
+  console.log('AMA Filters Debug:', {
+    'leads.length': leads.length,
+    'filteredLeads.length': filteredLeads.length,
+    'filteredLeadsCount': filteredLeadsCount,
+    'allLeadsCount': allLeadsCount,
+    'totalLeadsCount': totalLeadsCount,
+    'hasActiveFilters': hasActiveFilters,
+    'searchQuery': searchQuery
+  });
+
   // Fetch sales users
   useEffect(() => {
     const fetchSalesUsers = async () => {
@@ -405,26 +442,31 @@ const AmaLeadsFilters = ({
      
           
           {/* Results counter moved to the right */}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-4">
             <p className="text-sm text-[#5A4C33]/70">
               Showing{" "}
-              <span className="text-[#D2A02A] font-medium">{searchQuery ? searchResultsCount : (allLeadsCount || totalLeadsCount)}</span>{" "}
-              {searchQuery || sourceFilter !== 'all' || statusFilter !== 'all' || salesPersonFilter !== 'all' || convertedFilter !== null ? (
-                <>
-                  of <span className="text-[#D2A02A] font-medium">{allLeadsCount || totalLeadsCount}</span> leads
-                  {salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '') && (
-                    <span className="ml-2 text-[#D2A02A] text-xs">(My Leads)</span>
-                  )}
-                  {searchQuery && <span className="text-[#D2A02A] ml-1">(from database search)</span>}
-                </>
-              ) : (
-                "leads"
+              {/* <span className="text-[#D2A02A] font-medium">{searchQuery ? searchResultsCount : leads.length}</span>{" "} */}
+              {/* of  */}
+              <span className="text-[#D2A02A] font-medium">{searchQuery ? searchResultsCount : (hasActiveFilters ? filteredLeadsCount : allLeadsCount || totalLeadsCount)}</span> leads
+              {searchQuery && <span className="text-[#D2A02A] ml-1">(from database search)</span>}
+              {salesPersonFilter && salesPersonFilter !== 'all' && salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '') && (
+                <span className="ml-2 text-[#D2A02A] text-xs">(My Leads)</span>
               )}
             </p>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="text-xs text-[#D2A02A] hover:text-[#B8911E] focus:outline-none border border-[#D2A02A]/30 px-2 py-1 rounded-md hover:border-[#D2A02A]/50 transition-colors"
+                type="button"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Source Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Source</label>
@@ -455,6 +497,24 @@ const AmaLeadsFilters = ({
                 .map(status => (
                   <option key={status} value={status}>{status}</option>
                 ))}
+            </select>
+          </div>
+
+          {/* Converted Filter */}
+          <div className="space-y-1">
+            <label className="block text-xs text-[#5A4C33]/70">Converted</label>
+            <select
+              value={convertedFilter === null ? "all" : convertedFilter ? "true" : "false"}
+              onChange={e => {
+                const value = e.target.value;
+                if (value === "all") setConvertedFilter(null);
+                else setConvertedFilter(value === "true");
+              }}
+              className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
+            >
+              <option value="all">All Leads</option>
+              <option value="true">Converted</option>
+              <option value="false">Not Converted</option>
             </select>
           </div>
           

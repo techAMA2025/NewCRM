@@ -72,7 +72,8 @@ const AdvocateDashboard = () => {
     activeClients: 0,
     droppedClients: 0,
     notRespondingClients: 0,
-    onHoldClients: 0
+    onHoldClients: 0,
+    inactiveClients: 0
   })
   // Properly type the clients array
   const [recentClients, setRecentClients] = useState<Client[]>([])
@@ -110,6 +111,7 @@ const AdvocateDashboard = () => {
         let droppedCount = 0;
         let notRespondingCount = 0;
         let onHoldCount = 0;
+        let inactiveCount = 0;
         
         const recentClientsList: Client[] = [];
         const pendingLettersList: Letter[] = [];
@@ -123,11 +125,12 @@ const AdvocateDashboard = () => {
           const clientData = doc.data();
           const status = clientData.adv_status;
           
-          // Count by status
+          // Count by status - only the 4 specific statuses, everything else is inactive
           if (status === "Active") activeCount++;
           else if (status === "Dropped") droppedCount++;
           else if (status === "Not Responding") notRespondingCount++;
           else if (status === "On Hold") onHoldCount++;
+          else inactiveCount++; // Any other status is counted as inactive
           
           // Add to recent clients (limiting to most recent ones)
           if (recentClientsList.length < 4) {
@@ -163,7 +166,8 @@ const AdvocateDashboard = () => {
           activeClients: activeCount,
           droppedClients: droppedCount,
           notRespondingClients: notRespondingCount,
-          onHoldClients: onHoldCount
+          onHoldClients: onHoldCount,
+          inactiveClients: inactiveCount
         });
         
         // If we have recent clients from the query, use them
@@ -752,12 +756,12 @@ const AdvocateDashboard = () => {
         </button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div 
           onClick={() => navigateToClients('Active')} 
           className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-blue-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
         >
-          <h2 className="text-lg font-semibold mb-2 text-gray-300">Active Clients</h2>
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Active</h2>
           <p className="text-4xl font-bold text-blue-400">{clientStats.activeClients}</p>
         </div>
         
@@ -765,7 +769,7 @@ const AdvocateDashboard = () => {
           onClick={() => navigateToClients('Dropped')} 
           className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-red-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
         >
-          <h2 className="text-lg font-semibold mb-2 text-gray-300">Dropped Clients</h2>
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Dropped </h2>
           <p className="text-4xl font-bold text-red-400">{clientStats.droppedClients}</p>
         </div>
         
@@ -773,16 +777,24 @@ const AdvocateDashboard = () => {
           onClick={() => navigateToClients('Not Responding')} 
           className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-yellow-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
         >
-          <h2 className="text-lg font-semibold mb-2 text-gray-300">Not Responding Clients</h2>
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Not Responding </h2>
           <p className="text-4xl font-bold text-yellow-400">{clientStats.notRespondingClients}</p>
         </div>
         
         <div 
           onClick={() => navigateToClients('On Hold')} 
+          className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-orange-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
+        >
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">On Hold </h2>
+          <p className="text-4xl font-bold text-orange-400">{clientStats.onHoldClients}</p>
+        </div>
+        
+        <div 
+          onClick={() => navigateToClients('inactive')} 
           className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-purple-500 transition-all duration-300 cursor-pointer hover:bg-gray-750"
         >
-          <h2 className="text-lg font-semibold mb-2 text-gray-300">On Hold Clients</h2>
-          <p className="text-4xl font-bold text-purple-400">{clientStats.onHoldClients}</p>
+          <h2 className="text-lg font-semibold mb-2 text-gray-300">Inactive </h2>
+          <p className="text-4xl font-bold text-purple-400">{clientStats.inactiveClients}</p>
         </div>
       </div>
       <div id="tasks-section" className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 mb-10">

@@ -515,7 +515,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Customer Query</span>
+              <span className="text-[#D2A02A]">Query</span>
               <button
                 onClick={() => toggleColumn('customerQuery')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -745,7 +745,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
                 className="px-2 py-1 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] text-xs rounded transition-colors"
                 title="Show customer query column"
               >
-                + Customer Query
+                + Query
               </button>
             )}
             {!columnVisibility.salesNotes && (
