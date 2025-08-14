@@ -517,11 +517,13 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Query</span>
+              <span className="text-[#D2A02A]">
+                {activeTab === 'callback' ? 'Callback Info' : 'Query'}
+              </span>
               <button
                 onClick={() => toggleColumn('customerQuery')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
-                title="Hide customer query column"
+                title={`Hide ${activeTab === 'callback' ? 'callback info' : 'customer query'} column`}
               >
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
