@@ -77,9 +77,12 @@ interface CrmLead {
   // SettleLoans specific fields
   "Accomodation Status"?: string
   City?: string
+  Email?: string
   "Employment status"?: string
   Language?: string
   Married?: boolean
+  "Monthly income"?: number
+  Name?: string
   "Past Settlement"?: string
   "Payment to start settlement"?: string
   "Total credit card dues"?: string
@@ -608,26 +611,8 @@ const SalesReportContent = () => {
       try {
         const crmLeadsRef = collection(crmDb, "crm_leads")
 
-        const queryConstraints = []
-
-        if (dateRange.startDate) {
-          const startDate = new Date(dateRange.startDate)
-          startDate.setHours(0, 0, 0, 0)
-          queryConstraints.push(where("timestamp", ">=", startDate))
-        }
-
-        if (dateRange.endDate) {
-          const endDate = new Date(dateRange.endDate)
-          if (endDate.toDateString() === new Date().toDateString()) {
-            endDate.setTime(new Date().getTime())
-          } else {
-            endDate.setHours(23, 59, 59, 999)
-          }
-          queryConstraints.push(where("timestamp", "<=", endDate))
-        }
-
-        const q = queryConstraints.length > 0 ? query(crmLeadsRef, ...queryConstraints) : crmLeadsRef
-        const querySnapshot = await getDocs(q)
+        // Fetch all leads first, then filter in memory due to different date field structures
+        const querySnapshot = await getDocs(crmLeadsRef)
 
         const fetchedLeads = querySnapshot.docs.map(
           (doc) =>
@@ -637,7 +622,83 @@ const SalesReportContent = () => {
             }) as CrmLead,
         )
 
-        setLeads(fetchedLeads)
+        // Helper function to get the creation date from different data structures
+        const getLeadCreationDate = (lead: CrmLead): Date | null => {
+          try {
+            // AMA structure: uses timestamp field
+            if (lead.timestamp) {
+              return lead.timestamp.toDate ? lead.timestamp.toDate() : new Date(lead.timestamp)
+            }
+            
+            // CREDSETTLE structure: uses created field (number) or date field (string)
+            if (lead.created) {
+              return new Date(lead.created)
+            }
+            
+            // CREDSETTLE also has a date string field like "20-07-2025"
+            if (lead.date && typeof lead.date === 'string') {
+              // Convert DD-MM-YYYY to a proper date
+              const [day, month, year] = lead.date.split('-')
+              if (day && month && year) {
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+              }
+            }
+            
+            // SETTLELOANS structure: uses created field (number)
+            // This is already handled by the created field check above
+            
+            // Fallback to synced_at if available
+            if (lead.synced_at) {
+              return lead.synced_at.toDate ? lead.synced_at.toDate() : new Date(lead.synced_at)
+            }
+            
+            return null
+          } catch (error) {
+            console.error('Error parsing date for lead:', lead.id, error)
+            return null
+          }
+        }
+
+        // Filter leads based on date range
+        let filteredLeads = fetchedLeads
+
+        if (dateRange.startDate || dateRange.endDate) {
+          filteredLeads = fetchedLeads.filter((lead) => {
+            const leadDate = getLeadCreationDate(lead)
+            if (!leadDate) return false
+
+            let includeInRange = true
+
+            if (dateRange.startDate) {
+              const startDate = new Date(dateRange.startDate)
+              startDate.setHours(0, 0, 0, 0)
+              if (leadDate < startDate) {
+                includeInRange = false
+              }
+            }
+
+            if (dateRange.endDate && includeInRange) {
+              const endDate = new Date(dateRange.endDate)
+              // If it's today, use current time, otherwise use end of day
+              if (endDate.toDateString() === new Date().toDateString()) {
+                endDate.setTime(new Date().getTime())
+              } else {
+                endDate.setHours(23, 59, 59, 999)
+              }
+              if (leadDate > endDate) {
+                includeInRange = false
+              }
+            }
+
+            return includeInRange
+          })
+        }
+
+        console.log('Total leads fetched:', fetchedLeads.length)
+        console.log('Leads after date filtering:', filteredLeads.length)
+        console.log('Date range applied:', dateRange)
+
+        setLeads(filteredLeads)
       } catch (error) {
         console.error("Error fetching CRM leads:", error)
         toast.error("Failed to load CRM leads data")
@@ -666,74 +727,115 @@ const SalesReportContent = () => {
           endDateIST: new Date(endDate.getTime() + 5.5 * 60 * 60 * 1000).toISOString(),
         })
 
-        const productivityQuery = query(
-          collection(crmDb, "crm_leads"),
-          where("lastModified", ">=", startDate),
-          where("lastModified", "<=", endDate),
-        )
+        // Fetch all leads and filter in memory due to different data structures
+        const crmLeadsRef = collection(crmDb, "crm_leads")
+        const productivitySnapshot = await getDocs(crmLeadsRef)
+        console.log("Total leads for productivity tracking:", productivitySnapshot.docs.length)
 
-        const productivitySnapshot = await getDocs(productivityQuery)
-        console.log("Found leads for productivity tracking:", productivitySnapshot.docs.length)
+        // Helper function to get the last modified date from different data structures
+        const getLastModifiedDate = (leadData: any): Date | null => {
+          try {
+            // Check lastModified field (common across all structures)
+            if (leadData.lastModified) {
+              return leadData.lastModified.toDate ? leadData.lastModified.toDate() : new Date(leadData.lastModified)
+            }
+            
+            // Fallback to creation dates if lastModified is not available
+            if (leadData.timestamp) {
+              return leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp)
+            }
+            
+            if (leadData.created) {
+              return new Date(leadData.created)
+            }
+            
+            if (leadData.date && typeof leadData.date === 'string') {
+              const [day, month, year] = leadData.date.split('-')
+              if (day && month && year) {
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+              }
+            }
+            
+            return null
+          } catch (error) {
+            console.error('Error parsing lastModified date for productivity:', error)
+            return null
+          }
+        }
+
+        // Filter leads based on lastModified date range
+        const relevantLeads = productivitySnapshot.docs.filter((doc) => {
+          const leadData = doc.data()
+          const lastModifiedDate = getLastModifiedDate(leadData)
+          
+          if (!lastModifiedDate) return false
+          
+          // Only process if lead has status and it's not "-" or empty
+          if (!leadData.status || leadData.status === "-" || leadData.status === "") return false
+          
+          // Check if the lastModified date falls within our range
+          return lastModifiedDate >= startDate && lastModifiedDate <= endDate
+        })
+
+        console.log("Leads within productivity date range:", relevantLeads.length)
 
         // Group leads by user and date
         const productivityMap: { [key: string]: { [key: string]: ProductivityStats } } = {}
 
-        productivitySnapshot.docs.forEach((doc) => {
+        relevantLeads.forEach((doc) => {
           const leadData = doc.data()
+          const lastModifiedUTC = getLastModifiedDate(leadData)
+          
+          if (!lastModifiedUTC) return
 
-          // Only process if lead has lastModified and status is not "-"
-          if (leadData.lastModified && leadData.status !== "-") {
-            const lastModifiedUTC = leadData.lastModified.toDate()
+          // Convert to IST for display purposes
+          const lastModifiedIST = new Date(lastModifiedUTC.getTime() + 5.5 * 60 * 60 * 1000)
 
-            // Convert to IST for display purposes
-            const lastModifiedIST = new Date(lastModifiedUTC.getTime() + 5.5 * 60 * 60 * 1000)
+          // For last7days and last30days, use a single date key to aggregate all data
+          // For other ranges, use individual dates
+          let dateKey: string
+          if (selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days") {
+            // Use a single key for the entire period
+            dateKey = selectedProductivityRange === "last7days" ? "Last 7 Days" : "Last 30 Days"
+          } else {
+            // Use individual date keys for other ranges
+            dateKey = lastModifiedIST.toLocaleDateString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          }
 
-            // For last7days and last30days, use a single date key to aggregate all data
-            // For other ranges, use individual dates
-            let dateKey: string
-            if (selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days") {
-              // Use a single key for the entire period
-              dateKey = selectedProductivityRange === "last7days" ? "Last 7 Days" : "Last 30 Days"
-            } else {
-              // Use individual date keys for other ranges
-              dateKey = lastModifiedIST.toLocaleDateString("en-IN", {
-                timeZone: "Asia/Kolkata",
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })
+          const userId = leadData.assignedTo || "Unassigned"
+          const userName = leadData.assignedTo || "Unassigned"
+          const status = leadData.status || "No Status"
+
+          // Initialize user if not exists
+          if (!productivityMap[userId]) {
+            productivityMap[userId] = {}
+          }
+
+          // Initialize date if not exists
+          if (!productivityMap[userId][dateKey]) {
+            productivityMap[userId][dateKey] = {
+              userId,
+              userName,
+              date: dateKey,
+              leadsWorked: 0,
+              lastActivity: lastModifiedUTC, // Store as UTC
+              statusBreakdown: {},
             }
+          }
 
-            const userId = leadData.assignedTo || "Unassigned"
-            const userName = leadData.assignedTo || "Unassigned"
-            const status = leadData.status || "No Status"
+          // Update stats
+          productivityMap[userId][dateKey].leadsWorked += 1
+          productivityMap[userId][dateKey].statusBreakdown[status] =
+            (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1
 
-            // Initialize user if not exists
-            if (!productivityMap[userId]) {
-              productivityMap[userId] = {}
-            }
-
-            // Initialize date if not exists
-            if (!productivityMap[userId][dateKey]) {
-              productivityMap[userId][dateKey] = {
-                userId,
-                userName,
-                date: dateKey,
-                leadsWorked: 0,
-                lastActivity: lastModifiedUTC, // Store as UTC
-                statusBreakdown: {},
-              }
-            }
-
-            // Update stats
-            productivityMap[userId][dateKey].leadsWorked += 1
-            productivityMap[userId][dateKey].statusBreakdown[status] =
-              (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1
-
-            // Update last activity if this is more recent
-            if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
-              productivityMap[userId][dateKey].lastActivity = lastModifiedUTC
-            }
+          // Update last activity if this is more recent
+          if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
+            productivityMap[userId][dateKey].lastActivity = lastModifiedUTC
           }
         })
 
@@ -765,13 +867,55 @@ const SalesReportContent = () => {
     fetchProductivityData()
   }, [selectedProductivityRange, productivityDateRange])
 
+  // Helper function to get the assigned person consistently across data structures
+  const getAssignedTo = (lead: CrmLead): string => {
+    return lead.assignedTo || "Unassigned"
+  }
+
   // Analytics calculations
   const analytics = useMemo(() => {
     if (!leads.length) return null
 
+    // Helper function to get the creation date from different data structures (same as in fetchLeads)
+    const getLeadCreationDate = (lead: CrmLead): Date | null => {
+      try {
+        // AMA structure: uses timestamp field
+        if (lead.timestamp) {
+          return lead.timestamp.toDate ? lead.timestamp.toDate() : new Date(lead.timestamp)
+        }
+        
+        // CREDSETTLE structure: uses created field (number) or date field (string)
+        if (lead.created) {
+          return new Date(lead.created)
+        }
+        
+        // CREDSETTLE also has a date string field like "20-07-2025"
+        if (lead.date && typeof lead.date === 'string') {
+          // Convert DD-MM-YYYY to a proper date
+          const [day, month, year] = lead.date.split('-')
+          if (day && month && year) {
+            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+          }
+        }
+        
+        // SETTLELOANS structure: uses created field (number)
+        // This is already handled by the created field check above
+        
+        // Fallback to synced_at if available
+        if (lead.synced_at) {
+          return lead.synced_at.toDate ? lead.synced_at.toDate() : new Date(lead.synced_at)
+        }
+        
+        return null
+      } catch (error) {
+        console.error('Error parsing date for lead in analytics:', lead.id, error)
+        return null
+      }
+    }
+
     // Basic metrics
     const totalLeads = leads.length
-    const uniqueAssignees = new Set(leads.map((lead) => lead.assignedTo)).size
+    const uniqueAssignees = new Set(leads.map((lead) => getAssignedTo(lead))).size
 
     // Calculate conversion rate
     const convertedLeads = leads.filter((lead) => lead.status === "Converted").length
@@ -796,7 +940,7 @@ const SalesReportContent = () => {
     // Assigned to distribution
     const assigneeDistribution = leads.reduce(
       (acc, lead) => {
-        const assignee = lead.assignedTo || "Unassigned"
+        const assignee = getAssignedTo(lead)
         acc[assignee] = (acc[assignee] || 0) + 1
         return acc
       },
@@ -815,7 +959,7 @@ const SalesReportContent = () => {
 
     // Sales performance
     const salesPerformance = Object.entries(assigneeDistribution).map(([name, count]) => {
-      const assigneeLeads = leads.filter((lead) => lead.assignedTo === name)
+      const assigneeLeads = leads.filter((lead) => getAssignedTo(lead) === name)
       const interestedCount = assigneeLeads.filter((lead) => lead.status === "Interested").length
       const convertedCount = assigneeLeads.filter((lead) => lead.status === "Converted").length
       const conversionRate = count > 0 ? ((interestedCount + convertedCount) / count) * 100 : 0
@@ -831,17 +975,27 @@ const SalesReportContent = () => {
 
     // Contact info analysis
     const contactAnalysis = {
-      hasEmail: leads.filter((lead) => lead.email && lead.email !== "").length,
-      hasPhone: leads.filter((lead) => (lead.phone || lead.number || lead["Mobile Number"]) && (lead.phone || lead.number || lead["Mobile Number"]) !== "").length,
+      hasEmail: leads.filter((lead) => {
+        // Handle different email field variations
+        const emailField = lead.email || lead.Email
+        return emailField && emailField !== ""
+      }).length,
+      hasPhone: leads.filter((lead) => {
+        // Handle different phone field variations
+        const phoneField = lead.phone || lead.number || lead["Mobile Number"]
+        return phoneField && phoneField !== ""
+      }).length,
       hasNotes: leads.filter((lead) => lead.lastNote && lead.lastNote !== "").length,
     }
 
-    // Time-based analysis
+    // Time-based analysis with unified date handling
     const monthlyDistribution = leads.reduce(
       (acc, lead) => {
-        const date = lead.timestamp?.toDate ? lead.timestamp.toDate() : new Date(lead.timestamp)
-        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-        acc[monthYear] = (acc[monthYear] || 0) + 1
+        const date = getLeadCreationDate(lead)
+        if (date) {
+          const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+          acc[monthYear] = (acc[monthYear] || 0) + 1
+        }
         return acc
       },
       {} as Record<string, number>,
@@ -1367,13 +1521,7 @@ const SalesReportContent = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.salesPerformance}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    stroke={isDarkMode ? "#fff" : "#000"}
-                  />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke={isDarkMode ? "#fff" : "#000"} />
                   <YAxis stroke={isDarkMode ? "#fff" : "#000"} />
                   <Tooltip
                     contentStyle={{
@@ -1588,7 +1736,7 @@ const SalesReportContent = () => {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {analytics.salesPerformance.map((rep) => {
                     // Get detailed status breakdown for this salesperson
-                    const repLeads = leads.filter((lead) => lead.assignedTo === rep.name)
+                    const repLeads = leads.filter((lead) => getAssignedTo(lead) === rep.name)
                     const statusBreakdown = analytics.categoryDistribution.reduce(
                       (acc, category) => {
                         acc[category.name] = repLeads.filter((lead) => lead.status === category.name).length
