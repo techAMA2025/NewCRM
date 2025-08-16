@@ -62,6 +62,7 @@ const formatCallbackInfo = (callbackInfo: any) => {
   const scheduledDate = new Date(callbackInfo.scheduled_dt);
   
   // Format like "Thu, Aug 14, 10:00 AM"
+  // The .replace(',', ',') is unnecessary and does nothing, so we can remove it.
   const scheduledTime = scheduledDate.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short', 
@@ -69,9 +70,7 @@ const formatCallbackInfo = (callbackInfo: any) => {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
-  }).replace(',', ',');
-
-  // Format date like "13/8/2025"
+  });
   const scheduledDateOnly = scheduledDate.toLocaleDateString('en-GB');
 
   const scheduledBy = callbackInfo.scheduled_by || 'Unknown';
