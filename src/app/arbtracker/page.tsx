@@ -719,7 +719,7 @@ export default function ArbitrationTracker() {
                               )}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                              {arbitrationCase.lastEditedBy || 'Unknown'}
+                              {arbitrationCase.lastedit_by || 'Not Edited Yet'}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                               <div className="flex items-center space-x-1">
