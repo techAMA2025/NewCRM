@@ -38,6 +38,7 @@ type Client = {
   advanceBalance: number;
   startDate: Timestamp;
   tenure: number;
+  source_database?: string;
 }
 
 type MonthlyPayment = {
@@ -148,6 +149,10 @@ export function ClientDetailsModal({
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Phone</dt>
                         <dd className="text-base">{client?.clientPhone}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-muted-foreground">Source Database</dt>
+                        <dd className="text-base">{client?.source_database || 'Not specified'}</dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Start Date</dt>
