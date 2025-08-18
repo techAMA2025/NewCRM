@@ -82,6 +82,7 @@ type Client = {
   allocationType?: 'primary' | 'secondary';
   primaryAdvocate?: string;
   secondaryAdvocate?: string;
+  source_database?: string;
 }
 
 type MonthlyPayment = {
@@ -468,7 +469,26 @@ export default function PaymentReminderPage() {
   };
 
   // Function to extract source from clientId
-  const extractSourceFromClientId = (clientId: string): { source: string; color: string } => {
+  const extractSourceFromClientId = (clientId: string, sourceDatabase?: string): { source: string; color: string } => {
+    // If source_database field is available, use it
+    if (sourceDatabase) {
+      switch (sourceDatabase.toLowerCase()) {
+        case 'billcut':
+          return { source: 'BillCut', color: 'bg-purple-900/30 text-purple-300 border-purple-700/50' };
+        case 'settleloans':
+          return { source: 'SettleLoans', color: 'bg-orange-900/30 text-orange-300 border-orange-700/50' };
+        case 'ama':
+          return { source: 'AMA', color: 'bg-blue-900/30 text-blue-300 border-blue-700/50' };
+        case 'credsettlee':
+          return { source: 'CredSettle', color: 'bg-green-900/30 text-green-300 border-green-700/50' };
+        case 'other':
+          return { source: 'Other', color: 'bg-gray-900/30 text-gray-300 border-gray-700/50' };
+        default:
+          return { source: sourceDatabase, color: 'bg-gray-900/30 text-gray-300 border-gray-700/50' };
+      }
+    }
+    
+    // Fallback to extracting from clientId if source_database is not available
     if (!clientId) return { source: 'Unknown', color: 'bg-gray-900/30 text-gray-300 border-gray-700/50' };
     
     // Handle different source formats
@@ -497,7 +517,7 @@ export default function PaymentReminderPage() {
   // Enhanced filtering logic
   const filteredClients = clients.filter(client => {
     // Filter out BillCut source clients
-    const sourceInfo = extractSourceFromClientId(client.clientId);
+    const sourceInfo = extractSourceFromClientId(client.clientId, client.source_database);
     if (sourceInfo.source === 'BillCut') {
       return false;
     }
@@ -796,8 +816,8 @@ export default function PaymentReminderPage() {
                                     <div>
                                       <div className="font-medium">{client.clientName.toUpperCase()}</div>
                                       <div className="text-xs text-gray-500 mt-1">
-                                        <span className={`px-1 py-0.5 rounded text-xs font-medium border ${extractSourceFromClientId(client.clientId).color}`}>
-                                          {extractSourceFromClientId(client.clientId).source}
+                                        <span className={`px-1 py-0.5 rounded text-xs font-medium border ${extractSourceFromClientId(client.clientId, client.source_database).color}`}>
+                                          {extractSourceFromClientId(client.clientId, client.source_database).source}
                                         </span>
                                       </div>
                                     </div>
@@ -1050,8 +1070,8 @@ export default function PaymentReminderPage() {
                                       </div>
                                       <p className="text-sm text-gray-400 mt-1">{client.clientPhone}</p>
                                       <p className="text-xs text-gray-500 mt-1">
-                                        Source: <span className={`px-1 py-0.5 rounded text-xs font-medium border ${extractSourceFromClientId(client.clientId).color}`}>
-                                          {extractSourceFromClientId(client.clientId).source}
+                                        Source: <span className={`px-1 py-0.5 rounded text-xs font-medium border ${extractSourceFromClientId(client.clientId, client.source_database).color}`}>
+                                          {extractSourceFromClientId(client.clientId, client.source_database).source}
                                         </span>
                                       </p>
                                     </div>

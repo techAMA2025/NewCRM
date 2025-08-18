@@ -25,6 +25,7 @@ type Client = {
   startDate: Timestamp;
   tenure: number;
   createdAt?: Timestamp;
+  source_database?: string;
 }
 
 type ClientEditModalProps = {
@@ -55,7 +56,8 @@ export function ClientEditModal({ open, onOpenChange, client, onClientUpdate }: 
         monthlyFees: client.monthlyFees,
         weekOfMonth: client.weekOfMonth,
         advanceBalance: client.advanceBalance,
-        tenure: client.tenure
+        tenure: client.tenure,
+        source_database: client.source_database
       });
     }
   }, [client]);
@@ -103,7 +105,8 @@ export function ClientEditModal({ open, onOpenChange, client, onClientUpdate }: 
         tenure: updatedTenure,
         totalPaymentAmount: totalPaymentAmount,
         pendingAmount: pendingAmount,
-        paymentsPending: paymentsPending
+        paymentsPending: paymentsPending,
+        source_database: formData.source_database || client.source_database
       };
       
       // Update the client document
@@ -278,6 +281,25 @@ export function ClientEditModal({ open, onOpenChange, client, onClientUpdate }: 
                 onChange={(e) => setStartDateStr(e.target.value)}
                 className="bg-gray-700 border-gray-600"
               />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="sourceDatabase">Source Database</Label>
+              <Select 
+                value={formData.source_database || ''}
+                onValueChange={(value) => handleChange('source_database', value)}
+              >
+                <SelectTrigger className="bg-gray-700 border-gray-600">
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  <SelectItem value="ama">AMA</SelectItem>
+                  <SelectItem value="billcut">BillCut</SelectItem>
+                  <SelectItem value="settleloans">SettleLoans</SelectItem>
+                  <SelectItem value="credsettlee">CredSettle</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
