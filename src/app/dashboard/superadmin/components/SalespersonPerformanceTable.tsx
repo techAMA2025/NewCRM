@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
 interface SalespersonPerformance {
@@ -70,7 +70,7 @@ export const SalespersonPerformanceTable: React.FC<SalespersonPerformanceTablePr
           
           console.log('Processing salesperson:', salespersonName);
           
-          // Fetch leads data for this salesperson from crm_leads
+          // Fetch leads data for this salesperson from crm_leads (for interested leads only)
           const leadsQuery = query(
             collection(db, 'crm_leads'),
             where('assignedTo', '==', salespersonName),
@@ -80,7 +80,7 @@ export const SalespersonPerformanceTable: React.FC<SalespersonPerformanceTablePr
           const leadsSnapshot = await getDocs(leadsQuery);
           console.log(`Found ${leadsSnapshot.size} crm_leads for ${salespersonName} in target month`);
           
-          // Fetch billcut leads data for this salesperson
+          // Fetch billcut leads data for this salesperson (for interested leads only)
           const billcutQuery = query(
             collection(db, 'billcutLeads'),
             where('assigned_to', '==', salespersonName),
@@ -90,44 +90,45 @@ export const SalespersonPerformanceTable: React.FC<SalespersonPerformanceTablePr
           const billcutSnapshot = await getDocs(billcutQuery);
           console.log(`Found ${billcutSnapshot.size} billcutLeads for ${salespersonName} in target month`);
           
-          // Count converted and interested leads
-          let convertedLeads = 0;
+          // Count interested leads only (converted leads will come from targets collection)
           let interestedLeads = 0;
           
-          // Process crm_leads
+          // Process crm_leads for interested leads
           leadsSnapshot.forEach(doc => {
             const lead = doc.data();
-            if (lead.status === 'Converted') {
-              convertedLeads++;
-            } else if (lead.status === 'Interested') {
+            if (lead.status === 'Interested') {
               interestedLeads++;
             }
           });
           
-          // Process billcutLeads
+          // Process billcutLeads for interested leads
           billcutSnapshot.forEach(doc => {
             const lead = doc.data();
-            if (lead.category === 'Converted') {
-              convertedLeads++;
-            } else if (lead.category === 'Interested') {
+            if (lead.category === 'Interested') {
               interestedLeads++;
             }
           });
           
-          // Fetch target data for this salesperson
+          // Fetch target data for this salesperson from targets collection
           let targetAmount = 0;
           let collectedAmount = 0;
+          let convertedLeads = 0; // This will come from targets collection
           
           try {
-            const targetsRef = collection(db, `targets/${monthYearName}/sales_targets`);
-            const targetQuery = query(targetsRef, where('userName', '==', salespersonName));
-            const targetSnapshot = await getDocs(targetQuery);
+            // Get the user's target document from the targets collection
+            const userTargetRef = doc(db, 'targets', monthYearName, 'sales_targets', userDoc.id);
+            const userTargetSnap = await getDoc(userTargetRef);
             
-            if (!targetSnapshot.empty) {
-              const targetData = targetSnapshot.docs[0].data();
+            if (userTargetSnap.exists()) {
+              const targetData = userTargetSnap.data();
               targetAmount = targetData.amountCollectedTarget || 0;
               collectedAmount = targetData.amountCollected || 0;
-              console.log(`Found target for ${salespersonName}:`, { targetAmount, collectedAmount });
+              convertedLeads = targetData.convertedLeads || 0; // Get converted leads from targets collection
+              console.log(`Found target for ${salespersonName}:`, { 
+                targetAmount, 
+                collectedAmount, 
+                convertedLeads 
+              });
             } else {
               console.log(`No target found for ${salespersonName} in ${monthYearName}`);
             }
