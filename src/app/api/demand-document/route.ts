@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const requestData = {
       name2,
       bankName,
-      bankAddress: formattedBankAddresses,
+      bankAddress,
       bankEmail: formattedBankEmails,
       reference,
       email,

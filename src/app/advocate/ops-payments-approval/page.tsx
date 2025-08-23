@@ -355,6 +355,8 @@ export default function OpsPaymentsApprovalPage() {
         return 'bg-purple-100 text-purple-800 dark:bg-purple-700/30 dark:text-purple-400';
       case 'Fees':
         return 'bg-green-100 text-green-800 dark:bg-green-700/30 dark:text-green-400';
+      case 'Success Fees':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-700/30 dark:text-indigo-400';
       case 'Miscellaneous':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-400';
       default:
@@ -456,6 +458,7 @@ export default function OpsPaymentsApprovalPage() {
                   <option value="Client visit">Client visit</option>
                   <option value="Arbitration">Arbitration</option>
                   <option value="Fees">Fees</option>
+                  <option value="Success Fees">Success Fees</option>
                   <option value="Miscellaneous">Miscellaneous</option>
                 </select>
                 
