@@ -260,7 +260,48 @@ const AdminDashboard = () => {
         return;
       }
       
-
+      // Get month index for date calculations
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const targetMonth = monthNames.indexOf(selectedMonth);
+      const targetYear = selectedYear;
+      
+      // Try to get revenue from payments collection first (same logic as Sales Revenue)
+      let paymentBasedRevenue = 0;
+      let hasPaymentData = false;
+      let individualPayments: { [userId: string]: number } = {};
+      
+      try {
+        const paymentsCollection = collection(db, 'payments');
+        const paymentsSnapshot = await getDocs(paymentsCollection);
+        
+        const startOfMonth = new Date(targetYear, targetMonth, 1);
+        const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+    
+        paymentsSnapshot.forEach((doc) => {
+          const payment = doc.data();
+          
+          if (payment.status === 'approved' && payment.timestamp) {
+            const paymentDate = new Date(payment.timestamp);
+            
+            if (paymentDate >= startOfMonth && paymentDate <= endOfMonth) {
+              const amount = parseFloat(payment.amount) || 0;
+              paymentBasedRevenue += amount;
+              hasPaymentData = true;
+              
+              // Track individual salesperson payments if user information is available
+              if (payment.userId || payment.assignedTo || payment.salesperson) {
+                const userId = payment.userId || payment.assignedTo || payment.salesperson;
+                individualPayments[userId] = (individualPayments[userId] || 0) + amount;
+              }
+            }
+          }
+        });
+        
+        console.log(`Payment-based revenue for ${selectedMonth} ${selectedYear}:`, paymentBasedRevenue);
+        console.log('Individual payments:', individualPayments);
+      } catch (error) {
+        console.error('Error fetching payments data:', error);
+      }
       
       // Check if the monthly document exists
       const monthlyDocRef = doc(db, "targets", monthDocId);
@@ -281,17 +322,44 @@ const AdminDashboard = () => {
         salesTargetsSnap.forEach(doc => {
           const data = doc.data();
           
+          // Use payment-based revenue if available, otherwise use amountCollected from targets
+          let collectedAmount = data.amountCollected || 0;
+          if (hasPaymentData) {
+            // Try to find individual payment data for this salesperson
+            const userIdentifiers = [
+              data.userId,
+              data.userName,
+              doc.id // document ID
+            ].filter(Boolean);
+            
+            // Look for matching payment data
+            let foundPayment = false;
+            for (const identifier of userIdentifiers) {
+              if (individualPayments[identifier]) {
+                collectedAmount = individualPayments[identifier];
+                foundPayment = true;
+                console.log(`Found payment data for ${data.userName}: ${collectedAmount}`);
+                break;
+              }
+            }
+            
+            // If no individual payment found, keep the original amountCollected
+            if (!foundPayment) {
+              console.log(`No individual payment data found for ${data.userName}, using target amount: ${collectedAmount}`);
+            }
+          }
+          
           targetsData.push({
             id: doc.id,
             userId: data.userId,
             userName: data.userName,
-            amountCollected: data.amountCollected || 0,
+            amountCollected: collectedAmount,
             amountCollectedTarget: data.amountCollectedTarget || 0,
             convertedLeads: data.convertedLeads || 0, // This is the actual converted leads count from targets
             convertedLeadsTarget: data.convertedLeadsTarget || 0
           });
           
-          totalAmount += data.amountCollected || 0;
+          totalAmount += collectedAmount;
           totalTarget += data.amountCollectedTarget || 0;
           totalLeadsConverted += data.convertedLeads || 0; // Sum up actual converted leads from targets
           totalLeadsTargetCount += data.convertedLeadsTarget || 0;
@@ -308,16 +376,49 @@ const AdminDashboard = () => {
           // Skip monthly documents that might exist
           if (data.month && data.year) return;
           
+          // Use payment-based revenue if available, otherwise use amountCollected from targets
+          let collectedAmount = data.amountCollected || 0;
+          if (hasPaymentData) {
+            // Try to find individual payment data for this salesperson
+            const userIdentifiers = [
+              data.userId,
+              data.userName,
+              doc.id // document ID
+            ].filter(Boolean);
+            
+            // Look for matching payment data
+            let foundPayment = false;
+            for (const identifier of userIdentifiers) {
+              if (individualPayments[identifier]) {
+                collectedAmount = individualPayments[identifier];
+                foundPayment = true;
+                console.log(`Found payment data for ${data.userName}: ${collectedAmount}`);
+                break;
+              }
+            }
+            
+            // If no individual payment found, keep the original amountCollected
+            if (!foundPayment) {
+              console.log(`No individual payment data found for ${data.userName}, using target amount: ${collectedAmount}`);
+            }
+          }
+          
           targetsData.push({
             id: doc.id,
-            ...data
+            ...data,
+            amountCollected: collectedAmount
           });
           
-          totalAmount += data.amountCollected || 0;
+          totalAmount += collectedAmount;
           totalTarget += data.amountCollectedTarget || 0;
           totalLeadsConverted += data.convertedLeads || 0; // Sum up actual converted leads from targets
           totalLeadsTargetCount += data.convertedLeadsTarget || 0;
         });
+      }
+      
+      // If we have payment data, update the total collected amount
+      if (hasPaymentData) {
+        console.log(`Using individual payment-based revenue distribution for ${selectedMonth} ${selectedYear}`);
       }
       
       // Cache the targets data
@@ -795,6 +896,7 @@ const AdminDashboard = () => {
                 ></div>
               </div>
               <p className="text-sm text-gray-400">{amountPercentage}% of target achieved</p>
+              <p className="text-xs text-gray-500 mt-1">Based on approved payments</p>
             </CardContent>
           </Card>
 
@@ -824,6 +926,7 @@ const AdminDashboard = () => {
         <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-purple-500/10 transition-all duration-300 mb-6">
           <CardHeader className="pb-2">
             <CardTitle className="text-gray-100">Sales Team Targets & Collections ({selectedMonth} {selectedYear})</CardTitle>
+            <p className="text-xs text-gray-500">Collected amounts based on approved payments</p>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
