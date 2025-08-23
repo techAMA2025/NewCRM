@@ -440,7 +440,11 @@ const BillcutLeadsTableOptimized = React.memo(
         }
 
         if (showMyLeads) {
-          return true
+          // Only allow editing if the lead is assigned to the current user
+          // Trim and do case-insensitive comparison
+          const normalizedUserName = userName.trim().toLowerCase()
+          const normalizedAssignedTo = (lead.assignedTo || "").trim().toLowerCase()
+          return normalizedAssignedTo === normalizedUserName
         }
 
         if (!isUnassigned(lead)) {
@@ -449,7 +453,10 @@ const BillcutLeadsTableOptimized = React.memo(
           }
 
           if (userRole === "sales") {
-            return lead.assignedTo === userName
+            // Trim and do case-insensitive comparison
+            const normalizedUserName = userName.trim().toLowerCase()
+            const normalizedAssignedTo = (lead.assignedTo || "").trim().toLowerCase()
+            return normalizedAssignedTo === normalizedUserName
           }
         }
 

@@ -45,6 +45,8 @@ type BillcutLeadsFiltersProps = {
   setLastModifiedFromDate?: (date: string) => void
   lastModifiedToDate?: string
   setLastModifiedToDate?: (date: string) => void
+  // New prop for actual search results count
+  actualSearchResultsCount?: number
 }
 
 const BillcutLeadsFiltersOptimized = ({
@@ -84,6 +86,7 @@ const BillcutLeadsFiltersOptimized = ({
   setLastModifiedFromDate = () => {},
   lastModifiedToDate = "",
   setLastModifiedToDate = () => {},
+  actualSearchResultsCount = 0,
 }: BillcutLeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{ id: string; name: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -449,9 +452,14 @@ const BillcutLeadsFiltersOptimized = ({
                   </span>
                 ) : (
                   <>
-                    Found <span className="text-blue-400 font-medium">{searchResultsCount}</span> results for "
+                    Found <span className="text-blue-400 font-medium">{actualSearchResultsCount || searchResultsCount}</span> results for "
                     {searchQuery}"
-                    {searchResultsCount > 0 && <span className="text-green-400 ml-2">✓ Database search complete</span>}
+                    {showMyLeads && searchResultsCount > actualSearchResultsCount && (
+                      <span className="text-yellow-400 ml-2 text-xs">
+                        ({searchResultsCount - actualSearchResultsCount} hidden - not assigned to you)
+                      </span>
+                    )}
+                    {(actualSearchResultsCount || searchResultsCount) > 0 && <span className="text-green-400 ml-2">✓ Database search complete</span>}
                   </>
                 )}
               </span>
@@ -478,7 +486,7 @@ const BillcutLeadsFiltersOptimized = ({
           <div className="flex items-center gap-4">
             <p className="text-sm text-gray-400">
               Showing{" "}
-              <span className="text-blue-400 font-medium">{searchQuery ? searchResultsCount : allLeadsCount}</span>{" "}
+              <span className="text-blue-400 font-medium">{searchQuery ? (actualSearchResultsCount || searchResultsCount) : allLeadsCount}</span>{" "}
               Leads
               {searchQuery && <span className="text-green-400 ml-1">(from database search)</span>}
             </p>
