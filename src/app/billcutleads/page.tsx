@@ -171,6 +171,11 @@ const normalizePhoneNumber = (phone: string): string => {
   return phone.replace(/[\s\-$$$$\+]/g, "")
 }
 
+// Normalize user name for comparison
+const normalizeUserName = (name: string): string => {
+  return (name || "").trim().toLowerCase()
+}
+
 // Create search terms for name (for prefix matching)
 const createSearchTerms = (text: string): string[] => {
   if (!text) return []
@@ -364,7 +369,7 @@ const BillCutLeadsPage = () => {
   }
 
   // Enhanced search function that queries the database
-  const performDatabaseSearch = useCallback(async (searchTerm: string): Promise<Lead[]> => {
+  const performDatabaseSearch = useCallback(async (searchTerm: string, respectMyLeadsFilter: boolean = false): Promise<Lead[]> => {
     if (!searchTerm.trim()) return []
 
     setIsSearching(true)
@@ -504,7 +509,27 @@ const BillCutLeadsPage = () => {
         return b.date - a.date
       })
 
-      return searchResults.slice(0, SEARCH_LEADS_LIMIT)
+      // Apply "My Leads" filter if respectMyLeadsFilter is true
+      let filteredResults = searchResults
+      if (respectMyLeadsFilter && typeof window !== "undefined") {
+        const currentUserName = localStorage.getItem("userName")
+        if (currentUserName) {
+          // Use helper function for consistent normalization
+          const normalizedCurrentUser = normalizeUserName(currentUserName)
+          filteredResults = searchResults.filter(lead => {
+            const normalizedAssignedTo = normalizeUserName(lead.assignedTo)
+            
+            // Debug logging to identify the issue
+            if (searchResults.length > 0 && searchResults.length <= 5) {
+              console.log(`Comparing assignedTo: "${lead.assignedTo}" (normalized: "${normalizedAssignedTo}") with userName: "${currentUserName}" (normalized: "${normalizedCurrentUser}")`)
+            }
+            
+            return normalizedAssignedTo === normalizedCurrentUser
+          })
+        }
+      }
+
+      return filteredResults.slice(0, SEARCH_LEADS_LIMIT)
 
     } catch (error) {
       console.error("Error performing database search:", error)
@@ -923,7 +948,7 @@ const BillCutLeadsPage = () => {
     const timeoutId = setTimeout(async () => {
       if (searchQuery.trim()) {
         setIsSearching(true)
-        const results = await performDatabaseSearch(searchQuery)
+        const results = await performDatabaseSearch(searchQuery, showMyLeads)
         handleSearchResults(results)
       } else {
         setSearchResults([])
@@ -932,7 +957,7 @@ const BillCutLeadsPage = () => {
     }, 500) // Slightly longer debounce for search
 
     return () => clearTimeout(timeoutId)
-  }, [searchQuery, performDatabaseSearch, handleSearchResults])
+  }, [searchQuery, showMyLeads, performDatabaseSearch, handleSearchResults])
 
   // Fetch team members
   useEffect(() => {
@@ -1056,7 +1081,8 @@ const BillCutLeadsPage = () => {
         if (currentUserRole === "admin" || currentUserRole === "overlord") {
           return true
         } else {
-          return lead.assignedTo === currentUserName
+          // Use helper function for consistent normalization
+          return normalizeUserName(lead.assignedTo) === normalizeUserName(currentUserName || "")
         }
       }
       return false
@@ -2066,30 +2092,10 @@ const BillCutLeadsPage = () => {
             setLastModifiedFromDate={setLastModifiedFromDate}
             lastModifiedToDate={lastModifiedToDate}
             setLastModifiedToDate={setLastModifiedToDate}
+            actualSearchResultsCount={searchResults.length}
           />
 
-          {/* Search Status Indicator */}
-          {searchQuery.trim() && (
-            <div className="mb-4 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {isSearching ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-400"></div>
-                  ) : (
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  )}
-                  <span className="text-sm text-blue-300">
-                    {isSearching ? "Searching database..." : `Search results for "${searchQuery}"`}
-                  </span>
-                </div>
-                <span className="text-xs text-blue-400">
-                  {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
-                </span>
-              </div>
-            </div>
-          )}
+
 
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
