@@ -32,8 +32,8 @@ export async function POST(request: Request) {
     const templateData = {
       clientName: name,
       bankName: bankName,
-      bankEmail: formattedBankEmails,
-      bankAddress: bankAddress,
+      bankEmail: bankAddress, // Swap: use bankAddress for email field
+      bankAddress: formattedBankEmails, // Swap: use formatted emails for address field
       lawyerEmail,
       referenceNumber,
       noticeDate: formattedDate,
