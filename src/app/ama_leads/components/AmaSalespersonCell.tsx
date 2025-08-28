@@ -184,12 +184,12 @@ const AmaSalespersonCell = ({
           <div className="flex items-center">
             <div className="flex items-center flex-1">
               <div
-                className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${getSalespersonBadgeColor(lead.assignedTo)} shadow-sm font-medium text-[10px]`}
+                className={`inline-flex items-center justify-center h-4.5 w-4.5 rounded-full ${getSalespersonBadgeColor(lead.assignedTo)} shadow-sm font-medium text-[10px]`}
               >
                 {getInitials(lead.assignedTo)}
               </div>
               <span
-                className={`ml-2 text-[10px] text-[#5A4C33] truncate`}
+                className={`ml-2 text-[8px] text-[#5A4C33] truncate`}
               >
                 {lead.assignedTo}
               </span>

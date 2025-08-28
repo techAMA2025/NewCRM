@@ -10,15 +10,15 @@ export async function POST(request: Request) {
       name,
       referenceNumber,
       lawyerEmail,
-      selectedBank,
+      bankName,
       bankEmail,
       bankAddress,
       date
     } = body;
 
     // Input validation
-    if (!name || !referenceNumber || !lawyerEmail || !selectedBank || !bankEmail || !bankAddress || !date) {
-      console.log("Missing form data:", { name, referenceNumber, lawyerEmail, selectedBank, bankEmail, bankAddress, date });
+    if (!name || !referenceNumber || !lawyerEmail || !bankName || !bankEmail || !bankAddress || !date) {
+      console.log("Missing form data:", { name, referenceNumber, lawyerEmail, bankName, bankEmail, bankAddress, date });
       return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     // Set up data for the template
     const templateData = {
       clientName: name,
-      bankName: selectedBank,
+      bankName: bankName,
       bankEmail: formattedBankEmails,
       bankAddress: bankAddress,
       lawyerEmail,
