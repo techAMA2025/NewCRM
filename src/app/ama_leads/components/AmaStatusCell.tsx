@@ -118,7 +118,7 @@ const AmaStatusCell = ({
     <td className="px-2 py-0.5 text-xs max-w-[150px]">
       <div className="flex flex-col space-y-1">
         {/* Status Badge */}
-        <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(getDisplayStatus(lead.status))} ${!canEdit ? 'opacity-60' : ''}`}>
+        <span className={`inline-flex items-center px-2 py-1 rounded-md font-medium shadow-sm ${getStatusColor(getDisplayStatus(lead.status))} ${!canEdit ? 'opacity-60' : ''}`} style={{fontSize: '8.2px'}}>
           {getDisplayStatus(lead.status)}
           {!canEdit && (
             <span className="ml-1 text-xs opacity-75"></span>

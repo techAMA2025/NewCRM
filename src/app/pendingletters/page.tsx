@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/firebase/firebase';
+import { db, functions } from '@/firebase/firebase';
+import { httpsCallable } from 'firebase/functions';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
-import { FiFileText, FiMail, FiUser, FiCreditCard, FiTag, FiBriefcase } from 'react-icons/fi';
+import { FiFileText, FiMail, FiUser, FiCreditCard, FiTag, FiBriefcase, FiDatabase, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 
 interface Client {
@@ -24,6 +25,8 @@ interface Client {
 export default function PendingLettersPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<string>('');
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -53,6 +56,33 @@ export default function PendingLettersPage() {
   const generateLetter = async (client: Client) => {
     toast.success(`Letter generation initiated for ${client.name}`);
     // Implementation for letter generation would go here
+  };
+
+  const handleCrmToAmaMigration = async () => {
+    setMigrationLoading(true);
+    setMigrationStatus('Starting migration...');
+    
+    try {
+      // Use Firebase httpsCallable to call the Cloud Function
+      const completeCrmToAmaMigration = httpsCallable(functions, 'completeCrmToAmaMigration');
+      
+      const result = await completeCrmToAmaMigration({});
+      
+      if (result.data && (result.data as any).success) {
+        setMigrationStatus('Migration completed successfully!');
+        toast.success('CRM to AMA migration completed successfully');
+        console.log('Migration results:', (result.data as any).results);
+      } else {
+        throw new Error((result.data as any)?.error || 'Migration failed');
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Unknown error occurred';
+      setMigrationStatus(`Migration failed: ${errorMessage}`);
+      toast.error(`Migration failed: ${errorMessage}`);
+      console.error('Migration error:', error);
+    } finally {
+      setMigrationLoading(false);
+    }
   };
 
   return (
@@ -169,6 +199,76 @@ export default function PendingLettersPage() {
               </table>
             </div>
           )}
+
+          {/* CRM to AMA Migration Section */}
+          <div className="mt-12 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-xl p-8">
+            <div className="flex items-center mb-6">
+              <div className="bg-green-900/50 p-3 rounded-xl mr-4">
+                <FiDatabase className="text-green-400 text-xl" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Database Migration</h2>
+                <p className="text-gray-400 text-sm">Complete CRM to AMA leads migration</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50 mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Migration Details</h3>
+              <ul className="text-gray-300 text-sm space-y-2">
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                  Migrates all CRM leads to AMA leads collection
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                  Preserves all subcollections (history, callback_info)
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                  Normalizes data from different sources (CredSettle, SettleLoans, AMA)
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                  This operation may take several minutes to complete
+                </li>
+              </ul>
+            </div>
+
+            {migrationStatus && (
+              <div className="mb-6 p-4 rounded-xl border border-gray-700/50 bg-gray-900/30">
+                <div className="flex items-center">
+                  {migrationLoading ? (
+                    <FiRefreshCw className="text-blue-400 text-lg mr-3 animate-spin" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-green-500 mr-3"></div>
+                  )}
+                  <span className="text-gray-300">{migrationStatus}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleCrmToAmaMigration}
+              disabled={migrationLoading}
+              className={`flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                migrationLoading
+                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-green-900/25'
+              }`}
+            >
+              {migrationLoading ? (
+                <>
+                  <FiRefreshCw className="text-lg mr-2 animate-spin" />
+                  Migrating...
+                </>
+              ) : (
+                <>
+                  <FiDatabase className="text-lg mr-2" />
+                  Start CRM to AMA Migration
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </OverlordSidebar>

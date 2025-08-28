@@ -341,7 +341,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
               <div className="flex items-center">
-                <span className="text-[#D2A02A]">Date</span>
+                <span className="text-[#D2A02A] text-[10px]">Date</span>
                 {sortConfig?.key === 'name' && (
                   <FaSort className="ml-1" />
                 )}
@@ -368,7 +368,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Name</span>
+              <span className="text-[#D2A02A] text-[10px]">Name</span>
               <button
                 onClick={() => toggleColumn('name')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -390,7 +390,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
               <div className="flex items-center">
-                <span className="text-[#D2A02A]">Location</span>
+                <span className="text-[#D2A02A] text-[10px]">Location</span>
                 {sortConfig?.key === 'source_database' && (
                   <FaSort className="ml-1" />
                 )}
@@ -417,7 +417,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Source</span>
+              <span className="text-[#D2A02A] text-[10px]">Source</span>
               <button
                 onClick={() => toggleColumn('source')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -437,7 +437,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Debt</span>
+              <span className="text-[#D2A02A] text-[10px]">Debt</span>
               <button
                 onClick={() => toggleColumn('debt')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -457,7 +457,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Status</span>
+              <span className="text-[#D2A02A] text-[10px]">Status</span>
               <button
                 onClick={() => toggleColumn('status')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -477,7 +477,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Assigned To</span>
+              <span className="text-[#D2A02A] text-[10px]">Assigned To</span>
               <button
                 onClick={() => toggleColumn('assignedTo')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -497,7 +497,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Callback Details</span>
+              <span className="text-[#D2A02A] text-[10px]">Callback Details</span>
               <button
                 onClick={() => toggleColumn('callback')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -517,7 +517,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">
+              <span className="text-[#D2A02A] text-[10px]">
                 {activeTab === 'callback' ? 'Callback Info' : 'Query'}
               </span>
               <button
@@ -539,7 +539,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
-              <span className="text-[#D2A02A]">Sales Notes</span>
+              <span className="text-[#D2A02A] text-[10px]">Sales Notes</span>
               <button
                 onClick={() => toggleColumn('salesNotes')}
                 className="ml-1 text-[#5A4C33]/50 hover:text-[#5A4C33] transition-colors"
@@ -728,7 +728,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             {!columnVisibility.assignedTo && (
               <button
                 onClick={() => toggleColumn('assignedTo')}
-                className="px-2 py-1 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] text-xs rounded transition-colors"
+                className="px-2 py-1 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] text-[7px] rounded transition-colors"
                 title="Show assigned to column"
               >
                 + Assigned To
