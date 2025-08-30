@@ -27,6 +27,7 @@ export default function PaymentRequestsPage() {
   const [monthFilter, setMonthFilter] = useState('current');
   const [requestTypeFilter, setRequestTypeFilter] = useState('all');
   const [requestedByFilter, setRequestedByFilter] = useState('all');
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [uniqueRequesters, setUniqueRequesters] = useState<string[]>([]);
   const router = useRouter();
 
@@ -477,6 +478,9 @@ export default function PaymentRequestsPage() {
         (requestTypeFilter === 'advocate' && isAdvocateRequest) ||
         (requestTypeFilter === 'salesperson' && !isAdvocateRequest);
       
+      // Add payment type filter logic
+      const matchesPaymentType = paymentTypeFilter === 'all' || request.paymentType === paymentTypeFilter;
+      
       let matchesDate = true;
       const requestDate = new Date(request.timestamp);
       const today = new Date();
@@ -510,9 +514,9 @@ export default function PaymentRequestsPage() {
         }
       }
 
-      return matchesSearch && matchesSource && matchesStatus && matchesDate && matchesMonth && matchesRequestType && matchesRequestedBy;
+      return matchesSearch && matchesSource && matchesStatus && matchesDate && matchesMonth && matchesRequestType && matchesRequestedBy && matchesPaymentType;
     });
-  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter, requestTypeFilter, requestedByFilter]);
+  }, [paymentRequests, searchTerm, sourceFilter, statusFilter, dateFilter, monthFilter, requestTypeFilter, requestedByFilter, paymentTypeFilter]);
 
   // Calculate total amount for filtered requests
   const totalAmount = useMemo(() => {
@@ -593,6 +597,16 @@ export default function PaymentRequestsPage() {
                   <option value="advocate">Advocate Requests</option>
                 </select>
                 
+                <select
+                  value={paymentTypeFilter}
+                  onChange={(e) => setPaymentTypeFilter(e.target.value)}
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Payment Types</option>
+                  <option value="pending fees">Pending Fees</option>
+                  <option value="signup">Signup</option>
+                </select>
+                
                 {userRole !== 'billcut' && (
                   <select
                     value={sourceFilter}
@@ -651,6 +665,11 @@ export default function PaymentRequestsPage() {
               {requestTypeFilter !== 'all' && (
                 <span className="bg-indigo-900/50 text-indigo-300 border border-indigo-500 px-2 py-0.5 rounded-full text-xs capitalize">
                   Type: {requestTypeFilter}
+                </span>
+              )}
+              {paymentTypeFilter !== 'all' && (
+                <span className="bg-green-900/50 text-green-300 border border-green-500 px-2 py-0.5 rounded-full text-xs capitalize">
+                  Payment Type: {paymentTypeFilter}
                 </span>
               )}
               {sourceFilter !== 'all' && (
@@ -752,6 +771,11 @@ export default function PaymentRequestsPage() {
                                    request.source === 'billcut' ? 'Bill Cut' :
                                    request.source || 'Not specified'}
                                 </span>
+                                {request.paymentType && (
+                                  <span className="bg-green-900/50 text-green-300 border border-green-500 px-1 py-0.5 rounded-full text-xs font-medium capitalize">
+                                    {request.paymentType}
+                                  </span>
+                                )}
                               </div>
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -858,6 +882,11 @@ export default function PaymentRequestsPage() {
                                   <p className="text-gray-400 text-xs">Source: <span className="text-white capitalize">
                                     {request.source || 'Not specified'}
                                   </span></p>
+                                  {request.paymentType && (
+                                    <p className="text-gray-400 text-xs">Payment Type: <span className="text-white capitalize">
+                                      {request.paymentType}
+                                    </span></p>
+                                  )}
                                 </div>
                               </div>
                               
@@ -903,6 +932,11 @@ export default function PaymentRequestsPage() {
                                   <p className="text-gray-400 text-xs">Source: <span className="text-white capitalize">
                                     {request.source || 'Not specified'}
                                   </span></p>
+                                  {request.paymentType && (
+                                    <p className="text-gray-400 text-xs">Payment Type: <span className="text-white capitalize">
+                                      {request.paymentType}
+                                    </span></p>
+                                  )}
                                 </div>
                                 
                                 <div className="mb-4">
@@ -962,6 +996,11 @@ export default function PaymentRequestsPage() {
                                   <p className="text-gray-400 text-xs">Source: <span className="text-white capitalize">
                                     {request.source || 'Not specified'}
                                   </span></p>
+                                  {request.paymentType && (
+                                    <p className="text-gray-400 text-xs">Payment Type: <span className="text-white capitalize">
+                                      {request.paymentType}
+                                    </span></p>
+                                  )}
                                 </div>
                               </div>
                               
@@ -1038,6 +1077,11 @@ export default function PaymentRequestsPage() {
                                    request.source === 'billcut' ? 'Bill Cut' :
                                    request.source || 'Not specified'}
                                 </span>
+                                {request.paymentType && (
+                                  <span className="bg-green-900/50 text-green-300 border border-green-500 px-2 py-0.5 rounded-full text-xs font-medium capitalize">
+                                    {request.paymentType}
+                                  </span>
+                                )}
                               </div>
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
