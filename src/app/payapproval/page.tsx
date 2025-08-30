@@ -24,6 +24,7 @@ interface Payment {
   status: 'pending' | 'approved';
   approvedBy?: string;
   source: string;
+  paymentType?: string;
   reasonOfPayment?: string;
 }
 
@@ -34,6 +35,7 @@ export default function PaymentApprovalPage() {
     clientPhone: '',
     amount: '',
     source: '',
+    paymentType: '',
     reasonOfPayment: '',
   });
   
@@ -108,6 +110,7 @@ export default function PaymentApprovalPage() {
         clientPhone: formData.clientPhone,
         amount: formData.amount,
         source: formData.source,
+        paymentType: formData.paymentType,
         reasonOfPayment: formData.reasonOfPayment,
         salesPersonName,
         timestamp: new Date().toISOString()
@@ -132,6 +135,7 @@ export default function PaymentApprovalPage() {
           clientPhone: '',
           amount: '',
           source: '',
+          paymentType: '',
           reasonOfPayment: '',
         });
       }, 3000);
@@ -358,6 +362,7 @@ export default function PaymentApprovalPage() {
               <th scope="col" className="px-6 py-3">Client Name</th>
               <th scope="col" className="px-6 py-3">Amount</th>
               <th scope="col" className="px-6 py-3">Source</th>
+              <th scope="col" className="px-6 py-3">Payment Type</th>
               <th scope="col" className="px-6 py-3">Sales Person</th>
               <th scope="col" className="px-6 py-3">Date</th>
               {userRole === 'advocate' && (
@@ -373,6 +378,7 @@ export default function PaymentApprovalPage() {
                 <td className="px-6 py-4">{payment.clientName}</td>
                 <td className="px-6 py-4">₹{payment.amount}</td>
                 <td className="px-6 py-4">{payment.source}</td>
+                <td className="px-6 py-4">{payment.paymentType || '-'}</td>
                 <td className="px-6 py-4">{payment.salesPersonName}</td>
                 <td className="px-6 py-4">
                   {new Date(payment.timestamp).toLocaleDateString('en-GB')}
@@ -629,6 +635,27 @@ export default function PaymentApprovalPage() {
                       <option value="ama">AMA</option>
                       <option value="settleloans">Settle Loans</option>
                       <option value="billcut">Bill Cut</option>
+                    </select>
+                  </motion.div>
+                  
+                  <motion.div 
+                    whileHover={{ y: -2 }}
+                    className="space-y-2 md:col-span-2"
+                  >
+                    <label htmlFor="paymentType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Type of Payment
+                    </label>
+                    <select
+                      id="paymentType"
+                      name="paymentType"
+                      value={formData.paymentType}
+                      onChange={handleChange}
+                      required
+                      className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5"
+                    >
+                      <option value="">Select payment type</option>
+                      <option value="pending fees">Pending Fees</option>
+                      <option value="signup">Signup</option>
                     </select>
                   </motion.div>
                 </div>
