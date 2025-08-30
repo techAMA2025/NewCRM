@@ -175,7 +175,6 @@ To formalize our services, we will share with you an Agreement/Memorandum of Und
 Please note:
 1. The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.
 2. By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.
-3. A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.
 
 Our team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.`,
       subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
@@ -209,7 +208,7 @@ To formalize our services, we will soon share with you an Agreement/Memorandum o
 Please note:
 1. The sign-up fee is non-refundable, as it covers administrative, legal, and operational efforts required to initiate your case.
 2. By proceeding, the client acknowledges and agrees to fulfill the complete sign-up amount as discussed during onboarding and consultation.
-
+3. A success fee of 15% of your current outstanding amount will be applicable only upon successful settlement of each loan.
 
 Our team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.`,
       subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
