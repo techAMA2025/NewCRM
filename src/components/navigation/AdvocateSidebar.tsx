@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt, FaEnvelopeOpenText, FaUniversity, FaCompass, FaCompressAlt } from 'react-icons/fa'
+import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt, FaEnvelopeOpenText, FaUniversity, FaCompass, FaCompressAlt, FaHandshake } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -72,6 +72,12 @@ const AdvocateSidebar = () => {
             </Link>
           </li>
           <li>
+            <Link href="/settlements" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/settlements')}`}>
+              <FaHandshake className="mr-3 text-indigo-400" />
+              <span>Settlements</span>
+            </Link>
+          </li> 
+          <li>
             <Link href="/advocate/clients" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/clients')}`}>
               <FaUserFriends className="mr-3 text-indigo-400" />
               <span>Clients</span>
@@ -127,6 +133,7 @@ const AdvocateSidebar = () => {
               <span>Banks Database</span>
             </Link>
           </li> 
+          
         </ul>
       </nav>
        
