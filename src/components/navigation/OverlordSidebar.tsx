@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut, FiUserPlus, FiShare2, FiBriefcase, FiCalendar, FiCheckSquare, FiBarChart, FiPieChart, FiCreditCard } from 'react-icons/fi';
+import { FiHome, FiUsers, FiClipboard, FiSettings, FiBarChart2, FiDatabase, FiLogOut, FiUserPlus, FiShare2, FiBriefcase, FiCalendar, FiCheckSquare, FiBarChart, FiPieChart, FiCreditCard, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import { FaBalanceScale, FaMoneyBillWave, FaUserFriends, FaFolder, FaFileAlt, FaEnvelopeOpenText, FaHandshake, FaClipboardList, FaMoneyCheckAlt } from 'react-icons/fa';
 import { getAuth, signOut } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
@@ -34,6 +34,73 @@ const NavItem: React.FC<NavItemProps> = ({ href, icon, label, isActive }) => {
   );
 };
 
+interface DropdownNavItemProps {
+  icon: React.ReactNode;
+  label: string;
+  children: NavItemProps[];
+  isExpanded: boolean;
+  pathname: string;
+}
+
+const DropdownNavItem: React.FC<DropdownNavItemProps> = ({ icon, label, children, isExpanded, pathname }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasActiveChild = children.some(child => pathname === child.href);
+
+  useEffect(() => {
+    if (hasActiveChild) {
+      setIsOpen(true);
+    }
+  }, [hasActiveChild]);
+
+  return (
+    <div className="mb-2">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center justify-between w-full px-2 py-2 rounded-lg transition-all duration-200 group hover:bg-indigo-700 ${
+          hasActiveChild ? 'bg-indigo-700 text-white' : 'text-gray-300 hover:text-white'
+        }`}
+        style={{
+          fontSize: '12px',
+        }}
+      >
+        <div className="flex items-center">
+          <div className={`mr-3 text-md transition-all duration-200 ${hasActiveChild ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
+            {icon}
+          </div>
+          {isExpanded && <span className="font-medium">{label}</span>}
+        </div>
+        {isExpanded && (
+          <div className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+            <FiChevronDown className="text-sm" />
+          </div>
+        )}
+      </button>
+      
+      {isExpanded && isOpen && (
+        <div className="ml-4 mt-1 space-y-1">
+          {children.map((child) => (
+            <NavItem
+              key={child.href}
+              href={child.href}
+              icon={child.icon}
+              label={child.label}
+              isActive={pathname === child.href}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface NavigationGroup {
+  type: 'single' | 'dropdown';
+  item?: NavItemProps;
+  icon?: React.ReactNode;
+  label?: string;
+  children?: NavItemProps[];
+}
+
 interface OverlordSidebarProps {
   children?: React.ReactNode;
 }
@@ -56,29 +123,73 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
     setIsExpanded(!isExpanded);
   };
 
-  const navItems = [
-    { href: '/dashboard', icon: <FiHome />, label: 'Dashboard' },
-    { href: '/admin/users', icon: <FiUsers />, label: 'User Management' },
-    { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads' },
-    { href: '/billcutleads', icon: <FiBarChart2 />, label: 'Billcut Leads' },
-    { href: '/billcutLeadReport', icon: <FiPieChart />, label: 'Lead Reports' },
-    { href: '/targets', icon: <FiClipboard />, label: 'Targets' },
-    { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'SalesPayment Requests' },
-    { href: '/advocate/ops-payments-approval', icon: <FaMoneyCheckAlt />, label: 'Ops Payment Approvals' },
-    { href: '/monthlypayreq', icon: <FiCalendar />, label: 'Monthly Payment Requests' },
-    { href: '/clients', icon: <FiBriefcase />, label: 'Clients' },
-    { href: '/paymentreminder', icon: <FiCreditCard />, label: 'Payment Reminder' },
-    { href: '/clientalloc', icon: <FiUserPlus />, label: 'Client Allocation' },
-    { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report' },
-    { href: '/assigntasks', icon: <FiCheckSquare />, label: 'Assign Tasks' },
-    { href: '/arbtracker', icon: <FaBalanceScale />, label: 'Arbitration' },
-    { href: '/pendingletters', icon: <FiClipboard/>, label: 'Pending Letters' },
-    { href: '/payapproval', icon: <FaMoneyCheckAlt />, label: 'Payment Approvals' },
-    { href: '/manage-templates', icon: <FaFileAlt />, label: 'Manage Templates' },
-    { href: '/advocate/documents', icon: <FaFileAlt />, label: 'Documents' },
-    { href: '/advocate/emailcompose', icon: <FaEnvelopeOpenText />, label: 'Compose Email' },
-    { href: '/send-agreement', icon: <FaEnvelopeOpenText />, label: 'Sales Email' },
-    { href: '/settlement-tracker', icon: <FaHandshake />, label: 'Settlement Tracker' },
+  const navigationGroups: NavigationGroup[] = [
+    {
+      type: 'single',
+      item: { href: '/dashboard', icon: <FiHome />, label: 'Dashboard', isActive: false }
+    },
+    {
+      type: 'dropdown',
+      icon: <FiUsers />,
+      label: 'User & Client Management',
+      children: [
+        { href: '/admin/users', icon: <FiUsers />, label: 'User Management', isActive: false },
+        { href: '/clients', icon: <FiBriefcase />, label: 'Clients', isActive: false },
+        { href: '/clientalloc', icon: <FiUserPlus />, label: 'Client Allocation', isActive: false },
+        { href: '/assigntasks', icon: <FiCheckSquare />, label: 'Assign Tasks', isActive: false },
+      ]
+    },
+    {
+      type: 'dropdown',
+      icon: <FiBarChart2 />,
+      label: 'Sales & Leads',
+      children: [
+        { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads', isActive: false },
+        { href: '/billcutleads', icon: <FiBarChart2 />, label: 'Billcut Leads', isActive: false },
+        { href: '/billcutLeadReport', icon: <FiPieChart />, label: 'Lead Reports', isActive: false },
+        { href: '/targets', icon: <FiClipboard />, label: 'Targets', isActive: false },
+      ]
+    },
+    {
+      type: 'dropdown',
+      icon: <FaMoneyBillWave />,
+      label: 'Payments',
+      children: [
+        { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'Sales Payment Requests', isActive: false },
+        { href: '/advocate/ops-payments-approval', icon: <FaMoneyCheckAlt />, label: 'Ops Payment Approvals', isActive: false },
+        { href: '/monthlypayreq', icon: <FiCalendar />, label: 'Monthly Payment Requests', isActive: false },
+        { href: '/paymentreminder', icon: <FiCreditCard />, label: 'Payment Reminder', isActive: false },
+        { href: '/payapproval', icon: <FaMoneyCheckAlt />, label: 'Payment Approvals', isActive: false },
+      ]
+    },
+    {
+      type: 'dropdown',
+      icon: <FaFileAlt />,
+      label: 'Legal & Documents',
+      children: [
+        { href: '/arbtracker', icon: <FaBalanceScale />, label: 'Arbitration', isActive: false },
+        { href: '/pendingletters', icon: <FiClipboard />, label: 'Pending Letters', isActive: false },
+        { href: '/manage-templates', icon: <FaFileAlt />, label: 'Manage Templates', isActive: false },
+        { href: '/advocate/documents', icon: <FaFileAlt />, label: 'Documents', isActive: false },
+      ]
+    },
+    {
+      type: 'dropdown',
+      icon: <FaEnvelopeOpenText />,
+      label: 'Communication',
+      children: [
+        { href: '/advocate/emailcompose', icon: <FaEnvelopeOpenText />, label: 'Compose Email', isActive: false },
+        { href: '/send-agreement', icon: <FaEnvelopeOpenText />, label: 'Sales Email', isActive: false },
+      ]
+    },
+    {
+      type: 'single',
+      item: { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report', isActive: false }
+    },
+    {
+      type: 'single',
+      item: { href: '/settlement-tracker', icon: <FaHandshake />, label: 'Settlement Tracker', isActive: false }
+    },
   ];
 
   const handleLogout = async () => {
@@ -144,15 +255,31 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
         
         <div className="flex-1 overflow-y-auto px-2 py-4">
           <nav>
-            {navItems.map((item) => (
-              <NavItem
-                key={item.href}
-                href={item.href}
-                icon={item.icon}
-                label={isExpanded ? item.label : ''}
-                isActive={pathname === item.href}
-              />
-            ))}
+            {navigationGroups.map((group, index) => {
+              if (group.type === 'single' && group.item) {
+                return (
+                  <NavItem
+                    key={group.item.href}
+                    href={group.item.href}
+                    icon={group.item.icon}
+                    label={isExpanded ? group.item.label : ''}
+                    isActive={pathname === group.item.href}
+                  />
+                );
+              } else if (group.type === 'dropdown' && group.icon && group.label && group.children) {
+                return (
+                  <DropdownNavItem
+                    key={`dropdown-${index}`}
+                    icon={group.icon}
+                    label={group.label}
+                    children={group.children}
+                    isExpanded={isExpanded}
+                    pathname={pathname}
+                  />
+                );
+              }
+              return null;
+            })}
           </nav>
         </div>
         
