@@ -52,9 +52,13 @@ export const SalespersonPerformanceTable: React.FC<SalespersonPerformanceTablePr
         
         console.log('Fetching data for month:', monthYearName, 'Target month:', targetMonth, 'Target year:', targetYear);
         
-        // First, get all salespeople from users collection
+        // First, get all active salespeople from users collection
         const usersRef = collection(db, 'users');
-        const usersQuery = query(usersRef, where('role', '==', 'sales'));
+        const usersQuery = query(
+          usersRef, 
+          where('role', '==', 'sales'),
+          where('status', '==', 'active')
+        );
         const usersSnapshot = await getDocs(usersQuery);
         
         console.log('Found users with sales role:', usersSnapshot.size);
