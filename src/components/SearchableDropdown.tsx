@@ -118,7 +118,7 @@ export default function SearchableDropdown({
     }
   };
 
-  const defaultClassName = "w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm";
+  const defaultClassName = "w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm";
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -135,7 +135,7 @@ export default function SearchableDropdown({
           onChange={handleInputChange}
           placeholder={isLoading ? loadingText : placeholder}
           disabled={disabled || isLoading}
-          className="bg-transparent border-none outline-none flex-1 text-white placeholder-gray-500"
+          className="bg-transparent border-none outline-none flex-1 text-gray-900 placeholder-gray-500"
           autoComplete="off"
         />
         <svg
@@ -149,7 +149,7 @@ export default function SearchableDropdown({
       </div>
 
       {isOpen && !disabled && !isLoading && (
-        <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
           {filteredOptions.length === 0 ? (
             <div className="px-3 py-2 text-gray-400 text-sm">
               No options found
@@ -160,12 +160,12 @@ export default function SearchableDropdown({
                 key={option.value}
                 className={`px-3 py-2 text-sm ${
                   option.value === "separator" 
-                    ? "cursor-default text-gray-500 text-xs font-semibold border-t border-gray-600"
+                    ? "cursor-default text-gray-500 text-xs font-semibold border-t border-gray-300"
                     : `cursor-pointer ${
                         index === highlightedIndex
-                          ? "bg-purple-600 text-white"
-                          : "text-gray-300 hover:bg-gray-700"
-                      } ${option.value === value ? "bg-purple-700 text-white" : ""}`
+                          ? "bg-green-100 text-green-800"
+                          : "text-gray-700 hover:bg-gray-100"
+                      } ${option.value === value ? "bg-green-200 text-green-900" : ""}`
                 } ${option.className || ""}`}
                 onClick={() => option.value !== "separator" && handleSelect(option.value)}
                 onMouseEnter={() => option.value !== "separator" && setHighlightedIndex(index)}

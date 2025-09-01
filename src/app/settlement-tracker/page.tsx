@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
+import SearchableDropdown from '@/components/SearchableDropdown'
 import { useRouter } from 'next/navigation'
 
 // Interface for settlement data
@@ -678,18 +679,16 @@ const SettlementTracker = () => {
               {/* Client Selection */}
               <div className="space-y-2">
                 <Label htmlFor="client">Client *</Label>
-                <Select value={selectedClient} onValueChange={setSelectedClient}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableDropdown
+                  options={clients.map((client) => ({
+                    value: client.id,
+                    label: client.name
+                  }))}
+                  value={selectedClient}
+                  onChange={setSelectedClient}
+                  placeholder="Search and select a client..."
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                />
               </div>
 
               {/* Bank Selection */}
