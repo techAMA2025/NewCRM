@@ -72,9 +72,9 @@ const AdvocateSidebar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/settlements" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/settlements')}`}>
+            <Link href="/settlement-tracker" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/settlement-tracker')}`}>
               <FaHandshake className="mr-3 text-indigo-400" />
-              <span>Settlements</span>
+              <span>Settlement Tracker</span>
             </Link>
           </li> 
           <li>

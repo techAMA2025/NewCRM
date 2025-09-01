@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaUsers, FaChartPie, FaCog, FaFileAlt, FaHistory, FaMoneyBillWave, FaSignOutAlt, FaBriefcase, FaUserPlus, FaUniversity, FaChartBar } from 'react-icons/fa'
+import { FaUsers, FaChartPie, FaCog, FaFileAlt, FaHistory, FaMoneyBillWave, FaSignOutAlt, FaBriefcase, FaUserPlus, FaUniversity, FaChartBar, FaHandshake } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -98,6 +98,12 @@ const AdminSidebar = () => {
             <Link href="/addBank" className={`flex items-center px-6 py-3 ${isActive('/addBank')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
               <FaUniversity className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
               <span>Banks Database</span>
+            </Link>
+          </li>
+          <li>
+            <Link href="/settlement-tracker" className={`flex items-center px-6 py-3 ${isActive('/settlement-tracker')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
+              <FaHandshake className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
+              <span>Settlement Tracker</span>
             </Link>
           </li>
           {/* <li>
