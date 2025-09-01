@@ -832,29 +832,31 @@ export default function PaymentRequestsPage() {
                                 </div>
                               </div>
                             )}
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => initiateEdit(request.id, request.amount)}
-                                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
-                              >
-                                <FiEdit className="mr-1.5" />
-                                Edit Amount
-                              </button>
-                              <button
-                                onClick={() => initiateApproval(request.id)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
-                              >
-                                <FiCheck className="mr-1.5" />
-                                Approve Payment
-                              </button>
-                              <button
-                                onClick={() => initiateDelete(request.id)}
-                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
-                              >
-                                <FiTrash2 className="mr-1.5" />
-                                Delete
-                              </button>
-                            </div>
+                            {userRole !== 'admin' && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => initiateEdit(request.id, request.amount)}
+                                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
+                                >
+                                  <FiEdit className="mr-1.5" />
+                                  Edit Amount
+                                </button>
+                                <button
+                                  onClick={() => initiateApproval(request.id)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
+                                >
+                                  <FiCheck className="mr-1.5" />
+                                  Approve Payment
+                                </button>
+                                <button
+                                  onClick={() => initiateDelete(request.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
+                                >
+                                  <FiTrash2 className="mr-1.5" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1148,22 +1150,24 @@ export default function PaymentRequestsPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="mt-4 flex space-x-2">
-                              <button
-                                onClick={() => initiateEdit(request.id, request.amount)}
-                                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
-                              >
-                                <FiEdit className="mr-1.5" />
-                                Edit Amount
-                              </button>
-                              <button
-                                onClick={() => initiateDelete(request.id)}
-                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
-                              >
-                                <FiTrash2 className="mr-1.5" />
-                                Delete
-                              </button>
-                            </div>
+                            {userRole !== 'admin' && (
+                              <div className="mt-4 flex space-x-2">
+                                <button
+                                  onClick={() => initiateEdit(request.id, request.amount)}
+                                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
+                                >
+                                  <FiEdit className="mr-1.5" />
+                                  Edit Amount
+                                </button>
+                                <button
+                                  onClick={() => initiateDelete(request.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg flex items-center justify-center transition-colors text-sm"
+                                >
+                                  <FiTrash2 className="mr-1.5" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
