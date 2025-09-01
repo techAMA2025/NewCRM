@@ -58,6 +58,7 @@ interface SalesUser {
   lastName?: string;
   fullName?: string;
   uid?: string;
+  status?: string;
   identifiers: string[];
 }
 
@@ -175,7 +176,7 @@ const AdminDashboard = () => {
           
           usersSnap.forEach((doc) => {
             const userData = doc.data()
-            if (userData.role === 'sales') {
+            if (userData.role === 'sales' && userData.status === 'active') {
               sales++
               
               // Store all possible identifiers to improve matching
@@ -188,6 +189,7 @@ const AdminDashboard = () => {
                 lastName: userData.lastName || '',
                 email: userData.email,
                 fullName: fullName,
+                status: userData.status,
                 // Store all possible identifiers for matching
                 identifiers: [
                   doc.id,                   // Firestore document ID
@@ -425,10 +427,30 @@ const AdminDashboard = () => {
       adminAnalyticsCache.set(targetsCacheKey, targetsData);
       
       setTargetData(targetsData);
-      setTotalAmountCollected(totalAmount);
-      setTotalAmountTarget(totalTarget);
-      setTotalConvertedLeads(totalLeadsConverted); // Set the actual converted leads count
-      setTotalLeadsTarget(totalLeadsTargetCount);
+      
+      // Filter totals to only include active users
+      const activeUserIds = salesUsers.map(user => user.id).filter(Boolean);
+      const activeUserNames = salesUsers.map(user => user.fullName).filter(Boolean);
+      const activeUserEmails = salesUsers.map(user => user.email).filter(Boolean);
+      const activeUserUids = salesUsers.map(user => user.uid).filter(Boolean);
+      
+      const activeTargetsData = targetsData.filter(target => {
+        return activeUserIds.includes(target.userId || '') ||
+               activeUserNames.includes(target.userName || '') ||
+               activeUserEmails.includes(target.userName || '') ||
+               activeUserUids.includes(target.userId || '');
+      });
+      
+      // Recalculate totals for active users only
+      const activeTotalAmount = activeTargetsData.reduce((sum, target) => sum + (target.amountCollected || 0), 0);
+      const activeTotalTarget = activeTargetsData.reduce((sum, target) => sum + (target.amountCollectedTarget || 0), 0);
+      const activeTotalLeadsConverted = activeTargetsData.reduce((sum, target) => sum + (target.convertedLeads || 0), 0);
+      const activeTotalLeadsTarget = activeTargetsData.reduce((sum, target) => sum + (target.convertedLeadsTarget || 0), 0);
+      
+      setTotalAmountCollected(activeTotalAmount);
+      setTotalAmountTarget(activeTotalTarget);
+      setTotalConvertedLeads(activeTotalLeadsConverted);
+      setTotalLeadsTarget(activeTotalLeadsTarget);
       
       targetsLoaded.current = true;
       perfMonitor.end('targets-data-load');
@@ -437,7 +459,7 @@ const AdminDashboard = () => {
       console.error('Error fetching targets data:', error);
       perfMonitor.safeEnd('targets-data-load');
     }
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, salesUsers]);
   
   // Fetch leads data
   const fetchLeadsData = useCallback(async () => {
@@ -951,7 +973,17 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {targetData.map((target) => {
+                  {targetData.filter((target) => {
+                    // Only show targets for active sales users
+                    const isActiveUser = salesUsers.some(user => 
+                      user.id === target.userId || 
+                      user.fullName === target.userName ||
+                      user.firstName === target.userName ||
+                      user.email === target.userName ||
+                      user.uid === target.userId
+                    );
+                    return isActiveUser;
+                  }).map((target) => {
                     const percentage = Math.round((target.amountCollected || 0) / (target.amountCollectedTarget || 1) * 100);
                     return (
                       <tr key={target.id} className="hover:bg-gray-750 transition-colors duration-150">
@@ -1013,7 +1045,17 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {targetData.map((target) => {
+                  {targetData.filter((target) => {
+                    // Only show targets for active sales users
+                    const isActiveUser = salesUsers.some(user => 
+                      user.id === target.userId || 
+                      user.fullName === target.userName ||
+                      user.firstName === target.userName ||
+                      user.email === target.userName ||
+                      user.uid === target.userId
+                    );
+                    return isActiveUser;
+                  }).map((target) => {
                     const percentage = Math.round((target.convertedLeads || 0) / (target.convertedLeadsTarget || 1) * 100);
                     return (
                       <tr key={target.id} className="hover:bg-gray-750 transition-colors duration-150">
