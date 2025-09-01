@@ -142,7 +142,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
     {
       type: 'dropdown',
       icon: <FiBarChart2 />,
-      label: 'Sales & Leads',
+      label: 'Leads',
       children: [
         { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads', isActive: false },
         { href: '/billcutleads', icon: <FiBarChart2 />, label: 'Billcut Leads', isActive: false },
