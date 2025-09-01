@@ -55,7 +55,7 @@ export const useSalesAnalytics = ({
           return;
         }
         
-        // Get salespeople from users collection
+        // Get salespeople from users collection - filter active users
         const usersCollection = collection(db, 'users');
         const usersQuery = query(usersCollection, where('role', '==', 'sales'));
         const usersSnapshot = await getDocs(usersQuery);
@@ -68,7 +68,11 @@ export const useSalesAnalytics = ({
           const lastName = userData.lastName || '';
           const fullName = `${firstName} ${lastName}`.trim();
           
-          if (fullName) {
+          // Only include users who are active (status === 'active' or status is not 'inactive')
+          const userStatus = userData.status;
+          const isActive = userStatus === 'active' || userStatus === undefined || userStatus === null;
+          
+          if (fullName && isActive) {
             salespeople.push({
               id: doc.id,
               name: fullName

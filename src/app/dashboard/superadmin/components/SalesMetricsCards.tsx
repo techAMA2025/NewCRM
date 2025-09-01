@@ -6,6 +6,8 @@ interface SalesMetricsCardsProps {
   analyticsStats: AnalyticsStats;
   selectedSalesperson: string | null;
   individualSalesData: any;
+  selectedAnalyticsMonth?: number | null;
+  selectedAnalyticsYear?: number | null;
   opsPaymentsAnalytics?: {
     totalApprovedAmount: number;
     totalPendingAmount: number;
@@ -22,6 +24,8 @@ export const SalesMetricsCards: React.FC<SalesMetricsCardsProps> = ({
   analyticsStats,
   selectedSalesperson,
   individualSalesData,
+  selectedAnalyticsMonth,
+  selectedAnalyticsYear,
   opsPaymentsAnalytics,
   opsPaymentsLoading = false
 }) => {
@@ -35,6 +39,26 @@ export const SalesMetricsCards: React.FC<SalesMetricsCardsProps> = ({
           </h3>
           <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
         </div>
+        
+        {/* Filter indicator */}
+        {(selectedAnalyticsMonth !== null || selectedAnalyticsYear !== null || selectedSalesperson) && (
+          <div className="mb-3 p-2 bg-blue-900/20 rounded-lg border border-blue-700/30">
+            <div className="text-xs text-blue-300">
+              Filtered by: 
+              {selectedAnalyticsMonth !== null && selectedAnalyticsMonth !== undefined && (
+                <span className="ml-1 text-blue-200">
+                  {new Date(0, selectedAnalyticsMonth).toLocaleString('default', { month: 'long' })}
+                </span>
+              )}
+              {selectedAnalyticsYear !== null && (
+                <span className="ml-1 text-blue-200">{selectedAnalyticsYear}</span>
+              )}
+              {selectedSalesperson && (
+                <span className="ml-1 text-blue-200">• {selectedSalesperson}</span>
+              )}
+            </div>
+          </div>
+        )}
         
         <div className="flex items-center space-x-6">
           {/* Circular Progress */}
@@ -80,18 +104,42 @@ export const SalesMetricsCards: React.FC<SalesMetricsCardsProps> = ({
         </div>
       </div>
 
-      {/* Ops Revenue - Approved Only */}
+      {/* Ops Revenue - With Filter Info */}
       <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border border-gray-700/50 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-emerald-300">Operations Revenue</h3>
           <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
         </div>
         
-        <div className="text-center">
-          <div className="text-3xl font-bold text-emerald-400 mb-2">
-            {opsPaymentsLoading ? '...' : `₹${opsPaymentsAnalytics?.totalApprovedAmount.toLocaleString('en-IN') || '0'}`}
+        {/* Filter indicator */}
+        {(selectedAnalyticsMonth !== null || selectedAnalyticsYear !== null || selectedSalesperson) && (
+          <div className="mb-3 p-2 bg-blue-900/20 rounded-lg border border-blue-700/30">
+            <div className="text-xs text-blue-300">
+              Filtered by: 
+              {selectedAnalyticsMonth !== null && selectedAnalyticsMonth !== undefined && (
+                <span className="ml-1 text-blue-200">
+                  {new Date(0, selectedAnalyticsMonth).toLocaleString('default', { month: 'long' })}
+                </span>
+              )}
+              {selectedAnalyticsYear !== null && (
+                <span className="ml-1 text-blue-200">{selectedAnalyticsYear}</span>
+              )}
+              {selectedSalesperson && (
+                <span className="ml-1 text-blue-200">• {selectedSalesperson}</span>
+              )}
+            </div>
           </div>
-          <div className="text-sm text-gray-400">Approved Payments</div>
+        )}
+        
+        <div className="space-y-3">
+          {/* Approved Amount */}
+          <div className="flex justify-between items-center">
+            <span className="text-3xl font-semibold text-emerald-400">
+              {opsPaymentsLoading ? '...' : `₹${opsPaymentsAnalytics?.totalApprovedAmount.toLocaleString('en-IN') || '0'}`}
+            </span>
+          </div>
+          
+         
         </div>
       </div>
     </div>

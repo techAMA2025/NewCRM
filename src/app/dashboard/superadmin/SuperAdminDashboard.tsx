@@ -207,6 +207,9 @@ const SuperAdminDashboard = React.memo(() => {
     opsPaymentsAnalytics,
     isLoading: opsPaymentsLoading
   } = useOpsPaymentsAnalytics({
+    selectedAnalyticsMonth,
+    selectedAnalyticsYear,
+    selectedSalesperson,
     enabled: enabledStages.opsPayments, // Use the opsPayments stage
     onLoadComplete: useCallback(() => setStageLoaded('opsPayments'), [setStageLoaded])
   });
@@ -374,6 +377,8 @@ const SuperAdminDashboard = React.memo(() => {
                   analyticsStats={analyticsStats}
                   selectedSalesperson={selectedSalesperson}
                   individualSalesData={individualSalesData}
+                  selectedAnalyticsMonth={selectedAnalyticsMonth}
+                  selectedAnalyticsYear={selectedAnalyticsYear}
                   opsPaymentsAnalytics={opsPaymentsAnalytics}
                   opsPaymentsLoading={opsPaymentsLoading}
                 />

@@ -6,6 +6,7 @@ import { collection, getDocs, query, where, addDoc, doc, getDoc, updateDoc, setD
 import { db } from '@/firebase/firebase';
 import { useAuth } from '@/context/AuthContext';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
+import AdminSidebar from '@/components/navigation/AdminSidebar';
 // import Spinner from '@/components/ui/spinner';
 
 type User = {
@@ -50,8 +51,9 @@ export default function TargetsPage() {
   const [viewMetric, setViewMetric] = useState<'convertedLeads' | 'amountCollected'>('convertedLeads');
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [userRole, setUserRole] = useState<string>('');
   
-  const { user, loading: authLoading } = useAuth();
+  const { user, userRole: authUserRole, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -69,25 +71,32 @@ export default function TargetsPage() {
 
       // First try to get the role from localStorage
       const storedRole = localStorage.getItem('userRole');
+      console.log('Stored role from localStorage:', storedRole);
       
-      if (storedRole === 'overlord') {
+      if (storedRole === 'overlord' || storedRole === 'admin') {
+        console.log('Using stored role:', storedRole);
+        setUserRole(storedRole);
         fetchSalesUsers();
         setAuthChecked(true);
         return;
       }
 
-      // Fallback to checking Firestore if role not in localStorage or not overlord
+      // Fallback to checking Firestore if role not in localStorage or not overlord/admin
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         const userData = userDoc.data();
+        console.log('User data from Firestore:', userData);
         
-        if (!userData || userData.role !== 'overlord') {
+        if (!userData || (userData.role !== 'overlord' && userData.role !== 'admin')) {
+          console.log('User role not authorized:', userData?.role);
           router.push('/dashboard');
           return;
         }
 
         // Store the role in localStorage for future checks
+        console.log('Setting role in localStorage:', userData.role);
         localStorage.setItem('userRole', userData.role);
+        setUserRole(userData.role);
         fetchSalesUsers();
         setAuthChecked(true);
       } catch (error) {
@@ -103,7 +112,11 @@ export default function TargetsPage() {
   const fetchSalesUsers = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'users'), where('role', '==', 'sales'));
+      const q = query(
+        collection(db, 'users'), 
+        where('role', '==', 'sales'),
+        where('status', '==', 'active')
+      );
       const querySnapshot = await getDocs(q);
       
       const users: User[] = [];
@@ -413,7 +426,12 @@ export default function TargetsPage() {
   }
 
   return (
-    <OverlordSidebar>
+    <div className="flex">
+      {userRole === 'admin' ? (
+        <AdminSidebar />
+      ) : (
+        <OverlordSidebar />
+      )}
       <div className="flex-1 min-h-screen p-7 bg-gray-900">
         <div className="container mx-auto">
           <h1 className="text-xl font-bold mb-5 text-white">Sales Targets</h1>
@@ -655,6 +673,6 @@ export default function TargetsPage() {
           )}
         </div>
       </div>
-    </OverlordSidebar>
+    </div>
   );
 }
