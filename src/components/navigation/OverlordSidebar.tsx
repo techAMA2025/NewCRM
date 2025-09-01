@@ -146,7 +146,6 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       children: [
         { href: '/sales/leads', icon: <FiBarChart2 />, label: 'Sales & Leads', isActive: false },
         { href: '/billcutleads', icon: <FiBarChart2 />, label: 'Billcut Leads', isActive: false },
-        { href: '/billcutLeadReport', icon: <FiPieChart />, label: 'Lead Reports', isActive: false },
         { href: '/targets', icon: <FiClipboard />, label: 'Targets', isActive: false },
       ]
     },
@@ -183,8 +182,13 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       ]
     },
     {
-      type: 'single',
-      item: { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report', isActive: false }
+      type: 'dropdown',
+      icon: <FiPieChart />,
+      label: 'Reports',
+      children: [
+        { href: '/billcutLeadReport', icon: <FiPieChart />, label: 'Lead Reports', isActive: false },
+        { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report', isActive: false },
+      ]
     },
     {
       type: 'single',
