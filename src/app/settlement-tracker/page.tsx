@@ -76,6 +76,13 @@ const SettlementTracker = () => {
   const [settlementStatus, setSettlementStatus] = useState('')
   const [remarks, setRemarks] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  
+  // Add state for manual bank entry
+  const [isManualBankEntry, setIsManualBankEntry] = useState(false)
+  const [manualBankName, setManualBankName] = useState('')
+  const [manualAccountNumber, setManualAccountNumber] = useState('')
+  const [manualLoanAmount, setManualLoanAmount] = useState('')
+  const [manualLoanType, setManualLoanType] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   
   // Add new state for remarks management
@@ -220,8 +227,20 @@ const SettlementTracker = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedClient || !selectedBank || !settlementStatus) {
+    // Validate required fields
+    if (!selectedClient || !settlementStatus) {
       alert('Please fill in all required fields')
+      return
+    }
+
+    // Validate bank selection or manual entry
+    if (!isManualBankEntry && !selectedBank) {
+      alert('Please select a bank or choose manual entry')
+      return
+    }
+
+    if (isManualBankEntry && (!manualBankName || !manualAccountNumber || !manualLoanAmount || !manualLoanType)) {
+      alert('Please fill in all manual bank details')
       return
     }
 
@@ -229,19 +248,41 @@ const SettlementTracker = () => {
     
     try {
       const clientData = clients.find(c => c.id === selectedClient)
-      const bankData = availableBanks.find(b => b.id === selectedBank)
       
-      if (!clientData || !bankData) {
-        alert('Invalid client or bank selection')
+      if (!clientData) {
+        alert('Invalid client selection')
         return
       }
 
       const userName = localStorage.getItem('userName') || 'Unknown User'
       
+      // Prepare bank data based on entry type
+      let bankData
+      if (isManualBankEntry) {
+        bankData = {
+          bankName: manualBankName,
+          accountNumber: manualAccountNumber,
+          loanAmount: manualLoanAmount,
+          loanType: manualLoanType
+        }
+      } else {
+        const selectedBankData = availableBanks.find(b => b.id === selectedBank)
+        if (!selectedBankData) {
+          alert('Invalid bank selection')
+          return
+        }
+        bankData = {
+          bankName: selectedBankData.bankName,
+          accountNumber: selectedBankData.accountNumber,
+          loanAmount: selectedBankData.loanAmount,
+          loanType: selectedBankData.loanType
+        }
+      }
+      
       const settlementData = {
         clientId: selectedClient,
         clientName: clientData.name,
-        bankId: selectedBank,
+        bankId: isManualBankEntry ? 'manual' : selectedBank,
         bankName: bankData.bankName,
         accountNumber: bankData.accountNumber,
         loanAmount: bankData.loanAmount,
@@ -259,6 +300,11 @@ const SettlementTracker = () => {
       setSelectedBank('')
       setSettlementStatus('')
       setRemarks('')
+      setIsManualBankEntry(false)
+      setManualBankName('')
+      setManualAccountNumber('')
+      setManualLoanAmount('')
+      setManualLoanType('')
       setIsDialogOpen(false)
       
       // Refresh settlements list
@@ -695,9 +741,20 @@ const SettlementTracker = () => {
               {selectedClient && (
                 <div className="space-y-2">
                   <Label htmlFor="bank">Bank Account *</Label>
-                  <Select value={selectedBank} onValueChange={setSelectedBank}>
+                  <Select 
+                    value={isManualBankEntry ? 'manual' : selectedBank} 
+                    onValueChange={(value) => {
+                      if (value === 'manual') {
+                        setIsManualBankEntry(true)
+                        setSelectedBank('')
+                      } else {
+                        setIsManualBankEntry(false)
+                        setSelectedBank(value)
+                      }
+                    }}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a bank account" />
+                      <SelectValue placeholder="Select a bank account or enter manually" />
                     </SelectTrigger>
                     <SelectContent>
                       {availableBanks.map((bank) => (
@@ -705,8 +762,61 @@ const SettlementTracker = () => {
                           {bank.bankName} - {bank.accountNumber} ({bank.loanType})
                         </SelectItem>
                       ))}
+                      <SelectItem value="manual">
+                        <span className="text-gray-500 italic">+ Add Bank Details Manually</span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+
+              {/* Manual Bank Entry Fields */}
+              {selectedClient && isManualBankEntry && (
+                <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                  <h4 className="text-sm font-medium text-gray-700">Manual Bank Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="manualBankName">Bank Name *</Label>
+                      <Input
+                        id="manualBankName"
+                        value={manualBankName}
+                        onChange={(e) => setManualBankName(e.target.value)}
+                        placeholder="Enter bank name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="manualAccountNumber">Account Number *</Label>
+                      <Input
+                        id="manualAccountNumber"
+                        value={manualAccountNumber}
+                        onChange={(e) => setManualAccountNumber(e.target.value)}
+                        placeholder="Enter account number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="manualLoanAmount">Loan Amount *</Label>
+                      <Input
+                        id="manualLoanAmount"
+                        value={manualLoanAmount}
+                        onChange={(e) => setManualLoanAmount(e.target.value)}
+                        placeholder="Enter loan amount"
+                        type="number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="manualLoanType">Loan Type *</Label>
+                      <Select value={manualLoanType} onValueChange={setManualLoanType}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select loan type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Personal Loan">Personal Loan</SelectItem>
+                          <SelectItem value="Business Loan">Business Loan</SelectItem>
+                          <SelectItem value="Credit Card">Credit Card</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -727,17 +837,7 @@ const SettlementTracker = () => {
                 </Select>
               </div>
 
-              {/* Remarks */}
-              <div className="space-y-2">
-                <Label htmlFor="remarks">Remarks</Label>
-                <Textarea
-                  id="remarks"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Enter any additional notes or remarks..."
-                  rows={3}
-                />
-              </div>
+
 
               <DialogFooter>
                 <Button 
