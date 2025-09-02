@@ -40,6 +40,7 @@ export default function OpsPaymentsApprovalPage() {
   const [rejectingRequest, setRejectingRequest] = useState<string | null>(null);
   const [editingRequest, setEditingRequest] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<string>('');
+  const [editDate, setEditDate] = useState<string>('');
   const [deletingRequest, setDeletingRequest] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
@@ -187,11 +188,13 @@ export default function OpsPaymentsApprovalPage() {
   const initiateEdit = (requestId: string, currentAmount: string) => {
     setEditingRequest(requestId);
     setEditAmount(currentAmount);
+    setEditDate(new Date().toISOString().split('T')[0]); // Set current date as default
   };
 
   const cancelEdit = () => {
     setEditingRequest(null);
     setEditAmount('');
+    setEditDate('');
   };
 
   const handleEdit = async (requestId: string) => {
@@ -201,11 +204,18 @@ export default function OpsPaymentsApprovalPage() {
         return;
       }
 
+      if (!editDate) {
+        setError('Please select a valid date');
+        return;
+      }
+
       const newAmount = Number(editAmount);
+      const newDate = new Date(editDate).toISOString();
 
       const paymentRef = doc(db, 'ops_payments', requestId);
       await updateDoc(paymentRef, {
         amount: newAmount.toString(),
+        timestamp: newDate,
         edited_by: userName,
         edited_at: new Date().toISOString()
       });
@@ -213,16 +223,17 @@ export default function OpsPaymentsApprovalPage() {
       // Update the local state
       setOpsPaymentRequests(opsPaymentRequests.map(req => 
         req.id === requestId 
-          ? { ...req, amount: newAmount.toString(), edited_by: userName, edited_at: new Date().toISOString() } 
+          ? { ...req, amount: newAmount.toString(), timestamp: newDate, edited_by: userName, edited_at: new Date().toISOString() } 
           : req
       ));
       
       // Clear the editing state
       setEditingRequest(null);
       setEditAmount('');
+      setEditDate('');
     } catch (err) {
       console.error('Error editing ops payment:', err);
-      setError('Failed to edit ops payment amount');
+      setError('Failed to edit ops payment');
       setEditingRequest(null);
     }
   };
@@ -673,7 +684,7 @@ export default function OpsPaymentsApprovalPage() {
                                 className="bg-purple-100 hover:bg-purple-200 dark:bg-purple-600 dark:hover:bg-purple-700 text-purple-800 dark:text-white px-4 py-2 rounded-xl flex items-center justify-center transition-colors text-sm"
                               >
                                 <FiEdit className="mr-2" />
-                                Edit Amount
+                                Edit Payment Details
                               </button>
                               <button
                                 onClick={() => initiateApproval(request.id)}
@@ -793,7 +804,7 @@ export default function OpsPaymentsApprovalPage() {
                           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Edit Amount</h3>
+                                <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Edit Payment Details</h3>
                                 <button 
                                   onClick={cancelEdit}
                                   className="text-purple-500 hover:text-purple-700 transition-colors"
@@ -804,24 +815,37 @@ export default function OpsPaymentsApprovalPage() {
                               
                               <div className="mb-6">
                                 <p className="text-purple-700 dark:text-purple-300 mb-4">
-                                  Edit the payment amount for:
+                                  Edit the payment details for:
                                 </p>
                                 <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl mb-4">
                                   <p className="text-purple-900 dark:text-white font-medium mb-2">{request.name}</p>
                                   <p className="text-purple-700 dark:text-purple-300 text-sm">Type: {request.type}</p>
                                 </div>
                                 
-                                <div>
-                                  <label htmlFor="amount" className="block text-purple-700 dark:text-purple-300 mb-2">Payment Amount (₹)</label>
-                                  <input
-                                    type="number"
-                                    id="amount"
-                                    value={editAmount}
-                                    onChange={(e) => setEditAmount(e.target.value)}
-                                    className="w-full bg-purple-50 dark:bg-purple-700/50 border border-purple-200 dark:border-purple-600 rounded-xl px-4 py-2 text-purple-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    min="0"
-                                    step="any"
-                                  />
+                                <div className="space-y-4">
+                                  <div>
+                                    <label htmlFor="amount" className="block text-purple-700 dark:text-purple-300 mb-2">Payment Amount (₹)</label>
+                                    <input
+                                      type="number"
+                                      id="amount"
+                                      value={editAmount}
+                                      onChange={(e) => setEditAmount(e.target.value)}
+                                      className="w-full bg-purple-50 dark:bg-purple-700/50 border border-purple-200 dark:border-purple-600 rounded-xl px-4 py-2 text-purple-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                      min="0"
+                                      step="any"
+                                    />
+                                  </div>
+                                  
+                                  <div>
+                                    <label htmlFor="date" className="block text-purple-700 dark:text-purple-300 mb-2">Payment Date</label>
+                                    <input
+                                      type="date"
+                                      id="date"
+                                      value={editDate}
+                                      onChange={(e) => setEditDate(e.target.value)}
+                                      className="w-full bg-purple-50 dark:bg-purple-700/50 border border-purple-200 dark:border-purple-600 rounded-xl px-4 py-2 text-purple-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                               
@@ -1003,7 +1027,7 @@ export default function OpsPaymentsApprovalPage() {
                                 className="bg-purple-100 hover:bg-purple-200 dark:bg-purple-600 dark:hover:bg-purple-700 text-purple-800 dark:text-white px-4 py-2 rounded-xl flex items-center justify-center transition-colors text-sm"
                               >
                                 <FiEdit className="mr-2" />
-                                Edit Amount
+                                Edit Payment Details
                               </button>
                               <button
                                 onClick={() => initiateDelete(request.id)}
@@ -1021,7 +1045,7 @@ export default function OpsPaymentsApprovalPage() {
                           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                             <div className="bg-white dark:bg-purple-800 rounded-2xl p-6 max-w-md mx-4 shadow-2xl border border-purple-200 dark:border-purple-600">
                               <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Edit Amount</h3>
+                                <h3 className="text-xl font-semibold text-purple-900 dark:text-white">Edit Payment Details</h3>
                                 <button 
                                   onClick={cancelEdit}
                                   className="text-purple-500 hover:text-purple-700 transition-colors"
@@ -1032,24 +1056,37 @@ export default function OpsPaymentsApprovalPage() {
                               
                               <div className="mb-6">
                                 <p className="text-purple-700 dark:text-purple-300 mb-4">
-                                  Edit the payment amount for:
+                                  Edit the payment details for:
                                 </p>
                                 <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl mb-4">
                                   <p className="text-purple-900 dark:text-white font-medium mb-2">{request.name}</p>
                                   <p className="text-purple-700 dark:text-purple-300 text-sm">Type: {request.type}</p>
                                 </div>
                                 
-                                <div>
-                                  <label htmlFor="amount" className="block text-purple-700 dark:text-purple-300 mb-2">Payment Amount (₹)</label>
-                                  <input
-                                    type="number"
-                                    id="amount"
-                                    value={editAmount}
-                                    onChange={(e) => setEditAmount(e.target.value)}
-                                    className="w-full bg-purple-50 dark:bg-purple-700/50 border border-purple-200 dark:border-purple-600 rounded-xl px-4 py-2 text-purple-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    min="0"
-                                    step="any"
-                                  />
+                                <div className="space-y-4">
+                                  <div>
+                                    <label htmlFor="amount" className="block text-purple-700 dark:text-purple-300 mb-2">Payment Amount (₹)</label>
+                                    <input
+                                      type="number"
+                                      id="amount"
+                                      value={editAmount}
+                                      onChange={(e) => setEditAmount(e.target.value)}
+                                      className="w-full bg-purple-50 dark:bg-purple-700/50 border border-purple-200 dark:border-purple-600 rounded-xl px-4 py-2 text-purple-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                      min="0"
+                                      step="any"
+                                    />
+                                  </div>
+                                  
+                                  <div>
+                                    <label htmlFor="date" className="block text-purple-700 dark:text-purple-300 mb-2">Payment Date</label>
+                                    <input
+                                      type="date"
+                                      id="date"
+                                      value={editDate}
+                                      onChange={(e) => setEditDate(e.target.value)}
+                                      className="w-full bg-purple-50 dark:bg-purple-700/50 border border-purple-200 dark:border-purple-600 rounded-xl px-4 py-2 text-purple-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                               
