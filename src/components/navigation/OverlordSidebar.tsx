@@ -156,6 +156,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       children: [
         { href: '/paymentrequests', icon: <FaMoneyBillWave />, label: 'Sales Payment Requests', isActive: false },
         { href: '/advocate/ops-payments-approval', icon: <FaMoneyCheckAlt />, label: 'Ops Payment Approvals', isActive: false },
+        { href: '/advocate/ops-payments-request', icon: <FaMoneyCheckAlt />, label: 'Ops Payment Requests', isActive: false },
         { href: '/monthlypayreq', icon: <FiCalendar />, label: 'Monthly Payment Requests', isActive: false },
         { href: '/paymentreminder', icon: <FiCreditCard />, label: 'Payment Reminder', isActive: false },
         { href: '/payapproval', icon: <FaMoneyCheckAlt />, label: 'Payment Approvals', isActive: false },

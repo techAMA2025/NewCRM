@@ -87,7 +87,7 @@ const AmaLeadsPage = () => {
   const [activeTab, setActiveTab] = useState<"all" | "callback">("all");
 
   // Sorting
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({ key: 'synced_at', direction: 'descending' });
 
   // User / team
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
@@ -303,7 +303,7 @@ const AmaLeadsPage = () => {
     }
 
     // Sorting and pagination
-    constraints.push(orderBy("date", sortConfig.direction === 'ascending' ? 'asc' : 'desc'));
+    constraints.push(orderBy("synced_at", sortConfig.direction === 'ascending' ? 'asc' : 'desc'));
     constraints.push(limit(LEADS_PER_PAGE));
     if (isLoadMore && lastDocument) constraints.push(startAfter(lastDocument));
 
@@ -566,8 +566,34 @@ const AmaLeadsPage = () => {
     // Apply sorting
     if (sortConfig?.key) {
       result.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
+        // Special handling for date fields
+        const isDateField = ['synced_at', 'date', 'lastModified', 'convertedAt'].includes(sortConfig.key);
+        
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+        
+        // Convert date fields to timestamps for proper comparison
+        if (isDateField) {
+          if (aValue && typeof aValue.toDate === 'function') {
+            aValue = aValue.toDate().getTime();
+          } else if (aValue instanceof Date) {
+            aValue = aValue.getTime();
+          } else if (aValue) {
+            aValue = new Date(aValue).getTime();
+          } else {
+            aValue = 0;
+          }
+          
+          if (bValue && typeof bValue.toDate === 'function') {
+            bValue = bValue.toDate().getTime();
+          } else if (bValue instanceof Date) {
+            bValue = bValue.getTime();
+          } else if (bValue) {
+            bValue = new Date(bValue).getTime();
+          } else {
+            bValue = 0;
+          }
+        }
         
         if (sortConfig.direction === 'ascending') {
           return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
@@ -663,8 +689,8 @@ const AmaLeadsPage = () => {
           debt_Range: d.debt_Range,
           debt_range: d.debt_range,
           debtRange: d.debtRange,
-          // Provide a synced_at-like field for shared filters/sort (map from date)
-          synced_at: d.date ? new Date(d.date) : undefined,
+          // Use the actual synced_at field from database, fallback to date if needed
+          synced_at: d.synced_at || (d.date ? new Date(d.date) : undefined),
           date: d.date || Date.now(),
           callbackInfo: null, // Initialize callback info
         } as any;

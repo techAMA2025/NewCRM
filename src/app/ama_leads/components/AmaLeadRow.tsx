@@ -43,9 +43,74 @@ const canUserEditLead = (lead: any) => {
 
 const formatPhoneNumber = (phone: string) => phone;
 const getFormattedDate = (lead: any) => {
-  const d = lead.synced_at instanceof Date ? lead.synced_at : (lead.date ? new Date(lead.date) : new Date());
-  const date = d.toLocaleDateString();
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  let date = '', time = '';
+  
+  try {
+    let dateObj: Date | null = null;
+    
+    // Convert synced_at to Date object
+    if (lead.synced_at && typeof lead.synced_at.toDate === 'function') {
+      // Handle Firestore Timestamp objects
+      dateObj = lead.synced_at.toDate();
+    } else if (lead.synced_at instanceof Date) {
+      dateObj = lead.synced_at;
+    } else if (lead.synced_at) {
+      // Try to convert to Date if possible
+      dateObj = new Date(lead.synced_at);
+    }
+    
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      // Format date without time
+      date = dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Format time without seconds
+      time = dateObj.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+      });
+    } else {
+      // Fallback to string processing if Date conversion fails
+      let raw = '';
+      if (typeof lead.synced_at === 'string') {
+        raw = lead.synced_at.trim();
+      } else if (lead.synced_at) {
+        raw = String(lead.synced_at).trim();
+      }
+      
+      // Remove the " UTC+5:30" or any " UTC..." at the end
+      const cleaned = raw.replace(/\sUTC[^\s]*$/, '');
+      const atIdx = cleaned.indexOf(' at ');
+      if (atIdx !== -1) {
+        date = cleaned.substring(0, atIdx);
+        time = cleaned.substring(atIdx + 4);
+        
+        // Format time to show only hours and minutes (remove seconds)
+        if (time) {
+          const timeMatch = time.match(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)/i);
+          if (timeMatch) {
+            const hours = timeMatch[1];
+            const minutes = timeMatch[2];
+            const ampm = timeMatch[4];
+            time = `${hours}:${minutes} ${ampm}`;
+          }
+        }
+      } else {
+        date = cleaned;
+        time = '';
+      }
+    }
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    date = '';
+    time = '';
+  }
+  
   return { date, time };
 };
 
@@ -478,10 +543,10 @@ const AmaLeadRow = ({
         
         {/* Date & Time */}
         {columnVisibility.date && (
-          <td className="px-1 py-0.5 whitespace-nowrap px-2">
-            <div className="flex flex-col">
-              <span className={`text-[11px] font-medium ${rowColors.textColor || 'text-[#5A4C33]'}`}>{date}</span>
-              <span className={`text-[10px] ${rowColors.textColor ? 'text-[#ffffff]/70' : 'text-[#5A4C33]/70'}`}>{time}</span>
+          <td className="px-0.5 py-0.5 w-20">
+            <div className="flex flex-col gap-0.5">
+              <span className={`text-[11px] font-medium leading-tight ${rowColors.textColor || 'text-[#5A4C33]'}`}>{date}</span>
+              <span className={`text-[10px] leading-tight ${rowColors.textColor ? 'text-[#ffffff]/70' : 'text-[#5A4C33]/70'}`}>{time}</span>
             </div>
           </td>
         )}
