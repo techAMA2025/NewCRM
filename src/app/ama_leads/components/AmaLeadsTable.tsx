@@ -335,14 +335,14 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
         
         {columnVisibility.date && (
           <th 
-            className="py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
-            onClick={() => requestSort('name')}
+            className="py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[1%] cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
+            onClick={() => requestSort('synced_at')}
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
               <div className="flex items-center">
                 <span className="text-[#D2A02A] text-[10px]">Date</span>
-                {sortConfig?.key === 'name' && (
+                {sortConfig?.key === 'synced_at' && (
                   <FaSort className="ml-1" />
                 )}
               </div>
