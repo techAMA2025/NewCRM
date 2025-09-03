@@ -115,6 +115,8 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
     salesNotes: true,
   });
 
+
+
   // Toggle column visibility
   const toggleColumn = (columnKey: keyof typeof columnVisibility) => {
     setColumnVisibility(prev => ({
@@ -780,6 +782,39 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
             >
               Show All
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Checkbox Column Warning */}
+      {!columnVisibility.checkbox && (
+        <div className="bg-orange-100 border border-orange-300 px-4 py-3 border-b border-orange-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-orange-800 text-sm font-medium">
+                ⚠️ Checkbox column is hidden. You need to select leads to use bulk actions.
+              </span>
+            </div>
+            <button
+              onClick={() => toggleColumn('checkbox')}
+              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition-colors duration-200"
+            >
+              Show Checkboxes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* No Selection Message */}
+      {selectedLeads.length === 0 && columnVisibility.checkbox && (
+        <div className="bg-blue-50 border border-blue-200 px-4 py-3 border-b border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-blue-800 text-sm">
+                💡 Use the checkboxes to select leads for bulk actions like WhatsApp messaging
+              </span>
+            </div>
+
           </div>
         </div>
       )}

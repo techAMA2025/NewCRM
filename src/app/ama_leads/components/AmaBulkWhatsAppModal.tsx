@@ -8,7 +8,7 @@ interface AmaBulkWhatsAppModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedLeads: any[];
-  onSendBulkWhatsApp: (templateName: string, leadIds: string[]) => Promise<void>;
+  onSendBulkWhatsApp: (templateName: string, leadIds: string[], leadData?: any[]) => Promise<void>;
 }
 
 const AmaBulkWhatsAppModal: React.FC<AmaBulkWhatsAppModalProps> = ({
@@ -44,9 +44,18 @@ const AmaBulkWhatsAppModal: React.FC<AmaBulkWhatsAppModalProps> = ({
       return;
     }
 
+    // Instead of just sending IDs, send the full lead data to avoid lookup issues
+    const leadData = validLeads.map(lead => ({
+      id: lead.id,
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email
+    }));
+    
     setIsSending(true);
     try {
-      await onSendBulkWhatsApp(selectedTemplate, validLeads.map(lead => lead.id));
+      // Pass the full lead data instead of just IDs
+      await onSendBulkWhatsApp(selectedTemplate, leadData.map(lead => lead.id), leadData);
       onClose();
     } catch (error) {
       console.error("Error sending bulk WhatsApp:", error);

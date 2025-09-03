@@ -93,7 +93,7 @@ const AmaLeadsFilters = ({
         const searchTermLower = searchTerm.toLowerCase().trim();
         const normalizedPhone = normalizePhoneNumber(searchTerm);
 
-        console.log("🔍 Starting AMA database search for:", { searchTerm, searchTermLower, normalizedPhone });
+    
 
         const allResults = new Map(); // Use Map to avoid duplicates
 
@@ -215,7 +215,7 @@ const AmaLeadsFilters = ({
               limit(1500), // Increased limit for better search coverage
             );
             const fallbackSnapshot = await getDocs(fallbackQuery);
-            console.log("📊 Fallback search through", fallbackSnapshot.docs.length, "leads");
+    
             
             fallbackSnapshot.docs.forEach((doc) => {
               const data = doc.data();
@@ -248,7 +248,7 @@ const AmaLeadsFilters = ({
                 allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
               }
             });
-            console.log("🎯 Fallback found", allResults.size, "matches");
+    
           } catch (error) {
             console.log("Fallback search error:", error);
           }
@@ -523,13 +523,7 @@ const AmaLeadsFilters = ({
               {/* of  */}
               <span className="text-[#D2A02A] font-medium">{(() => {
                 const countToDisplay = searchQuery ? searchResultsCount : allLeadsCount;
-                console.log("🎯 AmaLeadsFilters displaying count:", {
-                  searchQuery,
-                  searchResultsCount,
-                  allLeadsCount,
-                  countToDisplay,
-                  hasActiveFilters
-                });
+                
                 return countToDisplay;
               })()}</span> leads
               {searchQuery && <span className="text-[#D2A02A] ml-1">(from database search)</span>}
