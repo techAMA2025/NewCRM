@@ -122,7 +122,7 @@ const MyClientsPage = () => {
         console.log("Current user name:", currentUserName)
         
         // Fetch leads from the unified crm_leads collection with "Converted" status
-        const leadsCollection = collection(crmDb, 'crm_leads')
+        const leadsCollection = collection(crmDb, 'crm_leadss')
         
         // Create query for qualified leads
         const q = query(leadsCollection, where('status', '==', 'Converted'))
@@ -158,6 +158,45 @@ const MyClientsPage = () => {
         // Get all billcut leads to debug
         const allBillcutSnapshot = await getDocs(billcutQuery)
         console.log(`Found ${allBillcutSnapshot.docs.length} total converted leads in billcutLeads database`)
+        
+        // <CHANGE> add AMA queries and snapshots
+        // AMA: base and (optional) per-salesperson queries; be robust to status case and assignee field name differences
+        const amaLeadsCollection = collection(crmDb, 'ama_leads')
+        const amaBaseQuery = query(amaLeadsCollection, where('status', 'in', ['Converted', 'converted']))
+        
+        // Debug: how many converted in AMA overall
+        const allAmaSnapshot = await getDocs(amaBaseQuery)
+        console.log(`Found ${allAmaSnapshot.docs.length} total converted leads in ama_leads database`)
+        
+        let amaDocs: typeof allAmaSnapshot.docs = []
+        if (userRole === 'sales' && currentUserName) {
+          console.log("Filtering ama_leads by salesperson:", currentUserName)
+          // Try both assignedTo and assigned_to; merge and de-duplicate by doc.id
+          const amaAssignedToQuery = query(
+            amaLeadsCollection,
+            where('status', 'in', ['Converted', 'converted']),
+            where('assignedTo', '==', currentUserName)
+          )
+          const amaAssigned_toQuery = query(
+            amaLeadsCollection,
+            where('status', 'in', ['Converted', 'converted']),
+            where('assigned_to', '==', currentUserName)
+          )
+          
+          const [s1, s2] = await Promise.all([getDocs(amaAssignedToQuery), getDocs(amaAssigned_toQuery)])
+          const seen = new Set<string>()
+          amaDocs = [...s1.docs, ...s2.docs].filter(d => {
+            if (seen.has(d.id)) return false
+            seen.add(d.id)
+            return true
+          })
+        } else {
+          // Admin/advocate view
+          const s = await getDocs(amaBaseQuery)
+          amaDocs = s.docs
+        }
+        
+        console.log(`After filtering by user role, fetched ${amaDocs.length} converted leads from ama_leads`)
         
         // Log some basic info about them
         allQualifiedSnapshot.docs.forEach(doc => {
@@ -234,7 +273,7 @@ const MyClientsPage = () => {
             id: doc.id,
             name: data.name || data.Name || 'Unknown',
             email: data.email || data.Email || 'No email',
-            phone: data.phone || data.number || data['Mobile Number'] || 'No phone',
+            phone: data.phone || data.number || data['Mobile Number'] || data.mobile || 'No phone',
             source: data.source_database || 'Unknown',
             status: data.status || 'New',
             assignedTo: data.assignedTo || '',
@@ -302,8 +341,47 @@ const MyClientsPage = () => {
           return leadData;
         });
         
-        // Combine leads from both collections
-        const combinedLeads = [...leadsData, ...billcutLeadsData];
+        // <CHANGE> map AMA leads -> Lead
+        const amaLeadsData = amaDocs.map(doc => {
+          const data = doc.data() as any
+          console.log(`Adding AMA lead to display: ${data.name}`)
+          
+          const leadData: Lead = {
+            id: doc.id,
+            name: data.name || data.Name || 'Unknown',
+            email: data.email || data.Email || 'No email',
+            phone: data.phone || data.mobile || data.number || data['Mobile Number'] || 'No phone',
+            source: data.source || 'ama',
+            status: 'Converted',
+            assignedTo: data.assignedTo || data.assigned_to || '',
+            assignedToId: data.assignedToId || '',
+            salesNotes: data.salesNotes || data.sales_notes || '',
+            remarks: data.remarks || data.message || data.queries || data.Queries || '',
+            personalLoanDues: data.personalLoanDues || data['Total personal loan amount'] || '',
+            creditCardDues: data.creditCardDues || data['Total credit card dues'] || '',
+            monthlyIncome: data.income || '',
+            lastModified: data.timestamp?.toDate ? data.timestamp.toDate() : data.lastModified?.toDate ? data.lastModified.toDate() : (typeof data.lastModified === 'string' || typeof data.lastModified === 'number') ? new Date(data.lastModified) : new Date(),
+            original_id: data.original_id || doc.id,
+            original_collection: 'ama_leads',
+            source_database: data.source ? data.source === "AMA" ? "ama" : data.source === "CREDSETTLE" ? "credsettlee" : data.source === "SETTLELOANS" ? "settleloans" : "unknown" : "unknown",
+            synced_at: data.synced_at || data.timestamp,
+            city: data.city || data.City || '',
+            City: data.City || '',
+            message: data.message || '',
+            queries: data.queries || '',
+            Queries: data.Queries || '',
+            timestamp: data.timestamp, // helps your AMA date formatter
+          }
+          
+          return leadData
+        })
+        
+        // <CHANGE> include AMA leads in the combined list
+        const combinedLeads = [
+          ...leadsData, // from crm_leads
+          ...billcutLeadsData, // from billcutLeads
+          ...amaLeadsData // NEW: from ama_leads
+        ]
         
         // Sort by synced_at timestamp (newest first)
         const sortedLeads = combinedLeads.sort((a, b) => {
@@ -355,8 +433,8 @@ const MyClientsPage = () => {
   }, [userProfileReady]) // Only depend on userProfileReady to prevent multiple fetches
 
   // Format phone number for better readability
-  const formatPhoneNumber = (phone: string) => {
-    if (!phone) return '';
+  const formatPhoneNumber = (phone: string | undefined | null) => {
+    if (!phone || typeof phone !== 'string') return '';
     
     // Remove non-digit characters
     const cleaned = phone.replace(/\D/g, '');

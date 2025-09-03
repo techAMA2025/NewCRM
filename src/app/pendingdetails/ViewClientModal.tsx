@@ -15,8 +15,8 @@ const ViewClientModal = ({ lead, loading, error, onClose }: ViewClientModalProps
   }
 
   // Format phone number for better readability
-  const formatPhoneNumber = (phone: string) => {
-    if (!phone) return '';
+  const formatPhoneNumber = (phone: string | undefined | null) => {
+    if (!phone || typeof phone !== 'string') return '';
     
     // Remove non-digit characters
     const cleaned = phone.replace(/\D/g, '');
