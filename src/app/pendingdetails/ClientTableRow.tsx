@@ -13,8 +13,8 @@ interface ClientTableRowProps {
 
 const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete }: ClientTableRowProps) => {
   // Helper functions
-  const formatPhoneNumber = (phone: string) => {
-    if (!phone) return '';
+  const formatPhoneNumber = (phone: string | undefined | null) => {
+    if (!phone || typeof phone !== 'string') return '';
     
     // Remove non-digit characters
     const cleaned = phone.replace(/\D/g, '');
