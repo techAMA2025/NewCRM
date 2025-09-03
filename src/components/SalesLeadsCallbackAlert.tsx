@@ -90,16 +90,16 @@ const SalesLeadsCallbackAlert = () => {
 
   const fetchLeads = async () => {
     if (!user || !isActive) {
-      console.log('🔍 SalesLeadsCallbackAlert: fetchLeads skipped - user or isActive false');
+
       return;
     }
 
     try {
-      console.log('🔍 SalesLeadsCallbackAlert: Fetching leads from crm_leads...');
+
       const cacheKey = `sales-callback-leads-${userName || 'all'}`;
       const cachedLeads = searchCache.get<Lead[]>(cacheKey);
       if (cachedLeads) {
-        console.log(`🔍 SalesLeadsCallbackAlert: Using cached leads (${cachedLeads.length})`);
+
         setLeads(cachedLeads);
         return;
       }
@@ -112,7 +112,7 @@ const SalesLeadsCallbackAlert = () => {
           ...(userRole === 'sales' ? [where('assignedTo', '==', userName)] : [])
         )
       );
-      console.log(`🔍 SalesLeadsCallbackAlert: Query returned ${querySnapshot.docs.length} docs from crm_leads`);
+      
 
       const fetchedLeads = await Promise.all(
         querySnapshot.docs.map(async (doc) => {
@@ -134,7 +134,7 @@ const SalesLeadsCallbackAlert = () => {
         })
       );
 
-      console.log(`🔍 SalesLeadsCallbackAlert: fetchedLeads length ${fetchedLeads.length}`);
+      
       searchCache.set(cacheKey, fetchedLeads, 3 * 60 * 1000);
       setLeads(fetchedLeads);
     } catch (error) {
@@ -171,19 +171,17 @@ const SalesLeadsCallbackAlert = () => {
     if (!user || !userRole || !userName) return;
 
     const checkUpcomingCallbacks = () => {
-      console.log('🔍 SalesLeadsCallbackAlert: checkUpcomingCallbacks called');
+  
       
       // If user is overlord, don't show any toasts
       if (userRole === 'overlord') {
-        console.log('🔍 SalesLeadsCallbackAlert: Skipping toasts for overlord user');
+
         return;
       }
       
       const now = new Date();
       const windowEndsAt = new Date(now.getTime() + ALERT_AHEAD_MINUTES * 60 * 1000);
-      console.log('🔍 Current time:', now.toISOString());
-      console.log(`🔍 Window ends at (+${ALERT_AHEAD_MINUTES}m):`, windowEndsAt.toISOString());
-      console.log('🔍 Leads length:', leads.length);
+      
 
       const upcoming = leads
         .filter(lead => 
@@ -222,7 +220,7 @@ const SalesLeadsCallbackAlert = () => {
         }))
         .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
 
-      console.log(`🔍 SalesLeadsCallbackAlert: upcoming length ${upcoming.length}`, upcoming);
+      
 
       setUpcomingCallbacks(upcoming);
       
@@ -230,7 +228,7 @@ const SalesLeadsCallbackAlert = () => {
       upcoming.forEach(callback => {
         const toastId = `sales-callback-${callback.id}`;
         if (!shownToastIds.has(toastId)) {
-          console.log('🔍 SalesLeadsCallbackAlert: Showing toast', toastId);
+  
           showCallbackToast(callback, toastId);
           setShownToastIds(prev => new Set([...prev, toastId]));
         }

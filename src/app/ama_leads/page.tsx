@@ -103,6 +103,8 @@ const AmaLeadsPage = () => {
   const [showBulkAssignment, setShowBulkAssignment] = useState(false);
   const [bulkAssignTarget, setBulkAssignTarget] = useState("");
 
+
+
   // Status confirmation modal state
   const [statusConfirmLeadId, setStatusConfirmLeadId] = useState("");
   const [statusConfirmLeadName, setStatusConfirmLeadName] = useState("");
@@ -245,34 +247,27 @@ const AmaLeadsPage = () => {
       // Create date in local timezone, not UTC
       const fromDateStart = new Date(fromDate + 'T00:00:00');
       const fromTimestamp = fromDateStart.getTime();
-      console.log("🔍 Server-side FROM date filter:", {
-        fromDate,
-        fromDateStart: fromDateStart.toISOString(),
-        fromDateLocal: fromDateStart.toLocaleDateString(),
-        fromTimestamp
-      });
+
       constraints.push(where("date", ">=", fromTimestamp));
     }
     if (toDate) {
       // Create date in local timezone, not UTC
       const toDateEnd = new Date(toDate + 'T23:59:59.999');
       const toTimestamp = toDateEnd.getTime();
-      console.log("📅 Adding TO date constraint:", toTimestamp);
       constraints.push(where("date", "<=", toTimestamp));
     }
 
-    // Source filter - this was missing!
-    if (sourceFilter !== "all") {
-      // Map filter values to database values
-      const sourceMap = {
-        'ama': 'AMA',
-        'credsettlee': 'CREDSETTLE', 
-        'settleloans': 'SETTLELOANS'
-      };
-      const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toUpperCase();
-      console.log("🔧 Adding source constraint:", sourceFilter, "→", dbSourceValue);
-      constraints.push(where("source", "==", dbSourceValue));
-    }
+          // Source filter - this was missing!
+      if (sourceFilter !== "all") {
+        // Map filter values to database values
+        const sourceMap = {
+          'ama': 'AMA',
+          'credsettlee': 'CREDSETTLE', 
+          'settleloans': 'SETTLELOANS'
+        };
+        const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toUpperCase();
+        constraints.push(where("source", "==", dbSourceValue));
+      }
 
     // Status filter
     if (statusFilter !== "all") {
@@ -307,7 +302,7 @@ const AmaLeadsPage = () => {
     constraints.push(limit(LEADS_PER_PAGE));
     if (isLoadMore && lastDocument) constraints.push(startAfter(lastDocument));
 
-    console.log("🔍 Query constraints:", constraints.length);
+
     return query(baseQuery, ...constraints);
   };
 
@@ -328,15 +323,7 @@ const AmaLeadsPage = () => {
   // Fetch filtered count from database based on current filters
   const fetchFilteredCount = async (excludePagination = false) => {
     try {
-      console.log("🔍 Fetching filtered count with filters:", {
-        sourceFilter,
-        statusFilter,
-        salesPersonFilter,
-        convertedFilter,
-        fromDate,
-        toDate,
-        activeTab
-      });
+
 
       const baseQuery = collection(crmDb, "ama_leads");
       const constraints: any[] = [];
@@ -345,13 +332,13 @@ const AmaLeadsPage = () => {
       if (fromDate) {
         const fromDateStart = new Date(fromDate + 'T00:00:00');
         const fromTimestamp = fromDateStart.getTime();
-        console.log("📅 Adding FROM date constraint:", fromTimestamp);
+
         constraints.push(where("date", ">=", fromTimestamp));
       }
       if (toDate) {
         const toDateEnd = new Date(toDate + 'T23:59:59.999');
         const toTimestamp = toDateEnd.getTime();
-        console.log("📅 Adding TO date constraint:", toTimestamp);
+
         constraints.push(where("date", "<=", toTimestamp));
       }
 
@@ -360,13 +347,13 @@ const AmaLeadsPage = () => {
         // Map filter values to database values
         const sourceMap = { 'ama': 'AMA', 'credsettlee': 'CREDSETTLE', 'settleloans': 'SETTLELOANS' };
         const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toUpperCase();
-        console.log("🔧 Adding source constraint:", sourceFilter, "→", dbSourceValue);
+
         constraints.push(where("source", "==", dbSourceValue));
       }
 
       // Status filter
       if (statusFilter !== "all") {
-        console.log("🏷️ Adding status constraint:", statusFilter);
+
         if (statusFilter === "No Status") {
           constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any));
         } else {
@@ -376,7 +363,7 @@ const AmaLeadsPage = () => {
 
       // Salesperson filter
       if (salesPersonFilter !== "all") {
-        console.log("👤 Adding salesperson constraint:", salesPersonFilter);
+
         if (salesPersonFilter === "") {
           constraints.push(where("assigned_to", "in", ["", "-", "–"] as any));
         } else {
@@ -386,28 +373,28 @@ const AmaLeadsPage = () => {
 
       // Converted filter
       if (convertedFilter !== null) {
-        console.log("✅ Adding converted constraint:", convertedFilter);
+
         constraints.push(where("convertedToClient", "==", convertedFilter));
       }
 
       // Tab-based filtering - Callback tab
       if (activeTab === "callback") {
-        console.log("📞 Adding callback tab constraint");
+
         constraints.push(where("status", "==", "Callback"));
       }
 
-      console.log("🔧 Total constraints built:", constraints.length);
+
 
       // Build query with constraints (no pagination for counting)
       const countQuery = constraints.length > 0 
         ? query(baseQuery, ...constraints)
         : query(baseQuery);
       
-      console.log("🔍 Executing count query...");
+
       const countSnapshot = await getDocs(countQuery);
       const count = countSnapshot.size;
       
-      console.log("📊 Count query result:", count);
+
       return count;
     } catch (error) {
       console.error("❌ Error fetching filtered count:", error);
@@ -425,7 +412,7 @@ const AmaLeadsPage = () => {
   const handleSearchCleared = () => {
     setSearchResultsCount(0);
     if (leads.length > 50) {
-      console.log("🔄 Search cleared, resetting to first 50 leads");
+
       setLeads(leads.slice(0, 50));
       setLastDoc(null);
       setHasMoreLeads(true);
@@ -488,7 +475,7 @@ const AmaLeadsPage = () => {
 
     // Date range filter (using mapped synced_at or date)
     if (fromDate || toDate) {
-      console.log("🔍 Date filtering applied:", { fromDate, toDate, totalLeads: result.length });
+
       
       const originalResultLength = result.length;
       
@@ -506,18 +493,7 @@ const AmaLeadsPage = () => {
           leadDate = new Date();
         }
         
-        // Debug first few leads
-        if (result.indexOf(lead) < 5) {
-          console.log("📅 Lead date debug:", {
-            leadName: lead.name,
-            rawDate: lead.date,
-            rawSyncedAt: lead.synced_at,
-            processedDate: leadDate.toISOString(),
-            processedDateLocal: leadDate.toLocaleDateString(),
-            fromDate,
-            toDate
-          });
-        }
+
         
         if (fromDate && toDate) {
           // Create dates in local timezone, not UTC
@@ -527,20 +503,7 @@ const AmaLeadsPage = () => {
           // Check if lead date falls within the range
           const matches = leadDate >= from && leadDate <= to;
           
-          if (result.indexOf(lead) < 5) {
-            console.log("📅 Date range check:", {
-              leadName: lead.name,
-              leadDate: leadDate.toISOString(),
-              leadDateLocal: leadDate.toLocaleDateString(),
-              from: from.toISOString(),
-              fromLocal: from.toLocaleDateString(),
-              to: to.toISOString(),
-              toLocal: to.toLocaleDateString(),
-              isAfterFrom: leadDate >= from,
-              isBeforeTo: leadDate <= to,
-              matches
-            });
-          }
+
           
           return matches;
         } else if (fromDate) {
@@ -556,11 +519,7 @@ const AmaLeadsPage = () => {
         return true;
       });
       
-      console.log("🔍 After date filtering:", { 
-        originalCount: originalResultLength,
-        filteredCount: result.length,
-        filtered: originalResultLength - result.length 
-      });
+
     }
 
     // Apply sorting
@@ -616,18 +575,11 @@ const AmaLeadsPage = () => {
     const t = setTimeout(() => {
       if (searchQuery) {
         // Use search results when searching
-        console.log("🔍 Using search results for filtering:", {
-          searchQuery,
-          searchResultsCount: searchResults.length,
-          hasDateFilters: !!(fromDate || toDate)
-        });
+
         setFilteredLeads(applyFiltersToLeads(searchResults));
       } else {
         // When not searching, use regular leads (up to current pagination)
-        console.log("🔍 Using regular leads for filtering:", {
-          leadsCount: leads.length,
-          hasDateFilters: !!(fromDate || toDate)
-        });
+
         setFilteredLeads(applyFiltersToLeads(leads));
       }
     }, 100);
@@ -652,19 +604,7 @@ const AmaLeadsPage = () => {
       const fetchedLeads: any[] = querySnapshot.docs.map((docSnap) => {
         const d = docSnap.data() as any;
         
-        // Debug first few leads to see their date data
-        if (querySnapshot.docs.indexOf(docSnap) < 5) {
-          const debugDate = d.date ? new Date(d.date) : null;
-          console.log("📅 Raw lead data:", {
-            id: docSnap.id,
-            name: d.name,
-            rawDate: d.date,
-            rawSyncedDate: d.synced_date,
-            convertedDate: debugDate ? debugDate.toISOString() : 'No date',
-            convertedDateLocal: debugDate ? debugDate.toLocaleDateString() : 'No date',
-            convertedDateString: debugDate ? debugDate.toString() : 'No date'
-          });
-        }
+
         
         return {
           id: docSnap.id,
@@ -906,26 +846,12 @@ const AmaLeadsPage = () => {
           const filteredCount = await fetchFilteredCount();
           setDatabaseFilteredCount(filteredCount);
           
-          console.log("📊 Database counts updated:", {
-            callbackCount,
-            filteredCount: filteredCount,
-            hasActiveFilters,
-            activeTab,
-            currentDatabaseFilteredCount: databaseFilteredCount,
-            totalLeadsCount
-          });
+
         } else {
           // If no filters active, use total count
           setDatabaseFilteredCount(totalLeadsCount);
           
-          console.log("📊 Database counts updated:", {
-            callbackCount,
-            filteredCount: totalLeadsCount,
-            hasActiveFilters,
-            activeTab,
-            currentDatabaseFilteredCount: databaseFilteredCount,
-            totalLeadsCount
-          });
+
         }
       } catch (error) {
         console.error("Error fetching counts:", error);
@@ -1297,20 +1223,14 @@ const AmaLeadsPage = () => {
 
         // Send email message after successful status update
         try {
-          console.log("🔍 Starting email send process...", {
-            hasEmail: !!currentLead?.email,
-            email: currentLead?.email,
-            status: pendingStatusChange,
-            leadName: currentLead?.name,
-            fullLeadData: currentLead
-          });
+
           
           if (currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")) {
-            console.log("📧 Preparing to send email...");
+
             const functions = getFunctions(app);
             const sendStatusChangeMessage = httpsCallable(functions, 'sendStatusChangeMessage');
             
-            console.log("📤 Calling cloud function...");
+
             const emailResult = await sendStatusChangeMessage({
               leadName: currentLead.name || 'Dear Sir/Ma\'am',
               leadEmail: currentLead.email,
@@ -1318,7 +1238,7 @@ const AmaLeadsPage = () => {
               newStatus: pendingStatusChange
             });
             
-            console.log("✅ Email function result:", emailResult);
+
             
             // Show success message with email confirmation
             toast.success(
@@ -1332,12 +1252,7 @@ const AmaLeadsPage = () => {
               }
             );
           } else {
-            console.log("📧 No email conditions met:", {
-              hasEmail: !!currentLead?.email,
-              validStatus: pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering",
-              status: pendingStatusChange,
-              emailValidation: currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")
-            });
+
 
             // Show appropriate success message based on status
             let successMessage = "Status Updated Successfully";
@@ -1505,7 +1420,7 @@ const AmaLeadsPage = () => {
   };
 
   // Bulk WhatsApp function
-  const sendBulkWhatsApp = async (templateName: string, leadIds: string[]) => {
+  const sendBulkWhatsApp = async (templateName: string, leadIds: string[], leadData?: any[]) => {
     if (leadIds.length === 0) {
       toast.error("No leads selected for WhatsApp messaging");
       return;
@@ -1531,7 +1446,17 @@ const AmaLeadsPage = () => {
         
         // Process batch in parallel
         const batchPromises = batch.map(async (leadId) => {
-          const lead = leads.find(l => l.id === leadId);
+          // Use leadData if provided, otherwise try to find in arrays
+          let lead = leadData?.find(l => l.id === leadId);
+          
+          if (!lead) {
+            // Try to find lead in both leads and filteredLeads arrays
+            lead = leads.find(l => l.id === leadId);
+            if (!lead) {
+              lead = filteredLeads.find(l => l.id === leadId);
+            }
+          }
+          
           if (!lead || !lead.phone) {
             errorCount++;
             errors.push(`${lead?.name || 'Unknown'}: No phone number`);
@@ -1985,13 +1910,7 @@ const AmaLeadsPage = () => {
           
           {(() => {
             const countToShow = searchQuery ? searchResultsCount : databaseFilteredCount;
-            console.log("🔢 Count being passed to AmaLeadsFilters:", {
-              searchQuery,
-              searchResultsCount,
-              databaseFilteredCount,
-              countToShow,
-              hasSearchQuery: !!searchQuery
-            });
+
             return null;
           })()}
           

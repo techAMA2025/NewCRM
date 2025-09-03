@@ -72,11 +72,7 @@ const CustomDateInput = ({
       const day = String(date.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
       
-      console.log("📅 Date picker selection:", {
-        selectedDate: date.toString(),
-        selectedDateISO: date.toISOString(),
-        formattedForServer: dateString
-      });
+
       
       onChange(dateString);
     } else {

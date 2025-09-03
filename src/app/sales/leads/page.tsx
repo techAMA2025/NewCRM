@@ -152,12 +152,12 @@ const LeadsPage = () => {
 
   // Test toast function
   const testToast = () => {
-    console.log('🔍 Manual test toast triggered');
+    
     toast.success('Manual test toast!', {
       position: "top-right",
       autoClose: 3000,
     });
-    console.log('🔍 Manual test toast called');
+    
   };
 
   // Page visibility handling for better bfcache compatibility
@@ -1195,18 +1195,15 @@ const LeadsPage = () => {
 
   // Handle callback modal confirmation
   const handleCallbackConfirm = async () => {
-    console.log('🔍 handleCallbackConfirm called');
-    console.log('🔍 isEditingCallback:', isEditingCallback);
-    console.log('🔍 callbackLeadId:', callbackLeadId);
-    console.log('🔍 callbackLeadName:', callbackLeadName);
+
     
     if (isEditingCallback) {
-      console.log('🔍 Editing callback path');
+      
       // For editing, just refresh the callback information
       await refreshLeadCallbackInfo(callbackLeadId);
       
       // Show success toast for editing
-      console.log('🔍 About to show edit callback toast');
+      
       toast.success(`✅ Callback Updated - ${callbackLeadName}`, {
         position: "top-right",
         autoClose: 4000,
@@ -1215,7 +1212,7 @@ const LeadsPage = () => {
         pauseOnHover: true,
         draggable: true,
       });
-      console.log('🔍 Edit callback toast called');
+      
     } else {
       console.log('🔍 New callback path');
       // For new callbacks, update the lead status to "Callback"
