@@ -272,7 +272,7 @@ const AmaLeadsFilters = ({
             city: data.city || "",
             status: data.status || "No Status",
             source: data.source || "",
-            source_database: data.source || "", // Use source field
+            source_database: data.source_database || data.source || "", // Use source_database field
             assignedTo: data.assigned_to || "",
             assignedToId: data.assignedToId || "",
             salesNotes: data.salesNotes || data.lastNote || "",
@@ -555,7 +555,7 @@ const AmaLeadsFilters = ({
             >
               <option value="all">All Sources</option>
               <option value="ama">AMA</option>
-              <option value="credsettlee">CredSettle</option>
+              <option value="credsettle">CredSettle</option>
               <option value="settleloans">SettleLoans</option>
             </select>
           </div>

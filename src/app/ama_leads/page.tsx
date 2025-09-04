@@ -257,16 +257,16 @@ const AmaLeadsPage = () => {
       constraints.push(where("date", "<=", toTimestamp));
     }
 
-          // Source filter - this was missing!
+          // Source filter - filter by source_database field
       if (sourceFilter !== "all") {
-        // Map filter values to database values
+        // Map filter values to source_database values
         const sourceMap = {
-          'ama': 'AMA',
-          'credsettlee': 'CREDSETTLE', 
-          'settleloans': 'SETTLELOANS'
+          'ama': 'ama',
+          'credsettle': 'credsettlee', 
+          'settleloans': 'settleloans'
         };
-        const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toUpperCase();
-        constraints.push(where("source", "==", dbSourceValue));
+        const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toLowerCase();
+        constraints.push(where("source_database", "==", dbSourceValue));
       }
 
     // Status filter
@@ -342,13 +342,13 @@ const AmaLeadsPage = () => {
         constraints.push(where("date", "<=", toTimestamp));
       }
 
-      // Source filter - this was missing!
+      // Source filter - filter by source_database field
       if (sourceFilter !== "all") {
-        // Map filter values to database values
-        const sourceMap = { 'ama': 'AMA', 'credsettlee': 'CREDSETTLE', 'settleloans': 'SETTLELOANS' };
-        const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toUpperCase();
+        // Map filter values to source_database values
+        const sourceMap = { 'ama': 'ama', 'credsettle': 'credsettlee', 'settleloans': 'settleloans' };
+        const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toLowerCase();
 
-        constraints.push(where("source", "==", dbSourceValue));
+        constraints.push(where("source_database", "==", dbSourceValue));
       }
 
       // Status filter
@@ -383,7 +383,8 @@ const AmaLeadsPage = () => {
         constraints.push(where("status", "==", "Callback"));
       }
 
-
+      // Add the same ordering as buildQuery to ensure consistency
+      constraints.push(orderBy("synced_at", sortConfig.direction === 'ascending' ? 'asc' : 'desc'));
 
       // Build query with constraints (no pagination for counting)
       const countQuery = constraints.length > 0 
@@ -427,7 +428,14 @@ const AmaLeadsPage = () => {
 
     // Source filter
     if (sourceFilter !== 'all') {
-      result = result.filter(lead => lead.source_database === sourceFilter);
+      // Map filter values to source_database values (same logic as buildQuery)
+      const sourceMap = {
+        'ama': 'ama',
+        'credsettle': 'credsettlee', 
+        'settleloans': 'settleloans'
+      };
+      const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toLowerCase();
+      result = result.filter(lead => lead.source_database === dbSourceValue);
     }
 
     // Status filter
