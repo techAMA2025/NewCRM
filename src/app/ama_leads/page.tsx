@@ -262,16 +262,40 @@ const AmaLeadsPage = () => {
         // Map filter values to source_database values
         const sourceMap = {
           'ama': 'ama',
-          'credsettle': 'credsettlee', 
+          'credsettlee': ['credsettlee', 'credsettle', 'CS', 'cs'], // Handle multiple possible values
           'settleloans': 'settleloans'
         };
         const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toLowerCase();
-        constraints.push(where("source_database", "==", dbSourceValue));
+        
+        // Debug logging for CredSettle + No Status filter
+        if (sourceFilter === 'credsettlee' && statusFilter === 'No Status') {
+          console.log('🔍 [buildQuery] CredSettle + No Status filter:', {
+            sourceFilter,
+            dbSourceValue,
+            statusFilter,
+            isLoadMore
+          });
+        }
+        
+        // Handle array of possible values for source_database
+        if (Array.isArray(dbSourceValue)) {
+          constraints.push(where("source_database", "in", dbSourceValue));
+        } else {
+          constraints.push(where("source_database", "==", dbSourceValue));
+        }
       }
 
     // Status filter
     if (statusFilter !== "all") {
       if (statusFilter === "No Status") {
+        // Debug logging for CredSettle + No Status filter
+        if (sourceFilter === 'credsettlee') {
+          console.log('🔍 [buildQuery] Adding No Status constraint for CredSettle:', {
+            statusValues: ["", "-", "–", "No Status"],
+            sourceFilter,
+            statusFilter
+          });
+        }
         constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any));
       } else {
         constraints.push(where("status", "==", statusFilter));
@@ -345,16 +369,37 @@ const AmaLeadsPage = () => {
       // Source filter - filter by source_database field
       if (sourceFilter !== "all") {
         // Map filter values to source_database values
-        const sourceMap = { 'ama': 'ama', 'credsettle': 'credsettlee', 'settleloans': 'settleloans' };
+        const sourceMap = { 'ama': 'ama', 'credsettlee': ['credsettlee', 'credsettle', 'CS', 'cs'], 'settleloans': 'settleloans' };
         const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toLowerCase();
 
-        constraints.push(where("source_database", "==", dbSourceValue));
+        // Debug logging for CredSettle + No Status filter
+        if (sourceFilter === 'credsettlee' && statusFilter === 'No Status') {
+          console.log('🔍 [fetchFilteredCount] CredSettle + No Status filter:', {
+            sourceFilter,
+            dbSourceValue,
+            statusFilter
+          });
+        }
+
+        // Handle array of possible values for source_database
+        if (Array.isArray(dbSourceValue)) {
+          constraints.push(where("source_database", "in", dbSourceValue));
+        } else {
+          constraints.push(where("source_database", "==", dbSourceValue));
+        }
       }
 
       // Status filter
       if (statusFilter !== "all") {
-
         if (statusFilter === "No Status") {
+          // Debug logging for CredSettle + No Status filter
+          if (sourceFilter === 'credsettlee') {
+            console.log('🔍 [fetchFilteredCount] Adding No Status constraint for CredSettle:', {
+              statusValues: ["", "-", "–", "No Status"],
+              sourceFilter,
+              statusFilter
+            });
+          }
           constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any));
         } else {
           constraints.push(where("status", "==", statusFilter));
@@ -431,26 +476,108 @@ const AmaLeadsPage = () => {
       // Map filter values to source_database values (same logic as buildQuery)
       const sourceMap = {
         'ama': 'ama',
-        'credsettle': 'credsettlee', 
+        'credsettlee': ['credsettlee', 'credsettle', 'CS', 'cs'], // Handle multiple possible values
         'settleloans': 'settleloans'
       };
       const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toLowerCase();
-      result = result.filter(lead => lead.source_database === dbSourceValue);
+      
+      // Debug logging for CredSettle + No Status filter
+      if (sourceFilter === 'credsettlee' && statusFilter === 'No Status') {
+        console.log('🔍 [applyFiltersToLeads] CredSettle + No Status filter:', {
+          sourceFilter,
+          dbSourceValue,
+          statusFilter,
+          totalLeads: leadsArray.length,
+          beforeSourceFilter: result.length
+        });
+        
+        // Debug: Show all unique source_database values in the leads
+        const uniqueSources = [...new Set(leadsArray.map(lead => lead.source_database))];
+        console.log('🔍 [applyFiltersToLeads] All unique source_database values:', uniqueSources);
+        
+        // Debug: Show sample leads with their source_database values
+        console.log('🔍 [applyFiltersToLeads] Sample leads with source_database:', 
+          leadsArray.slice(0, 5).map(lead => ({
+            id: lead.id,
+            name: lead.name,
+            source_database: lead.source_database,
+            source: lead.source
+          }))
+        );
+      }
+      
+      // Handle array of possible values for source_database
+      if (Array.isArray(dbSourceValue)) {
+        result = result.filter(lead => dbSourceValue.includes(lead.source_database));
+      } else {
+        result = result.filter(lead => lead.source_database === dbSourceValue);
+      }
+      
+      // Debug logging after source filter
+      if (sourceFilter === 'credsettlee' && statusFilter === 'No Status') {
+        console.log('🔍 [applyFiltersToLeads] After source filter:', {
+          afterSourceFilter: result.length,
+          sampleLeads: result.slice(0, 3).map(lead => ({
+            id: lead.id,
+            name: lead.name,
+            source_database: lead.source_database,
+            status: lead.status
+          }))
+        });
+      }
     }
 
     // Status filter
     if (statusFilter !== 'all') {
       if (statusFilter === 'No Status') {
+        // Debug logging for CredSettle + No Status filter
+        if (sourceFilter === 'credsettlee') {
+          console.log('🔍 [applyFiltersToLeads] Before No Status filter:', {
+            beforeStatusFilter: result.length,
+            sampleStatuses: result.slice(0, 5).map(lead => ({
+              id: lead.id,
+              name: lead.name,
+              status: lead.status,
+              statusType: typeof lead.status
+            }))
+          });
+        }
+        
         result = result.filter(lead => {
           const status = lead.status;
-          return !status || 
+          const isNoStatus = !status || 
                  status === '' || 
                  status === '-' || 
                  status === '–' ||
                  status === 'No Status' ||
                  (typeof status === 'string' && status.trim() === '') ||
                  (typeof status === 'string' && status.trim() === '-');
+          
+          // Debug individual lead filtering for CredSettle
+          if (sourceFilter === 'credsettlee' && !isNoStatus) {
+            console.log('🔍 [applyFiltersToLeads] Lead filtered out (not No Status):', {
+              id: lead.id,
+              name: lead.name,
+              status: lead.status,
+              statusType: typeof lead.status,
+              isNoStatus
+            });
+          }
+          
+          return isNoStatus;
         });
+        
+        // Debug logging after status filter
+        if (sourceFilter === 'credsettlee') {
+          console.log('🔍 [applyFiltersToLeads] After No Status filter:', {
+            afterStatusFilter: result.length,
+            finalSampleLeads: result.slice(0, 3).map(lead => ({
+              id: lead.id,
+              name: lead.name,
+              status: lead.status
+            }))
+          });
+        }
       } else {
         result = result.filter(lead => lead.status === statusFilter);
       }
@@ -612,7 +739,29 @@ const AmaLeadsPage = () => {
       const fetchedLeads: any[] = querySnapshot.docs.map((docSnap) => {
         const d = docSnap.data() as any;
         
-
+        // Debug logging for CredSettle + No Status filter
+        if (sourceFilter === 'credsettlee' && statusFilter === 'No Status') {
+          console.log('🔍 [fetchAmaLeads] Raw lead data from DB:', {
+            id: docSnap.id,
+            name: d.name,
+            source_database: d.source_database,
+            source: d.source,
+            status: d.status,
+            statusType: typeof d.status
+          });
+        }
+        
+        // Treat "-" status as "No Status"
+        const normalizedStatus = (d.status === "-" || d.status === "–") ? "No Status" : (d.status || "No Status");
+        
+        // Debug logging for status normalization
+        if (sourceFilter === 'credsettlee' && statusFilter === 'No Status' && (d.status === "-" || d.status === "–")) {
+          console.log('🔍 [fetchAmaLeads] Status normalized:', {
+            id: docSnap.id,
+            originalStatus: d.status,
+            normalizedStatus
+          });
+        }
         
         return {
           id: docSnap.id,
@@ -621,7 +770,7 @@ const AmaLeadsPage = () => {
           phone: String(d.mobile || d.phone || ""),
           address: d.address || "",
           city: d.city || "",
-          status: d.status || "No Status",
+          status: normalizedStatus,
           source: d.source || "",
           source_database: d.source_database || d.source || "",
           assignedTo: d.assigned_to || d.assignedTo || "",
@@ -682,6 +831,29 @@ const AmaLeadsPage = () => {
       const lastDocument = querySnapshot.docs[querySnapshot.docs.length - 1];
       setLastDoc(lastDocument);
       setHasMoreLeads(querySnapshot.docs.length === LEADS_PER_PAGE);
+
+      // Debug logging for CredSettle + No Status filter
+      if (sourceFilter === 'credsettlee' && statusFilter === 'No Status') {
+        console.log('🔍 [fetchAmaLeads] Final results summary:', {
+          totalFetched: fetchedLeads.length,
+          credsettleLeads: fetchedLeads.filter(lead => lead.source_database === 'credsettlee').length,
+          noStatusLeads: fetchedLeads.filter(lead => {
+            const status = lead.status;
+            return !status || status === '' || status === '-' || status === '–' || status === 'No Status';
+          }).length,
+          credsettleNoStatusLeads: fetchedLeads.filter(lead => {
+            const status = lead.status;
+            return lead.source_database === 'credsettlee' && 
+                   (!status || status === '' || status === '-' || status === '–' || status === 'No Status');
+          }).length,
+          sampleResults: fetchedLeads.slice(0, 3).map(lead => ({
+            id: lead.id,
+            name: lead.name,
+            source_database: lead.source_database,
+            status: lead.status
+          }))
+        });
+      }
 
       // Initialize editing state for notes
       const initialEditingState: {[key:string]: any} = {};
@@ -1805,6 +1977,9 @@ const AmaLeadsPage = () => {
         if (snap.empty) { more = false; break; }
         const chunk = snap.docs.map((docSnap) => {
           const d = docSnap.data() as any;
+          // Treat "-" status as "No Status"
+          const normalizedStatus = (d.status === "-" || d.status === "–") ? "No Status" : (d.status || "No Status");
+          
           return {
             id: docSnap.id,
             name: d.name || "",
@@ -1812,7 +1987,7 @@ const AmaLeadsPage = () => {
             phone: String(d.mobile || d.phone || ""),
             address: d.address || "",
             city: d.city || "",
-            status: d.status || "No Status",
+            status: normalizedStatus,
             source: d.source || "",
             source_database: d.source_database || d.source || "",
             assignedTo: d.assigned_to || d.assignedTo || "",
