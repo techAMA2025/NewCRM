@@ -263,6 +263,9 @@ const AmaLeadsFilters = ({
 
         // Transform results to match AMA Lead type
         const transformedResults = searchResults.map((data) => {
+          // Treat "-" status as "No Status"
+          const normalizedStatus = (data.status === "-" || data.status === "–") ? "No Status" : (data.status || "No Status");
+          
           return {
             id: data.id,
             name: data.name || "",
@@ -270,7 +273,7 @@ const AmaLeadsFilters = ({
             phone: String(data.mobile || ""), // Convert number to string
             address: data.address || "",
             city: data.city || "",
-            status: data.status || "No Status",
+            status: normalizedStatus,
             source: data.source || "",
             source_database: data.source_database || data.source || "", // Use source_database field
             assignedTo: data.assigned_to || "",
@@ -555,7 +558,7 @@ const AmaLeadsFilters = ({
             >
               <option value="all">All Sources</option>
               <option value="ama">AMA</option>
-              <option value="credsettle">CredSettle</option>
+              <option value="credsettlee">CredSettle</option>
               <option value="settleloans">SettleLoans</option>
             </select>
           </div>
