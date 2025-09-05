@@ -700,6 +700,130 @@ const toDateEnd = new Date(toDate + 'T23:59:59.999');   // Local timezone
 
 ## 🔄 State Management
 
+### ⚠️ CRITICAL: Search State Management Pattern
+
+**IMPORTANT:** This section documents a critical fix that prevents status changes from reverting when using the search functionality. This pattern MUST be followed for all lead update operations.
+
+#### The Problem (Fixed)
+When users were searching and changed a lead's status, the status would change briefly but immediately revert back to the previous status. This happened because:
+
+1. **Status change functions** updated `leads` and `filteredLeads` arrays
+2. **Search results** (`searchResults`) were not being updated with the new status
+3. **useEffect with 100ms timeout** would re-run and re-apply filters using the old `searchResults` array
+4. This overwrote the status change, causing the reversion
+
+#### Root Cause Analysis
+```typescript
+// ❌ PROBLEMATIC PATTERN (DO NOT USE):
+const updateFn = (arr: any[]) => arr.map((l) => 
+  l.id === leadId ? { ...l, status: newStatus } : l
+)
+
+setLeads(updateFn)
+setFilteredLeads(updateFn)
+// searchResults not updated - causes reversion when useEffect runs
+```
+
+The `useEffect` that applies filters has this logic:
+```typescript
+useEffect(() => {
+  const t = setTimeout(() => {
+    if (searchQuery) {
+      setFilteredLeads(applyFiltersToLeads(searchResults)) // Uses old searchResults
+    } else {
+      setFilteredLeads(applyFiltersToLeads(leads)) // Uses updated leads
+    }
+  }, 100)
+  return () => clearTimeout(t)
+}, [leads, searchResults, searchQuery, /* other deps */])
+```
+
+When in search mode, it always used `searchResults` which wasn't being updated with status changes.
+
+#### ✅ CORRECT PATTERN (ALWAYS USE THIS)
+```typescript
+// ✅ CORRECT: Always handle search results properly
+const updateFn = (arr: any[]) => arr.map((l) => 
+  l.id === leadId ? { ...l, status: newStatus, lastModified: new Date() } : l
+)
+
+setLeads(updateFn)
+
+// If there are search results, update them and use them for filteredLeads
+if (searchQuery && searchResults.length > 0) {
+  const updatedSearchResults = searchResults.map((l) =>
+    l.id === leadId ? { ...l, status: newStatus, lastModified: new Date() } : l
+  )
+  setSearchResults(updatedSearchResults)
+  // Immediately apply filters to prevent reversion
+  setFilteredLeads(applyFiltersToLeads(updatedSearchResults))
+} else {
+  // When not in search mode, use the regular update pattern
+  setFilteredLeads(updateFn)
+}
+```
+
+#### Functions That Must Follow This Pattern
+**ALL** lead update functions must implement this pattern:
+
+1. **`handleStatusConfirmation`** - Main status change handler
+2. **`handleConversionConfirm`** - Conversion status handler  
+3. **`updateLead`** - General lead update function
+4. **`assignLeadToSalesperson`** - Assignment function
+5. **`unassignLead`** - Unassignment function
+6. **Any new lead update functions** - Must follow this pattern
+
+#### Implementation Checklist
+When creating or modifying lead update functions, ensure:
+
+- [ ] Update `leads` array with the new data
+- [ ] Check if `searchQuery` is active and `searchResults.length > 0`
+- [ ] If in search mode: Update `searchResults` with the same changes
+- [ ] If in search mode: Immediately apply filters to updated `searchResults`
+- [ ] If not in search mode: Update `filteredLeads` with the regular update function
+- [ ] Test the function with search active to ensure no reversion occurs
+
+#### Error Handling Pattern
+For error scenarios (like failed database updates), also follow the same pattern:
+
+```typescript
+// ✅ CORRECT: Revert changes in both search and non-search modes
+const revertFn = (arr: any[]) => arr.map((l) =>
+  l.id === leadId ? { ...l, status: originalStatus } : l
+)
+
+setLeads(revertFn)
+
+if (searchQuery && searchResults.length > 0) {
+  const revertedSearchResults = searchResults.map((l) =>
+    l.id === leadId ? { ...l, status: originalStatus } : l
+  )
+  setSearchResults(revertedSearchResults)
+  setFilteredLeads(applyFiltersToLeads(revertedSearchResults))
+} else {
+  setFilteredLeads(revertFn)
+}
+```
+
+#### Testing Requirements
+**MANDATORY:** Before deploying any lead update functionality:
+
+1. **Test with search active:** Change status while searching, verify it persists
+2. **Test without search:** Change status normally, verify it works
+3. **Test error scenarios:** Simulate database failures, verify proper reversion
+4. **Test all status types:** Not just "Converted" - test "Interested", "Not Answering", etc.
+
+#### Common Mistakes to Avoid
+- ❌ **Never** update only `leads` and `filteredLeads` when search is active
+- ❌ **Never** assume `searchResults` will be updated automatically
+- ❌ **Never** use `setTimeout` or `setInterval` for state updates in lead functions
+- ❌ **Never** skip the search mode check (`if (searchQuery && searchResults.length > 0)`)
+
+#### Performance Considerations
+- The pattern is efficient because it only updates `searchResults` when actually needed
+- Immediate filter application prevents multiple re-renders
+- No additional API calls or database queries required
+
 ### Lead Data Structure in Frontend
 ```typescript
 interface ProcessedLead {
@@ -783,6 +907,24 @@ AmaLeadsPage
 
 ## ⚠️ Critical Rules & Constraints
 
+### 0. Search State Management (CRITICAL - PREVENTS STATUS REVERSION)
+```typescript
+// ✅ ALWAYS follow this pattern for lead updates:
+if (searchQuery && searchResults.length > 0) {
+  // Update searchResults and apply filters immediately
+  const updatedSearchResults = searchResults.map(/* update logic */)
+  setSearchResults(updatedSearchResults)
+  setFilteredLeads(applyFiltersToLeads(updatedSearchResults))
+} else {
+  // Regular update pattern
+  setFilteredLeads(updateFn)
+}
+
+// ❌ NEVER do this when search is active:
+setLeads(updateFn)
+setFilteredLeads(updateFn) // This will be overwritten by useEffect
+```
+
 ### 1. Date Handling
 ```typescript
 // ✅ CORRECT: Local timezone
@@ -857,13 +999,14 @@ const mappedLead = {
 ## 🧪 Testing Guidelines
 
 ### Essential Test Cases
-1. **Tab Switching:** Verify callback visual indicators appear/disappear
-2. **Permission Checks:** Test with different user roles
-3. **Date Filtering:** Test timezone handling (critical)
-4. **Search Functionality:** Test all search patterns
-5. **Callback Priority:** Test color coding for different dates
-6. **Modal Flows:** Test all modal interactions
-7. **Bulk Operations:** Test permission validation
+1. **Search State Management (CRITICAL):** Test status changes while search is active - must not revert
+2. **Tab Switching:** Verify callback visual indicators appear/disappear
+3. **Permission Checks:** Test with different user roles
+4. **Date Filtering:** Test timezone handling (critical)
+5. **Search Functionality:** Test all search patterns
+6. **Callback Priority:** Test color coding for different dates
+7. **Modal Flows:** Test all modal interactions
+8. **Bulk Operations:** Test permission validation
 
 ### Common Edge Cases
 - Empty callback info

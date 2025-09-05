@@ -17,19 +17,16 @@ const AmaConversionConfirmationModal: React.FC<AmaConversionConfirmationModalPro
   leadName,
   isLoading = false,
 }) => {
-  console.log("🔍 AmaConversionConfirmationModal render:", { isOpen, leadName, isLoading })
 
   if (!isOpen) return null
 
   const handleConfirm = () => {
     if (isLoading) return
-    console.log("🔍 Conversion modal confirm button clicked")
     onConfirm()
   }
 
   const handleClose = () => {
     if (isLoading) return
-    console.log("🔍 Conversion modal close button clicked")
     onClose()
   }
 
@@ -39,7 +36,6 @@ const AmaConversionConfirmationModal: React.FC<AmaConversionConfirmationModalPro
       onClick={(e) => {
         e.stopPropagation()
         if (e.target === e.currentTarget && !isLoading) {
-          console.log("🔍 Conversion modal background clicked - closing modal")
           onClose()
         }
       }}
@@ -47,7 +43,6 @@ const AmaConversionConfirmationModal: React.FC<AmaConversionConfirmationModalPro
       <div className="bg-[#ffffff] rounded-xl p-6 w-full max-w-md border border-[#5A4C33]/20 shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-[#5A4C33] flex items-center">
-            <span className="mr-2">🎉</span>
             Convert Lead
           </h3>
           <button

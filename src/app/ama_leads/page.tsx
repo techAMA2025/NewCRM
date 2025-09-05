@@ -1434,15 +1434,20 @@ const AmaLeadsPage = () => {
   // Function to decrement convertedLeads count in targets
   const decrementTargetsCount = async (leadId: string) => {
     try {
-      // Get the assigned salesperson's information from the lead
-      const lead = leads.find((l) => l.id === leadId)
+      // Get the assigned salesperson's information from the lead - check both leads and searchResults
+      let lead = leads.find((l) => l.id === leadId)
+      if (!lead && searchResults.length > 0) {
+        lead = searchResults.find((l) => l.id === leadId)
+        console.log("🔍 Lead found in searchResults for decrement")
+      }
       const assignedSalesPerson = lead?.assignedTo
       const assignedSalesPersonId = lead?.assignedToId
 
       if (assignedSalesPerson && assignedSalesPersonId) {
         // Get current month and year for targets collection
         const now = new Date()
-        const currentMonth = now.toLocaleString("default", { month: "short" }) // "Jan", "Feb", etc.
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        const currentMonth = monthNames[now.getMonth()]
         const currentYear = now.getFullYear()
         const monthDocId = `${currentMonth}_${currentYear}`
 
@@ -1488,6 +1493,11 @@ const AmaLeadsPage = () => {
               })
 
               console.log(`Successfully decremented targets for ${assignedSalesPerson}`)
+              
+              // Verify the update worked by reading the document back
+              const verifyDoc = await getDoc(targetRef)
+              const verifyData = verifyDoc.data()
+              console.log(`🔍 Verification: Target document now has convertedLeads: ${verifyData?.convertedLeads}`)
             } else {
               console.warn(`No target document found for ${assignedSalesPerson} in ${monthDocId}, nothing to decrement`)
             }
@@ -1509,15 +1519,30 @@ const AmaLeadsPage = () => {
 
   // Status confirmation handlers
   const handleStatusConfirmation = async () => {
-    if (!statusConfirmLeadId || !pendingStatusChange) return
+    console.log('🔍 ===== handleStatusConfirmation START =====')
+    console.log('🔍 Status confirmation triggered:', { statusConfirmLeadId, pendingStatusChange })
+    
+    if (!statusConfirmLeadId || !pendingStatusChange) {
+      console.log('🔍 Missing required data, returning early')
+      return
+    }
 
     setIsUpdatingStatus(true)
     try {
-      const currentLead = leads.find((l) => l.id === statusConfirmLeadId)
+      // Find the lead in current state - check both leads and searchResults
+      let currentLead = leads.find((l) => l.id === statusConfirmLeadId)
+      if (!currentLead && searchResults.length > 0) {
+        currentLead = searchResults.find((l) => l.id === statusConfirmLeadId)
+        console.log("🔍 Lead found in searchResults for status confirmation")
+      }
       const currentStatus = currentLead?.status || "Select Status"
+      
+      console.log('🔍 Current lead and status:', { currentLead: currentLead?.name, currentStatus, pendingStatusChange })
 
       // Check if changing from "Converted" to another status
       if (currentStatus === "Converted" && pendingStatusChange !== "Converted") {
+        console.log("🔍 Removing conversion - will decrement targets count")
+        
         // Show a toast notification about the conversion being removed
         toast.info(
           <div className="min-w-0 flex-1">
@@ -1559,6 +1584,12 @@ const AmaLeadsPage = () => {
         dbData.convertedToClient = true
       }
 
+      // If changing from "Converted" to another status, remove conversion timestamp and flag
+      if (currentStatus === "Converted" && pendingStatusChange !== "Converted") {
+        dbData.convertedAt = null
+        dbData.convertedToClient = false
+      }
+
       // If changing to "Callback", add callback timestamp
       if (pendingStatusChange === "Callback") {
         dbData.callbackScheduled = serverTimestamp()
@@ -1582,7 +1613,10 @@ const AmaLeadsPage = () => {
       // Update database directly to avoid double local state updates
       const leadRef = doc(crmDb, "ama_leads", statusConfirmLeadId)
       const updateData: any = { ...dbData, lastModified: serverTimestamp() }
+      
+      console.log('🔍 About to update lead status in database:', { leadId: statusConfirmLeadId, updateData })
       await updateDoc(leadRef, updateData)
+      console.log('🔍 Lead status updated successfully in database')
 
       // If converting to "Converted", update targets collection
       if (pendingStatusChange === "Converted") {
@@ -1595,7 +1629,8 @@ const AmaLeadsPage = () => {
         if (assignedSalesPerson) {
           // Get current month and year for targets collection
           const now = new Date()
-          const currentMonth = now.toLocaleString("default", { month: "short" }) // "Jan", "Feb", etc.
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+          const currentMonth = monthNames[now.getMonth()]
           const currentYear = now.getFullYear()
           const monthDocId = `${currentMonth}_${currentYear}`
 
@@ -1639,6 +1674,11 @@ const AmaLeadsPage = () => {
                 })
 
                 console.log(`Successfully updated targets for ${assignedSalesPerson}`)
+                
+                // Verify the update worked by reading the document back
+                const verifyDoc = await getDoc(targetRef)
+                const verifyData = verifyDoc.data()
+                console.log(`🔍 Verification: Target document now has convertedLeads: ${verifyData?.convertedLeads}`)
               } else {
                 // User's target document doesn't exist, create it with convertedLeads = 1
                 console.log(`Creating new target document for ${assignedSalesPerson} with convertedLeads = 1`)
@@ -1847,12 +1887,20 @@ const AmaLeadsPage = () => {
       }
     } catch (error) {
       console.error("Error updating status: ", error)
-      toast.error("Failed to update status")
+      console.error("Status update error details:", {
+        error,
+        statusConfirmLeadId,
+        pendingStatusChange,
+        currentStatus: leads.find(l => l.id === statusConfirmLeadId)?.status
+      })
+      toast.error(`Failed to update status: ${(error as Error).message || 'Unknown error'}`)
     } finally {
+      console.log('🔍 ===== handleStatusConfirmation FINALLY BLOCK =====')
       setIsUpdatingStatus(false)
       setStatusConfirmLeadId("")
       setStatusConfirmLeadName("")
       setPendingStatusChange("")
+      console.log('🔍 ===== handleStatusConfirmation END =====')
     }
   }
 
@@ -1970,24 +2018,32 @@ const AmaLeadsPage = () => {
   const handleStatusChangeToConverted = (leadId: string, leadName: string) => {
     console.log("🔍 handleStatusChangeToConverted called with:", { leadId, leadName })
     console.log("🔍 Current modal state before setting:", { showConversionModal, conversionLeadId, conversionLeadName })
+    console.log("🔍 About to set conversion modal state...")
 
     // Use setTimeout to prevent immediate state conflicts
     setTimeout(() => {
+      console.log("🔍 setTimeout executing - setting modal state")
       setConversionLeadId(leadId)
       setConversionLeadName(leadName)
       setShowConversionModal(true)
-      console.log("🔍 Conversion modal state set with setTimeout")
+      console.log("🔍 Conversion modal state set with setTimeout - should be true now")
     }, 10)
   }
 
   // Handle conversion modal confirmation
   const handleConversionConfirm = async () => {
+    console.log("🔍 ===== handleConversionConfirm START =====")
     console.log("🔍 handleConversionConfirm called")
     console.log("🔍 conversionLeadId:", conversionLeadId)
     console.log("🔍 conversionLeadName:", conversionLeadName)
+    console.log("🔍 Current leads array length:", leads.length)
 
-    // Find the lead in current state
-    const currentLead = leads.find((l) => l.id === conversionLeadId)
+    // Find the lead in current state - check both leads and searchResults
+    let currentLead = leads.find((l) => l.id === conversionLeadId)
+    if (!currentLead && searchResults.length > 0) {
+      currentLead = searchResults.find((l) => l.id === conversionLeadId)
+      console.log("🔍 Lead found in searchResults instead of leads")
+    }
     console.log("🔍 Current lead before conversion:", currentLead)
     console.log("🔍 currentUser:", currentUser)
     console.log("🔍 leads array length:", leads.length)
@@ -2048,8 +2104,13 @@ const AmaLeadsPage = () => {
       console.log("🔍 Local state updated immediately")
 
       try {
-        // Get the assigned salesperson's information from the lead
-        const lead = leads.find((l) => l.id === conversionLeadId)
+        console.log("🔍 ===== STARTING TARGET UPDATE PROCESS =====")
+        // Get the assigned salesperson's information from the lead - check both leads and searchResults
+        let lead = leads.find((l) => l.id === conversionLeadId)
+        if (!lead && searchResults.length > 0) {
+          lead = searchResults.find((l) => l.id === conversionLeadId)
+          console.log("🔍 Lead found in searchResults for target update")
+        }
         console.log("🔍 Found lead:", lead)
         console.log("🔍 Lead assignedTo:", lead?.assignedTo)
         console.log("🔍 Lead assignedToId:", lead?.assignedToId)
@@ -2063,7 +2124,8 @@ const AmaLeadsPage = () => {
         if (assignedSalesPerson && assignedSalesPersonId) {
           // Get current month and year for targets collection
           const now = new Date()
-          const currentMonth = now.toLocaleString("default", { month: "short" }) // "Jan", "Feb", etc.
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+          const currentMonth = monthNames[now.getMonth()]
           const currentYear = now.getFullYear()
           const monthDocId = `${currentMonth}_${currentYear}`
 
@@ -2121,6 +2183,11 @@ const AmaLeadsPage = () => {
               })
 
               console.log(`Successfully updated targets for ${assignedSalesPerson}`)
+              
+              // Verify the update worked by reading the document back
+              const verifyDoc = await getDoc(targetRef)
+              const verifyData = verifyDoc.data()
+              console.log(`🔍 Verification: Target document now has convertedLeads: ${verifyData?.convertedLeads}`)
             } else {
               // User's target document doesn't exist, create it with convertedLeads = 1
               console.log(`Creating new target document for ${assignedSalesPerson} with convertedLeads = 1`)
@@ -2170,12 +2237,17 @@ const AmaLeadsPage = () => {
         } else {
           console.log("🔍 No assigned salesperson found, skipping targets update")
         }
+        console.log("🔍 ===== TARGET UPDATE PROCESS COMPLETED =====")
       } catch (targetsError) {
         console.error("❌ Error updating targets (lead conversion still successful):", targetsError)
-        toast.warning(
+        console.error("❌ Targets error details:", {
+          error: targetsError,
+          leadId: conversionLeadId
+        })
+        toast.error(
           <div>
             <p className="font-medium">Lead Converted Successfully</p>
-            <p className="text-sm">Note: Targets count may not have been updated due to a system error</p>
+            <p className="text-sm">Warning: Targets count update failed - {(targetsError as Error).message || 'Unknown error'}</p>
           </div>,
           {
             position: "top-right",
@@ -2241,6 +2313,7 @@ const AmaLeadsPage = () => {
       setShowConversionModal(false)
       setConversionLeadId("")
       setConversionLeadName("")
+      console.log("🔍 ===== handleConversionConfirm END =====")
     }
   }
 

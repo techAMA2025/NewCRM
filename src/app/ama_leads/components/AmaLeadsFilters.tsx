@@ -105,7 +105,6 @@ const AmaLeadsFilters = ({
             if (!isNaN(phoneAsNumber)) {
               const phoneQuery = query(collection(crmDb, "ama_leads"), where("mobile", "==", phoneAsNumber), limit(50))
               const phoneSnapshot = await getDocs(phoneQuery)
-              console.log("📱 Phone exact match results:", phoneSnapshot.docs.length)
               phoneSnapshot.docs.forEach((doc) => {
                 allResults.set(doc.id, { id: doc.id, ...doc.data(), searchRelevance: 3 })
               })
@@ -114,7 +113,6 @@ const AmaLeadsFilters = ({
             // Also try partial phone matching with string conversion
             const phoneStringQuery = query(collection(crmDb, "ama_leads"), orderBy("mobile"), limit(200))
             const phoneStringSnapshot = await getDocs(phoneStringQuery)
-            console.log("📱 Phone partial search through:", phoneStringSnapshot.docs.length, "leads")
             phoneStringSnapshot.docs.forEach((doc) => {
               const data = doc.data()
               const docPhone = normalizePhoneNumber(data.mobile || "")
@@ -123,7 +121,6 @@ const AmaLeadsFilters = ({
               }
             })
           } catch (error) {
-            console.log("Phone search error:", error)
           }
         }
 
@@ -138,14 +135,11 @@ const AmaLeadsFilters = ({
             limit(50),
           )
           const nameSnapshot = await getDocs(nameQuery)
-          console.log("📝 Name lowercase search results:", nameSnapshot.docs.length)
           nameSnapshot.docs.forEach((doc) => {
             const data = doc.data()
-            console.log("📝 Checking name:", data.name, "against:", searchTermLower)
             if (data.name?.toLowerCase().includes(searchTermLower)) {
               const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2
               allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
-              console.log("✅ Name match found:", data.name)
             }
           })
 
@@ -159,19 +153,15 @@ const AmaLeadsFilters = ({
               limit(50),
             )
             const properCaseSnapshot = await getDocs(properCaseQuery)
-            console.log("📝 Name proper case search results:", properCaseSnapshot.docs.length)
             properCaseSnapshot.docs.forEach((doc) => {
               const data = doc.data()
-              console.log("📝 Checking proper case name:", data.name, "against:", searchTerm)
               if (data.name?.toLowerCase().includes(searchTermLower)) {
                 const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2
                 allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
-                console.log("✅ Proper case name match found:", data.name)
               }
             })
           }
         } catch (error) {
-          console.log("Name search error:", error)
         }
 
         // Search by email (case-insensitive)
@@ -193,14 +183,12 @@ const AmaLeadsFilters = ({
               }
             })
           } catch (error) {
-            console.log("Email search error:", error)
           }
         }
 
         // Enhanced fallback search: Get more recent leads and filter thoroughly
         if (allResults.size === 0 || searchTermLower.length <= 3) {
           try {
-            console.log("🔄 Running fallback search...")
             const fallbackQuery = query(
               collection(crmDb, "ama_leads"),
               orderBy("date", "desc"),
@@ -240,7 +228,6 @@ const AmaLeadsFilters = ({
               }
             })
           } catch (error) {
-            console.log("Fallback search error:", error)
           }
         }
 
@@ -249,7 +236,6 @@ const AmaLeadsFilters = ({
           .sort((a, b) => (b.searchRelevance || 0) - (a.searchRelevance || 0))
           .slice(0, 100) // Limit final results
 
-        console.log("✅ Total search results:", searchResults.length)
 
         // Transform results to match AMA Lead type
         const transformedResults = searchResults.map((data) => {
@@ -288,17 +274,7 @@ const AmaLeadsFilters = ({
         onSearchResults?.(transformedResults)
 
         if (transformedResults.length > 0) {
-          console.log(
-            "✅ Sample results:",
-            transformedResults.slice(0, 3).map((r) => ({
-              name: r.name,
-              email: r.email,
-              phone: r.phone,
-              source: r.source,
-            })),
-          )
         } else {
-          console.log("📭 No search results found for:", searchTerm)
         }
       } catch (error) {
         console.error("❌ Search error:", error)

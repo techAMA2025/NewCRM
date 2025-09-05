@@ -75,19 +75,16 @@ const AmaStatusCell = ({
   onStatusChangeToConverted,
   onStatusChangeConfirmation,
 }: AmaStatusCellProps) => {
-  console.log('🔍 AmaStatusCell props:', { 
-    leadId: lead.id, 
-    leadName: lead.name, 
-    hasOnStatusChangeToConverted: !!onStatusChangeToConverted,
-    onStatusChangeToConverted: onStatusChangeToConverted,
-    statusOptions: statusOptions,
-    currentStatus: lead.status
-  });
   
   const canEdit = canUserEditLead(lead);
   
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    console.log('🔍 ===== AmaStatusCell handleStatusChange START =====')
+    console.log('🔍 Dropdown change event triggered:', e.target.value)
+    console.log('🔍 Event details:', { target: e.target, value: e.target.value })
+    
     if (!canEdit) {
+      console.log('🔍 User cannot edit this lead, showing error toast')
       toast.error('You do not have permission to edit this lead');
       return;
     }
@@ -100,7 +97,8 @@ const AmaStatusCell = ({
       currentStatus, 
       leadId: lead.id, 
       leadName: lead.name,
-      hasOnStatusChangeToConverted: !!onStatusChangeToConverted 
+      hasOnStatusChangeToConverted: !!onStatusChangeToConverted,
+      canEdit
     });
 
     if (newStatus === 'Callback' && onStatusChangeToCallback) {
@@ -115,7 +113,9 @@ const AmaStatusCell = ({
 
     if (newStatus === 'Converted' && onStatusChangeToConverted) {
       console.log('🔍 AmaStatusCell: Calling onStatusChangeToConverted with:', { leadId: lead.id, leadName: lead.name });
+      console.log('🔍 AmaStatusCell: onStatusChangeToConverted function:', onStatusChangeToConverted);
       onStatusChangeToConverted(lead.id, lead.name || 'Unknown Lead');
+      console.log('🔍 AmaStatusCell: onStatusChangeToConverted called successfully');
       return;
     } else if (newStatus === 'Converted' && !onStatusChangeToConverted) {
       console.log('🔍 AmaStatusCell: newStatus is Converted but onStatusChangeToConverted is not available');
@@ -127,16 +127,19 @@ const AmaStatusCell = ({
       return;
     }
 
+    // If changing from "Converted" to another status, use confirmation modal to handle target decrement
+    if (currentStatus === 'Converted' && newStatus !== 'Converted' && onStatusChangeConfirmation) {
+      console.log('🔍 AmaStatusCell: Using confirmation modal for conversion removal');
+      onStatusChangeConfirmation(lead.id, lead.name || 'Unknown Lead', newStatus);
+      return;
+    }
+
     // For all other statuses, update directly without confirmation
     console.log('🔍 AmaStatusCell: Updating status directly without confirmation for:', newStatus);
     const updateData: any = { status: newStatus };
-    if (currentStatus === 'Converted' && newStatus !== 'Converted') {
-      updateData.convertedAt = null;
-      updateData.convertedToClient = null;
-      toast.info('Conversion removed; status updated');
-    }
 
     await updateLead(lead.id, updateData);
+    console.log('🔍 ===== AmaStatusCell handleStatusChange END =====')
   };
 
   return (
@@ -166,7 +169,6 @@ const AmaStatusCell = ({
           title={!canEdit ? 'You do not have permission to edit this lead' : ''}
         >
           {statusOptions.map((status) => {
-            console.log('🔍 AmaStatusCell: Status option:', status, 'for lead:', lead.name);
             return (
               <option key={status} value={status}>
                 {status}
