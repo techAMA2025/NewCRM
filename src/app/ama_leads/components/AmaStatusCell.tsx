@@ -75,6 +75,14 @@ const AmaStatusCell = ({
   onStatusChangeToConverted,
   onStatusChangeConfirmation,
 }: AmaStatusCellProps) => {
+  console.log('🔍 AmaStatusCell props:', { 
+    leadId: lead.id, 
+    leadName: lead.name, 
+    hasOnStatusChangeToConverted: !!onStatusChangeToConverted,
+    onStatusChangeToConverted: onStatusChangeToConverted,
+    statusOptions: statusOptions,
+    currentStatus: lead.status
+  });
   
   const canEdit = canUserEditLead(lead);
   
@@ -86,6 +94,14 @@ const AmaStatusCell = ({
     
     const newStatus = e.target.value;
     const currentStatus = lead.status || 'Select Status';
+    
+    console.log('🔍 AmaStatusCell handleStatusChange:', { 
+      newStatus, 
+      currentStatus, 
+      leadId: lead.id, 
+      leadName: lead.name,
+      hasOnStatusChangeToConverted: !!onStatusChangeToConverted 
+    });
 
     if (newStatus === 'Callback' && onStatusChangeToCallback) {
       onStatusChangeToCallback(lead.id, lead.name || 'Unknown Lead');
@@ -97,13 +113,22 @@ const AmaStatusCell = ({
       return;
     }
 
-    // For Converted, Interested, and Not Answering statuses, use the confirmation modal
-    if ((newStatus === 'Converted' || newStatus === 'Interested' || newStatus === 'Not Answering') && onStatusChangeConfirmation) {
+    if (newStatus === 'Converted' && onStatusChangeToConverted) {
+      console.log('🔍 AmaStatusCell: Calling onStatusChangeToConverted with:', { leadId: lead.id, leadName: lead.name });
+      onStatusChangeToConverted(lead.id, lead.name || 'Unknown Lead');
+      return;
+    } else if (newStatus === 'Converted' && !onStatusChangeToConverted) {
+      console.log('🔍 AmaStatusCell: newStatus is Converted but onStatusChangeToConverted is not available');
+    }
+
+    // For Interested and Not Answering statuses, use the confirmation modal
+    if ((newStatus === 'Interested' || newStatus === 'Not Answering') && onStatusChangeConfirmation) {
       onStatusChangeConfirmation(lead.id, lead.name || 'Unknown Lead', newStatus);
       return;
     }
 
     // For all other statuses, update directly without confirmation
+    console.log('🔍 AmaStatusCell: Updating status directly without confirmation for:', newStatus);
     const updateData: any = { status: newStatus };
     if (currentStatus === 'Converted' && newStatus !== 'Converted') {
       updateData.convertedAt = null;
@@ -128,7 +153,10 @@ const AmaStatusCell = ({
         {/* Status Change Dropdown */}
         <select
           value={getDisplayStatus(lead.status)}
-          onChange={handleStatusChange}
+          onChange={(e) => {
+            console.log('🔍 AmaStatusCell: Select onChange triggered for lead:', lead.name, 'new value:', e.target.value);
+            handleStatusChange(e);
+          }}
           disabled={!canEdit}
           className={`w-full px-2 py-1 rounded-lg border text-xs ${
             canEdit 
@@ -137,11 +165,14 @@ const AmaStatusCell = ({
           }`}
           title={!canEdit ? 'You do not have permission to edit this lead' : ''}
         >
-          {statusOptions.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
+          {statusOptions.map((status) => {
+            console.log('🔍 AmaStatusCell: Status option:', status, 'for lead:', lead.name);
+            return (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            );
+          })}
         </select>
       </div>
     </td>
