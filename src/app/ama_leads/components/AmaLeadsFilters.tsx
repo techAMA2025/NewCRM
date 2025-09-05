@@ -1,41 +1,43 @@
-"use client";
+"use client"
 
-import { FaFilter, FaUserTie } from 'react-icons/fa';
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db as crmDb } from '@/firebase/firebase';
-import { debounce } from 'lodash';
-import CustomDateInput from './CustomDateInput';
+import type React from "react"
+
+import { FaFilter, FaUserTie } from "react-icons/fa"
+import { useEffect, useState, useCallback, useMemo } from "react"
+import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"
+import { db as crmDb } from "@/firebase/firebase"
+import { debounce } from "lodash"
+import CustomDateInput from "./CustomDateInput"
 
 type LeadsFiltersProps = {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  sourceFilter: string;
-  setSourceFilter: (source: string) => void;
-  statusFilter: string;
-  setStatusFilter: (status: string) => void;
-  salesPersonFilter: string;
-  setSalesPersonFilter: (salesperson: string) => void;
-  statusOptions: string[];
-  teamMembers: any[];
-  userRole: string;
-  filteredLeads: any[];
-  leads: any[];
-  totalLeadsCount: number;
-  convertedFilter: boolean | null;
-  setConvertedFilter: (converted: boolean | null) => void;
-  fromDate: string;
-  setFromDate: (date: string) => void;
-  toDate: string;
-  setToDate: (date: string) => void;
+  searchQuery: string
+  setSearchQuery: (query: string) => void
+  sourceFilter: string
+  setSourceFilter: (source: string) => void
+  statusFilter: string
+  setStatusFilter: (status: string) => void
+  salesPersonFilter: string
+  setSalesPersonFilter: (salesperson: string) => void
+  statusOptions: string[]
+  teamMembers: any[]
+  userRole: string
+  filteredLeads: any[]
+  leads: any[]
+  totalLeadsCount: number
+  convertedFilter: boolean | null
+  setConvertedFilter: (converted: boolean | null) => void
+  fromDate: string
+  setFromDate: (date: string) => void
+  toDate: string
+  setToDate: (date: string) => void
   // New search props
-  onSearchResults?: (results: any[]) => void;
-  isSearching?: boolean;
-  setIsSearching?: (searching: boolean) => void;
-  allLeadsCount?: number;
-  filteredLeadsCount?: number;
-  onSearchCleared?: () => void;
-};
+  onSearchResults?: (results: any[]) => void
+  isSearching?: boolean
+  setIsSearching?: (searching: boolean) => void
+  allLeadsCount?: number
+  filteredLeadsCount?: number
+  onSearchCleared?: () => void
+}
 
 const AmaLeadsFilters = ({
   searchQuery,
@@ -66,72 +68,62 @@ const AmaLeadsFilters = ({
   filteredLeadsCount = 0,
   onSearchCleared,
 }: LeadsFiltersProps) => {
-  const [salesUsers, setSalesUsers] = useState<{id: string, name: string}[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
+  const [salesUsers, setSalesUsers] = useState<{ id: string; name: string }[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
   // Enhanced search implementation
-  const [searchInput, setSearchInput] = useState(searchQuery);
-  const [searchResultsCount, setSearchResultsCount] = useState(0);
+  const [searchInput, setSearchInput] = useState(searchQuery)
+  const [searchResultsCount, setSearchResultsCount] = useState(0)
 
   // Normalize phone number for search
   const normalizePhoneNumber = (phone: string | number): string => {
-    return String(phone).replace(/[\s\-$$$$+]/g, "");
-  };
+    return String(phone).replace(/[\s\-$$$$+]/g, "")
+  }
 
   // Perform database search using existing fields
   const performDatabaseSearch = useCallback(
     async (searchTerm: string) => {
       if (!searchTerm.trim()) {
-        onSearchResults?.([]);
-        setSearchResultsCount(0);
-        return;
+        onSearchResults?.([])
+        setSearchResultsCount(0)
+        return
       }
 
-      setIsSearching(true);
+      setIsSearching(true)
 
       try {
-        const searchTermLower = searchTerm.toLowerCase().trim();
-        const normalizedPhone = normalizePhoneNumber(searchTerm);
+        const searchTermLower = searchTerm.toLowerCase().trim()
+        const normalizedPhone = normalizePhoneNumber(searchTerm)
 
-    
-
-        const allResults = new Map(); // Use Map to avoid duplicates
+        const allResults = new Map() // Use Map to avoid duplicates
 
         // Search by phone number (handle both string and number fields)
         if (normalizedPhone.length >= 10) {
           try {
             // Try searching mobile as number first
-            const phoneAsNumber = parseInt(normalizedPhone);
+            const phoneAsNumber = Number.parseInt(normalizedPhone)
             if (!isNaN(phoneAsNumber)) {
-              const phoneQuery = query(
-                collection(crmDb, "ama_leads"),
-                where("mobile", "==", phoneAsNumber),
-                limit(50),
-              );
-              const phoneSnapshot = await getDocs(phoneQuery);
-              console.log("📱 Phone exact match results:", phoneSnapshot.docs.length);
+              const phoneQuery = query(collection(crmDb, "ama_leads"), where("mobile", "==", phoneAsNumber), limit(50))
+              const phoneSnapshot = await getDocs(phoneQuery)
+              console.log("📱 Phone exact match results:", phoneSnapshot.docs.length)
               phoneSnapshot.docs.forEach((doc) => {
-                allResults.set(doc.id, { id: doc.id, ...doc.data(), searchRelevance: 3 });
-              });
+                allResults.set(doc.id, { id: doc.id, ...doc.data(), searchRelevance: 3 })
+              })
             }
 
             // Also try partial phone matching with string conversion
-            const phoneStringQuery = query(
-              collection(crmDb, "ama_leads"),
-              orderBy("mobile"),
-              limit(200),
-            );
-            const phoneStringSnapshot = await getDocs(phoneStringQuery);
-            console.log("📱 Phone partial search through:", phoneStringSnapshot.docs.length, "leads");
+            const phoneStringQuery = query(collection(crmDb, "ama_leads"), orderBy("mobile"), limit(200))
+            const phoneStringSnapshot = await getDocs(phoneStringQuery)
+            console.log("📱 Phone partial search through:", phoneStringSnapshot.docs.length, "leads")
             phoneStringSnapshot.docs.forEach((doc) => {
-              const data = doc.data();
-              const docPhone = normalizePhoneNumber(data.mobile || "");
+              const data = doc.data()
+              const docPhone = normalizePhoneNumber(data.mobile || "")
               if (docPhone.includes(normalizedPhone)) {
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: 2 });
+                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: 2 })
               }
-            });
+            })
           } catch (error) {
-            console.log("Phone search error:", error);
+            console.log("Phone search error:", error)
           }
         }
 
@@ -144,18 +136,18 @@ const AmaLeadsFilters = ({
             where("name", "<=", searchTermLower + "\uf8ff"),
             orderBy("name"),
             limit(50),
-          );
-          const nameSnapshot = await getDocs(nameQuery);
-          console.log("📝 Name lowercase search results:", nameSnapshot.docs.length);
+          )
+          const nameSnapshot = await getDocs(nameQuery)
+          console.log("📝 Name lowercase search results:", nameSnapshot.docs.length)
           nameSnapshot.docs.forEach((doc) => {
-            const data = doc.data();
-            console.log("📝 Checking name:", data.name, "against:", searchTermLower);
+            const data = doc.data()
+            console.log("📝 Checking name:", data.name, "against:", searchTermLower)
             if (data.name?.toLowerCase().includes(searchTermLower)) {
-              const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2;
-              allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
-              console.log("✅ Name match found:", data.name);
+              const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2
+              allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
+              console.log("✅ Name match found:", data.name)
             }
-          });
+          })
 
           // Also try original case for names stored in proper case
           if (searchTerm.length > 0) {
@@ -165,21 +157,21 @@ const AmaLeadsFilters = ({
               where("name", "<=", searchTerm + "\uf8ff"),
               orderBy("name"),
               limit(50),
-            );
-            const properCaseSnapshot = await getDocs(properCaseQuery);
-            console.log("📝 Name proper case search results:", properCaseSnapshot.docs.length);
+            )
+            const properCaseSnapshot = await getDocs(properCaseQuery)
+            console.log("📝 Name proper case search results:", properCaseSnapshot.docs.length)
             properCaseSnapshot.docs.forEach((doc) => {
-              const data = doc.data();
-              console.log("📝 Checking proper case name:", data.name, "against:", searchTerm);
+              const data = doc.data()
+              console.log("📝 Checking proper case name:", data.name, "against:", searchTerm)
               if (data.name?.toLowerCase().includes(searchTermLower)) {
-                const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2;
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
-                console.log("✅ Proper case name match found:", data.name);
+                const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 3 : 2
+                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
+                console.log("✅ Proper case name match found:", data.name)
               }
-            });
+            })
           }
         } catch (error) {
-          console.log("Name search error:", error);
+          console.log("Name search error:", error)
         }
 
         // Search by email (case-insensitive)
@@ -191,81 +183,79 @@ const AmaLeadsFilters = ({
               where("email", "<=", searchTermLower + "\uf8ff"),
               orderBy("email"),
               limit(50),
-            );
-            const emailSnapshot = await getDocs(emailQuery);
+            )
+            const emailSnapshot = await getDocs(emailQuery)
             emailSnapshot.docs.forEach((doc) => {
-              const data = doc.data();
+              const data = doc.data()
               if (data.email?.toLowerCase().includes(searchTermLower)) {
-                const relevance = data.email?.toLowerCase().startsWith(searchTermLower) ? 3 : 2;
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
+                const relevance = data.email?.toLowerCase().startsWith(searchTermLower) ? 3 : 2
+                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
               }
-            });
+            })
           } catch (error) {
-            console.log("Email search error:", error);
+            console.log("Email search error:", error)
           }
         }
 
         // Enhanced fallback search: Get more recent leads and filter thoroughly
         if (allResults.size === 0 || searchTermLower.length <= 3) {
           try {
-            console.log("🔄 Running fallback search...");
+            console.log("🔄 Running fallback search...")
             const fallbackQuery = query(
               collection(crmDb, "ama_leads"),
               orderBy("date", "desc"),
               limit(1500), // Increased limit for better search coverage
-            );
-            const fallbackSnapshot = await getDocs(fallbackQuery);
-    
-            
-            fallbackSnapshot.docs.forEach((doc) => {
-              const data = doc.data();
-              const name = (data.name || "").toString().toLowerCase();
-              const email = (data.email || "").toString().toLowerCase();
-              const phone = normalizePhoneNumber(data.mobile || "");
+            )
+            const fallbackSnapshot = await getDocs(fallbackQuery)
 
-              let matched = false;
-              let relevance = 1;
+            fallbackSnapshot.docs.forEach((doc) => {
+              const data = doc.data()
+              const name = (data.name || "").toString().toLowerCase()
+              const email = (data.email || "").toString().toLowerCase()
+              const phone = normalizePhoneNumber(data.mobile || "")
+
+              let matched = false
+              let relevance = 1
 
               // Name matching
               if (name.includes(searchTermLower)) {
-                matched = true;
-                relevance = name.startsWith(searchTermLower) ? 2 : 1;
+                matched = true
+                relevance = name.startsWith(searchTermLower) ? 2 : 1
               }
 
               // Email matching
               if (email.includes(searchTermLower)) {
-                matched = true;
-                relevance = Math.max(relevance, email.startsWith(searchTermLower) ? 2 : 1);
+                matched = true
+                relevance = Math.max(relevance, email.startsWith(searchTermLower) ? 2 : 1)
               }
 
               // Phone matching
               if (phone.includes(normalizedPhone) && normalizedPhone.length >= 4) {
-                matched = true;
-                relevance = Math.max(relevance, 2);
+                matched = true
+                relevance = Math.max(relevance, 2)
               }
 
               if (matched) {
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance });
+                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
               }
-            });
-    
+            })
           } catch (error) {
-            console.log("Fallback search error:", error);
+            console.log("Fallback search error:", error)
           }
         }
 
         // Convert Map to Array and sort by relevance
         const searchResults = Array.from(allResults.values())
           .sort((a, b) => (b.searchRelevance || 0) - (a.searchRelevance || 0))
-          .slice(0, 100); // Limit final results
+          .slice(0, 100) // Limit final results
 
-        console.log("✅ Total search results:", searchResults.length);
+        console.log("✅ Total search results:", searchResults.length)
 
         // Transform results to match AMA Lead type
         const transformedResults = searchResults.map((data) => {
           // Treat "-" status as "No Status"
-          const normalizedStatus = (data.status === "-" || data.status === "–") ? "No Status" : (data.status || "No Status");
-          
+          const normalizedStatus = data.status === "-" || data.status === "–" ? "No Status" : data.status || "No Status"
+
           return {
             id: data.id,
             name: data.name || "",
@@ -288,88 +278,90 @@ const AmaLeadsFilters = ({
             debt_Range: data.debt_range || data.debt_Range, // Handle both cases
             debt_range: data.debt_range,
             debtRange: data.debt_range,
-            synced_at: data.date ? new Date(data.date) : (data.synced_date ? new Date(data.synced_date) : undefined),
+            synced_at: data.date ? new Date(data.date) : data.synced_date ? new Date(data.synced_date) : undefined,
             date: data.date || data.synced_date || Date.now(),
             income: data.income,
-          };
-        });
+          }
+        })
 
-        setSearchResultsCount(transformedResults.length);
-        onSearchResults?.(transformedResults);
+        setSearchResultsCount(transformedResults.length)
+        onSearchResults?.(transformedResults)
 
         if (transformedResults.length > 0) {
-          console.log("✅ Sample results:", transformedResults.slice(0, 3).map(r => ({ 
-            name: r.name, 
-            email: r.email, 
-            phone: r.phone,
-            source: r.source 
-          })));
+          console.log(
+            "✅ Sample results:",
+            transformedResults.slice(0, 3).map((r) => ({
+              name: r.name,
+              email: r.email,
+              phone: r.phone,
+              source: r.source,
+            })),
+          )
         } else {
-          console.log("📭 No search results found for:", searchTerm);
+          console.log("📭 No search results found for:", searchTerm)
         }
-
       } catch (error) {
-        console.error("❌ Search error:", error);
-        onSearchResults?.([]);
-        setSearchResultsCount(0);
+        console.error("❌ Search error:", error)
+        onSearchResults?.([])
+        setSearchResultsCount(0)
       } finally {
-        setIsSearching(false);
+        setIsSearching(false)
       }
     },
     [onSearchResults, setIsSearching],
-  );
+  )
 
   // Debounced search function
   const debouncedSearch = useMemo(
     () =>
       debounce((value: string) => {
         if (value.trim()) {
-          performDatabaseSearch(value);
+          performDatabaseSearch(value)
         } else {
-          setSearchQuery(value);
-          onSearchResults?.([]);
-          setSearchResultsCount(0);
+          setSearchQuery(value)
+          onSearchResults?.([])
+          setSearchResultsCount(0)
         }
       }, 500),
     [performDatabaseSearch, setSearchQuery, onSearchResults],
-  );
+  )
 
   // Update local search state when parent state changes
   useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
+    setSearchInput(searchQuery)
+  }, [searchQuery])
 
   // Handle search input changes
   const handleSearchInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setSearchInput(value);
-      setSearchQuery(value); // Update parent state immediately for UI
-      debouncedSearch(value);
+      const value = e.target.value
+      setSearchInput(value)
+      setSearchQuery(value) // Update parent state immediately for UI
+      debouncedSearch(value)
     },
     [debouncedSearch, setSearchQuery],
-  );
-  
+  )
+
   // Clear search function
   const clearSearch = useCallback(() => {
-    setSearchInput("");
-    setSearchQuery("");
-    onSearchResults?.([]);
-    setSearchResultsCount(0);
-    debouncedSearch.cancel();
-    onSearchCleared?.();
-  }, [setSearchQuery, onSearchResults, debouncedSearch, onSearchCleared]);
+    setSearchInput("")
+    setSearchQuery("")
+    onSearchResults?.([])
+    setSearchResultsCount(0)
+    debouncedSearch.cancel()
+    onSearchCleared?.()
+  }, [setSearchQuery, onSearchResults, debouncedSearch, onSearchCleared])
 
   // Clear all filters
   const clearAllFilters = useCallback(() => {
-    clearSearch();
-    setSourceFilter("all");
-    setStatusFilter("all");
-    setSalesPersonFilter("all");
-    setConvertedFilter(null);
-    setFromDate("");
-    setToDate("");
-  }, [clearSearch, setSourceFilter, setStatusFilter, setSalesPersonFilter, setConvertedFilter, setFromDate, setToDate]);
+    clearSearch()
+    setSourceFilter("all")
+    setStatusFilter("all")
+    setSalesPersonFilter("all")
+    setConvertedFilter(null)
+    setFromDate("")
+    setToDate("")
+  }, [clearSearch, setSourceFilter, setStatusFilter, setSalesPersonFilter, setConvertedFilter, setFromDate, setToDate])
 
   // Check if any filters are active - memoized
   const hasActiveFilters = useMemo(() => {
@@ -381,52 +373,52 @@ const AmaLeadsFilters = ({
       convertedFilter !== null ||
       fromDate ||
       toDate
-    );
-  }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate]);
+    )
+  }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate])
 
   // Fetch sales users
   useEffect(() => {
     const fetchSalesUsers = async () => {
       try {
-        setIsLoading(true);
-        const salesQuery = query(collection(crmDb, 'users'), where('role', '==', 'sales'));
-        const querySnapshot = await getDocs(salesQuery);
-        
-        const users = querySnapshot.docs.map(doc => {
-          const data = doc.data() as any;
-          const fullName = data.firstName && data.lastName 
-            ? `${data.firstName} ${data.lastName}`
-            : data.firstName || data.lastName || 'Unknown';
-          
-        
+        setIsLoading(true)
+        const salesQuery = query(collection(crmDb, "users"), where("role", "==", "sales"))
+        const querySnapshot = await getDocs(salesQuery)
+
+        const users = querySnapshot.docs.map((doc) => {
+          const data = doc.data() as any
+          const fullName =
+            data.firstName && data.lastName
+              ? `${data.firstName} ${data.lastName}`
+              : data.firstName || data.lastName || "Unknown"
+
           return {
             id: doc.id,
             name: fullName,
-          };
-        });
-        
-        setSalesUsers(users);
-      } catch (error) {
-        console.error('Error fetching sales users:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+          }
+        })
 
-    fetchSalesUsers();
-  }, []);
+        setSalesUsers(users)
+      } catch (error) {
+        console.error("Error fetching sales users:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSalesUsers()
+  }, [])
 
   // Format date for input max attribute
   const today = useMemo(() => {
-    const date = new Date();
-    return date.toISOString().split('T')[0];
-  }, []);
+    const date = new Date()
+    return date.toISOString().split("T")[0]
+  }, [])
 
   // Clear date filters
   const clearDateFilters = () => {
-    setFromDate('');
-    setToDate('');
-  };
+    setFromDate("")
+    setToDate("")
+  }
 
   return (
     <div className="space-y-4">
@@ -493,7 +485,8 @@ const AmaLeadsFilters = ({
                   </span>
                 ) : (
                   <>
-                    Found <span className="text-[#D2A02A] font-medium">{searchResultsCount}</span> results for "{searchQuery}"
+                    Found <span className="text-[#D2A02A] font-medium">{searchResultsCount}</span> results for "
+                    {searchQuery}"
                     {searchResultsCount > 0 && <span className="text-[#D2A02A] ml-2">✓ Database search complete</span>}
                   </>
                 )}
@@ -509,30 +502,33 @@ const AmaLeadsFilters = ({
           </div>
         )}
       </div>
-      
+
       {/* Filters section with improved layout */}
       <div className="bg-[#ffffff] border border-[#5A4C33]/10 rounded-lg p-2 shadow-sm">
         <div className="flex items-center mb-3">
           <FaFilter className="text-[#5A4C33]/70 mr-2" />
           <span className="text-sm font-medium text-[#5A4C33]">Filters</span>
-          
-     
-          
+
           {/* Results counter moved to the right */}
           <div className="ml-auto flex items-center gap-4">
             <p className="text-sm text-[#5A4C33]/70">
               Showing{" "}
               {/* <span className="text-[#D2A02A] font-medium">{searchQuery ? searchResultsCount : leads.length}</span>{" "} */}
               {/* of  */}
-              <span className="text-[#D2A02A] font-medium">{(() => {
-                const countToDisplay = searchQuery ? searchResultsCount : allLeadsCount;
-                
-                return countToDisplay;
-              })()}</span> leads
+              <span className="text-[#D2A02A] font-medium">
+                {(() => {
+                  const countToDisplay = searchQuery ? searchResultsCount : allLeadsCount
+
+                  return countToDisplay
+                })()}
+              </span>{" "}
+              leads
               {searchQuery && <span className="text-[#D2A02A] ml-1">(from database search)</span>}
-              {salesPersonFilter && salesPersonFilter !== 'all' && salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '') && (
-                <span className="ml-2 text-[#D2A02A] text-xs">(My Leads)</span>
-              )}
+              {salesPersonFilter &&
+                salesPersonFilter !== "all" &&
+                salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "") && (
+                  <span className="ml-2 text-[#D2A02A] text-xs">(My Leads)</span>
+                )}
             </p>
 
             {hasActiveFilters && (
@@ -546,14 +542,14 @@ const AmaLeadsFilters = ({
             )}
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Source Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Source</label>
             <select
               value={sourceFilter}
-              onChange={e => setSourceFilter(e.target.value)}
+              onChange={(e) => setSourceFilter(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
             >
               <option value="all">All Sources</option>
@@ -562,43 +558,47 @@ const AmaLeadsFilters = ({
               <option value="settleloans">SettleLoans</option>
             </select>
           </div>
-          
+
           {/* Status Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Status</label>
             <select
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+              onChange={(e) => setStatusFilter(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
             >
               <option value="all">All Status</option>
               <option value="No Status">No Status</option>
               {statusOptions
-                .filter(status => status !== 'No Status')
-                .map(status => (
-                  <option key={status} value={status}>{status}</option>
+                .filter((status) => status !== "No Status")
+                .map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
                 ))}
             </select>
           </div>
 
-       
-          
           {/* Salesperson Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Salesperson</label>
             <div className="relative">
               <select
                 value={salesPersonFilter}
-                onChange={e => setSalesPersonFilter(e.target.value)}
+                onChange={(e) => setSalesPersonFilter(e.target.value)}
                 className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
               >
                 <option value="all">All Salespersons</option>
                 <option value="">Unassigned</option>
                 {isLoading ? (
-                  <option value="loading" disabled>Loading...</option>
+                  <option value="loading" disabled>
+                    Loading...
+                  </option>
                 ) : (
-                  salesUsers.map(user => (
-                    <option key={user.id} value={user.name}>{user.name}</option>
+                  salesUsers.map((user) => (
+                    <option key={user.id} value={user.name}>
+                      {user.name}
+                    </option>
                   ))
                 )}
               </select>
@@ -607,7 +607,7 @@ const AmaLeadsFilters = ({
               </div>
             </div>
           </div>
-          
+
           {/* Date Range Filters */}
           <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <div className="flex space-x-6">
@@ -621,7 +621,7 @@ const AmaLeadsFilters = ({
                   className="w-full"
                 />
               </div>
-              
+
               <div className="flex-1 min-w-[180px] space-y-1">
                 <CustomDateInput
                   value={toDate}
@@ -633,66 +633,75 @@ const AmaLeadsFilters = ({
                   className="w-full"
                 />
               </div>
-              
+
               {/* My Leads Toggle Switch */}
               <div className="space-y-1 flex-shrink-0">
                 <label className="block text-xs text-[#5A4C33]/70">My Leads</label>
                 <div className="flex items-center h-[38px]">
                   <button
                     onClick={() => {
-                      const currentUserName = typeof window !== 'undefined' ? localStorage.getItem('userName') : '';
+                      const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") : ""
                       if (currentUserName) {
                         if (salesPersonFilter === currentUserName) {
-                          setSalesPersonFilter('all');
+                          setSalesPersonFilter("all")
                         } else {
-                          setSalesPersonFilter(currentUserName);
+                          setSalesPersonFilter(currentUserName)
                         }
                       }
                     }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#D2A02A] focus:ring-offset-2 ${
-                      salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '')
-                        ? 'bg-[#D2A02A]'
-                        : 'bg-[#5A4C33]'
+                      salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
+                        ? "bg-[#D2A02A]"
+                        : "bg-[#5A4C33]"
                     }`}
                     type="button"
                     role="switch"
-                    aria-checked={salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '')}
+                    aria-checked={
+                      salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
+                    }
                     title={
-                      salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '')
-                        ? 'Turn off My Leads filter'
-                        : 'Turn on My Leads filter'
+                      salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
+                        ? "Turn off My Leads filter"
+                        : "Turn on My Leads filter"
                     }
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                        salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '')
-                          ? 'translate-x-6'
-                          : 'translate-x-1'
+                        salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
+                          ? "translate-x-6"
+                          : "translate-x-1"
                       }`}
                     />
                   </button>
-                  <span className={`ml-2 text-xs ${
-                    salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '')
-                      ? 'text-[#D2A02A] font-medium'
-                      : 'text-[#5A4C33]'
-                  }`}>
-                    {salesPersonFilter === (typeof window !== 'undefined' ? localStorage.getItem('userName') : '')
-                      ? 'ON'
-                      : 'OFF'
-                    }
+                  <span
+                    className={`ml-2 text-xs ${
+                      salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
+                        ? "text-[#D2A02A] font-medium"
+                        : "text-[#5A4C33]"
+                    }`}
+                  >
+                    {salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
+                      ? "ON"
+                      : "OFF"}
                   </span>
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-end">
               {(fromDate || toDate) && (
-                <button 
+                <button
                   onClick={clearDateFilters}
                   className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-[#ffffff] bg-[#D2A02A] hover:bg-[#B8911E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D2A02A]"
                   type="button"
                 >
-                  <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg
+                    className="mr-2 h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Clear date filters
@@ -703,7 +712,7 @@ const AmaLeadsFilters = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AmaLeadsFilters; 
+export default AmaLeadsFilters

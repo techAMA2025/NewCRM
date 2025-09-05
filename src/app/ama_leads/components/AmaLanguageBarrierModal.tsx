@@ -1,42 +1,45 @@
-import React, { useState } from 'react';
-import { toast } from 'react-toastify';
+"use client"
+
+import type React from "react"
+import { useState } from "react"
+import { toast } from "react-toastify"
 
 type AmaLanguageBarrierModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (language: string) => Promise<void>;
-  leadId: string;
-  leadName: string;
-  existingLanguage?: string;
-};
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: (language: string) => Promise<void>
+  leadId: string
+  leadName: string
+  existingLanguage?: string
+}
 
 // List of Indian languages
 const indianLanguages = [
-  'Hindi',
-  'Bengali',
-  'Telugu',
-  'Marathi',
-  'Tamil',
-  'Gujarati',
-  'Kannada',
-  'Malayalam',
-  'Punjabi',
-  'Odia',
-  'Assamese',
-  'Maithili',
-  'Santali',
-  'Kashmiri',
-  'Nepali',
-  'Sindhi',
-  'Dogri',
-  'Konkani',
-  'Manipuri',
-  'Bodo',
-  'Sanskrit',
-  'Urdu',
-  'English',
-  'Other'
-];
+  "Hindi",
+  "Bengali",
+  "Telugu",
+  "Marathi",
+  "Tamil",
+  "Gujarati",
+  "Kannada",
+  "Malayalam",
+  "Punjabi",
+  "Odia",
+  "Assamese",
+  "Maithili",
+  "Santali",
+  "Kashmiri",
+  "Nepali",
+  "Sindhi",
+  "Dogri",
+  "Konkani",
+  "Manipuri",
+  "Bodo",
+  "Sanskrit",
+  "Urdu",
+  "English",
+  "Other",
+]
 
 const AmaLanguageBarrierModal: React.FC<AmaLanguageBarrierModalProps> = ({
   isOpen,
@@ -44,37 +47,37 @@ const AmaLanguageBarrierModal: React.FC<AmaLanguageBarrierModalProps> = ({
   onConfirm,
   leadId,
   leadName,
-  existingLanguage
+  existingLanguage,
 }) => {
-  const [selectedLanguage, setSelectedLanguage] = useState(existingLanguage || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(existingLanguage || "")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleConfirm = async () => {
     if (!selectedLanguage) {
-      toast.error('Please select a language');
-      return;
+      toast.error("Please select a language")
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      await onConfirm(selectedLanguage);
-      onClose();
+      await onConfirm(selectedLanguage)
+      onClose()
     } catch (error) {
-      console.error('Error updating language barrier:', error);
-      toast.error('Failed to update language barrier');
+      console.error("Error updating language barrier:", error)
+      toast.error("Failed to update language barrier")
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setSelectedLanguage(existingLanguage || '');
-      onClose();
+      setSelectedLanguage(existingLanguage || "")
+      onClose()
     }
-  };
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-[#5A4C33]/50 flex items-center justify-center z-50">
@@ -140,13 +143,13 @@ const AmaLanguageBarrierModal: React.FC<AmaLanguageBarrierModalProps> = ({
                 Saving...
               </div>
             ) : (
-              'Save Language'
+              "Save Language"
             )}
           </button>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AmaLanguageBarrierModal; 
+export default AmaLanguageBarrierModal
