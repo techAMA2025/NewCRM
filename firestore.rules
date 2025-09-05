@@ -2,9 +2,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny all
+    // Allow authenticated users to read/write their own data
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
 
     // Users collection
@@ -17,6 +17,14 @@ service cloud.firestore {
 
     // crm_leads collection
     match /crm_leads/{leadId} {
+      // Allow sales, admins, and overlords to read, create, and update leads
+      allow read, create, update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Sales', 'Admin', 'Overlord'];
+      // Allow admins and overlords to delete leads
+      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Overlord'];
+    }
+
+    // ama_leads collection (for normalized leads)
+    match /ama_leads/{leadId} {
       // Allow sales, admins, and overlords to read, create, and update leads
       allow read, create, update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Sales', 'Admin', 'Overlord'];
       // Allow admins and overlords to delete leads
@@ -65,5 +73,12 @@ service cloud.firestore {
         // Allow advocates and assistants to read/write complaints
         allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Advocate', 'Assistant', 'Overlord'];
     }
+
+    // normalized_sync_logs collection (for scheduled functions)
+    match /normalized_sync_logs/{logId} {
+        // Allow only server-side functions to write logs
+        allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Admin', 'Overlord'];
+        allow write: if false; // Only server-side functions can write
+    }
   }
-} 
+}

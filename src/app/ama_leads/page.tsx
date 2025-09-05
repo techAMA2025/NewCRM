@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { flushSync } from "react-dom";
 import {
   collection,
   getDocs,
@@ -1375,102 +1376,160 @@ const AmaLeadsPage = () => {
         dbData.convertedToClient = null;
       }
 
-      const success = await updateLead(statusConfirmLeadId, dbData);
+      // Update database directly to avoid double local state updates
+      const leadRef = doc(crmDb, 'ama_leads', statusConfirmLeadId);
+      const updateData: any = { ...dbData, lastModified: serverTimestamp() };
+      await updateDoc(leadRef, updateData);
       
-      if (success) {
-        // Update local state
-        const updateFn = (arr: any[]) => arr.map((l) => 
-          l.id === statusConfirmLeadId 
-            ? { 
-                ...l, 
-                status: pendingStatusChange,
-                convertedAt: dbData.convertedAt ? new Date() : l.convertedAt,
-                convertedToClient: dbData.convertedToClient ?? l.convertedToClient,
-                callbackScheduled: dbData.callbackScheduled ? new Date() : l.callbackScheduled,
-                callbackStatus: dbData.callbackStatus ?? l.callbackStatus,
-                languageBarrierMarked: dbData.languageBarrierMarked ? new Date() : l.languageBarrierMarked,
-                language_barrier: dbData.language_barrier ?? l.language_barrier,
-                lastModified: new Date()
-              } 
-            : l
-        );
-        setLeads(updateFn);
-        setFilteredLeads(updateFn);
+      // Debug logging for converted status
+      if (pendingStatusChange === 'Converted') {
+        console.log('🔄 Converting lead:', {
+          leadId: statusConfirmLeadId,
+          leadName: statusConfirmLeadName,
+          currentStatus,
+          pendingStatusChange,
+          dbData,
+          updateData
+        });
+      }
+      
+      // Update local state immediately
+      const updateFn = (arr: any[]) => arr.map((l) => 
+        l.id === statusConfirmLeadId 
+          ? { 
+              ...l, 
+              status: pendingStatusChange,
+              convertedAt: pendingStatusChange === 'Converted' ? new Date() : (pendingStatusChange !== 'Converted' && currentStatus === 'Converted' ? null : l.convertedAt),
+              convertedToClient: dbData.convertedToClient ?? l.convertedToClient,
+              callbackScheduled: dbData.callbackScheduled ? new Date() : l.callbackScheduled,
+              callbackStatus: dbData.callbackStatus ?? l.callbackStatus,
+              languageBarrierMarked: dbData.languageBarrierMarked ? new Date() : l.languageBarrierMarked,
+              language_barrier: dbData.language_barrier ?? l.language_barrier,
+              lastModified: new Date()
+            } 
+          : l
+      );
+      
+      // Debug logging for local state update
+      if (pendingStatusChange === 'Converted') {
+        const currentLeadInLeads = leads.find(l => l.id === statusConfirmLeadId);
+        const currentLeadInFiltered = filteredLeads.find(l => l.id === statusConfirmLeadId);
+        const updatedLead = updateFn(leads).find(l => l.id === statusConfirmLeadId);
+        console.log('🔄 Local state updated:', {
+          leadId: statusConfirmLeadId,
+          currentLeadInLeads: currentLeadInLeads ? 'Found' : 'Not found',
+          currentLeadInFiltered: currentLeadInFiltered ? 'Found' : 'Not found',
+          leadsArrayLength: leads.length,
+          filteredLeadsArrayLength: filteredLeads.length,
+          updatedLead: updatedLead ? {
+            id: updatedLead.id,
+            name: updatedLead.name,
+            status: updatedLead.status,
+            convertedToClient: updatedLead.convertedToClient,
+            convertedAt: updatedLead.convertedAt
+          } : 'Lead not found'
+        });
+      }
+      
+      const updatedLeads = updateFn(leads);
+      const updatedFilteredLeads = updateFn(filteredLeads);
+      
+      // Force immediate state updates
+      flushSync(() => {
+        setLeads(updatedLeads);
+        setFilteredLeads(updatedFilteredLeads);
+      });
+      
+      // Force immediate re-filtering to ensure UI updates
+      setTimeout(() => {
+        if (searchQuery) {
+          // Update search results if the lead is in there
+          const updatedSearchResults = searchResults.map(l => 
+            l.id === statusConfirmLeadId 
+              ? { 
+                  ...l, 
+                  status: pendingStatusChange,
+                  convertedAt: pendingStatusChange === 'Converted' ? new Date() : (pendingStatusChange !== 'Converted' && currentStatus === 'Converted' ? null : l.convertedAt),
+                  convertedToClient: dbData.convertedToClient ?? l.convertedToClient,
+                  callbackScheduled: dbData.callbackScheduled ? new Date() : l.callbackScheduled,
+                  callbackStatus: dbData.callbackStatus ?? l.callbackStatus,
+                  languageBarrierMarked: dbData.languageBarrierMarked ? new Date() : l.languageBarrierMarked,
+                  language_barrier: dbData.language_barrier ?? l.language_barrier,
+                  lastModified: new Date()
+                } 
+              : l
+          );
+          setSearchResults(updatedSearchResults);
+          setFilteredLeads(applyFiltersToLeads(updatedSearchResults));
+        } else {
+          setFilteredLeads(applyFiltersToLeads(updatedLeads));
+        }
+      }, 0);
 
-        // Send email message after successful status update
-        try {
-
+      // Send email message after successful status update
+      try {
+        if (currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")) {
+          const functions = getFunctions(app);
+          const sendStatusChangeMessage = httpsCallable(functions, 'sendStatusChangeMessage');
           
-          if (currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")) {
-
-            const functions = getFunctions(app);
-            const sendStatusChangeMessage = httpsCallable(functions, 'sendStatusChangeMessage');
-            
-
-            const emailResult = await sendStatusChangeMessage({
-              leadName: currentLead.name || 'Dear Sir/Ma\'am',
-              leadEmail: currentLead.email,
-              leadId: statusConfirmLeadId,
-              newStatus: pendingStatusChange
-            });
-            
-
-            
-            // Show success message with email confirmation
-            toast.success(
-              <div>
-                <p className="font-medium">Status Updated & Message Sent!</p>
-                <p className="text-sm">Status changed to "{pendingStatusChange}" and email sent to {currentLead.name}</p>
-              </div>,
-              {
-                position: "top-right",
-                autoClose: 4000,
-              }
-            );
-          } else {
-
-
-            // Show appropriate success message based on status
-            let successMessage = "Status Updated Successfully";
-            let successDetail = `${statusConfirmLeadName} status changed to "${pendingStatusChange}"`;
-
-            if (pendingStatusChange === 'Callback') {
-              successMessage = "Callback Scheduled";
-              successDetail = `${statusConfirmLeadName} has been marked for callback`;
-            } else if (pendingStatusChange === 'Language Barrier') {
-              successMessage = "Language Barrier Marked";
-              successDetail = `${statusConfirmLeadName} has been marked with language barrier`;
-            } else if (pendingStatusChange === 'Converted') {
-              successMessage = "Lead Converted";
-              successDetail = `${statusConfirmLeadName} has been marked as converted`;
-            }
-
-            toast.success(
-              <div>
-                <p className="font-medium">{successMessage}</p>
-                <p className="text-sm">{successDetail}</p>
-              </div>,
-              {
-                position: "top-right",
-                autoClose: 3000,
-              }
-            );
-          }
-        } catch (emailError) {
-          console.error("❌ Error sending email:", emailError);
-          // Still show success for status update, but mention email failure
+          const emailResult = await sendStatusChangeMessage({
+            leadName: currentLead.name || 'Dear Sir/Ma\'am',
+            leadEmail: currentLead.email,
+            leadId: statusConfirmLeadId,
+            newStatus: pendingStatusChange
+          });
+          
+          // Show success message with email confirmation
           toast.success(
             <div>
-              <p className="font-medium">Status Updated</p>
-              <p className="text-sm">Status changed to "{pendingStatusChange}" but email could not be sent</p>
+              <p className="font-medium">Status Updated & Message Sent!</p>
+              <p className="text-sm">Status changed to "{pendingStatusChange}" and email sent to {currentLead.name}</p>
             </div>,
             {
               position: "top-right",
               autoClose: 4000,
             }
           );
-        }
+        } else {
+          // Show appropriate success message based on status
+          let successMessage = "Status Updated Successfully";
+          let successDetail = `${statusConfirmLeadName} status changed to "${pendingStatusChange}"`;
 
+          if (pendingStatusChange === 'Callback') {
+            successMessage = "Callback Scheduled";
+            successDetail = `${statusConfirmLeadName} has been marked for callback`;
+          } else if (pendingStatusChange === 'Language Barrier') {
+            successMessage = "Language Barrier Marked";
+            successDetail = `${statusConfirmLeadName} has been marked with language barrier`;
+          } else if (pendingStatusChange === 'Converted') {
+            successMessage = "Lead Converted";
+            successDetail = `${statusConfirmLeadName} has been marked as converted`;
+          }
+
+          toast.success(
+            <div>
+              <p className="font-medium">{successMessage}</p>
+              <p className="text-sm">{successDetail}</p>
+            </div>,
+            {
+              position: "top-right",
+              autoClose: 3000,
+            }
+          );
+        }
+      } catch (emailError) {
+        console.error("❌ Error sending email:", emailError);
+        // Still show success for status update, but mention email failure
+        toast.success(
+          <div>
+            <p className="font-medium">Status Updated</p>
+            <p className="text-sm">Status changed to "{pendingStatusChange}" but email could not be sent</p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+          }
+        );
       }
     } catch (error) {
       console.error("Error updating status: ", error);
