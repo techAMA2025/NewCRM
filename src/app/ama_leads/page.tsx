@@ -242,19 +242,17 @@ const AmaLeadsPage = () => {
     const baseQuery = collection(crmDb, "ama_leads");
     const constraints: any[] = [];
 
-    // Date range uses 'date' epoch ms from normalized doc
+    // Date range uses 'synced_at' field for consistent filtering across all sources
     if (fromDate) {
       // Create date in local timezone, not UTC
       const fromDateStart = new Date(fromDate + 'T00:00:00');
-      const fromTimestamp = fromDateStart.getTime();
 
-      constraints.push(where("date", ">=", fromTimestamp));
+      constraints.push(where("synced_at", ">=", fromDateStart));
     }
     if (toDate) {
       // Create date in local timezone, not UTC
       const toDateEnd = new Date(toDate + 'T23:59:59.999');
-      const toTimestamp = toDateEnd.getTime();
-      constraints.push(where("date", "<=", toTimestamp));
+      constraints.push(where("synced_at", "<=", toDateEnd));
     }
 
           // Source filter - filter by source_database field
@@ -352,18 +350,16 @@ const AmaLeadsPage = () => {
       const baseQuery = collection(crmDb, "ama_leads");
       const constraints: any[] = [];
 
-      // Date range uses 'date' epoch ms from normalized doc
+      // Date range uses 'synced_at' field for consistent filtering across all sources
       if (fromDate) {
         const fromDateStart = new Date(fromDate + 'T00:00:00');
-        const fromTimestamp = fromDateStart.getTime();
 
-        constraints.push(where("date", ">=", fromTimestamp));
+        constraints.push(where("synced_at", ">=", fromDateStart));
       }
       if (toDate) {
         const toDateEnd = new Date(toDate + 'T23:59:59.999');
-        const toTimestamp = toDateEnd.getTime();
 
-        constraints.push(where("date", "<=", toTimestamp));
+        constraints.push(where("synced_at", "<=", toDateEnd));
       }
 
       // Source filter - filter by source_database field
@@ -1998,7 +1994,7 @@ const AmaLeadsPage = () => {
             language_barrier: d.language_barrier,
             convertedAt: d.convertedAt,
             lastModified: d.lastModified,
-            synced_at: d.date ? new Date(d.date) : undefined,
+            synced_at: d.synced_at || (d.date ? new Date(d.date) : undefined),
             // Debt fields
             debt_Range: d.debt_Range,
             debt_range: d.debt_range,
