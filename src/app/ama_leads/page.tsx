@@ -1387,6 +1387,19 @@ const AmaLeadsPage = () => {
       await updateDoc(leadRef, updateData)
       console.log("🔍 updateDoc completed successfully")
 
+      // Update the filtered count if status was changed
+      if (data.status) {
+        console.log('🔍 Status changed in updateLead, updating filtered count')
+        try {
+          const newFilteredCount = await fetchFilteredCount()
+          setDatabaseFilteredCount(newFilteredCount)
+          console.log('🔍 Updated databaseFilteredCount to:', newFilteredCount)
+        } catch (countError) {
+          console.error('❌ Error updating filtered count:', countError)
+          // Don't fail the lead update if count update fails
+        }
+      }
+
       // Log before state update
       const leadBeforeUpdate = leads.find((l) => l.id === id)
       console.log("🔍 Lead before local state update:", leadBeforeUpdate)
@@ -1617,6 +1630,17 @@ const AmaLeadsPage = () => {
       console.log('🔍 About to update lead status in database:', { leadId: statusConfirmLeadId, updateData })
       await updateDoc(leadRef, updateData)
       console.log('🔍 Lead status updated successfully in database')
+
+      // Update the filtered count to reflect the status change
+      console.log('🔍 Updating filtered count after status change')
+      try {
+        const newFilteredCount = await fetchFilteredCount()
+        setDatabaseFilteredCount(newFilteredCount)
+        console.log('🔍 Updated databaseFilteredCount to:', newFilteredCount)
+      } catch (countError) {
+        console.error('❌ Error updating filtered count:', countError)
+        // Don't fail the status update if count update fails
+      }
 
       // If converting to "Converted", update targets collection
       if (pendingStatusChange === "Converted") {
