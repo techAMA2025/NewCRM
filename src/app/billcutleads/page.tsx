@@ -1478,11 +1478,12 @@ const BillCutLeadsPage = () => {
         const currentUserId = currentUser?.uid;
         
         if (currentUserName && currentUserId) {
-          // Get current month and year for targets collection
-          const now = new Date();
-          const currentMonth = now.toLocaleString('default', { month: 'short' }); // "Jan", "Feb", etc.
-          const currentYear = now.getFullYear();
-          const monthDocId = `${currentMonth}_${currentYear}`;
+        // Get current month and year for targets collection
+        const now = new Date();
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const currentMonth = monthNames[now.getMonth()];
+        const currentYear = now.getFullYear();
+        const monthDocId = `${currentMonth}_${currentYear}`;
           
           try {
             // First, check if the monthly document exists
@@ -1610,7 +1611,8 @@ const BillCutLeadsPage = () => {
       if (currentUserName && currentUserId) {
         // Get current month and year for targets collection
         const now = new Date();
-        const currentMonth = now.toLocaleString('default', { month: 'short' }); // "Jan", "Feb", etc.
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const currentMonth = monthNames[now.getMonth()];
         const currentYear = now.getFullYear();
         const monthDocId = `${currentMonth}_${currentYear}`;
         
