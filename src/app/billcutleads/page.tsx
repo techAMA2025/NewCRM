@@ -996,7 +996,17 @@ const BillCutLeadsPage = () => {
   // Optimistic update function
   const updateLeadOptimistic = useCallback((id: string, updates: Partial<Lead>) => {
     const updateFunction = (prev: Lead[]) => 
-      prev.map((lead) => (lead.id === id ? { ...lead, ...updates, lastModified: new Date() } : lead))
+      prev.map((lead) => {
+        if (lead.id === id) {
+          const updatedLead = { ...lead, ...updates, lastModified: new Date() }
+          // If changing from "Converted" to another status, set convertedAt to null
+          if (lead.status === 'Converted' && updates.status && updates.status !== 'Converted') {
+            updatedLead.convertedAt = null
+          }
+          return updatedLead
+        }
+        return lead
+      })
     
     // Always update main leads state
     setLeads(updateFunction)
@@ -1006,7 +1016,17 @@ const BillCutLeadsPage = () => {
       setSearchResults(prev => {
         // Only update if the lead exists in search results
         if (prev.some(lead => lead.id === id)) {
-          return prev.map((lead) => (lead.id === id ? { ...lead, ...updates, lastModified: new Date() } : lead))
+          return prev.map((lead) => {
+            if (lead.id === id) {
+              const updatedLead = { ...lead, ...updates, lastModified: new Date() }
+              // If changing from "Converted" to another status, set convertedAt to null
+              if (lead.status === 'Converted' && updates.status && updates.status !== 'Converted') {
+                updatedLead.convertedAt = null
+              }
+              return updatedLead
+            }
+            return lead
+          })
         }
         return prev
       })
@@ -1039,6 +1059,11 @@ const BillCutLeadsPage = () => {
 
       if ("sales_notes" in data) {
         updateData.sales_notes = data.sales_notes
+      }
+
+      // If changing from "Converted" to another status, set convertedAt to null
+      if (isChangingFromConverted) {
+        updateData.convertedAt = null;
       }
 
       await updateDoc(leadRef, updateData)
