@@ -41,53 +41,29 @@ import {
   FiChevronDown,
 } from "react-icons/fi"
 
-// Types for CRM Leads
+// Types for AMA Leads
 interface CrmLead {
   id: string
   name: string
   email: string
-  phone?: string
-  number?: string
-  "Mobile Number"?: string
-  assignedTo: string
+  mobile: number
   assignedToId: string
+  assigned_to: string
   status: string
   lastModified: any
-  lastNote?: string
-  lastNoteBy?: string
-  lastNoteDate?: any
-  message?: string
-  queries?: string
-  Queries?: string
-  original_collection: string
-  original_id: string
+  lastNote: string
+  lastNoteBy: string
+  lastNoteDate: any
+  query: string
+  address: string
+  debt_range: number
+  income: number
+  salesNotes: string
+  source: string
   source_database: string
   synced_at: any
-  timestamp: any
-  created?: number
-  date?: string
-  // CredSettle specific fields
-  canPay?: string
-  city?: string
-  creditCardDues?: string
-  employmentStatus?: string
-  harassment?: string
-  monthlyIncome?: string
-  personalLoanDues?: string
-  // SettleLoans specific fields
-  "Accomodation Status"?: string
-  City?: string
-  Email?: string
-  "Employment status"?: string
-  Language?: string
-  Married?: boolean
-  "Monthly income"?: number
-  Name?: string
-  "Past Settlement"?: string
-  "Payment to start settlement"?: string
-  "Total credit card dues"?: string
-  "Total personal loan amount"?: string
-  question11?: string
+  synced_date: number
+  date: number
 }
 
 interface MetricCardProps {
@@ -609,10 +585,10 @@ const SalesReportContent = () => {
     const fetchLeads = async () => {
       setIsLoading(true)
       try {
-        const crmLeadsRef = collection(crmDb, "crm_leads")
+        const amaLeadsRef = collection(crmDb, "ama_leads")
 
         // Fetch all leads first, then filter in memory due to different date field structures
-        const querySnapshot = await getDocs(crmLeadsRef)
+        const querySnapshot = await getDocs(amaLeadsRef)
 
         const fetchedLeads = querySnapshot.docs.map(
           (doc) =>
@@ -622,34 +598,28 @@ const SalesReportContent = () => {
             }) as CrmLead,
         )
 
-        // Helper function to get the creation date from different data structures
+        // Debug: Log sample data structure
+        if (fetchedLeads.length > 0) {
+          console.log("Sample AMA lead data structure:", fetchedLeads[0])
+          console.log("Total AMA leads fetched:", fetchedLeads.length)
+        }
+
+        // Helper function to get the creation date from ama_leads data structure
         const getLeadCreationDate = (lead: CrmLead): Date | null => {
           try {
-            // AMA structure: uses timestamp field
-            if (lead.timestamp) {
-              return lead.timestamp.toDate ? lead.timestamp.toDate() : new Date(lead.timestamp)
+            // AMA leads structure: uses date field (number timestamp)
+            if (lead.date && typeof lead.date === 'number') {
+              return new Date(lead.date)
             }
-            
-            // CREDSETTLE structure: uses created field (number) or date field (string)
-            if (lead.created) {
-              return new Date(lead.created)
-            }
-            
-            // CREDSETTLE also has a date string field like "20-07-2025"
-            if (lead.date && typeof lead.date === 'string') {
-              // Convert DD-MM-YYYY to a proper date
-              const [day, month, year] = lead.date.split('-')
-              if (day && month && year) {
-                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-              }
-            }
-            
-            // SETTLELOANS structure: uses created field (number)
-            // This is already handled by the created field check above
             
             // Fallback to synced_at if available
             if (lead.synced_at) {
               return lead.synced_at.toDate ? lead.synced_at.toDate() : new Date(lead.synced_at)
+            }
+            
+            // Fallback to synced_date if available (number timestamp)
+            if (lead.synced_date && typeof lead.synced_date === 'number') {
+              return new Date(lead.synced_date)
             }
             
             return null
@@ -700,8 +670,8 @@ const SalesReportContent = () => {
 
         setLeads(filteredLeads)
       } catch (error) {
-        console.error("Error fetching CRM leads:", error)
-        toast.error("Failed to load CRM leads data")
+        console.error("Error fetching AMA leads:", error)
+        toast.error("Failed to load AMA leads data")
       } finally {
         setIsLoading(false)
       }
@@ -728,32 +698,31 @@ const SalesReportContent = () => {
         })
 
         // Fetch all leads and filter in memory due to different data structures
-        const crmLeadsRef = collection(crmDb, "crm_leads")
-        const productivitySnapshot = await getDocs(crmLeadsRef)
+        const amaLeadsRef = collection(crmDb, "ama_leads")
+        const productivitySnapshot = await getDocs(amaLeadsRef)
         console.log("Total leads for productivity tracking:", productivitySnapshot.docs.length)
 
-        // Helper function to get the last modified date from different data structures
+        // Helper function to get the last modified date from ama_leads data structure
         const getLastModifiedDate = (leadData: any): Date | null => {
           try {
-            // Check lastModified field (common across all structures)
+            // Check lastModified field (timestamp)
             if (leadData.lastModified) {
               return leadData.lastModified.toDate ? leadData.lastModified.toDate() : new Date(leadData.lastModified)
             }
             
-            // Fallback to creation dates if lastModified is not available
-            if (leadData.timestamp) {
-              return leadData.timestamp.toDate ? leadData.timestamp.toDate() : new Date(leadData.timestamp)
+            // Fallback to date field (number timestamp)
+            if (leadData.date && typeof leadData.date === 'number') {
+              return new Date(leadData.date)
             }
             
-            if (leadData.created) {
-              return new Date(leadData.created)
+            // Fallback to synced_at if available
+            if (leadData.synced_at) {
+              return leadData.synced_at.toDate ? leadData.synced_at.toDate() : new Date(leadData.synced_at)
             }
             
-            if (leadData.date && typeof leadData.date === 'string') {
-              const [day, month, year] = leadData.date.split('-')
-              if (day && month && year) {
-                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-              }
+            // Fallback to synced_date if available (number timestamp)
+            if (leadData.synced_date && typeof leadData.synced_date === 'number') {
+              return new Date(leadData.synced_date)
             }
             
             return null
@@ -807,8 +776,8 @@ const SalesReportContent = () => {
             })
           }
 
-          const userId = leadData.assignedTo || "Unassigned"
-          const userName = leadData.assignedTo || "Unassigned"
+          const userId = leadData.assigned_to || "Unassigned"
+          const userName = leadData.assigned_to || "Unassigned"
           const status = leadData.status || "No Status"
 
           // Initialize user if not exists
@@ -869,41 +838,29 @@ const SalesReportContent = () => {
 
   // Helper function to get the assigned person consistently across data structures
   const getAssignedTo = (lead: CrmLead): string => {
-    return lead.assignedTo || "Unassigned"
+    return lead.assigned_to || "Unassigned"
   }
 
   // Analytics calculations
   const analytics = useMemo(() => {
     if (!leads.length) return null
 
-    // Helper function to get the creation date from different data structures (same as in fetchLeads)
+    // Helper function to get the creation date from ama_leads data structure (same as in fetchLeads)
     const getLeadCreationDate = (lead: CrmLead): Date | null => {
       try {
-        // AMA structure: uses timestamp field
-        if (lead.timestamp) {
-          return lead.timestamp.toDate ? lead.timestamp.toDate() : new Date(lead.timestamp)
+        // AMA leads structure: uses date field (number timestamp)
+        if (lead.date && typeof lead.date === 'number') {
+          return new Date(lead.date)
         }
-        
-        // CREDSETTLE structure: uses created field (number) or date field (string)
-        if (lead.created) {
-          return new Date(lead.created)
-        }
-        
-        // CREDSETTLE also has a date string field like "20-07-2025"
-        if (lead.date && typeof lead.date === 'string') {
-          // Convert DD-MM-YYYY to a proper date
-          const [day, month, year] = lead.date.split('-')
-          if (day && month && year) {
-            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-          }
-        }
-        
-        // SETTLELOANS structure: uses created field (number)
-        // This is already handled by the created field check above
         
         // Fallback to synced_at if available
         if (lead.synced_at) {
           return lead.synced_at.toDate ? lead.synced_at.toDate() : new Date(lead.synced_at)
+        }
+        
+        // Fallback to synced_date if available (number timestamp)
+        if (lead.synced_date && typeof lead.synced_date === 'number') {
+          return new Date(lead.synced_date)
         }
         
         return null
@@ -976,16 +933,14 @@ const SalesReportContent = () => {
     // Contact info analysis
     const contactAnalysis = {
       hasEmail: leads.filter((lead) => {
-        // Handle different email field variations
-        const emailField = lead.email || lead.Email
-        return emailField && emailField !== ""
+        return lead.email && lead.email !== ""
       }).length,
       hasPhone: leads.filter((lead) => {
-        // Handle different phone field variations
-        const phoneField = lead.phone || lead.number || lead["Mobile Number"]
-        return phoneField && phoneField !== ""
+        return lead.mobile && lead.mobile > 0
       }).length,
+      hasQuery: leads.filter((lead) => lead.query && lead.query !== "").length,
       hasNotes: leads.filter((lead) => lead.lastNote && lead.lastNote !== "").length,
+      hasSalesNotes: leads.filter((lead) => lead.salesNotes && lead.salesNotes !== "").length,
     }
 
     // Time-based analysis with unified date handling
@@ -1250,7 +1205,7 @@ const SalesReportContent = () => {
         <div className="max-w-8xl mx-auto">
           {/* Header */}
           <div className="mb-8 flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">CRM Leads Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">AMA Leads Dashboard</h1>
 
             <div className="flex items-center gap-4">
               {/* Report Navigation Dropdown */}
@@ -1841,7 +1796,16 @@ const SalesReportContent = () => {
                     {analytics.contactAnalysis.hasEmail} with email
                   </p>
                   <p className="text-purple-600 dark:text-purple-400 font-medium">
-                    {analytics.contactAnalysis.hasPhone} with phone
+                    {analytics.contactAnalysis.hasPhone} with mobile
+                  </p>
+                  <p className="text-purple-600 dark:text-purple-400 font-medium">
+                    {analytics.contactAnalysis.hasQuery} with queries
+                  </p>
+                  <p className="text-purple-600 dark:text-purple-400 font-medium">
+                    {analytics.contactAnalysis.hasNotes} with notes
+                  </p>
+                  <p className="text-purple-600 dark:text-purple-400 font-medium">
+                    {analytics.contactAnalysis.hasSalesNotes} with sales notes
                   </p>
                 </div>
               </div>
