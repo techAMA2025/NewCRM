@@ -9,7 +9,7 @@ import {
 import { BiRupee } from 'react-icons/bi';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
-import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, setDoc, increment, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, setDoc, increment, deleteDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 
@@ -51,6 +51,82 @@ export default function PaymentApprovalPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  // Function to fetch latest converted lead data for pre-filling
+  const fetchLatestConvertedLead = async () => {
+    try {
+      const salesPersonName = localStorage.getItem('userName');
+      if (!salesPersonName) return;
+
+      // Fetch from both billcutLeads and ama_leads collections
+      const [billcutSnapshot, amaSnapshot] = await Promise.all([
+        // Query billcutLeads for converted leads by this sales person
+        getDocs(query(
+          collection(db, 'billcutLeads'),
+          where('assigned_to', '==', salesPersonName),
+          where('status', '==', 'Converted'),
+          orderBy('convertedAt', 'desc')
+        )),
+        // Query ama_leads for converted leads by this sales person
+        getDocs(query(
+          collection(db, 'ama_leads'),
+          where('assigned_to', '==', salesPersonName),
+          where('status', '==', 'Converted'),
+          orderBy('convertedAt', 'desc')
+        ))
+      ]);
+
+      let latestLead = null;
+      let latestConvertedAt = null;
+
+      // Check billcutLeads for latest converted lead
+      if (!billcutSnapshot.empty) {
+        const billcutLead = billcutSnapshot.docs[0].data();
+        if (billcutLead.convertedAt) {
+          const convertedAt = billcutLead.convertedAt.toDate ? billcutLead.convertedAt.toDate() : new Date(billcutLead.convertedAt);
+          if (!latestConvertedAt || convertedAt > latestConvertedAt) {
+            latestConvertedAt = convertedAt;
+            latestLead = {
+              name: billcutLead.name || '',
+              email: billcutLead.email || '',
+              phone: billcutLead.mobile || billcutLead.phone || '',
+              source: 'billcut'
+            };
+          }
+        }
+      }
+
+      // Check ama_leads for latest converted lead
+      if (!amaSnapshot.empty) {
+        const amaLead = amaSnapshot.docs[0].data();
+        if (amaLead.convertedAt) {
+          const convertedAt = amaLead.convertedAt.toDate ? amaLead.convertedAt.toDate() : new Date(amaLead.convertedAt);
+          if (!latestConvertedAt || convertedAt > latestConvertedAt) {
+            latestConvertedAt = convertedAt;
+            latestLead = {
+              name: amaLead.name || '',
+              email: amaLead.email || '',
+              phone: amaLead.mobile || amaLead.phone || '',
+              source: 'ama'
+            };
+          }
+        }
+      }
+
+      // Pre-fill form if we found a latest converted lead
+      if (latestLead) {
+        setFormData(prev => ({
+          ...prev,
+          clientName: latestLead.name,
+          clientEmail: latestLead.email,
+          clientPhone: latestLead.phone,
+          source: latestLead.source
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching latest converted lead:', error);
+    }
+  };
   
   useEffect(() => {
     // Get user role and name from localStorage when component mounts
@@ -59,6 +135,13 @@ export default function PaymentApprovalPage() {
     setUserRole(storedUserRole);
     setUserName(storedUserName);
   }, []);
+
+  useEffect(() => {
+    // Pre-fill form with latest converted lead data when user data is available
+    if (userName) {
+      fetchLatestConvertedLead();
+    }
+  }, [userName]);
   
   useEffect(() => {
     // Always fetch payments associated with the logged-in user

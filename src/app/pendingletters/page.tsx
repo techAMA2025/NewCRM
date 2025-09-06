@@ -5,7 +5,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db, functions } from '@/firebase/firebase';
 import { httpsCallable } from 'firebase/functions';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
-import { FiFileText, FiMail, FiUser, FiCreditCard, FiTag, FiBriefcase, FiDatabase, FiRefreshCw } from 'react-icons/fi';
+import { FiFileText, FiMail, FiUser, FiCreditCard, FiTag, FiBriefcase, FiDatabase, FiRefreshCw, FiBarChart } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 
 interface Client {
@@ -27,6 +27,8 @@ export default function PendingLettersPage() {
   const [loading, setLoading] = useState(true);
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState<string>('');
+  const [productivityLoading, setProductivityLoading] = useState(false);
+  const [productivityStatus, setProductivityStatus] = useState<string>('');
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -82,6 +84,29 @@ export default function PendingLettersPage() {
       console.error('Migration error:', error);
     } finally {
       setMigrationLoading(false);
+    }
+  };
+
+  const handleCreateProductivitySnapshot = async () => {
+    setProductivityLoading(true);
+    setProductivityStatus('Creating productivity snapshot...');
+    
+    try {
+      // Use Firebase httpsCallable to call the Cloud Function
+      const createDailyProductivitySnapshot = httpsCallable(functions, 'createDailyProductivitySnapshot');
+      
+      const result = await createDailyProductivitySnapshot({});
+      
+      setProductivityStatus('Productivity snapshot created successfully!');
+      toast.success('Daily productivity snapshot created successfully');
+      console.log('Productivity snapshot result:', result.data);
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Unknown error occurred';
+      setProductivityStatus(`Snapshot creation failed: ${errorMessage}`);
+      toast.error(`Productivity snapshot failed: ${errorMessage}`);
+      console.error('Productivity snapshot error:', error);
+    } finally {
+      setProductivityLoading(false);
     }
   };
 
@@ -265,6 +290,76 @@ export default function PendingLettersPage() {
                 <>
                   <FiDatabase className="text-lg mr-2" />
                   Start CRM to AMA Migration
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Daily Productivity Snapshot Section */}
+          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-xl p-8">
+            <div className="flex items-center mb-6">
+              <div className="bg-yellow-900/50 p-3 rounded-xl mr-4">
+                <FiBarChart className="text-yellow-400 text-xl" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Daily Productivity Snapshot</h2>
+                <p className="text-gray-400 text-sm">Generate daily productivity report for all users</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50 mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Snapshot Details</h3>
+              <ul className="text-gray-300 text-sm space-y-2">
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                  Calculates productivity for Billcut and AMA leads
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                  Creates daily snapshot with user-wise productivity data
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                  Stores data in productivity_snapshots collection
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                  Skips if snapshot already exists for today
+                </li>
+              </ul>
+            </div>
+
+            {productivityStatus && (
+              <div className="mb-6 p-4 rounded-xl border border-gray-700/50 bg-gray-900/30">
+                <div className="flex items-center">
+                  {productivityLoading ? (
+                    <FiRefreshCw className="text-blue-400 text-lg mr-3 animate-spin" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-yellow-500 mr-3"></div>
+                  )}
+                  <span className="text-gray-300">{productivityStatus}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleCreateProductivitySnapshot}
+              disabled={productivityLoading}
+              className={`flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                productivityLoading
+                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white shadow-lg hover:shadow-yellow-900/25'
+              }`}
+            >
+              {productivityLoading ? (
+                <>
+                  <FiRefreshCw className="text-lg mr-2 animate-spin" />
+                  Creating Snapshot...
+                </>
+              ) : (
+                <>
+                  <FiBarChart className="text-lg mr-2" />
+                  Create Daily Productivity Snapshot
                 </>
               )}
             </button>
