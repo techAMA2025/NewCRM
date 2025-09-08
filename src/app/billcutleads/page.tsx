@@ -1131,15 +1131,82 @@ const BillCutLeadsPage = () => {
   // Bulk assignment function
   const bulkAssignLeads = async (leadIds: string[], salesPersonName: string, salesPersonId: string) => {
     try {
-      // Apply optimistic updates
+      // Get current user name for validation
+      const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") || "" : ""
+      
+      // Validate that leads are not already assigned to other salespeople
+      const alreadyAssignedLeads: string[] = []
+      const unassignedLeads: string[] = []
+      const currentUserLeads: string[] = []
+      
       leadIds.forEach((leadId) => {
+        const lead = leads.find((l) => l.id === leadId)
+        if (lead) {
+          const assignedTo = lead.assignedTo || ""
+          if (assignedTo && assignedTo !== "" && assignedTo !== "-") {
+            // Lead is assigned to someone
+            if (assignedTo === currentUserName) {
+              // Lead is already assigned to current user
+              currentUserLeads.push(leadId)
+            } else {
+              // Lead is assigned to someone else
+              alreadyAssignedLeads.push(leadId)
+            }
+          } else {
+            // Lead is unassigned
+            unassignedLeads.push(leadId)
+          }
+        }
+      })
+
+      // Show warning if trying to assign leads that are already assigned to others
+      if (alreadyAssignedLeads.length > 0) {
+        const assignedLeadNames = alreadyAssignedLeads.map(leadId => {
+          const lead = leads.find(l => l.id === leadId)
+          return lead?.name || "Unknown"
+        }).join(", ")
+        
+        toast.error(
+          <div>
+            <p className="font-medium">Cannot Assign These Leads</p>
+            <p className="text-sm">
+              {alreadyAssignedLeads.length} lead{alreadyAssignedLeads.length > 1 ? "s are" : " is"} already assigned to other salespeople
+            </p>
+            <p className="text-xs text-gray-300 mt-1">
+              Leads: {assignedLeadNames}
+            </p>
+            <p className="text-xs text-gray-300 mt-1">
+              Please ask the assigned salesperson to unassign them first
+            </p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 6000,
+          },
+        )
+        return
+      }
+
+      // Filter out leads that are already assigned to current user (no need to reassign)
+      const leadsToAssign = [...unassignedLeads, ...currentUserLeads]
+      
+      if (leadsToAssign.length === 0) {
+        toast.info("No leads need to be assigned", {
+          position: "top-right",
+          autoClose: 3000,
+        })
+        return
+      }
+
+      // Apply optimistic updates only to leads that need assignment
+      leadsToAssign.forEach((leadId) => {
         updateLeadOptimistic(leadId, {
           assignedTo: salesPersonName,
           assignedToId: salesPersonId,
         })
       })
 
-      const updatePromises = leadIds.map(async (leadId) => {
+      const updatePromises = leadsToAssign.map(async (leadId) => {
         const leadRef = doc(crmDb, "billcutLeads", leadId)
 
         // Add history entry
@@ -1149,7 +1216,7 @@ const BillCutLeadsPage = () => {
           previousAssignee: leads.find((l) => l.id === leadId)?.assignedTo || "Unassigned",
           newAssignee: salesPersonName,
           timestamp: serverTimestamp(),
-          assignedById: typeof window !== "undefined" ? localStorage.getItem("userName") || "" : "",
+          assignedById: currentUserName,
           editor: {
             id: currentUser?.uid || "unknown",
           },
@@ -1169,12 +1236,20 @@ const BillCutLeadsPage = () => {
       setShowBulkAssignment(false)
       setBulkAssignTarget("")
 
+      // Show success message with details
+      let successMessage = ""
+      if (unassignedLeads.length > 0 && currentUserLeads.length > 0) {
+        successMessage = `${unassignedLeads.length} unassigned leads and ${currentUserLeads.length} of your existing leads assigned to ${salesPersonName}`
+      } else if (unassignedLeads.length > 0) {
+        successMessage = `${unassignedLeads.length} unassigned leads assigned to ${salesPersonName}`
+      } else if (currentUserLeads.length > 0) {
+        successMessage = `${currentUserLeads.length} of your leads reassigned to ${salesPersonName}`
+      }
+
       toast.success(
         <div>
           <p className="font-medium">Bulk Assignment Complete</p>
-          <p className="text-sm">
-            {leadIds.length} leads assigned to {salesPersonName}
-          </p>
+          <p className="text-sm">{successMessage}</p>
         </div>,
         {
           position: "top-right",
@@ -1225,6 +1300,55 @@ const BillCutLeadsPage = () => {
     if (!canBulkAssign) {
       toast.error("You don't have permission to bulk assign leads")
       return
+    }
+
+    // Check for leads already assigned to other salespeople
+    const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") || "" : ""
+    const alreadyAssignedToOthers: string[] = []
+    const unassignedLeads: string[] = []
+    const currentUserLeads: string[] = []
+    
+    selectedLeads.forEach((leadId) => {
+      const lead = leads.find((l) => l.id === leadId)
+      if (lead) {
+        const assignedTo = lead.assignedTo || ""
+        if (assignedTo && assignedTo !== "" && assignedTo !== "-") {
+          if (assignedTo === currentUserName) {
+            currentUserLeads.push(leadId)
+          } else {
+            alreadyAssignedToOthers.push(leadId)
+          }
+        } else {
+          unassignedLeads.push(leadId)
+        }
+      }
+    })
+
+    // Show warning if some leads are already assigned to others
+    if (alreadyAssignedToOthers.length > 0) {
+      const assignedLeadNames = alreadyAssignedToOthers.map(leadId => {
+        const lead = leads.find(l => l.id === leadId)
+        return lead?.name || "Unknown"
+      }).join(", ")
+      
+      toast.warning(
+        <div>
+          <p className="font-medium">Some Leads Cannot Be Assigned</p>
+          <p className="text-sm">
+            {alreadyAssignedToOthers.length} of {selectedLeads.length} selected leads are already assigned to other salespeople
+          </p>
+          <p className="text-xs text-gray-300 mt-1">
+            Leads: {assignedLeadNames}
+          </p>
+          <p className="text-xs text-gray-300 mt-1">
+            Only {unassignedLeads.length + currentUserLeads.length} leads can be assigned
+          </p>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 6000,
+        },
+      )
     }
 
     setShowBulkAssignment(true)
@@ -2170,12 +2294,59 @@ const BillCutLeadsPage = () => {
               {/* Bulk Assignment Modal */}
               {showBulkAssignment && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                  <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+                  <div className="bg-gray-800 rounded-xl p-6 w-full max-w-lg border border-gray-700">
                     <h3 className="text-xl font-semibold text-gray-100 mb-4">Bulk Assign Leads</h3>
                     <div className="mb-4">
-                      <p className="text-gray-300 mb-2">
-                        Assigning {selectedLeads.length} lead{selectedLeads.length > 1 ? "s" : ""}
-                      </p>
+                      {/* Lead assignment status breakdown */}
+                      {(() => {
+                        const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") || "" : ""
+                        const alreadyAssignedToOthers: string[] = []
+                        const unassignedLeads: string[] = []
+                        const currentUserLeads: string[] = []
+                        
+                        selectedLeads.forEach((leadId) => {
+                          const lead = leads.find((l) => l.id === leadId)
+                          if (lead) {
+                            const assignedTo = lead.assignedTo || ""
+                            if (assignedTo && assignedTo !== "" && assignedTo !== "-") {
+                              if (assignedTo === currentUserName) {
+                                currentUserLeads.push(leadId)
+                              } else {
+                                alreadyAssignedToOthers.push(leadId)
+                              }
+                            } else {
+                              unassignedLeads.push(leadId)
+                            }
+                          }
+                        })
+
+                        return (
+                          <div className="mb-4 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
+                            <p className="text-gray-300 mb-2 font-medium">Assignment Summary:</p>
+                            <div className="space-y-1 text-sm">
+                              {unassignedLeads.length > 0 && (
+                                <p className="text-green-400">
+                                  ✓ {unassignedLeads.length} unassigned lead{unassignedLeads.length > 1 ? "s" : ""} can be assigned
+                                </p>
+                              )}
+                              {currentUserLeads.length > 0 && (
+                                <p className="text-blue-400">
+                                  ✓ {currentUserLeads.length} of your lead{currentUserLeads.length > 1 ? "s" : ""} can be reassigned
+                                </p>
+                              )}
+                              {alreadyAssignedToOthers.length > 0 && (
+                                <p className="text-red-400">
+                                  ✗ {alreadyAssignedToOthers.length} lead{alreadyAssignedToOthers.length > 1 ? "s are" : " is"} already assigned to others
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-gray-400 text-xs mt-2">
+                              Total assignable: {unassignedLeads.length + currentUserLeads.length} of {selectedLeads.length}
+                            </p>
+                          </div>
+                        )
+                      })()}
+                      
                       <label className="block text-sm font-medium text-gray-300 mb-2">Assign to:</label>
                       <select
                         value={bulkAssignTarget}
