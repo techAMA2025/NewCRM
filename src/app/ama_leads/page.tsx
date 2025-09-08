@@ -1853,6 +1853,7 @@ const AmaLeadsPage = () => {
             leadEmail: currentLead.email,
             leadId: statusConfirmLeadId,
             newStatus: pendingStatusChange,
+            leadSource: "ama",
           })
 
           // Show success message with email confirmation

@@ -586,7 +586,8 @@ const BillcutLeadsTableOptimized = React.memo(
                 leadName: currentLead.name || 'Dear Sir/Ma\'am',
                 leadEmail: currentLead.email,
                 leadId: statusConfirmLeadId,
-                newStatus: pendingStatusChange
+                newStatus: pendingStatusChange,
+                leadSource: 'billcut'
               })
               
               console.log("✅ Email function result:", emailResult);
