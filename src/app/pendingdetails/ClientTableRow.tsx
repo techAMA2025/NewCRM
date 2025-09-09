@@ -45,21 +45,20 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
       
       if (lead.source_database === 'credsettlee' && lead.date) {
         // For CredSettle, use date field directly
-        const date = lead.date instanceof Date ? lead.date : 
-                    (lead.date?.toDate ? lead.date.toDate() : new Date(lead.date));
+        const date = typeof lead.date === 'number' ? new Date(lead.date) : new Date(lead.date);
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       } 
       
       if (lead.source_database === 'settleloans' && lead.created) {
         // For SettleLoans, use created field
-        const date = lead.created instanceof Date ? lead.created : 
+        const date = typeof lead.created === 'number' ? new Date(lead.created) : 
                     (lead.created?.toDate ? lead.created.toDate() : new Date(lead.created));
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       }
 
       if (lead.source_database === 'billcut' && lead.date) {
         // For BillCut, use date field instead of synced_at
-        const date = lead.date instanceof Date ? lead.date : 
+        const date = typeof lead.date === 'number' ? new Date(lead.date) : 
                     (lead.date?.toDate ? lead.date.toDate() : new Date(lead.date));
         return date;
       }

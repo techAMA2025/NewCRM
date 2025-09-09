@@ -476,7 +476,7 @@ const MyClientsPage = () => {
       
       if (lead.source_database === 'settleloans' && lead.created) {
         // For SettleLoans, use created field
-        const date = lead.created instanceof Date ? lead.created : 
+        const date = typeof lead.created === 'number' ? new Date(lead.created) : 
                     (lead.created?.toDate ? lead.created.toDate() : new Date(lead.created));
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
       }
