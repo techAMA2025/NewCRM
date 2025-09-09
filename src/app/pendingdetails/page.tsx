@@ -350,27 +350,32 @@ const MyClientsPage = () => {
             id: doc.id,
             name: data.name || data.Name || 'Unknown',
             email: data.email || data.Email || 'No email',
-            phone: data.phone || data.mobile || data.number || data['Mobile Number'] || 'No phone',
+            phone: data.mobile || data.phone || data.number || data['Mobile Number'] || 'No phone',
             source: data.source || 'ama',
-            status: 'Converted',
+            status: data.status || 'Converted', // Use actual status from AMA data
             assignedTo: data.assignedTo || data.assigned_to || '',
             assignedToId: data.assignedToId || '',
             salesNotes: data.salesNotes || data.sales_notes || '',
-            remarks: data.remarks || data.message || data.queries || data.Queries || '',
-            personalLoanDues: data.personalLoanDues || data['Total personal loan amount'] || '',
+            remarks: data.remarks || data.message || data.query || data.queries || data.Queries || '',
+            personalLoanDues: data.personalLoanDues || data['Total personal loan amount'] || data.debt_range || '',
             creditCardDues: data.creditCardDues || data['Total credit card dues'] || '',
-            monthlyIncome: data.income || '',
+            monthlyIncome: data.income || data.monthlyIncome || '',
             lastModified: data.timestamp?.toDate ? data.timestamp.toDate() : data.lastModified?.toDate ? data.lastModified.toDate() : (typeof data.lastModified === 'string' || typeof data.lastModified === 'number') ? new Date(data.lastModified) : new Date(),
             original_id: data.original_id || doc.id,
             original_collection: 'ama_leads',
             source_database: data.source ? data.source === "AMA" ? "ama" : data.source === "CREDSETTLE" ? "credsettlee" : data.source === "SETTLELOANS" ? "settleloans" : "unknown" : "unknown",
             synced_at: data.synced_at || data.timestamp,
-            city: data.city || data.City || '',
-            City: data.City || '',
+            city: data.city || data.City || data.address || '',
+            City: data.City || data.address || '',
             message: data.message || '',
-            queries: data.queries || '',
-            Queries: data.Queries || '',
+            queries: data.query || data.queries || '',
+            Queries: data.Queries || data.query || '',
             timestamp: data.timestamp, // helps your AMA date formatter
+            // AMA-specific fields
+            address: data.address || '',
+            debt_range: data.debt_range || '',
+            date: data.date,
+            synced_date: data.synced_date
           }
           
           return leadData
@@ -465,8 +470,7 @@ const MyClientsPage = () => {
       
       if (lead.source_database === 'credsettlee' && lead.date) {
         // For CredSettle, use date field directly
-        const date = lead.date instanceof Date ? lead.date : 
-                    (lead.date?.toDate ? lead.date.toDate() : new Date(lead.date));
+        const date = typeof lead.date === 'number' ? new Date(lead.date) : new Date(lead.date);
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
       } 
       
@@ -647,12 +651,17 @@ const MyClientsPage = () => {
       // Extract necessary fields
       const { id, synced_at, original_id, original_collection, source_database, ...dataToUpdate } = updatedLead
       
+      // Filter out undefined values to prevent Firebase errors
+      const filteredDataToUpdate: any = Object.fromEntries(
+        Object.entries(dataToUpdate).filter(([_, value]) => value !== undefined)
+      );
+      
       // Generate a timestamp-based unique identifier
       const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
       
       // Add metadata
       const clientData = {
-        ...dataToUpdate,
+        ...filteredDataToUpdate,
         source_database: source_database || 'manual', // Ensure source is preserved
         lastModified: Timestamp.now(),
         leadId: id && id.startsWith('new-') ? null : updatedLead.id, // Reference to original lead ID if not new
@@ -974,11 +983,16 @@ const MyClientsPage = () => {
       // Remove the ID field to avoid overwriting the document ID
       const { id, ...updateData } = updatedClient;
       
+      // Filter out undefined values to prevent Firebase errors
+      const filteredUpdateData: any = Object.fromEntries(
+        Object.entries(updateData).filter(([_, value]) => value !== undefined)
+      );
+      
       // Add timestamp for lastModified
-      updateData.lastModified = Timestamp.now();
+      filteredUpdateData.lastModified = Timestamp.now();
       
       // Update the client document
-      await updateDoc(clientRef, updateData);
+      await updateDoc(clientRef, filteredUpdateData);
       
       // Create payment schedule in clients_payments collection
       if (updatedClient.startDate && updatedClient.tenure && updatedClient.monthlyFees) {
