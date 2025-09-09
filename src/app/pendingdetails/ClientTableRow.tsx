@@ -58,8 +58,7 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
 
       if (lead.source_database === 'billcut' && lead.date) {
         // For BillCut, use date field instead of synced_at
-        const date = typeof lead.date === 'number' ? new Date(lead.date) : 
-                    (lead.date?.toDate ? lead.date.toDate() : new Date(lead.date));
+        const date = new Date(lead.date);
         return date;
       }
       
