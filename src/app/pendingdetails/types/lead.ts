@@ -41,6 +41,9 @@ export interface Lead {
   debt_range?: string
   category?: string
   sales_notes?: string
+  // AMA specific fields
+  date?: number
+  synced_date?: number
   // String index signature for other dynamically accessed properties
   [key: string]: any
 }
