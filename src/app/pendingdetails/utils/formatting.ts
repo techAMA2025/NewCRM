@@ -33,7 +33,7 @@ export const getFormattedDate = (lead: Lead) => {
     
     if (lead.source_database === 'credsettlee' && lead.date) {
       // For CredSettle, use date field directly
-      const date = typeof lead.date === 'number' ? new Date(lead.date) : new Date(lead.date);
+      const date = new Date(lead.date);
       return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
     } 
     
