@@ -143,16 +143,16 @@ const EditClientModal = ({
     if (field === 'phone') {
       // Remove any non-numeric characters
       const numericValue = value.replace(/[^0-9]/g, '');
-      // Take only first 10 digits
-      value = numericValue.slice(0, 10);
+      // Take only first 10 digits and ensure it's a string
+      value = numericValue.slice(0, 10).toString();
     }
 
     // Special handling for altPhone field - same as phone validation
     if (field === 'altPhone') {
       // Remove any non-numeric characters
       const numericValue = value.replace(/[^0-9]/g, '');
-      // Take only first 10 digits
-      value = numericValue.slice(0, 10);
+      // Take only first 10 digits and ensure it's a string
+      value = numericValue.slice(0, 10).toString();
     }
 
     // Special handling for PAN number - only alphanumeric and max 10 characters
@@ -331,6 +331,14 @@ const EditClientModal = ({
     try {
       // Create a cleaned version of the lead to send
       const leadToSave = {...lead};
+      
+      // Ensure phone numbers are strings
+      if (leadToSave.phone) {
+        leadToSave.phone = leadToSave.phone.toString();
+      }
+      if (leadToSave.altPhone) {
+        leadToSave.altPhone = leadToSave.altPhone.toString();
+      }
       
       // If this is a new lead (ID starts with 'new-'), generate an ID based on the source
       if (leadToSave.id && leadToSave.id.startsWith('new-')) {

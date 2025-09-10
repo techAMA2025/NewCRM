@@ -656,6 +656,14 @@ const MyClientsPage = () => {
         Object.entries(dataToUpdate).filter(([_, value]) => value !== undefined)
       );
       
+      // Ensure phone numbers are strings
+      if (filteredDataToUpdate.phone) {
+        filteredDataToUpdate.phone = filteredDataToUpdate.phone.toString();
+      }
+      if (filteredDataToUpdate.altPhone) {
+        filteredDataToUpdate.altPhone = filteredDataToUpdate.altPhone.toString();
+      }
+      
       // Generate a timestamp-based unique identifier
       const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
       
