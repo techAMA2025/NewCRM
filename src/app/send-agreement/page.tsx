@@ -754,6 +754,7 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
         ccRecipients: ccRecipients,
         attachments: processedAttachments,
         clientId: recipients.find((r) => r.type === "client")?.clientId,
+        draftType: selectedAgreement, // Add draft type to determine email sender
       };
 
       if (!auth.currentUser) {
@@ -914,10 +915,13 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
           <div className="max-w-5xl mx-auto">
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <FaFileContract className="mr-3 text-green-400" />
-              Send Email Templates (From: notify@amalegalsolutions.com)
+              Send Email Templates (From: {selectedAgreement === "agreement-draft" ? "notify@amalegalsolutions.com" : "finance@amalegalsolutions.com"})
             </h1>
             <p className="text-gray-400 mb-8">
-              Send agreement drafts, sign-up confirmations, and other templates to clients
+              {selectedAgreement === "agreement-draft" 
+                ? "Send agreement drafts from notify@amalegalsolutions.com" 
+                : "Send sign-up confirmations and other templates from finance@amalegalsolutions.com"
+              }
             </p>
             
             <form
