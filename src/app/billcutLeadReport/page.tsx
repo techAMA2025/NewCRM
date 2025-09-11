@@ -785,224 +785,315 @@ const BillcutLeadReportContent = () => {
     const fetchProductivityData = async () => {
       try {
         setProductivityLoading(true)
-        // Get productivity date range with proper IST handling
-        const { startDate, endDate } = getProductivityDateRange(selectedProductivityRange)
 
-        console.log("Productivity tracking (Fixed with field mapping):", {
-          range: selectedProductivityRange,
-          startDateUTC: startDate.toISOString(),
-          endDateUTC: endDate.toISOString(),
-          startDateIST: new Date(startDate.getTime() + 5.5 * 60 * 60 * 1000).toISOString(),
-          endDateIST: new Date(endDate.getTime() + 5.5 * 60 * 60 * 1000).toISOString(),
-        })
+        // For today, use real-time data from billcutLeads collection
+        if (selectedProductivityRange === "today") {
+          // Get productivity date range with proper IST handling
+          const { startDate, endDate } = getProductivityDateRange(selectedProductivityRange)
 
-        // Query for general lead modifications (using lastModified)
-        const generalProductivityQuery = query(
-          collection(crmDb, "billcutLeads"),
-          where("lastModified", ">=", startDate),
-          where("lastModified", "<=", endDate),
-        )
+          console.log("Productivity tracking (Today - Real-time):", {
+            range: selectedProductivityRange,
+            startDateUTC: startDate.toISOString(),
+            endDateUTC: endDate.toISOString(),
+            startDateIST: new Date(startDate.getTime() + 5.5 * 60 * 60 * 1000).toISOString(),
+            endDateIST: new Date(endDate.getTime() + 5.5 * 60 * 60 * 1000).toISOString(),
+          })
 
-        // Query for converted leads (using convertedAt)
-        const convertedProductivityQuery = query(
-          collection(crmDb, "billcutLeads"),
-          where("convertedAt", ">=", startDate),
-          where("convertedAt", "<=", endDate),
-        )
+          // Query for general lead modifications (using lastModified)
+          const generalProductivityQuery = query(
+            collection(crmDb, "billcutLeads"),
+            where("lastModified", ">=", startDate),
+            where("lastModified", "<=", endDate),
+          )
 
-        const [generalSnapshot, convertedSnapshot] = await Promise.all([
-          getDocs(generalProductivityQuery),
-          getDocs(convertedProductivityQuery),
-        ])
+          // Query for converted leads (using convertedAt)
+          const convertedProductivityQuery = query(
+            collection(crmDb, "billcutLeads"),
+            where("convertedAt", ">=", startDate),
+            where("convertedAt", "<=", endDate),
+          )
 
-        console.log("Found leads for productivity tracking:", {
-          general: generalSnapshot.docs.length,
-          converted: convertedSnapshot.docs.length,
-        })
+          const [generalSnapshot, convertedSnapshot] = await Promise.all([
+            getDocs(generalProductivityQuery),
+            getDocs(convertedProductivityQuery),
+          ])
 
-        // Group leads by user and date
-        const productivityMap: { [key: string]: { [key: string]: ProductivityStats } } = {}
-        
-        // Debug: Track all leads processed
-        const debugLeads: any[] = []
+          console.log("Found leads for productivity tracking:", {
+            general: generalSnapshot.docs.length,
+            converted: convertedSnapshot.docs.length,
+          })
 
-        // Process general lead modifications (non-converted)
-        generalSnapshot.docs.forEach((doc) => {
-          const leadData = doc.data()
+          // Group leads by user and date
+          const productivityMap: { [key: string]: { [key: string]: ProductivityStats } } = {}
           
-          // FIXED: Use both category and status fields, prioritize category
-          const leadStatus = leadData.category || leadData.status || "No Status"
-          
-          // Only process if lead has lastModified and status is not "-" and not converted
-          if (leadData.lastModified && leadStatus !== "-" && leadStatus !== "Converted") {
-            const lastModifiedUTC = leadData.lastModified.toDate()
-            // Convert to IST for display purposes
-            const lastModifiedIST = new Date(lastModifiedUTC.getTime() + 5.5 * 60 * 60 * 1000)
+          // Debug: Track all leads processed
+          const debugLeads: any[] = []
 
-            // Debug: Add to debug array
-            debugLeads.push({
-              id: doc.id,
-              name: leadData.name,
-              assignedTo: leadData.assigned_to,
-              status: leadStatus,
-              category: leadData.category,
-              lastModified: lastModifiedIST.toISOString(),
-              type: 'general'
-            })
+          // Process general lead modifications (non-converted)
+          generalSnapshot.docs.forEach((doc) => {
+            const leadData = doc.data()
+            
+            // FIXED: Use both category and status fields, prioritize category
+            const leadStatus = leadData.category || leadData.status || "No Status"
+            
+            // Only process if lead has lastModified and status is not "-" and not converted
+            if (leadData.lastModified && leadStatus !== "-" && leadStatus !== "Converted") {
+              const lastModifiedUTC = leadData.lastModified.toDate()
+              // Convert to IST for display purposes
+              const lastModifiedIST = new Date(lastModifiedUTC.getTime() + 5.5 * 60 * 60 * 1000)
 
-            // For last7days and last30days, use a single date key to aggregate all data
-            // For other ranges, use individual dates
-            let dateKey: string
-            if (selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days") {
-              // Use a single key for the entire period
-              dateKey = selectedProductivityRange === "last7days" ? "Last 7 Days" : "Last 30 Days"
-            } else {
-              // Use individual date keys for other ranges
-              dateKey = lastModifiedIST.toLocaleDateString("en-IN", {
+              // Debug: Add to debug array
+              debugLeads.push({
+                id: doc.id,
+                name: leadData.name,
+                assignedTo: leadData.assigned_to,
+                status: leadStatus,
+                category: leadData.category,
+                lastModified: lastModifiedIST.toISOString(),
+                type: 'general'
+              })
+
+              // Use individual date keys for today
+              const dateKey = lastModifiedIST.toLocaleDateString("en-IN", {
                 timeZone: "Asia/Kolkata",
                 year: "numeric",
                 month: "short",
                 day: "numeric",
               })
-            }
 
-            const userId = leadData.assigned_to || "Unassigned"
-            const userName = leadData.assigned_to || "Unassigned"
+              const userId = leadData.assigned_to || "Unassigned"
+              const userName = leadData.assigned_to || "Unassigned"
 
-            // Initialize user if not exists
-            if (!productivityMap[userId]) {
-              productivityMap[userId] = {}
-            }
+              // Initialize user if not exists
+              if (!productivityMap[userId]) {
+                productivityMap[userId] = {}
+              }
 
-            // Initialize date if not exists
-            if (!productivityMap[userId][dateKey]) {
-              productivityMap[userId][dateKey] = {
-                userId,
-                userName,
-                date: dateKey,
-                leadsWorked: 0,
-                convertedLeads: 0,
-                lastActivity: lastModifiedUTC, // Store as UTC
-                statusBreakdown: {},
+              // Initialize date if not exists
+              if (!productivityMap[userId][dateKey]) {
+                productivityMap[userId][dateKey] = {
+                  userId,
+                  userName,
+                  date: dateKey,
+                  leadsWorked: 0,
+                  convertedLeads: 0,
+                  lastActivity: lastModifiedUTC, // Store as UTC
+                  statusBreakdown: {},
+                }
+              }
+
+              // Update stats
+              productivityMap[userId][dateKey].leadsWorked += 1
+              productivityMap[userId][dateKey].statusBreakdown[leadStatus] =
+                (productivityMap[userId][dateKey].statusBreakdown[leadStatus] || 0) + 1
+
+              // Update last activity if this is more recent
+              if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
+                productivityMap[userId][dateKey].lastActivity = lastModifiedUTC
               }
             }
-
-            // Update stats
-            productivityMap[userId][dateKey].leadsWorked += 1
-            productivityMap[userId][dateKey].statusBreakdown[leadStatus] =
-              (productivityMap[userId][dateKey].statusBreakdown[leadStatus] || 0) + 1
-
-          // Update last activity if this is more recent
-          if (lastModifiedUTC > productivityMap[userId][dateKey].lastActivity) {
-            productivityMap[userId][dateKey].lastActivity = lastModifiedUTC
-          }
-        }
-      })
-
-      // Process converted leads separately (using convertedAt)
-      convertedSnapshot.docs.forEach((doc) => {
-        const leadData = doc.data()
-        // Only process if lead has convertedAt and is actually converted
-        if (leadData.convertedAt && (leadData.category === "Converted" || leadData.status === "Converted")) {
-          const convertedAtUTC = leadData.convertedAt.toDate()
-          // Convert to IST for display purposes
-          const convertedAtIST = new Date(convertedAtUTC.getTime() + 5.5 * 60 * 60 * 1000)
-
-          // Debug: Add to debug array
-          debugLeads.push({
-            id: doc.id,
-            name: leadData.name,
-            assignedTo: leadData.assigned_to,
-            status: leadData.category || leadData.status,
-            category: leadData.category,
-            convertedAt: convertedAtIST.toISOString(),
-            type: 'converted'
           })
 
-          // For last7days and last30days, use a single date key to aggregate all data
-          // For other ranges, use individual dates
-          let dateKey: string
-          if (selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days") {
-            // Use a single key for the entire period
-            dateKey = selectedProductivityRange === "last7days" ? "Last 7 Days" : "Last 30 Days"
-          } else {
-            // Use individual date keys for other ranges
-            dateKey = convertedAtIST.toLocaleDateString("en-IN", {
-              timeZone: "Asia/Kolkata",
-              year: "numeric",
-              month: "short",
-              day: "numeric",
+          // Process converted leads separately (using convertedAt)
+          convertedSnapshot.docs.forEach((doc) => {
+            const leadData = doc.data()
+            // Only process if lead has convertedAt and is actually converted
+            if (leadData.convertedAt && (leadData.category === "Converted" || leadData.status === "Converted")) {
+              const convertedAtUTC = leadData.convertedAt.toDate()
+              // Convert to IST for display purposes
+              const convertedAtIST = new Date(convertedAtUTC.getTime() + 5.5 * 60 * 60 * 1000)
+
+              // Debug: Add to debug array
+              debugLeads.push({
+                id: doc.id,
+                name: leadData.name,
+                assignedTo: leadData.assigned_to,
+                status: leadData.category || leadData.status,
+                category: leadData.category,
+                convertedAt: convertedAtIST.toISOString(),
+                type: 'converted'
+              })
+
+              // Use individual date keys for today
+              const dateKey = convertedAtIST.toLocaleDateString("en-IN", {
+                timeZone: "Asia/Kolkata",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+
+              const userId = leadData.assigned_to || "Unassigned"
+              const userName = leadData.assigned_to || "Unassigned"
+              const status = "Converted"
+
+              // Initialize user if not exists
+              if (!productivityMap[userId]) {
+                productivityMap[userId] = {}
+              }
+
+              // Initialize date if not exists
+              if (!productivityMap[userId][dateKey]) {
+                productivityMap[userId][dateKey] = {
+                  userId,
+                  userName,
+                  date: dateKey,
+                  leadsWorked: 0,
+                  convertedLeads: 0,
+                  lastActivity: convertedAtUTC, // Store as UTC
+                  statusBreakdown: {},
+                }
+              }
+
+              // Update stats for converted leads
+              productivityMap[userId][dateKey].leadsWorked += 1
+              productivityMap[userId][dateKey].convertedLeads += 1
+              productivityMap[userId][dateKey].statusBreakdown[status] =
+                (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1
+
+              // Update last activity if this is more recent
+              if (convertedAtUTC > productivityMap[userId][dateKey].lastActivity) {
+                productivityMap[userId][dateKey].lastActivity = convertedAtUTC
+              }
+            }
+          })
+
+          // Debug: Log all processed leads
+          console.log("Debug - All processed leads:", debugLeads)
+
+          // Convert to array format
+          const productivityArray: ProductivityStats[] = []
+          Object.values(productivityMap).forEach((userDates) => {
+            Object.values(userDates).forEach((stats) => {
+              productivityArray.push(stats)
             })
-          }
+          })
 
-          const userId = leadData.assigned_to || "Unassigned"
-          const userName = leadData.assigned_to || "Unassigned"
-          const status = "Converted"
+          // Sort by date (newest first) and then by leads worked (descending)
+          productivityArray.sort((a, b) => {
+            if (a.date !== b.date) {
+              return b.date.localeCompare(a.date)
+            }
+            return b.leadsWorked - a.leadsWorked
+          })
 
-          // Initialize user if not exists
-          if (!productivityMap[userId]) {
-            productivityMap[userId] = {}
-          }
+          console.log("Productivity stats (Today - Real-time):", productivityArray)
+          setProductivityStats(productivityArray)
+        } else {
+          // For historical data (yesterday, last 7 days, last 30 days), use productivity_snapshots collection
+          console.log("Productivity tracking (Historical - Snapshots):", {
+            range: selectedProductivityRange,
+          })
 
-          // Initialize date if not exists
-          if (!productivityMap[userId][dateKey]) {
-            productivityMap[userId][dateKey] = {
-              userId,
-              userName,
-              date: dateKey,
-              leadsWorked: 0,
-              convertedLeads: 0,
-              lastActivity: convertedAtUTC, // Store as UTC
-              statusBreakdown: {},
+          // Generate date range for snapshot collection
+          const today = new Date()
+          const snapshotDates: string[] = []
+
+          if (selectedProductivityRange === "yesterday") {
+            const yesterday = new Date(today)
+            yesterday.setDate(yesterday.getDate() - 1)
+            const dateStr = yesterday.toISOString().split('T')[0] // Format: YYYY-MM-DD
+            snapshotDates.push(dateStr)
+          } else if (selectedProductivityRange === "last7days") {
+            for (let i = 6; i >= 0; i--) {
+              const date = new Date(today)
+              date.setDate(date.getDate() - i)
+              const dateStr = date.toISOString().split('T')[0] // Format: YYYY-MM-DD
+              snapshotDates.push(dateStr)
+            }
+          } else if (selectedProductivityRange === "last30days") {
+            for (let i = 29; i >= 0; i--) {
+              const date = new Date(today)
+              date.setDate(date.getDate() - i)
+              const dateStr = date.toISOString().split('T')[0] // Format: YYYY-MM-DD
+              snapshotDates.push(dateStr)
             }
           }
 
-          // Update stats for converted leads
-          productivityMap[userId][dateKey].leadsWorked += 1
-          productivityMap[userId][dateKey].convertedLeads += 1
-          productivityMap[userId][dateKey].statusBreakdown[status] =
-            (productivityMap[userId][dateKey].statusBreakdown[status] || 0) + 1
+          console.log("Snapshot dates to fetch:", snapshotDates)
 
-          // Update last activity if this is more recent
-          if (convertedAtUTC > productivityMap[userId][dateKey].lastActivity) {
-            productivityMap[userId][dateKey].lastActivity = convertedAtUTC
-          }
+          // Fetch productivity snapshots
+          const productivitySnapshotsRef = collection(crmDb, "productivity_snapshots")
+          const snapshotQueries = snapshotDates.map(date => 
+            query(productivitySnapshotsRef, where("__name__", "==", date))
+          )
+
+          const snapshotResults = await Promise.all(
+            snapshotQueries.map(snapshotQuery => getDocs(snapshotQuery))
+          )
+
+          // Process snapshot data
+          const productivityArray: ProductivityStats[] = []
+          const userSummaryMap: { [key: string]: ProductivityStats } = {}
+
+          snapshotResults.forEach((snapshot, index) => {
+            snapshot.docs.forEach((doc) => {
+              const snapshotData = doc.data()
+              console.log(`Snapshot data for ${snapshotDates[index]}:`, snapshotData)
+
+              // Extract Billcut leads data from snapshot
+              if (snapshotData.billcutLeads && snapshotData.billcutLeads.userProductivity) {
+                snapshotData.billcutLeads.userProductivity.forEach((userData: any) => {
+                  const userId = userData.userId || "Unassigned"
+                  const userName = userData.userName || "Unassigned"
+                  
+                  // Initialize user summary if not exists
+                  if (!userSummaryMap[userId]) {
+                    userSummaryMap[userId] = {
+                      userId,
+                      userName,
+                      date: selectedProductivityRange === "yesterday" ? "Yesterday" : 
+                            selectedProductivityRange === "last7days" ? "Last 7 Days" : "Last 30 Days",
+                      leadsWorked: 0,
+                      convertedLeads: 0,
+                      lastActivity: new Date(0),
+                      statusBreakdown: {},
+                    }
+                  }
+
+                  // Aggregate data
+                  userSummaryMap[userId].leadsWorked += userData.leadsWorked || 0
+                  userSummaryMap[userId].convertedLeads += userData.convertedLeads || 0
+                  
+                  // Update last activity
+                  if (userData.lastActivity) {
+                    const lastActivityDate = userData.lastActivity.toDate ? userData.lastActivity.toDate() : new Date(userData.lastActivity)
+                    if (lastActivityDate > userSummaryMap[userId].lastActivity) {
+                      userSummaryMap[userId].lastActivity = lastActivityDate
+                    }
+                  }
+
+                  // Aggregate status breakdown
+                  if (userData.statusBreakdown) {
+                    Object.entries(userData.statusBreakdown).forEach(([status, count]) => {
+                      const normalizedStatus = status === "–" ? "No Status" : status
+                      userSummaryMap[userId].statusBreakdown[normalizedStatus] = 
+                        (userSummaryMap[userId].statusBreakdown[normalizedStatus] || 0) + (count as number)
+                    })
+                  }
+                })
+              }
+            })
+          })
+
+          // Convert to array and sort
+          Object.values(userSummaryMap).forEach((stats) => {
+            productivityArray.push(stats)
+          })
+
+          productivityArray.sort((a, b) => b.leadsWorked - a.leadsWorked)
+
+          console.log("Productivity stats (Historical - Snapshots):", productivityArray)
+          setProductivityStats(productivityArray)
         }
-      })
-
-      // Debug: Log all processed leads
-      console.log("Debug - All processed leads:", debugLeads)
-      console.log("Debug - Leads for Aug 5, 2025:", debugLeads.filter(lead => 
-        lead.lastModified?.includes('2025-08-05') || lead.convertedAt?.includes('2025-08-05')
-      ))
-
-      // Convert to array format
-      const productivityArray: ProductivityStats[] = []
-      Object.values(productivityMap).forEach((userDates) => {
-        Object.values(userDates).forEach((stats) => {
-          productivityArray.push(stats)
-        })
-      })
-
-      // Sort by date (newest first) and then by leads worked (descending)
-      productivityArray.sort((a, b) => {
-        if (a.date !== b.date) {
-          return b.date.localeCompare(a.date)
-        }
-        return b.leadsWorked - a.leadsWorked
-      })
-
-      console.log("Productivity stats (Fixed with field mapping):", productivityArray)
-      setProductivityStats(productivityArray)
-    } catch (error) {
-      console.error("Error fetching productivity data:", error)
-    } finally {
-      setProductivityLoading(false)
+      } catch (error) {
+        console.error("Error fetching productivity data:", error)
+      } finally {
+        setProductivityLoading(false)
+      }
     }
-  }
 
-  fetchProductivityData()
-}, [selectedProductivityRange, productivityDateRange])
+    fetchProductivityData()
+  }, [selectedProductivityRange, productivityDateRange])
 
   // Analytics calculations
   const analytics = useMemo(() => {
@@ -1732,8 +1823,11 @@ const BillcutLeadReportContent = () => {
       } else if (selectedProductivityRange === "last30days") {
         user.averageLeadsPerDay = user.totalLeads / 30
         user.averageConvertedPerDay = user.totalConvertedLeads / 30
+      } else if (selectedProductivityRange === "yesterday") {
+        user.averageLeadsPerDay = user.totalLeads / 1
+        user.averageConvertedPerDay = user.totalConvertedLeads / 1
       } else {
-        // For other ranges, use the actual number of days with activity
+        // For other ranges (like today), use the actual number of days with activity
         user.averageLeadsPerDay = user.totalLeads / user.totalDays.size
         user.averageConvertedPerDay = user.totalConvertedLeads / user.totalDays.size
       }
@@ -1779,7 +1873,7 @@ const BillcutLeadReportContent = () => {
                   )}
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-600">
-                      {selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days"
+                      {selectedProductivityRange === "last7days" || selectedProductivityRange === "last30days" || selectedProductivityRange === "yesterday"
                         ? "Period:"
                         : "Days Active:"}
                     </span>
@@ -1788,7 +1882,9 @@ const BillcutLeadReportContent = () => {
                         ? "7 days"
                         : selectedProductivityRange === "last30days"
                           ? "30 days"
-                          : user.totalDays.size}
+                          : selectedProductivityRange === "yesterday"
+                            ? "1 day"
+                            : user.totalDays.size}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
