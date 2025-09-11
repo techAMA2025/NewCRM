@@ -27,11 +27,14 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { storage } from "@/firebase/firebase"
 import ViewDetailsModal from "./ViewDetailsModal"
 import EditModal from "./EditModal"
+import ClientBulkWhatsAppModal from "./ClientBulkWhatsAppModal"
 import { format } from "date-fns"
 import ClientsTable from "@/components/ClientsTable"
 import type { Client } from "./types"
 import { serverTimestamp } from "firebase/firestore"
 import { useSearchParams } from "next/navigation"
+import { getFunctions, httpsCallable } from "firebase/functions"
+import { app } from "@/firebase/firebase"
 import { Spinner } from "@/components/ui/spinner"
 
 interface User {
@@ -250,6 +253,9 @@ function ClientsPageWithParams() {
   // Add new state for secondary bulk assignment
   const [isBulkSecondaryAssignModalOpen, setIsBulkSecondaryAssignModalOpen] = useState(false)
   const [selectedSecondaryAdvocateForBulk, setSelectedSecondaryAdvocateForBulk] = useState<string>("")
+
+  // Add new state for bulk WhatsApp modal
+  const [isBulkWhatsAppModalOpen, setIsBulkWhatsAppModalOpen] = useState(false)
 
   // Add new state for theme
   const [theme, setTheme] = useState<"light" | "dark">("light")
@@ -1256,6 +1262,116 @@ function ClientsPageWithParams() {
     }
   }
 
+  // Add function to handle bulk WhatsApp messaging
+  const sendBulkWhatsApp = async (templateName: string, clientIds: string[], clientData?: any[]) => {
+    if (clientIds.length === 0) {
+      showToast("Error", "No clients selected for WhatsApp messaging", "error")
+      return
+    }
+
+    const functions = getFunctions(app)
+    const sendWhatsappMessageFn = httpsCallable(functions, "sendWhatsappMessage")
+
+    let successCount = 0
+    let errorCount = 0
+    const errors: string[] = []
+
+    // Show initial toast
+    const toastId = showToast("Sending WhatsApp messages", `Sending messages to ${clientIds.length} clients...`, "info")
+
+    try {
+      // Process clients in batches to avoid overwhelming the system
+      const batchSize = 5
+      for (let i = 0; i < clientIds.length; i += batchSize) {
+        const batch = clientIds.slice(i, i + batchSize)
+
+        // Process batch in parallel
+        const batchPromises = batch.map(async (clientId) => {
+          // Use clientData if provided, otherwise try to find in clients array
+          let client = clientData?.find((c) => c.id === clientId)
+
+          if (!client) {
+            // Try to find client in clients array
+            client = clients.find((c) => c.id === clientId)
+          }
+
+          if (!client || !client.phone) {
+            errorCount++
+            errors.push(`${client?.name || "Unknown"}: No phone number`)
+            return
+          }
+
+          try {
+            // Format phone number
+            let formattedPhone = client.phone.replace(/\s+/g, "").replace(/[()-]/g, "")
+            if (formattedPhone.startsWith("+91")) {
+              formattedPhone = formattedPhone.substring(3)
+            }
+            if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
+              formattedPhone = "91" + formattedPhone
+            }
+
+            const messageData = {
+              phoneNumber: formattedPhone,
+              templateName: templateName,
+              clientId: client.id,
+              userId: localStorage.getItem("userName") || "Unknown",
+              userName: localStorage.getItem("userName") || "Unknown",
+              message: `Template message: ${templateName}`,
+              customParams: [
+                { name: "name", value: client.name || "Customer" },
+                { name: "Channel", value: "AMA Legal Solutions" },
+                { name: "agent_name", value: localStorage.getItem("userName") || "Agent" },
+                { name: "customer_mobile", value: formattedPhone },
+              ],
+              channelNumber: "919289622596",
+              broadcastName: `${templateName}_bulk_${Date.now()}`,
+            }
+
+            const result = await sendWhatsappMessageFn(messageData)
+
+            if (result.data && (result.data as any).success) {
+              successCount++
+            } else {
+              errorCount++
+              errors.push(`${client.name}: Failed to send`)
+            }
+          } catch (error: any) {
+            errorCount++
+            const errorMessage = error.message || error.details || "Unknown error"
+            errors.push(`${client.name}: ${errorMessage}`)
+          }
+        })
+
+        await Promise.all(batchPromises)
+
+        // Small delay between batches to avoid rate limiting
+        if (i + batchSize < clientIds.length) {
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+        }
+      }
+
+      // Show final results
+      if (successCount > 0) {
+        showToast(
+          "Bulk WhatsApp Complete",
+          `${successCount} message${successCount !== 1 ? "s" : ""} sent successfully${errorCount > 0 ? `, ${errorCount} failed` : ""}`,
+          "success"
+        )
+      } else {
+        showToast("Bulk WhatsApp Failed", "No messages were sent successfully", "error")
+      }
+
+      // Log detailed errors if any
+      if (errors.length > 0) {
+        console.log("WhatsApp sending errors:", errors)
+      }
+    } catch (error) {
+      console.error("Error in bulk WhatsApp sending:", error)
+      showToast("Error", "Failed to send bulk WhatsApp messages", "error")
+    }
+  }
+
   // Add function to handle viewing remark history
   const handleViewHistory = async (clientId: string) => {
     try {
@@ -1408,6 +1524,12 @@ function ClientsPageWithParams() {
                   className="bg-green-500 hover:bg-green-600 text-white text-[10px] py-0.5 px-1.5 h-5"
                 >
                   Assign Secondary ({selectedClients.size} selected)
+                </Button>
+                <Button
+                  onClick={() => setIsBulkWhatsAppModalOpen(true)}
+                  className="bg-purple-500 hover:bg-purple-600 text-white text-[10px] py-0.5 px-1.5 h-5"
+                >
+                  Bulk WhatsApp ({selectedClients.size} selected)
                 </Button>
               </div>
             )}
@@ -1875,6 +1997,14 @@ function ClientsPageWithParams() {
             </div>
           </div>
         )}
+
+        {/* Bulk WhatsApp Modal */}
+        <ClientBulkWhatsAppModal
+          isOpen={isBulkWhatsAppModalOpen}
+          onClose={() => setIsBulkWhatsAppModalOpen(false)}
+          selectedClients={Array.from(selectedClients).map(id => clients.find(c => c.id === id)).filter(Boolean)}
+          onSendBulkWhatsApp={sendBulkWhatsApp}
+        />
 
         {/* Toast Container */}
         <div className="fixed bottom-2 right-2 z-50 flex flex-col gap-1.5">
