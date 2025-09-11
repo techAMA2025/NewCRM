@@ -220,6 +220,7 @@ function ClientsPageWithParams() {
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [documentFilter, setDocumentFilter] = useState<string>("all")
   const [bankNameFilter, setBankNameFilter] = useState<string>("all")
+  const [agreementFilter, setAgreementFilter] = useState<string>("all")
 
   // Lists for filter dropdowns
   const [allAdvocates, setAllAdvocates] = useState<string[]>([])
@@ -360,9 +361,6 @@ function ClientsPageWithParams() {
         // Combine both arrays with clients without startDate at the top
         let combinedClients = [...clientsWithoutStartDate, ...clientsWithStartDate]
 
-        console.log(`Total clients: ${combinedClients.length}`)
-        console.log(`Clients without startDate: ${clientsWithoutStartDate.length}`)
-        console.log(`Clients with startDate: ${clientsWithStartDate.length}`)
 
         // Enhance clients with document URLs if they are missing for billcut source
         combinedClients = await Promise.all(
@@ -459,41 +457,30 @@ function ClientsPageWithParams() {
     const searchFromUrl = searchParams.get("search")
     const documentFromUrl = searchParams.get("document")
     const bankNameFromUrl = searchParams.get("bankName")
-
-    console.log("URL Parameters detected:", {
-      statusFromUrl,
-      advocateFromUrl,
-      sourceFromUrl,
-      searchFromUrl,
-      documentFromUrl,
-      bankNameFromUrl,
-    })
+    const agreementFromUrl = searchParams.get("agreement")
 
     if (statusFromUrl) {
-      console.log("Setting status filter to:", statusFromUrl)
       setStatusFilter(statusFromUrl)
     }
     if (advocateFromUrl) {
-      console.log("Setting advocate filter to:", advocateFromUrl)
       setPrimaryAdvocateFilter(advocateFromUrl)
     }
     if (sourceFromUrl && userRole !== "billcut") {
       // Convert display name back to normalized source value
       const normalizedSource = sourceFromUrl.toLowerCase().replace(/\s+/g, "")
-      console.log("Setting source filter to:", normalizedSource)
       setSourceFilter(normalizedSource)
     }
     if (searchFromUrl) {
-      console.log("Setting search term to:", searchFromUrl)
       setSearchTerm(searchFromUrl)
     }
     if (documentFromUrl) {
-      console.log("Setting document filter to:", documentFromUrl)
       setDocumentFilter(documentFromUrl)
     }
     if (bankNameFromUrl) {
-      console.log("Setting bank name filter to:", bankNameFromUrl)
       setBankNameFilter(bankNameFromUrl)
+    }
+    if (agreementFromUrl) {
+      setAgreementFilter(agreementFromUrl)
     }
   }, [searchParams, userRole]) // Add userRole dependency to prevent overriding billcut filter
 
@@ -757,8 +744,6 @@ function ClientsPageWithParams() {
   }
 
   const openDocumentViewer = (url: string, name: string) => {
-    console.log("Opening document viewer:", { url, name })
-
     if (!url) {
       showToast("Invalid Document URL", "The document URL is missing or invalid.", "error")
       return
@@ -781,25 +766,6 @@ function ClientsPageWithParams() {
 
   // Apply filters and search
   useEffect(() => {
-    console.log("Filter application triggered with:", {
-      searchTerm,
-      primaryAdvocateFilter,
-      secondaryAdvocateFilter,
-      statusFilter,
-      sourceFilter,
-      documentFilter,
-      bankNameFilter,
-      clientsCount: clients.length,
-    })
-
-    // Debug: Check unique advocate names in the data
-    if (clients.length > 0) {
-      const uniqueAdvocates = [...new Set(clients.map((client) => client.alloc_adv).filter(Boolean))]
-      console.log("Unique advocate names in data:", uniqueAdvocates)
-
-      const uniqueStatuses = [...new Set(clients.map((client) => client.adv_status).filter(Boolean))]
-      console.log("Unique statuses in data:", uniqueStatuses)
-    }
 
     let results = [...clients]
 
@@ -813,94 +779,53 @@ function ClientsPageWithParams() {
           (client.phone && client.phone.includes(searchTerm)) ||
           (client.aadharNumber && client.aadharNumber.includes(searchTerm)),
       )
-      console.log("After search filter:", results.length, "clients")
     }
 
     // Apply primary advocate filter
     if (primaryAdvocateFilter !== "all") {
-      console.log("Filtering by advocate:", primaryAdvocateFilter)
-      results = results.filter((client) => {
-        const matches = client.alloc_adv === primaryAdvocateFilter
-        if (!matches && client.alloc_adv) {
-          console.log("Advocate mismatch:", {
-            expected: primaryAdvocateFilter,
-            actual: client.alloc_adv,
-            clientName: client.name,
-          })
-        }
-        return matches
-      })
-      console.log("After primary advocate filter:", results.length, "clients")
+      results = results.filter((client) => client.alloc_adv === primaryAdvocateFilter)
     }
 
     // Apply secondary advocate filter
     if (secondaryAdvocateFilter !== "all") {
       results = results.filter((client) => client.alloc_adv_secondary === secondaryAdvocateFilter)
-      console.log("After secondary advocate filter:", results.length, "clients")
     }
 
     // Apply status filter
     if (statusFilter !== "all") {
-      console.log("Filtering by status:", statusFilter)
-      results = results.filter((client) => {
-        const matches = client.adv_status === statusFilter
-        if (!matches && client.adv_status) {
-          console.log("Status mismatch:", {
-            expected: statusFilter,
-            actual: client.adv_status,
-            clientName: client.name,
-          })
-        }
-        return matches
-      })
-      console.log("After status filter:", results.length, "clients")
+      results = results.filter((client) => client.adv_status === statusFilter)
     }
 
     // Apply source filter
     if (sourceFilter !== "all") {
       results = results.filter((client) => normalizeSource(client.source_database) === sourceFilter)
-      console.log("After source filter:", results.length, "clients")
     }
 
     // Apply document filter
     if (documentFilter !== "all") {
-      console.log("Filtering by document status:", documentFilter)
       results = results.filter((client) => {
         const hasDocument = !!(client.documentUrl && client.documentUrl.trim() !== "")
-        const matches = documentFilter === "with_document" ? hasDocument : !hasDocument
-        if (!matches && hasDocument) {
-          console.log("Document mismatch:", {
-            expected: documentFilter,
-            actual: "with_document",
-            clientName: client.name,
-          })
-        }
-        return matches
+        return documentFilter === "with_document" ? hasDocument : !hasDocument
       })
-      console.log("After document filter:", results.length, "clients")
     }
 
     // Apply bank name filter
     if (bankNameFilter !== "all") {
-      console.log("Filtering by bank name:", bankNameFilter)
       results = results.filter((client) => {
         if (!client.banks || !Array.isArray(client.banks)) return false
-        const hasMatchingBank = client.banks.some(
+        return client.banks.some(
           (bank) => bank.bankName && bank.bankName.toLowerCase().includes(bankNameFilter.toLowerCase()),
         )
-        if (!hasMatchingBank) {
-          console.log("Bank name mismatch:", {
-            expected: bankNameFilter,
-            clientName: client.name,
-            clientBanks: client.banks.map((bank) => bank.bankName).join(", "),
-          })
-        }
-        return hasMatchingBank
       })
-      console.log("After bank name filter:", results.length, "clients")
     }
 
-    console.log("Final filtered results:", results.length, "clients")
+    // Apply agreement filter
+    if (agreementFilter !== "all") {
+      results = results.filter((client) => {
+        const hasAgreementSent = client.sentAgreement === true
+        return agreementFilter === "sent" ? hasAgreementSent : !hasAgreementSent
+      })
+    }
     setFilteredClients(results)
   }, [
     clients,
@@ -911,6 +836,7 @@ function ClientsPageWithParams() {
     sourceFilter,
     documentFilter,
     bankNameFilter,
+    agreementFilter,
   ])
 
   // Reset all filters
@@ -922,6 +848,7 @@ function ClientsPageWithParams() {
     setSourceFilter("all")
     setDocumentFilter("all")
     setBankNameFilter("all")
+    setAgreementFilter("all")
   }
 
   // Function to format source display name
@@ -1364,7 +1291,7 @@ function ClientsPageWithParams() {
 
       // Log detailed errors if any
       if (errors.length > 0) {
-        console.log("WhatsApp sending errors:", errors)
+        // Errors are already handled in the toast messages
       }
     } catch (error) {
       console.error("Error in bulk WhatsApp sending:", error)
@@ -1703,6 +1630,28 @@ function ClientsPageWithParams() {
                     {bankName}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={agreementFilter} onValueChange={setAgreementFilter}>
+              <SelectTrigger
+                className={`w-[100px] ${
+                  theme === "dark"
+                    ? "bg-gray-800 border-gray-700 text-gray-200"
+                    : "bg-white border-gray-300 text-gray-800"
+                } text-[10px] h-5`}
+              >
+                <SelectValue placeholder="Filter by agreement" />
+              </SelectTrigger>
+              <SelectContent
+                className={`${
+                  theme === "dark"
+                    ? "bg-gray-800 text-gray-200 border-gray-700"
+                    : "bg-white text-gray-800 border-gray-300"
+                } text-[10px]`}
+              >
+                <SelectItem value="all">All Agreements</SelectItem>
+                <SelectItem value="sent">Agreement Sent</SelectItem>
+                <SelectItem value="not_sent">Agreement Not Sent</SelectItem>
               </SelectContent>
             </Select>
             <Button
