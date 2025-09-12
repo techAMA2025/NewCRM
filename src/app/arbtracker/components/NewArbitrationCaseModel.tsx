@@ -33,9 +33,9 @@ export interface ArbitrationCaseData {
 const defaultEmails = [
   'shreyarora.amalegal@gmail.com',
   'shrutiamalegal@gmail.com',
-  'sourav.amalegal@gmail.com',
-  'latika.amalegal@gmail.com',
-  'sanchaita.amalegal@gmail.com',
+  'ishaan.amalegal@gmail.com',
+  'Kirtima.amalegal@gmail.com',
+  'tech.ama123@gmail.com'
 ]
 
 const initialCaseData: ArbitrationCaseData = {
