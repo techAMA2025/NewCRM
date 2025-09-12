@@ -774,7 +774,7 @@ const AmaLeadRow = ({
                 </button>
 
                 {/* WhatsApp Menu Button */}
-                <div className="relative" ref={menuRef}>
+                <div className="relative overflow-visible" ref={menuRef}>
                   <button
                     onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
                     disabled={!canEdit || isSendingWhatsApp || templatesLoading}

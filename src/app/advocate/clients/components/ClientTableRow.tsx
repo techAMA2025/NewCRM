@@ -273,7 +273,7 @@ export default function ClientTableRow({
             </button>
             
             {/* WATI Templates Button */}
-            <div className="relative">
+            <div className="relative overflow-visible">
               <button
                 onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
                 disabled={isSendingWhatsApp || templatesLoading}

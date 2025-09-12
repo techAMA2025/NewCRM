@@ -215,7 +215,7 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
           />
           
           {/* WhatsApp Menu Button */}
-          <div className="relative">
+          <div className="relative overflow-visible">
             <button
               onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
               disabled={disabled || isSendingWhatsApp || templatesLoading}
