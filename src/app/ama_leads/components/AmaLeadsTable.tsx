@@ -696,7 +696,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
   const assignmentOptions = getAssignmentOptions()
 
   return (
-    <div className="bg-[#ffffff] shadow-2xl rounded-xl overflow-hidden border border-[#5A4C33]/10">
+    <div className="bg-[#ffffff] shadow-2xl rounded-xl overflow-visible border border-[#5A4C33]/10">
       {/* Hidden Columns Control Panel */}
       {Object.values(columnVisibility).some((visible) => !visible) && (
         <div className="bg-[#F8F5EC] px-4 py-2 border-b border-[#5A4C33]/10">
