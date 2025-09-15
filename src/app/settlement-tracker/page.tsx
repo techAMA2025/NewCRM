@@ -239,8 +239,8 @@ const SettlementTracker = () => {
       return
     }
 
-    if (isManualBankEntry && (!manualBankName || !manualAccountNumber || !manualLoanAmount || !manualLoanType)) {
-      alert('Please fill in all manual bank details')
+    if (isManualBankEntry && !manualBankName) {
+      alert('Please enter the bank name')
       return
     }
 
@@ -261,9 +261,9 @@ const SettlementTracker = () => {
       if (isManualBankEntry) {
         bankData = {
           bankName: manualBankName,
-          accountNumber: manualAccountNumber,
-          loanAmount: manualLoanAmount,
-          loanType: manualLoanType
+          accountNumber: manualAccountNumber || '',
+          loanAmount: manualLoanAmount || '',
+          loanType: manualLoanType || ''
         }
       } else {
         const selectedBankData = availableBanks.find(b => b.id === selectedBank)
@@ -785,7 +785,7 @@ const SettlementTracker = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="manualAccountNumber">Account Number *</Label>
+                      <Label htmlFor="manualAccountNumber">Account Number (Optional)</Label>
                       <Input
                         id="manualAccountNumber"
                         value={manualAccountNumber}
@@ -794,7 +794,7 @@ const SettlementTracker = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="manualLoanAmount">Loan Amount *</Label>
+                      <Label htmlFor="manualLoanAmount">Loan Amount (Optional)</Label>
                       <Input
                         id="manualLoanAmount"
                         value={manualLoanAmount}
@@ -804,7 +804,7 @@ const SettlementTracker = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="manualLoanType">Loan Type *</Label>
+                      <Label htmlFor="manualLoanType">Loan Type (Optional)</Label>
                       <Select value={manualLoanType} onValueChange={setManualLoanType}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select loan type" />
