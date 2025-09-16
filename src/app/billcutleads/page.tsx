@@ -1160,7 +1160,8 @@ const BillCutLeadsPage = () => {
       })
 
       // Show warning if trying to assign leads that are already assigned to others
-      if (alreadyAssignedLeads.length > 0) {
+      // Only restrict this for sales users - non-sales users can reassign any leads
+      if (alreadyAssignedLeads.length > 0 && userRole === "sales") {
         const assignedLeadNames = alreadyAssignedLeads.map(leadId => {
           const lead = leads.find(l => l.id === leadId)
           return lead?.name || "Unknown"
@@ -1188,7 +1189,10 @@ const BillCutLeadsPage = () => {
       }
 
       // Filter out leads that are already assigned to current user (no need to reassign)
-      const leadsToAssign = [...unassignedLeads, ...currentUserLeads]
+      // For non-sales users, include all leads (unassigned, current user's, and others')
+      const leadsToAssign = userRole === "sales" 
+        ? [...unassignedLeads, ...currentUserLeads]
+        : [...unassignedLeads, ...currentUserLeads, ...alreadyAssignedLeads]
       
       if (leadsToAssign.length === 0) {
         toast.info("No leads need to be assigned", {
@@ -1238,12 +1242,32 @@ const BillCutLeadsPage = () => {
 
       // Show success message with details
       let successMessage = ""
-      if (unassignedLeads.length > 0 && currentUserLeads.length > 0) {
-        successMessage = `${unassignedLeads.length} unassigned leads and ${currentUserLeads.length} of your existing leads assigned to ${salesPersonName}`
-      } else if (unassignedLeads.length > 0) {
-        successMessage = `${unassignedLeads.length} unassigned leads assigned to ${salesPersonName}`
-      } else if (currentUserLeads.length > 0) {
-        successMessage = `${currentUserLeads.length} of your leads reassigned to ${salesPersonName}`
+      if (userRole === "sales") {
+        // Sales users can only assign unassigned leads and reassign their own leads
+        if (unassignedLeads.length > 0 && currentUserLeads.length > 0) {
+          successMessage = `${unassignedLeads.length} unassigned leads and ${currentUserLeads.length} of your existing leads assigned to ${salesPersonName}`
+        } else if (unassignedLeads.length > 0) {
+          successMessage = `${unassignedLeads.length} unassigned leads assigned to ${salesPersonName}`
+        } else if (currentUserLeads.length > 0) {
+          successMessage = `${currentUserLeads.length} of your leads reassigned to ${salesPersonName}`
+        }
+      } else {
+        // Non-sales users can reassign any leads
+        if (unassignedLeads.length > 0 && currentUserLeads.length > 0 && alreadyAssignedLeads.length > 0) {
+          successMessage = `${unassignedLeads.length} unassigned leads, ${currentUserLeads.length} of your leads, and ${alreadyAssignedLeads.length} leads from others assigned to ${salesPersonName}`
+        } else if (unassignedLeads.length > 0 && alreadyAssignedLeads.length > 0) {
+          successMessage = `${unassignedLeads.length} unassigned leads and ${alreadyAssignedLeads.length} leads from others assigned to ${salesPersonName}`
+        } else if (currentUserLeads.length > 0 && alreadyAssignedLeads.length > 0) {
+          successMessage = `${currentUserLeads.length} of your leads and ${alreadyAssignedLeads.length} leads from others reassigned to ${salesPersonName}`
+        } else if (unassignedLeads.length > 0 && currentUserLeads.length > 0) {
+          successMessage = `${unassignedLeads.length} unassigned leads and ${currentUserLeads.length} of your existing leads assigned to ${salesPersonName}`
+        } else if (unassignedLeads.length > 0) {
+          successMessage = `${unassignedLeads.length} unassigned leads assigned to ${salesPersonName}`
+        } else if (currentUserLeads.length > 0) {
+          successMessage = `${currentUserLeads.length} of your leads reassigned to ${salesPersonName}`
+        } else if (alreadyAssignedLeads.length > 0) {
+          successMessage = `${alreadyAssignedLeads.length} leads from others reassigned to ${salesPersonName}`
+        }
       }
 
       toast.success(
@@ -1295,7 +1319,7 @@ const BillCutLeadsPage = () => {
       return
     }
 
-    const canBulkAssign = userRole === "admin" || userRole === "overlord" || userRole === "sales"
+    const canBulkAssign = userRole === "admin" || userRole === "overlord" || userRole === "sales" || userRole === "billcut" || userRole === "assistant" || userRole === "advocate"
 
     if (!canBulkAssign) {
       toast.error("You don't have permission to bulk assign leads")
@@ -1324,8 +1348,8 @@ const BillCutLeadsPage = () => {
       }
     })
 
-    // Show warning if some leads are already assigned to others
-    if (alreadyAssignedToOthers.length > 0) {
+    // Show warning if some leads are already assigned to others (only for sales users)
+    if (alreadyAssignedToOthers.length > 0 && userRole === "sales") {
       const assignedLeadNames = alreadyAssignedToOthers.map(leadId => {
         const lead = leads.find(l => l.id === leadId)
         return lead?.name || "Unknown"
@@ -2335,13 +2359,17 @@ const BillCutLeadsPage = () => {
                                 </p>
                               )}
                               {alreadyAssignedToOthers.length > 0 && (
-                                <p className="text-red-400">
-                                  ✗ {alreadyAssignedToOthers.length} lead{alreadyAssignedToOthers.length > 1 ? "s are" : " is"} already assigned to others
+                                <p className={userRole === "sales" ? "text-red-400" : "text-yellow-400"}>
+                                  {userRole === "sales" ? "✗" : "✓"} {alreadyAssignedToOthers.length} lead{alreadyAssignedToOthers.length > 1 ? "s are" : " is"} already assigned to others
+                                  {userRole !== "sales" && " (can be reassigned)"}
                                 </p>
                               )}
                             </div>
                             <p className="text-gray-400 text-xs mt-2">
-                              Total assignable: {unassignedLeads.length + currentUserLeads.length} of {selectedLeads.length}
+                              Total assignable: {userRole === "sales" 
+                                ? unassignedLeads.length + currentUserLeads.length 
+                                : unassignedLeads.length + currentUserLeads.length + alreadyAssignedToOthers.length
+                              } of {selectedLeads.length}
                             </p>
                           </div>
                         )

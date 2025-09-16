@@ -233,16 +233,17 @@ const BillcutLeadsTableOptimized = React.memo(
         const unassigned = isUnassigned(lead)
 
         if (unassigned) {
-          return ["sales", "admin", "overlord"].includes(userRole || "")
+          return ["sales", "admin", "overlord", "billcut", "assistant", "advocate"].includes(userRole || "")
         }
 
-        if (userRole === "admin" || userRole === "overlord") return true
+        // For already assigned leads: allow all non-sales users to reassign
+        if (userRole !== "sales") {
+          return ["admin", "overlord", "billcut", "assistant", "advocate"].includes(userRole || "")
+        }
 
+        // Sales users can only reassign their own leads
         if (userRole === "sales") {
-          if (lead.assignedTo === userName) {
-            return true
-          }
-          return unassigned
+          return lead.assignedTo === userName
         }
 
         return false
