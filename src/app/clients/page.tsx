@@ -261,6 +261,9 @@ function ClientsPageWithParams() {
   // Add new state for theme
   const [theme, setTheme] = useState<"light" | "dark">("light")
 
+  // Add new state for bulk select by number
+  const [bulkSelectNumber, setBulkSelectNumber] = useState<string>("")
+
   // Add new state for history modal
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedClientHistory, setSelectedClientHistory] = useState<
@@ -1107,6 +1110,36 @@ function ClientsPageWithParams() {
     setSelectedClients(newSelected)
   }
 
+  // Add function to handle bulk select by number
+  const handleBulkSelectByNumber = () => {
+    const number = parseInt(bulkSelectNumber.trim())
+    if (isNaN(number) || number <= 0) {
+      showToast("Invalid Number", "Please enter a valid positive number", "error")
+      return
+    }
+
+    if (number > filteredClients.length) {
+      showToast("Number Too Large", `Only ${filteredClients.length} clients available in current filter`, "error")
+      return
+    }
+
+    // Select the first N clients from the filtered list
+    const topClients = filteredClients.slice(0, number)
+    const topClientIds = new Set(topClients.map(client => client.id))
+    setSelectedClients(topClientIds)
+    
+    showToast("Bulk Selection", `Selected top ${number} clients from current filter`, "success")
+    setBulkSelectNumber("") // Clear the input after selection
+  }
+
+  // Add function to handle Enter key press in bulk select input
+  const handleBulkSelectKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleBulkSelectByNumber()
+    }
+  }
+
   // Add function to handle bulk advocate assignment
   const handleBulkAdvocateAssignment = async () => {
     if (!selectedAdvocateForBulk || selectedClients.size === 0) return
@@ -1462,6 +1495,42 @@ function ClientsPageWithParams() {
             )}
           </div>
           <div className="flex gap-1.5">
+            {/* Bulk Select by Number - Only show for authorized roles */}
+            {userRole !== "billcut" && userRole !== "assistant" && (
+              <div className="flex gap-1 items-center">
+                <div className="flex flex-col">
+                  <Input
+                    placeholder="Select top N"
+                    value={bulkSelectNumber}
+                    onChange={(e) => setBulkSelectNumber(e.target.value)}
+                    onKeyPress={handleBulkSelectKeyPress}
+                    className={`w-20 ${
+                      theme === "dark"
+                        ? "bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-400"
+                        : "bg-white border-gray-300 text-gray-800 placeholder-gray-500"
+                    } text-[10px] h-5`}
+                    type="number"
+                    min="1"
+                    max={filteredClients.length}
+                  />
+                  <span className={`text-[8px] ${theme === "dark" ? "text-gray-400" : "text-gray-500"} text-center mt-0.5`}>
+                    of {filteredClients.length}
+                  </span>
+                </div>
+                <Button
+                  onClick={handleBulkSelectByNumber}
+                  disabled={!bulkSelectNumber.trim()}
+                  className={`${
+                    theme === "dark"
+                      ? "bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-700"
+                      : "bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-300"
+                  } text-[10px] h-5 px-2 disabled:opacity-50`}
+                  title="Select top N clients from current filter"
+                >
+                  Select
+                </Button>
+              </div>
+            )}
             {userRole !== "billcut" && userRole !== "assistant" && (
               <Button
                 onClick={downloadCSV}
