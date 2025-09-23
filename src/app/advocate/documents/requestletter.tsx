@@ -7,6 +7,127 @@ import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import SearchableDropdown from "@/components/SearchableDropdown";
 
+// Fuzzy matching function to find closest bank name
+const findClosestBankMatch = (clientBankName: string, availableBanks: string[]): string | null => {
+  if (availableBanks.length === 0) return null;
+  
+  // Common bank name mappings
+  const bankNameMappings: { [key: string]: string } = {
+    'induslnd': 'indusind',
+    'indusland': 'indusind',
+    'axis': 'axis bank',
+    'kotak': 'kotak mahindra bank',
+    'kotak mahindra': 'kotak mahindra bank',
+    'aditya birla': 'aditya birla capital',
+    'poonawalla': 'poonawalla fincorp',
+    'hdfc': 'hdfc bank',
+    'sbi': 'state bank of india',
+    'icici': 'icici bank',
+    'pnb': 'punjab national bank',
+    'canara': 'canara bank',
+    'union': 'union bank of india',
+    'bank of baroda': 'bob',
+    'bob': 'bank of baroda',
+    'idbi': 'idbi bank',
+    'yes': 'yes bank',
+    'federal': 'federal bank',
+    'karur': 'karur vysya bank',
+    'karnataka': 'karnataka bank',
+    'south indian': 'south indian bank',
+    'tamilnad': 'tamilnad mercantile bank',
+    'tmb': 'tamilnad mercantile bank',
+    'uco': 'uco bank',
+    'central': 'central bank of india',
+    'indian': 'indian bank',
+    'indian overseas': 'indian overseas bank',
+    'iob': 'indian overseas bank',
+    'punjab and sind': 'punjab and sind bank',
+    'psb': 'punjab and sind bank',
+    'bank of india': 'boi',
+    'boi': 'bank of india',
+    'bank of maharashtra': 'bom',
+    'bom': 'bank of maharashtra',
+  };
+  
+  // Normalize bank names for comparison
+  const normalizeBankName = (name: string): string => {
+    return name.toLowerCase()
+      .replace(/[^a-z0-9]/g, '') // Remove special characters and spaces
+      .replace(/bank|limited|ltd|inc|corporation|corp/g, '') // Remove common suffixes
+      .trim();
+  };
+  
+  const normalizedClientBank = normalizeBankName(clientBankName);
+  
+  // First, try exact match after normalization
+  const exactMatch = availableBanks.find(bank => 
+    normalizeBankName(bank) === normalizedClientBank
+  );
+  if (exactMatch) return exactMatch;
+  
+  // Try mapping-based match
+  const mappedName = bankNameMappings[normalizedClientBank];
+  if (mappedName) {
+    const mappedMatch = availableBanks.find(bank => 
+      normalizeBankName(bank) === normalizeBankName(mappedName)
+    );
+    if (mappedMatch) return mappedMatch;
+  }
+  
+  // Calculate similarity scores
+  const similarityScores = availableBanks.map(bank => {
+    const normalizedBank = normalizeBankName(bank);
+    
+    // Calculate Levenshtein distance
+    const distance = levenshteinDistance(normalizedClientBank, normalizedBank);
+    const maxLength = Math.max(normalizedClientBank.length, normalizedBank.length);
+    const similarity = 1 - (distance / maxLength);
+    
+    return { bank, similarity, distance };
+  });
+  
+  // Sort by similarity (highest first)
+  similarityScores.sort((a, b) => b.similarity - a.similarity);
+  
+  // Return the best match if similarity is above threshold (70%)
+  const bestMatch = similarityScores[0];
+  if (bestMatch.similarity >= 0.7) {
+    console.log(`Fuzzy match found: "${clientBankName}" -> "${bestMatch.bank}" (similarity: ${(bestMatch.similarity * 100).toFixed(1)}%)`);
+    return bestMatch.bank;
+  }
+  
+  return null;
+};
+
+// Levenshtein distance calculation
+const levenshteinDistance = (str1: string, str2: string): number => {
+  const matrix = [];
+  
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+};
+
 interface Bank {
   id: string;
   bankName: string;
@@ -113,6 +234,22 @@ export default function RequestLetterForm({
     fetchClients();
   }, []);
 
+  // Test fuzzy matching when bankData is loaded
+  useEffect(() => {
+    if (Object.keys(bankData).length > 0) {
+      console.log('Testing fuzzy matching in Request Letter...');
+      const testBanks = ['INDUSLND', 'AXIS', 'KOTAK', 'ADITYA BIRLA', 'POONAWALLA FINCORP'];
+      testBanks.forEach(bank => {
+        const match = findClosestBankMatch(bank, Object.keys(bankData));
+        if (match) {
+          console.log(`✅ "${bank}" matched to "${match}"`);
+        } else {
+          console.log(`❌ "${bank}" - no match found`);
+        }
+      });
+    }
+  }, [bankData]);
+
 
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clientId = e.target.value;
@@ -166,8 +303,11 @@ export default function RequestLetterForm({
       // Client bank selection - extract bank name and account number
       const [bankName, accountNumber] = value.split('|');
       
-      // Get bank details from bankData
-      const bankDetails = bankData[bankName];
+      // Try to find a fuzzy match for this bank
+      const matchedBank = findClosestBankMatch(bankName, Object.keys(bankData));
+      
+      // Get bank details from bankData (use matched bank if available)
+      const bankDetails = bankData[matchedBank || bankName];
       
       if (bankDetails) {
         // Find the specific account from client's banks
@@ -183,9 +323,28 @@ export default function RequestLetterForm({
 
         setFormData(prev => ({
           ...prev,
-          bankName: bankName,
+          bankName: matchedBank || bankName, // Use matched bank name from database
           bankAddress: bankDetails.address || "",
           bankEmail: bankDetails.email || "",
+          number: accountNumber,
+          accountType: accountType,
+        }));
+      } else {
+        // Bank not in bankData - set only what we have
+        const selectedClientBank = selectedClientBanks.find(bank => 
+          bank.bankName === bankName && bank.accountNumber === accountNumber
+        );
+        
+        let accountType = "Loan Account";
+        if (selectedClientBank && selectedClientBank.loanType && selectedClientBank.loanType.toLowerCase().includes("credit")) {
+          accountType = "Credit Card Number";
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          bankName: bankName,
+          bankAddress: "",
+          bankEmail: "",
           number: accountNumber,
           accountType: accountType,
         }));
@@ -200,6 +359,16 @@ export default function RequestLetterForm({
           bankName: value,
           bankAddress: bankDetails.address || "",
           bankEmail: bankDetails.email || "",
+          number: "",
+          accountType: "Loan Account",
+        }));
+      } else {
+        // Bank not in bankData - set only what we have
+        setFormData(prev => ({
+          ...prev,
+          bankName: value,
+          bankAddress: "",
+          bankEmail: "",
           number: "",
           accountType: "Loan Account",
         }));
@@ -225,38 +394,66 @@ export default function RequestLetterForm({
     const allBanks = Object.keys(bankData);
     const clientBankNames = selectedClientBanks.map(bank => bank.bankName);
     
-    // Separate banks into client banks and other banks
-    const clientBanks = allBanks.filter(bank => clientBankNames.includes(bank));
-    const otherBanks = allBanks.filter(bank => !clientBankNames.includes(bank));
+    console.log('Request Letter Debug:', {
+      allBanks,
+      selectedClientBanks,
+      clientBankNames,
+      bankDataKeys: Object.keys(bankData),
+      selectedClientId,
+      hasClientBanks: selectedClientBanks.length > 0
+    });
     
-    // Create options with visual indicators for client banks
-    // Handle multiple accounts from same bank
+    // If no client is selected, return all banks
+    if (!selectedClientId || selectedClientBanks.length === 0) {
+      return allBanks.map(bankName => ({
+        value: bankName,
+        label: bankName,
+        className: ""
+      }));
+    }
+    
+    // Create options for ALL client banks (not just those in bankData)
     const clientBankOptions: any[] = [];
     
-    clientBanks.forEach(bankName => {
-      // Find all accounts for this bank
-      const bankAccounts = selectedClientBanks.filter(bank => bank.bankName === bankName);
+    // Group client banks by bank name to handle multiple accounts
+    const bankGroups: { [key: string]: Bank[] } = {};
+    selectedClientBanks.forEach(bank => {
+      if (!bankGroups[bank.bankName]) {
+        bankGroups[bank.bankName] = [];
+      }
+      bankGroups[bank.bankName].push(bank);
+    });
+    
+    // Create options for each client bank
+    Object.entries(bankGroups).forEach(([bankName, accounts]) => {
+      // Try to find a fuzzy match for this bank
+      const matchedBank = findClosestBankMatch(bankName, allBanks);
+      const hasBankData = allBanks.includes(bankName) || matchedBank !== null;
       
-      if (bankAccounts.length === 1) {
+      if (accounts.length === 1) {
         // Single account - show bank name with account number
-        const account = bankAccounts[0];
+        const account = accounts[0];
+        const matchIndicator = matchedBank && matchedBank !== bankName ? ` (→ ${matchedBank})` : '';
         clientBankOptions.push({
           value: `${bankName}|${account.accountNumber}`,
-          label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'})`,
-          className: "text-green-400 font-medium"
+          label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'})${matchIndicator}${!hasBankData ? ' ⚠️' : ''}`,
+          className: hasBankData ? "text-green-400 font-medium" : "text-yellow-400 font-medium"
         });
       } else {
         // Multiple accounts - show each account separately
-        bankAccounts.forEach((account, index) => {
+        accounts.forEach((account, index) => {
+          const matchIndicator = matchedBank && matchedBank !== bankName ? ` (→ ${matchedBank})` : '';
           clientBankOptions.push({
             value: `${bankName}|${account.accountNumber}`,
-            label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'} #${index + 1})`,
-            className: "text-green-400 font-medium"
+            label: `✅ ${bankName} - ${account.accountNumber} (${account.loanType || 'Account'} #${index + 1})${matchIndicator}${!hasBankData ? ' ⚠️' : ''}`,
+            className: hasBankData ? "text-green-400 font-medium" : "text-yellow-400 font-medium"
           });
         });
       }
     });
     
+    // Get other banks (banks in bankData but not client banks)
+    const otherBanks = allBanks.filter(bank => !clientBankNames.includes(bank));
     const otherBankOptions = otherBanks.map(bankName => ({
       value: bankName,
       label: bankName,
@@ -420,7 +617,12 @@ export default function RequestLetterForm({
           )}
           {selectedClientId && !selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
-              Banks with ✅ show client's accounts with account numbers
+              Banks with ✅ show client's accounts. → indicates fuzzy-matched bank (name will be corrected). ⚠️ indicates bank details not available in system.
+            </p>
+          )}
+          {!selectedClientId && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select a client to see their banks
             </p>
           )}
         </div>
@@ -534,6 +736,16 @@ export default function RequestLetterForm({
           {selectedClientId && !selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
               Select a client account to auto-fill the account number
+            </p>
+          )}
+          {selectedBank && selectedBank.includes('|') && !bankData[selectedBank.split('|')[0]] && !findClosestBankMatch(selectedBank.split('|')[0], Object.keys(bankData)) && (
+            <p className="text-xs text-yellow-500 mt-0.5">
+              ⚠️ Bank details not in system - please fill address and email manually
+            </p>
+          )}
+          {selectedBank && selectedBank.includes('|') && findClosestBankMatch(selectedBank.split('|')[0], Object.keys(bankData)) && (
+            <p className="text-xs text-blue-500 mt-0.5">
+              🔄 Using fuzzy-matched bank details (→ {findClosestBankMatch(selectedBank.split('|')[0], Object.keys(bankData))})
             </p>
           )}
         </div>
