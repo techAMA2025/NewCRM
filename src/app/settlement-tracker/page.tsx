@@ -102,6 +102,12 @@ const SettlementTracker = () => {
   const [settlementToDelete, setSettlementToDelete] = useState<Settlement | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  
+  // Add state for new client creation
+  const [isNewClientMode, setIsNewClientMode] = useState(false)
+  const [newClientName, setNewClientName] = useState('')
+  const [newClientMobile, setNewClientMobile] = useState('')
+  const [newClientEmail, setNewClientEmail] = useState('')
 
   // Check if user has access to settlement tracker
   useEffect(() => {
@@ -228,18 +234,28 @@ const SettlementTracker = () => {
     e.preventDefault()
     
     // Validate required fields
-    if (!selectedClient || !settlementStatus) {
-      alert('Please fill in all required fields')
+    if (!isNewClientMode && !selectedClient) {
+      alert('Please select a client or choose to add a new client')
+      return
+    }
+
+    if (isNewClientMode && (!newClientName.trim() || !newClientMobile.trim())) {
+      alert('Please fill in client name and mobile number for new client')
+      return
+    }
+
+    if (!settlementStatus) {
+      alert('Please select a settlement status')
       return
     }
 
     // Validate bank selection or manual entry
-    if (!isManualBankEntry && !selectedBank) {
+    if (!isNewClientMode && !isManualBankEntry && !selectedBank) {
       alert('Please select a bank or choose manual entry')
       return
     }
 
-    if (isManualBankEntry && !manualBankName) {
+    if ((isManualBankEntry || isNewClientMode) && !manualBankName) {
       alert('Please enter the bank name')
       return
     }
@@ -247,18 +263,47 @@ const SettlementTracker = () => {
     setSubmitting(true)
     
     try {
-      const clientData = clients.find(c => c.id === selectedClient)
-      
-      if (!clientData) {
-        alert('Invalid client selection')
-        return
+      let clientData
+      let clientId = selectedClient
+
+      // Handle new client creation
+      if (isNewClientMode) {
+        const newClientData = {
+          name: newClientName.trim(),
+          mobile: newClientMobile.trim(),
+          email: newClientEmail.trim() || '',
+          banks: [],
+          createdAt: new Date(),
+          createdBy: localStorage.getItem('userName') || 'Unknown User'
+        }
+
+        // Create the new client in the database
+        const clientDocRef = await addDoc(collection(db, 'clients'), newClientData)
+        clientId = clientDocRef.id
+        
+        // Add the new client to local state
+        const newClient: Client = {
+          id: clientId,
+          name: newClientData.name,
+          banks: []
+        }
+        setClients(prev => [...prev, newClient])
+
+        clientData = newClient
+      } else {
+        clientData = clients.find(c => c.id === selectedClient)
+        
+        if (!clientData) {
+          alert('Invalid client selection')
+          return
+        }
       }
 
       const userName = localStorage.getItem('userName') || 'Unknown User'
       
       // Prepare bank data based on entry type
       let bankData
-      if (isManualBankEntry) {
+      if (isManualBankEntry || isNewClientMode) {
         bankData = {
           bankName: manualBankName,
           accountNumber: manualAccountNumber || '',
@@ -280,9 +325,9 @@ const SettlementTracker = () => {
       }
       
       const settlementData = {
-        clientId: selectedClient,
+        clientId: clientId,
         clientName: clientData.name,
-        bankId: isManualBankEntry ? 'manual' : selectedBank,
+        bankId: (isManualBankEntry || isNewClientMode) ? 'manual' : selectedBank,
         bankName: bankData.bankName,
         accountNumber: bankData.accountNumber,
         loanAmount: bankData.loanAmount,
@@ -305,6 +350,10 @@ const SettlementTracker = () => {
       setManualAccountNumber('')
       setManualLoanAmount('')
       setManualLoanType('')
+      setIsNewClientMode(false)
+      setNewClientName('')
+      setNewClientMobile('')
+      setNewClientEmail('')
       setIsDialogOpen(false)
       
       // Refresh settlements list
@@ -725,20 +774,96 @@ const SettlementTracker = () => {
               {/* Client Selection */}
               <div className="space-y-2">
                 <Label htmlFor="client">Client *</Label>
-                <SearchableDropdown
-                  options={clients.map((client) => ({
-                    value: client.id,
-                    label: client.name
-                  }))}
-                  value={selectedClient}
-                  onChange={setSelectedClient}
-                  placeholder="Search and select a client..."
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500"
-                />
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="clientMode"
+                        checked={!isNewClientMode}
+                        onChange={() => {
+                          setIsNewClientMode(false)
+                          setSelectedClient('')
+                          setNewClientName('')
+                          setNewClientMobile('')
+                          setNewClientEmail('')
+                        }}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Select Existing Client</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="clientMode"
+                        checked={isNewClientMode}
+                        onChange={() => {
+                          setIsNewClientMode(true)
+                          setSelectedClient('')
+                          setSelectedBank('')
+                          setIsManualBankEntry(true)
+                        }}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Add New Client</span>
+                    </label>
+                  </div>
+                  
+                  {!isNewClientMode ? (
+                    <SearchableDropdown
+                      options={clients.map((client) => ({
+                        value: client.id,
+                        label: client.name
+                      }))}
+                      value={selectedClient}
+                      onChange={setSelectedClient}
+                      placeholder="Search and select a client..."
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                    />
+                  ) : (
+                    <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="text-sm font-medium text-blue-700">New Client Details</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="newClientName">Client Name *</Label>
+                          <Input
+                            id="newClientName"
+                            value={newClientName}
+                            onChange={(e) => setNewClientName(e.target.value)}
+                            placeholder="Enter client's full name"
+                            className="focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newClientMobile">Mobile Number *</Label>
+                          <Input
+                            id="newClientMobile"
+                            value={newClientMobile}
+                            onChange={(e) => setNewClientMobile(e.target.value)}
+                            placeholder="Enter mobile number"
+                            type="tel"
+                            className="focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newClientEmail">Email (Optional)</Label>
+                          <Input
+                            id="newClientEmail"
+                            value={newClientEmail}
+                            onChange={(e) => setNewClientEmail(e.target.value)}
+                            placeholder="Enter email address"
+                            type="email"
+                            className="focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Bank Selection */}
-              {selectedClient && (
+              {(selectedClient && !isNewClientMode) && (
                 <div className="space-y-2">
                   <Label htmlFor="bank">Bank Account *</Label>
                   <Select 
@@ -771,7 +896,7 @@ const SettlementTracker = () => {
               )}
 
               {/* Manual Bank Entry Fields */}
-              {selectedClient && isManualBankEntry && (
+              {(selectedClient || isNewClientMode) && isManualBankEntry && (
                 <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
                   <h4 className="text-sm font-medium text-gray-700">Manual Bank Details</h4>
                   <div className="grid grid-cols-2 gap-4">
