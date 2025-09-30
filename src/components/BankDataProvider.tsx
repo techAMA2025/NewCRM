@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getBankData, refreshBankData, type BankData } from '../data/bankData';
+import { useAuth } from '@/context/AuthContext';
 
 interface BankDataContextType {
   bankData: Record<string, BankData>;
@@ -16,6 +17,7 @@ export function BankDataProvider({ children }: { children: React.ReactNode }) {
   const [bankData, setBankData] = useState<Record<string, BankData>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const loadBankData = async () => {
     try {
@@ -43,8 +45,13 @@ export function BankDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    loadBankData();
-  }, []);
+    // Only load bank data if user is authenticated
+    if (user) {
+      loadBankData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   const value: BankDataContextType = {
     bankData,
@@ -68,6 +75,7 @@ export function useBankData() {
 export function useBankDataSimple() {
   const [bankData, setBankData] = useState<Record<string, BankData>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadData = async () => {
@@ -81,8 +89,13 @@ export function useBankDataSimple() {
       }
     };
 
-    loadData();
-  }, []);
+    // Only load bank data if user is authenticated
+    if (user) {
+      loadData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   return { bankData, isLoading };
 } 

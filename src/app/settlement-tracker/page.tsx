@@ -35,6 +35,8 @@ interface Settlement {
   id: string
   clientId: string
   clientName: string
+  clientMobile?: string
+  clientEmail?: string
   bankId: string
   bankName: string
   accountNumber: string
@@ -266,30 +268,17 @@ const SettlementTracker = () => {
       let clientData
       let clientId = selectedClient
 
-      // Handle new client creation
+      // Handle new client creation - just store client info directly in settlement
       if (isNewClientMode) {
-        const newClientData = {
-          name: newClientName.trim(),
-          mobile: newClientMobile.trim(),
-          email: newClientEmail.trim() || '',
-          banks: [],
-          createdAt: new Date(),
-          createdBy: localStorage.getItem('userName') || 'Unknown User'
-        }
-
-        // Create the new client in the database
-        const clientDocRef = await addDoc(collection(db, 'clients'), newClientData)
-        clientId = clientDocRef.id
+        // Generate a unique client ID for the settlement
+        clientId = `new_client_${Date.now()}`
         
-        // Add the new client to local state
-        const newClient: Client = {
+        // Create client data object for the settlement
+        clientData = {
           id: clientId,
-          name: newClientData.name,
+          name: newClientName.trim(),
           banks: []
         }
-        setClients(prev => [...prev, newClient])
-
-        clientData = newClient
       } else {
         clientData = clients.find(c => c.id === selectedClient)
         
@@ -327,6 +316,8 @@ const SettlementTracker = () => {
       const settlementData = {
         clientId: clientId,
         clientName: clientData.name,
+        clientMobile: isNewClientMode ? newClientMobile.trim() : '',
+        clientEmail: isNewClientMode ? newClientEmail.trim() : '',
         bankId: (isManualBankEntry || isNewClientMode) ? 'manual' : selectedBank,
         bankName: bankData.bankName,
         accountNumber: bankData.accountNumber,
