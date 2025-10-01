@@ -49,7 +49,10 @@ export default function PaymentApprovalPage() {
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'clientPhone' ? String(value) : value
+    }));
   };
 
   // Function to fetch latest converted lead data for pre-filling
@@ -89,7 +92,7 @@ export default function PaymentApprovalPage() {
             latestLead = {
               name: billcutLead.name || '',
               email: billcutLead.email || '',
-              phone: billcutLead.mobile || billcutLead.phone || '',
+              phone: String(billcutLead.mobile || billcutLead.phone || ''),
               source: 'billcut'
             };
           }
@@ -106,7 +109,7 @@ export default function PaymentApprovalPage() {
             latestLead = {
               name: amaLead.name || '',
               email: amaLead.email || '',
-              phone: amaLead.mobile || amaLead.phone || '',
+              phone: String(amaLead.mobile || amaLead.phone || ''),
               source: 'ama'
             };
           }
