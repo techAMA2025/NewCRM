@@ -241,8 +241,8 @@ const SettlementTracker = () => {
       return
     }
 
-    if (isNewClientMode && (!newClientName.trim() || !newClientMobile.trim())) {
-      alert('Please fill in client name and mobile number for new client')
+    if (isNewClientMode && !newClientName.trim()) {
+      alert('Please fill in client name for new client')
       return
     }
 
@@ -269,11 +269,13 @@ const SettlementTracker = () => {
       let clientId = selectedClient
 
       // Handle new client creation - just store client info directly in settlement
+      // IMPORTANT: We do NOT add clients to the clients collection here
+      // Client information is only stored within the settlement document
       if (isNewClientMode) {
         // Generate a unique client ID for the settlement
         clientId = `new_client_${Date.now()}`
         
-        // Create client data object for the settlement
+        // Create client data object for the settlement (NOT for clients collection)
         clientData = {
           id: clientId,
           name: newClientName.trim(),
@@ -329,6 +331,8 @@ const SettlementTracker = () => {
         createdBy: userName
       }
 
+      // Add settlement to settlements collection only
+      // This does NOT add clients to the clients collection
       await addDoc(collection(db, 'settlements'), settlementData)
       
       // Reset form
@@ -826,7 +830,7 @@ const SettlementTracker = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="newClientMobile">Mobile Number *</Label>
+                          <Label htmlFor="newClientMobile">Mobile Number (Optional)</Label>
                           <Input
                             id="newClientMobile"
                             value={newClientMobile}
