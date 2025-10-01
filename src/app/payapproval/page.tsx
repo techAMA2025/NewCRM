@@ -245,10 +245,10 @@ export default function PaymentApprovalPage() {
     }
   };
   
-  const updateSalesTargetAmountCollected = async (salesPersonName: string, amount: number, isDelete: boolean = false) => {
+  const updateSalesTargetAmountCollected = async (salesPersonName: string, amount: number, isDelete: boolean = false, originalTimestamp?: string) => {
     try {
-      // Get current month and year
-      const date = new Date();
+      // Get month and year from original request timestamp, or current date if not provided
+      const date = originalTimestamp ? new Date(originalTimestamp) : new Date();
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const currentMonth = months[date.getMonth()];
       const currentYear = date.getFullYear();
@@ -351,22 +351,32 @@ export default function PaymentApprovalPage() {
     try {
       // Update payment status in the payments collection
       const paymentRef = doc(db, 'payments', paymentId);
-      
+
       // Get current user's name who is approving
       const approverName = localStorage.getItem('userName') || 'Unknown';
-      
+
+      // Get the payment document to retrieve the original request timestamp
+      const paymentDoc = await getDoc(paymentRef);
+      if (!paymentDoc.exists()) {
+        alert('Payment document not found');
+        return;
+      }
+
+      const paymentData = paymentDoc.data();
+      const originalTimestamp = paymentData.timestamp; // This is the original request date
+
       await updateDoc(paymentRef, {
         status: 'approved',
         approvedBy: approverName,
         approvedAt: new Date().toISOString()
       });
-      
-      // Update the sales target with this amount
-      await updateSalesTargetAmountCollected(salesPersonName, Number(amount), false);
-      
+
+      // Update the sales target using the original request date
+      await updateSalesTargetAmountCollected(salesPersonName, Number(amount), false, originalTimestamp);
+
       // Refresh the payment list
       fetchUserPayments();
-      
+
       // Show success message
       alert('Payment request approved successfully!');
     } catch (error) {
@@ -379,22 +389,32 @@ export default function PaymentApprovalPage() {
     try {
       // Update payment in the payments collection
       const paymentRef = doc(db, 'payments', paymentId);
-      
+
+      // Get the payment document to retrieve the original request timestamp
+      const paymentDoc = await getDoc(paymentRef);
+      if (!paymentDoc.exists()) {
+        alert('Payment document not found');
+        return;
+      }
+
+      const paymentData = paymentDoc.data();
+      const originalTimestamp = paymentData.timestamp; // This is the original request date
+
       await updateDoc(paymentRef, {
         amount: newAmount,
         updatedAt: new Date().toISOString()
       });
-      
-      // Update the sales target
+
+      // Update the sales target using the original request date
       // First, remove the old amount
-      await updateSalesTargetAmountCollected(salesPersonName, Number(oldAmount), true);
-      
+      await updateSalesTargetAmountCollected(salesPersonName, Number(oldAmount), true, originalTimestamp);
+
       // Then add the new amount
-      await updateSalesTargetAmountCollected(salesPersonName, Number(newAmount), false);
-      
+      await updateSalesTargetAmountCollected(salesPersonName, Number(newAmount), false, originalTimestamp);
+
       // Refresh the payment list
       fetchUserPayments();
-      
+
       // Show success message
       alert('Payment updated successfully!');
     } catch (error) {
@@ -409,20 +429,30 @@ export default function PaymentApprovalPage() {
       if (!confirm('Are you sure you want to delete this payment request?')) {
         return;
       }
-      
-      // Delete payment from the payments collection
+
+      // Get the payment document before deleting to retrieve the original request timestamp
       const paymentRef = doc(db, 'payments', paymentId);
-      await deleteDoc(paymentRef);
-      
-      // If payment was approved, update the sales target to remove this amount
       const paymentDoc = await getDoc(paymentRef);
-      if (paymentDoc.exists() && paymentDoc.data().status === 'approved') {
-        await updateSalesTargetAmountCollected(salesPersonName, Number(amount), true);
+
+      if (!paymentDoc.exists()) {
+        alert('Payment document not found');
+        return;
       }
-      
+
+      const paymentData = paymentDoc.data();
+      const originalTimestamp = paymentData.timestamp; // This is the original request date
+
+      // Delete payment from the payments collection
+      await deleteDoc(paymentRef);
+
+      // If payment was approved, update the sales target to remove this amount using original request date
+      if (paymentData.status === 'approved') {
+        await updateSalesTargetAmountCollected(salesPersonName, Number(amount), true, originalTimestamp);
+      }
+
       // Refresh the payment list
       fetchUserPayments();
-      
+
       // Show success message
       alert('Payment deleted successfully!');
     } catch (error) {
