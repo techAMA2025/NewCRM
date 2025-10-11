@@ -694,6 +694,20 @@ const AmaLeadRow = ({
                           {callbackInfo.scheduledDate}
                         </div>
                       )}
+                      {lead.callbackInfo && (
+                        <button
+                          onClick={() => onEditCallback(lead)}
+                          disabled={!canEdit}
+                          className={`mt-1 px-2 py-0.5 rounded text-xs font-medium transition-colors duration-200 ${
+                            canEdit
+                              ? "bg-[#D2A02A] hover:bg-[#B8911E] text-[#ffffff]"
+                              : "bg-[#5A4C33]/20 text-[#5A4C33]/50 cursor-not-allowed"
+                          }`}
+                          title={!canEdit ? "You do not have permission to edit this callback" : "Edit callback details"}
+                        >
+                          Edit
+                        </button>
+                      )}
                     </>
                   )
                 })()}

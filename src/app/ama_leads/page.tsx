@@ -2050,6 +2050,15 @@ const AmaLeadsPage = () => {
     setEditingCallbackInfo(null)
   }
 
+  // Handle editing callback details
+  const handleEditCallback = (lead: any) => {
+    setCallbackLeadId(lead.id)
+    setCallbackLeadName(lead.name || "Unknown Lead")
+    setIsEditingCallback(true)
+    setEditingCallbackInfo(lead.callbackInfo)
+    setShowCallbackModal(true)
+  }
+
   // Handle status change to language barrier
   const handleStatusChangeToLanguageBarrier = (leadId: string, leadName: string) => {
     setLanguageBarrierLeadId(leadId)
@@ -2989,6 +2998,7 @@ const AmaLeadsPage = () => {
                 onStatusChangeToCallback={handleStatusChangeToCallback}
                 onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
                 onStatusChangeToConverted={handleStatusChangeToConverted}
+                onEditCallback={handleEditCallback}
                 refreshLeadCallbackInfo={refreshLeadCallbackInfo}
                 handleBulkWhatsApp={handleBulkWhatsApp}
               />
