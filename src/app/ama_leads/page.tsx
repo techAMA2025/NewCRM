@@ -372,23 +372,39 @@ const AmaLeadsPage = () => {
     }
   }
 
+  // Helper function to get lead creation date from multiple possible fields
+  const getLeadCreationDate = (lead: any): Date | null => {
+    try {
+      // AMA leads structure: uses date field (number timestamp) as primary
+      if (lead.date && typeof lead.date === 'number') {
+        return new Date(lead.date)
+      }
+      
+      // Fallback to synced_at if available
+      if (lead.synced_at) {
+        return lead.synced_at.toDate ? lead.synced_at.toDate() : new Date(lead.synced_at)
+      }
+      
+      // Fallback to synced_date if available (number timestamp)
+      if (lead.synced_date && typeof lead.synced_date === 'number') {
+        return new Date(lead.synced_date)
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error parsing date for lead:', lead.id, error)
+      return null
+    }
+  }
+
   // Fetch filtered count from database based on current filters
   const fetchFilteredCount = async (excludePagination = false) => {
     try {
       const baseQuery = collection(crmDb, "ama_leads")
       const constraints: any[] = []
 
-      // Date range uses 'synced_at' field for consistent filtering across all sources
-      if (fromDate) {
-        const fromDateStart = new Date(fromDate + "T00:00:00")
-
-        constraints.push(where("synced_at", ">=", fromDateStart))
-      }
-      if (toDate) {
-        const toDateEnd = new Date(toDate + "T23:59:59.999")
-
-        constraints.push(where("synced_at", "<=", toDateEnd))
-      }
+      // NOTE: Date range filtering is now done in memory to support multiple date fields
+      // We'll fetch all leads and filter by date in memory if date filters are active
 
       // Source filter - filter by source_database field
       if (sourceFilter !== "all") {
@@ -453,16 +469,51 @@ const AmaLeadsPage = () => {
         constraints.push(where("status", "==", "Callback"))
       }
 
-      // Add the same ordering as buildQuery to ensure consistency
-      constraints.push(orderBy("synced_at", sortConfig.direction === "ascending" ? "asc" : "desc"))
-
-      // Build query with constraints (no pagination for counting)
+      // Build query with constraints (no pagination, no date filters in query)
       const countQuery = constraints.length > 0 ? query(baseQuery, ...constraints) : query(baseQuery)
 
       const countSnapshot = await getDocs(countQuery)
-      const count = countSnapshot.size
-
-      return count
+      
+      // If date filters are active, filter in memory by checking all possible date fields
+      if (fromDate || toDate) {
+        const fromDateStart = fromDate ? new Date(fromDate + "T00:00:00") : null
+        const toDateEnd = toDate ? new Date(toDate + "T23:59:59.999") : null
+        
+        let filteredCount = 0
+        
+        countSnapshot.docs.forEach(doc => {
+          const leadData = doc.data()
+          const leadDate = getLeadCreationDate(leadData)
+          
+          if (!leadDate) return // Skip leads without a valid date
+          
+          let includeInRange = true
+          
+          if (fromDateStart && leadDate < fromDateStart) {
+            includeInRange = false
+          }
+          
+          if (toDateEnd && includeInRange && leadDate > toDateEnd) {
+            includeInRange = false
+          }
+          
+          if (includeInRange) {
+            filteredCount++
+          }
+        })
+        
+        console.log('🔍 [fetchFilteredCount] Date filtering results:', {
+          totalFetched: countSnapshot.size,
+          afterDateFilter: filteredCount,
+          fromDate,
+          toDate
+        })
+        
+        return filteredCount
+      } else {
+        // No date filters, just return the count from the query
+        return countSnapshot.size
+      }
     } catch (error) {
       console.error("❌ Error fetching filtered count:", error)
       return 0
