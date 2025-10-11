@@ -67,7 +67,7 @@ const AdminSidebar = () => {
           <li>
             <Link href="/billcutLeadReport" className={`flex items-center px-6 py-3 ${isActive('/billcutLeadReport')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
               <FiPieChart className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
-              <span>Billcut Analysis</span>
+              <span>Lead Analysis</span>
             </Link>
           </li>
           <li>

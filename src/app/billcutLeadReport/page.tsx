@@ -2876,105 +2876,109 @@ const BillcutLeadReportContent = () => {
           </div>
 
           {/* Productivity Stats Component */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-              <FiActivity className="mr-2" />
-              Productivity Analytics
-            </h3>
-            <ProductivityStatsComponent />
-          </div>
-
-          {/* Productivity Filters Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Productivity Date Range Filter */}
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                  <FiCalendar className="h-4 w-4 text-emerald-500" />
-                  Productivity Date Range
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { key: "today", label: "Today" },
-                    { key: "yesterday", label: "Yesterday" },
-                    { key: "last7days", label: "Last 7 Days" },
-                    { key: "last30days", label: "Last 30 Days" },
-                    { key: "custom", label: "Custom Range" },
-                  ].map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        console.log("Productivity date range button clicked:", key, label)
-                        setSelectedProductivityRange(key)
-                        setShowProductivityCustomRange(key === "custom")
-                      }}
-                      className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                        selectedProductivityRange === key
-                          ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md"
-                          : "bg-gray-50/80 text-gray-700 hover:bg-gray-100/80 border border-gray-200/50"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom Productivity Date Range Picker */}
-                {showProductivityCustomRange && (
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={productivityDateRange.startDate.toISOString().split("T")[0]}
-                        onChange={(e) =>
-                          setProductivityDateRange((prev) => ({
-                            ...prev,
-                            startDate: new Date(e.target.value),
-                          }))
-                        }
-                        className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={productivityDateRange.endDate.toISOString().split("T")[0]}
-                        onChange={(e) =>
-                          setProductivityDateRange((prev) => ({
-                            ...prev,
-                            endDate: new Date(e.target.value),
-                          }))
-                        }
-                        className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
-                      />
-                    </div>
-                  </div>
-                )}
+          {userRole !== "admin" && (
+            <>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <FiActivity className="mr-2" />
+                  Productivity Analytics
+                </h3>
+                <ProductivityStatsComponent />
               </div>
 
-              {/* Productivity Info */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <FiActivity className="h-4 w-4 text-emerald-500" />
-                    Productivity Info
-                  </label>
-                  <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-200/50">
-                    <p className="text-xs text-emerald-700 font-medium mb-1">{getProductivityDisplayName()}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Shows leads worked on per day. Converted leads use convertedAt timestamp for accurate tracking.
-                    </p>
+              {/* Productivity Filters Section */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Productivity Date Range Filter */}
+                  <div className="lg:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <FiCalendar className="h-4 w-4 text-emerald-500" />
+                      Productivity Date Range
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { key: "today", label: "Today" },
+                        { key: "yesterday", label: "Yesterday" },
+                        { key: "last7days", label: "Last 7 Days" },
+                        { key: "last30days", label: "Last 30 Days" },
+                        { key: "custom", label: "Custom Range" },
+                      ].map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            console.log("Productivity date range button clicked:", key, label)
+                            setSelectedProductivityRange(key)
+                            setShowProductivityCustomRange(key === "custom")
+                          }}
+                          className={`px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                            selectedProductivityRange === key
+                              ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md"
+                              : "bg-gray-50/80 text-gray-700 hover:bg-gray-100/80 border border-gray-200/50"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Custom Productivity Date Range Picker */}
+                    {showProductivityCustomRange && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Start Date
+                          </label>
+                          <input
+                            type="date"
+                            value={productivityDateRange.startDate.toISOString().split("T")[0]}
+                            onChange={(e) =>
+                              setProductivityDateRange((prev) => ({
+                                ...prev,
+                                startDate: new Date(e.target.value),
+                              }))
+                            }
+                            className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            End Date
+                          </label>
+                          <input
+                            type="date"
+                            value={productivityDateRange.endDate.toISOString().split("T")[0]}
+                            onChange={(e) =>
+                              setProductivityDateRange((prev) => ({
+                                ...prev,
+                                endDate: new Date(e.target.value),
+                              }))
+                            }
+                            className="block w-full rounded-lg border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Productivity Info */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                        <FiActivity className="h-4 w-4 text-emerald-500" />
+                        Productivity Info
+                      </label>
+                      <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-200/50">
+                        <p className="text-xs text-emerald-700 font-medium mb-1">{getProductivityDisplayName()}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Shows leads worked on per day. Converted leads use convertedAt timestamp for accurate tracking.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

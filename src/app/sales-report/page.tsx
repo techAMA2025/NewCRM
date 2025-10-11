@@ -1920,35 +1920,37 @@ const SalesReportContent = () => {
           </div>
 
           {/* Productivity Stats */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                <FiActivity className="mr-2" />
-                Salesperson Productivity
-              </h3>
-              
-              {/* Productivity Range Selector */}
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { key: "today", label: "Today", color: "bg-emerald-500 hover:bg-emerald-600" },
-                  { key: "yesterday", label: "Yesterday", color: "bg-blue-500 hover:bg-blue-600" },
-                  { key: "last7days", label: "Last 7 Days", color: "bg-purple-500 hover:bg-purple-600" },
-                  { key: "last30days", label: "Last 30 Days", color: "bg-indigo-500 hover:bg-indigo-600" },
-                ].map(({ key, label, color }) => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedProductivityRange(key)}
-                    className={`px-3 py-1.5 text-white rounded-lg text-sm font-medium transition-colors ${
-                      selectedProductivityRange === key ? "ring-2 ring-offset-2 ring-white dark:ring-offset-gray-800" : ""
-                    } ${color}`}
-                  >
-                    {label}
-                  </button>
-                ))}
+          {userRole !== "admin" && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 lg:p-6 mb-6 lg:mb-8">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                  <FiActivity className="mr-2" />
+                  Salesperson Productivity
+                </h3>
+                
+                {/* Productivity Range Selector */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: "today", label: "Today", color: "bg-emerald-500 hover:bg-emerald-600" },
+                    { key: "yesterday", label: "Yesterday", color: "bg-blue-500 hover:bg-blue-600" },
+                    { key: "last7days", label: "Last 7 Days", color: "bg-purple-500 hover:bg-purple-600" },
+                    { key: "last30days", label: "Last 30 Days", color: "bg-indigo-500 hover:bg-indigo-600" },
+                  ].map(({ key, label, color }) => (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedProductivityRange(key)}
+                      className={`px-3 py-1.5 text-white rounded-lg text-sm font-medium transition-colors ${
+                        selectedProductivityRange === key ? "ring-2 ring-offset-2 ring-white dark:ring-offset-gray-800" : ""
+                      } ${color}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <ProductivityStatsComponent />
             </div>
-            <ProductivityStatsComponent />
-          </div>
+          )}
         </div>
       </div>
     </div>
