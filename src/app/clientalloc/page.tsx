@@ -45,7 +45,7 @@ interface Client {
   tenure: string;
   remarks: string;
   salesNotes: string;
-  source: string;
+  source_database?: string;
   startDate: string;
   convertedAt: any;
   lastModified: any;
@@ -475,6 +475,7 @@ export default function ClientAllocationPage() {
                     <TableRow className="border-gray-800 hover:bg-gray-800/50">
                       <TableHead className="text-gray-400">Date</TableHead>
                       <TableHead className="text-gray-400">Name</TableHead>
+                      <TableHead className="text-gray-400">Source</TableHead>
                       <TableHead className="text-gray-400">Phone</TableHead>
                       <TableHead className="text-gray-400">Email</TableHead>
                       <TableHead className="text-gray-400">Credit Card Dues</TableHead>
@@ -488,7 +489,7 @@ export default function ClientAllocationPage() {
                   <TableBody>
                     {filteredClients.length === 0 ? (
                       <TableRow className="border-gray-800 hover:bg-gray-800/50">
-                        <TableCell colSpan={10} className="text-center py-8 text-gray-400">
+                        <TableCell colSpan={11} className="text-center py-8 text-gray-400">
                           {searchTerm ? 'No clients match your search criteria.' : 'No clients available.'}
                         </TableCell>
                       </TableRow>
@@ -516,6 +517,33 @@ export default function ClientAllocationPage() {
                               <TableCell className="font-medium text-white truncate max-w-[130px]">
                                 <div className="overflow-x-auto">
                                   {client.name.toUpperCase()}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-gray-300 max-w-[100px] truncate">
+                                <div className="overflow-x-auto">
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                      client.source_database === "credsettlee"
+                                        ? "bg-emerald-800 text-emerald-200"
+                                        : client.source_database === "ama"
+                                          ? "bg-amber-800 text-amber-200"
+                                          : client.source_database === "settleloans"
+                                            ? "bg-blue-800 text-blue-200"
+                                            : client.source_database === "billcut"
+                                              ? "bg-purple-800 text-purple-200"
+                                              : "bg-gray-700 text-gray-300"
+                                    }`}
+                                  >
+                                    {client.source_database === "credsettlee"
+                                      ? "Cred Settle"
+                                      : client.source_database === "ama"
+                                        ? "AMA"
+                                        : client.source_database === "settleloans"
+                                          ? "Settle Loans"
+                                          : client.source_database === "billcut"
+                                            ? "Bill Cut"
+                                            : client.source_database || "Not specified"}
+                                  </span>
                                 </div>
                               </TableCell>
                               <TableCell className="text-gray-300 max-w-[120px] truncate">
@@ -725,7 +753,31 @@ export default function ClientAllocationPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Source</div>
-                    <div className="text-white">{selectedClient.source}</div>
+                    <div className="text-white">
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          selectedClient.source_database === "credsettlee"
+                            ? "bg-emerald-800 text-emerald-200"
+                            : selectedClient.source_database === "ama"
+                              ? "bg-amber-800 text-amber-200"
+                              : selectedClient.source_database === "settleloans"
+                                ? "bg-blue-800 text-blue-200"
+                                : selectedClient.source_database === "billcut"
+                                  ? "bg-purple-800 text-purple-200"
+                                  : "bg-gray-700 text-gray-300"
+                        }`}
+                      >
+                        {selectedClient.source_database === "credsettlee"
+                          ? "Cred Settle"
+                          : selectedClient.source_database === "ama"
+                            ? "AMA"
+                            : selectedClient.source_database === "settleloans"
+                              ? "Settle Loans"
+                              : selectedClient.source_database === "billcut"
+                                ? "Bill Cut"
+                                : selectedClient.source_database || "Not specified"}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="text-gray-400">Sales Person</div>
