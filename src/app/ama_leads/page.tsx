@@ -375,12 +375,7 @@ const AmaLeadsPage = () => {
   // Helper function to get lead creation date from multiple possible fields
   const getLeadCreationDate = (lead: any): Date | null => {
     try {
-      // AMA leads structure: uses date field (number timestamp) as primary
-      if (lead.date && typeof lead.date === 'number') {
-        return new Date(lead.date)
-      }
-      
-      // Fallback to synced_at if available
+      // Prioritize synced_at field (most accurate sync time)
       if (lead.synced_at) {
         return lead.synced_at.toDate ? lead.synced_at.toDate() : new Date(lead.synced_at)
       }
@@ -388,6 +383,11 @@ const AmaLeadsPage = () => {
       // Fallback to synced_date if available (number timestamp)
       if (lead.synced_date && typeof lead.synced_date === 'number') {
         return new Date(lead.synced_date)
+      }
+      
+      // Fallback to date field (number timestamp) as last resort
+      if (lead.date && typeof lead.date === 'number') {
+        return new Date(lead.date)
       }
       
       return null
