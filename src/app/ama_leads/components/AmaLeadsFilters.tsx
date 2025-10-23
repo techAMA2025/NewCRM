@@ -264,7 +264,7 @@ const AmaLeadsFilters = ({
             debt_Range: data.debt_range || data.debt_Range, // Handle both cases
             debt_range: data.debt_range,
             debtRange: data.debt_range,
-            synced_at: data.date ? new Date(data.date) : data.synced_date ? new Date(data.synced_date) : undefined,
+            synced_at: data.synced_at || (data.synced_date ? new Date(data.synced_date) : data.date ? new Date(data.date) : undefined),
             date: data.date || data.synced_date || Date.now(),
             income: data.income,
           }
