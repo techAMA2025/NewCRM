@@ -37,6 +37,7 @@ type LeadsFiltersProps = {
   allLeadsCount?: number
   filteredLeadsCount?: number
   onSearchCleared?: () => void
+  databaseFilteredCount?: number // Total count from database matching all filters
 }
 
 const AmaLeadsFilters = ({
@@ -67,6 +68,7 @@ const AmaLeadsFilters = ({
   allLeadsCount = 0,
   filteredLeadsCount = 0,
   onSearchCleared,
+  databaseFilteredCount = 0,
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{ id: string; name: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -488,17 +490,40 @@ const AmaLeadsFilters = ({
           {/* Results counter moved to the right */}
           <div className="ml-auto flex items-center gap-4">
             <p className="text-sm text-[#5A4C33]/70">
-              Showing{" "}
-              {/* <span className="text-[#D2A02A] font-medium">{searchQuery ? searchResultsCount : leads.length}</span>{" "} */}
-              {/* of  */}
-              <span className="text-[#D2A02A] font-medium">
-                {(() => {
-                  const countToDisplay = searchQuery ? searchResultsCount : allLeadsCount
+              {(() => {
+                // Determine which count to display
+                let displayCount: number
+                let showLoadedInfo = false
+                
+                if (searchQuery) {
+                  // When searching, show search results count
+                  displayCount = searchResultsCount
+                } else if (databaseFilteredCount > 0 && hasActiveFilters) {
+                  // When filters are active, show database filtered count
+                  displayCount = databaseFilteredCount
+                  // Show "loaded X of Y" if we haven't loaded all yet
+                  showLoadedInfo = filteredLeads.length < databaseFilteredCount
+                } else {
+                  // No filters, show total or all leads count
+                  displayCount = allLeadsCount || totalLeadsCount
+                  // Show loaded info if total is more than currently loaded
+                  showLoadedInfo = leads.length > 0 && leads.length < displayCount
+                }
 
-                  return countToDisplay
-                })()}
-              </span>{" "}
-              leads
+                return (
+                  <>
+                    {showLoadedInfo && (
+                      <>
+                        <span className="text-[#5A4C33]/50">Showing </span>
+                        <span className="text-[#D2A02A] font-medium">{filteredLeads.length}</span>
+                        <span className="text-[#5A4C33]/50"> of </span>
+                      </>
+                    )}
+                    <span className="text-[#D2A02A] font-medium">{displayCount}</span>
+                    <span> leads</span>
+                  </>
+                )
+              })()}
               {searchQuery && <span className="text-[#D2A02A] ml-1">(from database search)</span>}
               {salesPersonFilter &&
                 salesPersonFilter !== "all" &&

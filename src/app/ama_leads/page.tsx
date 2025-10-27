@@ -372,39 +372,23 @@ const AmaLeadsPage = () => {
     }
   }
 
-  // Helper function to get lead creation date from multiple possible fields
-  const getLeadCreationDate = (lead: any): Date | null => {
-    try {
-      // Prioritize synced_at field (most accurate sync time)
-      if (lead.synced_at) {
-        return lead.synced_at.toDate ? lead.synced_at.toDate() : new Date(lead.synced_at)
-      }
-      
-      // Fallback to synced_date if available (number timestamp)
-      if (lead.synced_date && typeof lead.synced_date === 'number') {
-        return new Date(lead.synced_date)
-      }
-      
-      // Fallback to date field (number timestamp) as last resort
-      if (lead.date && typeof lead.date === 'number') {
-        return new Date(lead.date)
-      }
-      
-      return null
-    } catch (error) {
-      console.error('Error parsing date for lead:', lead.id, error)
-      return null
-    }
-  }
-
   // Fetch filtered count from database based on current filters
   const fetchFilteredCount = async (excludePagination = false) => {
     try {
       const baseQuery = collection(crmDb, "ama_leads")
       const constraints: any[] = []
 
-      // NOTE: Date range filtering is now done in memory to support multiple date fields
-      // We'll fetch all leads and filter by date in memory if date filters are active
+      // Date range uses 'synced_at' field for consistent filtering across all sources
+      if (fromDate) {
+        // Create date in local timezone, not UTC
+        const fromDateStart = new Date(fromDate + "T00:00:00")
+        constraints.push(where("synced_at", ">=", fromDateStart))
+      }
+      if (toDate) {
+        // Create date in local timezone, not UTC
+        const toDateEnd = new Date(toDate + "T23:59:59.999")
+        constraints.push(where("synced_at", "<=", toDateEnd))
+      }
 
       // Source filter - filter by source_database field
       if (sourceFilter !== "all") {
@@ -415,15 +399,6 @@ const AmaLeadsPage = () => {
           settleloans: "settleloans",
         }
         const dbSourceValue = sourceMap[sourceFilter as keyof typeof sourceMap] || sourceFilter.toLowerCase()
-
-        // Debug logging for CredSettle + No Status filter
-        if (sourceFilter === "credsettlee" && statusFilter === "No Status") {
-          console.log("🔍 [fetchFilteredCount] CredSettle + No Status filter:", {
-            sourceFilter,
-            dbSourceValue,
-            statusFilter,
-          })
-        }
 
         // Handle array of possible values for source_database
         if (Array.isArray(dbSourceValue)) {
@@ -436,14 +411,6 @@ const AmaLeadsPage = () => {
       // Status filter
       if (statusFilter !== "all") {
         if (statusFilter === "No Status") {
-          // Debug logging for CredSettle + No Status filter
-          if (sourceFilter === "credsettlee") {
-            console.log("🔍 [fetchFilteredCount] Adding No Status constraint for CredSettle:", {
-              statusValues: ["", "-", "–", "No Status"],
-              sourceFilter,
-              statusFilter,
-            })
-          }
           constraints.push(where("status", "in", ["", "-", "–", "No Status"] as any))
         } else {
           constraints.push(where("status", "==", statusFilter))
@@ -469,51 +436,21 @@ const AmaLeadsPage = () => {
         constraints.push(where("status", "==", "Callback"))
       }
 
-      // Build query with constraints (no pagination, no date filters in query)
+      // Build query with constraints (including date filters now)
       const countQuery = constraints.length > 0 ? query(baseQuery, ...constraints) : query(baseQuery)
 
       const countSnapshot = await getDocs(countQuery)
       
-      // If date filters are active, filter in memory by checking all possible date fields
-      if (fromDate || toDate) {
-        const fromDateStart = fromDate ? new Date(fromDate + "T00:00:00") : null
-        const toDateEnd = toDate ? new Date(toDate + "T23:59:59.999") : null
-        
-        let filteredCount = 0
-        
-        countSnapshot.docs.forEach(doc => {
-          const leadData = doc.data()
-          const leadDate = getLeadCreationDate(leadData)
-          
-          if (!leadDate) return // Skip leads without a valid date
-          
-          let includeInRange = true
-          
-          if (fromDateStart && leadDate < fromDateStart) {
-            includeInRange = false
-          }
-          
-          if (toDateEnd && includeInRange && leadDate > toDateEnd) {
-            includeInRange = false
-          }
-          
-          if (includeInRange) {
-            filteredCount++
-          }
-        })
-        
-        console.log('🔍 [fetchFilteredCount] Date filtering results:', {
-          totalFetched: countSnapshot.size,
-          afterDateFilter: filteredCount,
-          fromDate,
-          toDate
-        })
-        
-        return filteredCount
-      } else {
-        // No date filters, just return the count from the query
-        return countSnapshot.size
-      }
+      console.log('🔍 [fetchFilteredCount] Count results:', {
+        totalCount: countSnapshot.size,
+        fromDate,
+        toDate,
+        statusFilter,
+        salesPersonFilter,
+        sourceFilter
+      })
+      
+      return countSnapshot.size
     } catch (error) {
       console.error("❌ Error fetching filtered count:", error)
       return 0
@@ -683,39 +620,32 @@ const AmaLeadsPage = () => {
       result = result.filter((lead) => lead.convertedToClient === convertedFilter)
     }
 
-    // Date range filter (using mapped synced_at or date)
+    // Date range filter (using only synced_at field for consistency with database queries)
     if (fromDate || toDate) {
-      const originalResultLength = result.length
-
       result = result.filter((lead) => {
-        // Handle date properly - lead.date is epoch milliseconds, synced_at is already a Date object
-        let leadDate: Date
+        // Only use synced_at field for date filtering
+        if (!lead.synced_at) {
+          return false // Exclude leads without synced_at
+        }
 
-        if (lead.synced_at && lead.synced_at instanceof Date) {
+        let leadDate: Date
+        if (lead.synced_at instanceof Date) {
           leadDate = lead.synced_at
-        } else if (lead.date) {
-          // If date is epoch milliseconds, convert to Date
-          leadDate = typeof lead.date === "number" ? new Date(lead.date) : new Date(lead.date)
+        } else if (typeof lead.synced_at === "object" && "toDate" in lead.synced_at) {
+          leadDate = lead.synced_at.toDate()
         } else {
-          // Fallback to current date if no date available
-          leadDate = new Date()
+          return false // Exclude leads with invalid synced_at
         }
 
         if (fromDate && toDate) {
           // Create dates in local timezone, not UTC
           const from = new Date(fromDate + "T00:00:00")
           const to = new Date(toDate + "T23:59:59.999")
-
-          // Check if lead date falls within the range
-          const matches = leadDate >= from && leadDate <= to
-
-          return matches
+          return leadDate >= from && leadDate <= to
         } else if (fromDate) {
-          // Create date in local timezone, not UTC
           const from = new Date(fromDate + "T00:00:00")
           return leadDate >= from
         } else if (toDate) {
-          // Create date in local timezone, not UTC
           const to = new Date(toDate + "T23:59:59.999")
           return leadDate <= to
         }
@@ -2958,6 +2888,7 @@ const AmaLeadsPage = () => {
             setIsSearching={setIsSearching}
             allLeadsCount={searchQuery ? searchResultsCount : databaseFilteredCount || totalLeadsCount}
             onSearchCleared={handleSearchCleared}
+            databaseFilteredCount={databaseFilteredCount}
           />
           {isLoading ? (
             <div className="flex justify-center items-center h-48">
