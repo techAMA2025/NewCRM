@@ -48,6 +48,9 @@ const Login = () => {
       localStorage.setItem('userEmail', user.email || '')
       localStorage.setItem('userName', `${userData.firstName} ${userData.lastName}`)
       
+      // Store login timestamp for session expiry tracking
+      localStorage.setItem('loginTimestamp', Date.now().toString())
+      
       // Redirect to dashboard
       router.push('/dashboard')
     } catch (err: any) {
