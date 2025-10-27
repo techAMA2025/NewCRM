@@ -1230,7 +1230,7 @@ function ClientsPageWithParams() {
     }
 
     const functions = getFunctions(app)
-    const sendWhatsappMessageFn = httpsCallable(functions, "sendWhatsappMessage")
+    const sendWhatsappMessageFn = httpsCallable(functions, "sendClientWhatsappMessage")
 
     let successCount = 0
     let errorCount = 0
@@ -1274,7 +1274,7 @@ function ClientsPageWithParams() {
             const messageData = {
               phoneNumber: formattedPhone,
               templateName: templateName,
-              clientId: client.id,
+              clientId: formattedPhone, // Using phone number as unique identifier
               userId: localStorage.getItem("userName") || "Unknown",
               userName: localStorage.getItem("userName") || "Unknown",
               message: `Template message: ${templateName}`,
