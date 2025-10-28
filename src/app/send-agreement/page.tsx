@@ -217,7 +217,7 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
 
     "service-proposal": {
       id: "service-proposal",
-      name: "Service Proposal & Overview",
+      name: "Revised Proposal - 2 Plans",
       content: `Dear Client,
 
 Thank you for considering AMA Legal Solutions for your loan settlement needs. Below you will find:
