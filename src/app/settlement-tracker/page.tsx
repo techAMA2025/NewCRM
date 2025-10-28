@@ -519,7 +519,7 @@ const SettlementTracker = () => {
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-600">Welcome, {userName}</span>
                   <button 
-                    onClick={logout}
+                    onClick={() => logout()}
                     className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
                   >
                     Logout
@@ -1126,7 +1126,7 @@ const SettlementTracker = () => {
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Welcome, {userName}</span>
               <button 
-                onClick={logout}
+                onClick={() => logout()}
                 className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
               >
                 Logout
