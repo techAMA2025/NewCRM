@@ -213,11 +213,12 @@ Please note:
 Our team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.`,
       subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
     },
+
+
     "service-proposal": {
       id: "service-proposal",
       name: "Service Proposal & Overview",
-      content: `Subject: Loan Settlement Service Proposal & Service Overview
-Dear Client,
+      content: `Dear Client,
 
 Thank you for considering AMA Legal Solutions for your loan settlement needs. Below you will find:
 • A summary of our two pricing offers
@@ -314,6 +315,50 @@ www.amalegalsolutions.com`,
     }
     
     return processedContent;
+  };
+
+  // Wrap service-proposal emails in a professional, breathtaking design for recipients
+  const styleServiceProposalEmail = (content: string) => {
+    // Convert line breaks to HTML breaks, but don't HTML-encode the content
+    // since we want to send actual HTML email
+    const htmlContent = content.replace(/\n/g, "<br/>");
+
+    return (
+      `<div style="max-width:600px; margin:0 auto; font-family:Arial,Helvetica,sans-serif; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.1);">` +
+        // Header with golden accent
+        `<div style="background:#d2a02a; padding:20px; text-align:center;">` +
+          `<h1 style="color:#ffffff; margin:0; font-size:24px; font-weight:600;">AMA Legal Solutions</h1>` +
+          `<p style="color:#ffffff; margin:6px 0 0 0; font-size:14px;">Professional Loan Settlement Services</p>` +
+        `</div>` +
+        
+        // Main content area
+        `<div style="padding:24px; color:#000000; line-height:1.6; font-size:15px;">` +
+          `<div style="background-color:#f8f9fa; border-left:3px solid #d2a02a; padding:16px; margin-bottom:20px;">` +
+            `<h2 style="color:#d2a02a; margin:0 0 8px 0; font-size:18px; font-weight:600;">Service Proposal & Overview</h2>` +
+            `<p style="margin:0; color:#333333; font-size:14px;">Thank you for considering AMA Legal Solutions for your loan settlement needs.</p>` +
+          `</div>` +
+          
+          `<div style="margin-bottom:20px;">` +
+            `${htmlContent}` +
+          `</div>` +
+          
+          // Professional footer section
+          `<div style="background-color:#f8f9fa; padding:16px; border-radius:6px; margin-top:20px; border:1px solid #e9ecef;">` +
+            `<h3 style="color:#d2a02a; margin:0 0 8px 0; font-size:16px; font-weight:600;">Next Steps</h3>` +
+            `<p style="margin:0; color:#333333; font-size:14px;">Please review our proposal carefully and let us know your decision. Once you select a plan, we will send you a formal engagement letter with detailed service terms and timeline.</p>` +
+          `</div>` +
+        `</div>` +
+        
+        // Footer with contact info
+        `<div style="background-color:#000000; padding:16px 24px; text-align:center;">` +
+          `<p style="color:#ffffff; margin:0; font-size:13px; font-weight:500;">Sector-57, Gurugram, Haryana-122001</p>` +
+          `<p style="color:#d2a02a; margin:4px 0 0 0; font-size:13px;">www.amalegalsolutions.com</p>` +
+          `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #333333;">` +
+            `<p style="color:#ffffff; margin:0; font-size:11px;">© 2024 AMA Legal Solutions. All rights reserved.</p>` +
+          `</div>` +
+        `</div>` +
+      `</div>`
+    );
   };
 
   // Single agreement template (for backward compatibility)
@@ -818,9 +863,15 @@ www.amalegalsolutions.com`,
         })
       );
 
+      const processedContentForPlaceholders = processEmailContent(emailContent);
+      let finalContentToSend = processedContentForPlaceholders;
+      if (selectedAgreement === "service-proposal") {
+        finalContentToSend = styleServiceProposalEmail(processedContentForPlaceholders);
+      }
+
       const emailData = {
         subject: currentSubject,
-        content: processEmailContent(emailContent),
+        content: finalContentToSend,
         recipients: recipients,
         ccRecipients: ccRecipients,
         attachments: processedAttachments,
