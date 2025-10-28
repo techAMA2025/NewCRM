@@ -212,6 +212,77 @@ Please note:
 
 Our team is committed to delivering a smooth and stress-free experience. Should you need any clarification, feel free to connect with us.`,
       subject: "Sign-Up Confirmed - Welcome to Our Loan Settlement Program"
+    },
+    "service-proposal": {
+      id: "service-proposal",
+      name: "Service Proposal & Overview",
+      content: `Subject: Loan Settlement Service Proposal & Service Overview
+Dear Client,
+
+Thank you for considering AMA Legal Solutions for your loan settlement needs. Below you will find:
+• A summary of our two pricing offers
+• A description of the services we provide
+
+We want you to have full clarity so you can choose the option that fits your circumstances best.
+
+1. Pricing Offers
+
+Offer A: Pay-Per-Settlement Plan
+• Up-front starting fee: 2% of your total outstanding debt paid in advance.
+• Remaining service fee of 13% of the outstanding debt is payable at the time each loan is successfully settled.
+
+Example: If your total outstanding debt is ₹10,00,000:
+• Up-front starting fee = ₹20,000 (2%)
+• Upon settlement of the loan(s), remaining fee = ₹1,30,000 (13%)
+
+Ideal if you prefer to pay the bulk of the fee only when settlements are achieved.
+
+Offer B: Monthly Retainer Plan
+• We charge 12% of your total outstanding debt as our professional fee.
+• This amount is paid in monthly installments (retainer) while we continuously work on your loan settlement(s).
+
+Example: If your total outstanding debt is ₹10,00,000:
+• Total fee = ₹1,20,000 (12%)
+• You may pay this in monthly parts while we manage and communicate all settlement work.
+
+Best if you have multiple loans, want ongoing legal support and prefer fixed monthly budgeting.
+
+2. Our Services
+
+When you engage AMA Legal Solutions, we provide the following key services:
+
+a. Call-Forwarding Services
+We handle and forward inbound communications from your lenders, recovery agents or credit-bureau queries to our legal team.
+You save time and avoid direct stress or harassment — we act as your front-line liaison.
+
+b. Lawyer Support
+Reply of all legal notices along with assisting in mediation & conciliation.
+Our legal team will coordinate with you on strategy, review settlement letters, negotiate terms, protect your rights.
+We ensure every settlement is legally documented, and that you understand any implications.
+
+c. Loan Settlement Management
+We negotiate with each lender for a settlement of your outstanding loans, under the regulatory framework of the Reserve Bank of India (RBI).
+We emphasise transparency: you know what is being negotiated, what the outcome is, and what you'll pay.
+We aim to negotiate your loan settlement at about 50% of the total due, inclusive of all our fees, ensuring transparency and no hidden costs.
+
+Important note: Please be aware that settling a loan (i.e., reaching a one-time settlement or "OTS") can negatively impact your credit score. Because the loan is considered repaid in full only by lenders and credit bureaus when the settlement occurs, the event of default + negotiation may remain on your credit record. We will walk you through the likely impact and help you plan for rebuilding your credit after settlement.
+
+We conduct settlement work in accordance with RBI guidelines - in particular:
+• The RBI's "Guidelines on One-Time Settlement Scheme for SME Accounts" dated 3 September 2005 (RPCD.PLNFS.BC.No.39/06.02.31/2005-06) apply.
+• More recently, the RBI circular dated 8 June 2023, titled "Framework for Compromise Settlements and Technical Write-offs" is relevant for settlement/compromise of non-performing assets.
+• Also, for settlements by asset reconstruction companies (ARCs), the circular of 20 January 2025 sets out revised guidelines for settlement of dues.
+
+We will ensure any settlement we negotiate follows the lender's board-approved policy in line with the RBI's framework so you are dealing with a legally valid process.
+
+Please let us know your decision or any questions you have. Once you select a plan, we will send you a formal engagement letter, along with the service details and the timeline of work.
+
+Looking forward to assisting you in becoming debt-free with confidence and clarity.
+
+Warm regards,
+Team AMA Legal Solutions
+Sector-57, Gurugram, Haryana-122001
+www.amalegalsolutions.com`,
+      subject: "Loan Settlement Service Proposal & Service Overview - AMA Legal Solutions"
     }
   };
 
@@ -915,11 +986,13 @@ Our team is committed to delivering a smooth and stress-free experience. Should 
           <div className="max-w-5xl mx-auto">
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
               <FaFileContract className="mr-3 text-green-400" />
-              Send Email Templates (From: {selectedAgreement === "agreement-draft" ? "notify@amalegalsolutions.com" : "finance@amalegalsolutions.com"})
+              Send Email Templates (From: {selectedAgreement === "agreement-draft" ? "notify@amalegalsolutions.com" : selectedAgreement === "service-proposal" ? "notify@amalegalsolutions.com" : "finance@amalegalsolutions.com"})
             </h1>
             <p className="text-gray-400 mb-8">
               {selectedAgreement === "agreement-draft" 
                 ? "Send agreement drafts from notify@amalegalsolutions.com" 
+                : selectedAgreement === "service-proposal"
+                ? "Send service proposals from notify@amalegalsolutions.com"
                 : "Send sign-up confirmations and other templates from finance@amalegalsolutions.com"
               }
             </p>
