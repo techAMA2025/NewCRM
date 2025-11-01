@@ -201,7 +201,7 @@ export default function ClientTableRow({
       <td className="px-3 py-2 whitespace-nowrap text-gray-200 text-xs">{client.city}</td>
 
       <td className="px-3 py-2 whitespace-nowrap text-gray-200 text-xs">
-        {client.monthlyFees || "—"}
+        {client.source_database !== "billcut" ? (client.monthlyFees || "—") : "—"}
       </td>
 
       <td className="px-3 py-2 whitespace-nowrap">

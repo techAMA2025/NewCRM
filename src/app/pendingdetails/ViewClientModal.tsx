@@ -94,7 +94,7 @@ const ViewClientModal = ({ lead, loading, error, onClose }: ViewClientModalProps
                 title="Fee Details"
                 fields={[
                   { label: "Tenure (months)", value: lead.tenure },
-                  { label: "Monthly Fees", value: lead.monthlyFees, type: "currency" },
+                  ...(lead.source_database !== 'billcut' ? [{ label: "Monthly Fees", value: lead.monthlyFees, type: "currency" as const }] : []),
                   { label: "Start Date of Service", value: lead.startDate }
                 ]}
                 columns={3}

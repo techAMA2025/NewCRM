@@ -158,10 +158,12 @@ export function ClientDetailsModal({
                         <dt className="text-sm font-medium text-muted-foreground">Start Date</dt>
                         <dd className="text-base">{formatDate(client?.startDate)}</dd>
                       </div>
-                      <div>
-                        <dt className="text-sm font-medium text-muted-foreground">Monthly Fee</dt>
-                        <dd className="text-base">₹{client?.monthlyFees.toLocaleString()}</dd>
-                      </div>
+                      {client?.source_database !== 'billcut' && (
+                        <div>
+                          <dt className="text-sm font-medium text-muted-foreground">Monthly Fee</dt>
+                          <dd className="text-base">₹{client?.monthlyFees.toLocaleString()}</dd>
+                        </div>
+                      )}
                       <div>
                         <dt className="text-sm font-medium text-muted-foreground">Total Amount</dt>
                         <dd className="text-base">₹{client?.totalPaymentAmount.toLocaleString()}</dd>

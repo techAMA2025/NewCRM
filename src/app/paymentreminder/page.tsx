@@ -859,7 +859,9 @@ export default function PaymentReminderPage() {
                                     )}
                                   </td>
                                   <td className="p-4 border-b border-gray-800 text-gray-400">Week {client.weekOfMonth}</td>
-                                  <td className="p-4 border-b border-gray-800 text-right font-medium text-gray-200">₹{(client.monthlyFees || 0).toLocaleString()}</td>
+                                  <td className="p-4 border-b border-gray-800 text-right font-medium text-gray-200">
+                                    {client.source_database !== 'billcut' ? `₹${(client.monthlyFees || 0).toLocaleString()}` : '—'}
+                                  </td>
                                   <td className="p-4 border-b border-gray-800 text-right text-gray-400">
                                     ₹{(client.paidAmount || 0).toLocaleString()} / ₹{(client.totalPaymentAmount || 0).toLocaleString()}
                                   </td>
@@ -1076,14 +1078,16 @@ export default function PaymentReminderPage() {
                                       </p>
                                     </div>
                                     <div className="text-right">
-                                      <p className={`font-medium 
-                                        ${week === 1 ? 'text-blue-400' : 
-                                         week === 2 ? 'text-purple-400' : 
-                                         week === 3 ? 'text-green-400' : 
-                                         'text-orange-400'}`}
-                                      >
-                                        ₹{(client.monthlyFees || 0).toLocaleString()}/month
-                                      </p>
+                                      {client.source_database !== 'billcut' && (
+                                        <p className={`font-medium 
+                                          ${week === 1 ? 'text-blue-400' : 
+                                           week === 2 ? 'text-purple-400' : 
+                                           week === 3 ? 'text-green-400' : 
+                                           'text-orange-400'}`}
+                                        >
+                                          ₹{(client.monthlyFees || 0).toLocaleString()}/month
+                                        </p>
+                                      )}
                                       <p className="text-sm text-gray-400 mt-1">
                                         {client.paymentsCompleted}/{client.tenure} payments
                                       </p>

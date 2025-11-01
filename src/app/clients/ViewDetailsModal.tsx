@@ -145,13 +145,15 @@ export default function ViewDetailsModal({
                   {client.monthlyIncome || 'N/A'}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-gray-400">Monthly Fees</div>
-                <div className="text-orange-400 flex items-center">
-                  <FaRupeeSign className="h-3 w-3 mr-1" />
-                  {client.monthlyFees || 'N/A'}
+              {client.source_database !== 'billcut' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-gray-400">Monthly Fees</div>
+                  <div className="text-orange-400 flex items-center">
+                    <FaRupeeSign className="h-3 w-3 mr-1" />
+                    {client.monthlyFees || 'N/A'}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div className="text-gray-400">Credit Card Dues</div>
                 <div className="text-red-400 flex items-center">

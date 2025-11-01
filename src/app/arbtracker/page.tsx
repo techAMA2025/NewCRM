@@ -67,15 +67,35 @@ const formatDate = (dateString: string) => {
 }
 
 // Time formatting function to handle invalid dates and different formats
+// Safari-specific: Safari can be stricter with time parsing and display
 const formatTime = (timeString: string | undefined | null): string => {
   if (!timeString) return '';
   
   // Remove any whitespace and check for invalid values
   const time = String(timeString).trim();
   
-  // Check for common invalid patterns
-  if (time.toLowerCase() === 'invalid' || time.toLowerCase() === 'invaliddate' || time === 'NaN' || time === 'Invalid Date') {
+  // Check for common invalid patterns (including Safari-specific issues)
+  const invalidPatterns = [
+    'invalid', 'invaliddate', 'nan', 'invalid date', 
+    'invalid time', 'invalid datetime', 'null', 'undefined'
+  ];
+  if (invalidPatterns.some(pattern => time.toLowerCase() === pattern)) {
     return '';
+  }
+  
+  // Safari might store time as Date object string - handle that case
+  if (time.includes('T') && time.includes('Z')) {
+    // ISO format datetime string
+    try {
+      const date = new Date(time);
+      if (!isNaN(date.getTime())) {
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      }
+    } catch (e) {
+      // Continue with other parsing methods
+    }
   }
   
   // Check if it's in valid HH:mm format (most common from input type="time")
@@ -91,12 +111,21 @@ const formatTime = (timeString: string | undefined | null): string => {
     return time.substring(0, 5);
   }
   
-  // Try to parse and validate time parts
+  // Safari might also include milliseconds - handle HH:mm:ss.SSS
+  const timeWithMsRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.\d+$/;
+  if (timeWithMsRegex.test(time)) {
+    return time.substring(0, 5);
+  }
+  
+  // Try to parse and validate time parts manually (Safari-safe method)
   try {
     const parts = time.split(':');
     if (parts.length >= 2) {
-      const hours = parseInt(parts[0], 10);
-      const minutes = parseInt(parts[1], 10);
+      const hoursStr = parts[0].trim();
+      const minutesStr = parts[1].split('.')[0].trim(); // Remove milliseconds if present
+      
+      const hours = parseInt(hoursStr, 10);
+      const minutes = parseInt(minutesStr, 10);
       
       // Validate hours and minutes
       if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
@@ -108,8 +137,34 @@ const formatTime = (timeString: string | undefined | null): string => {
     console.error('Error parsing time:', time, e);
   }
   
+  // Last resort: Try to extract time from any date/time string
+  // Safari might have stored it differently
+  const dateMatch = time.match(/([0-1][0-9]|2[0-3]):[0-5][0-9]/);
+  if (dateMatch) {
+    return dateMatch[0];
+  }
+  
   // If all else fails, return empty string to avoid showing "invalid"
   return '';
+}
+
+// Normalize time value to HH:mm format for Safari compatibility
+// This ensures time is always stored in a consistent format
+const normalizeTimeForStorage = (timeValue: string | undefined | null): string => {
+  if (!timeValue) return '';
+  
+  const normalized = formatTime(timeValue);
+  if (!normalized) return '';
+  
+  // Ensure it's exactly in HH:mm format (no seconds, no milliseconds)
+  const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+  if (timeRegex.test(normalized)) {
+    return normalized;
+  }
+  
+  // If formatTime returned something else, extract HH:mm
+  const match = normalized.match(/([0-1][0-9]|2[0-3]):[0-5][0-9]/);
+  return match ? match[0] : '';
 }
 
 export default function ArbitrationTracker() {
@@ -157,14 +212,21 @@ export default function ArbitrationTracker() {
         const q = query(arbitrationRef, orderBy('createdAt', 'desc'))
         const snapshot = await getDocs(q)
         
-        const caseData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          // Ensure teamEmails is always an array for consistency
-          teamEmails: Array.isArray(doc.data().teamEmails) 
-            ? doc.data().teamEmails 
-            : [] // If not an array, use empty array instead of trying to split
-        }))
+        const caseData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          // Normalize time value for Safari compatibility
+          const normalizedTime = data.time ? normalizeTimeForStorage(data.time) : '';
+          return {
+            id: doc.id,
+            ...data,
+            // Normalize time to ensure consistent format across browsers
+            time: normalizedTime,
+            // Ensure teamEmails is always an array for consistency
+            teamEmails: Array.isArray(data.teamEmails) 
+              ? data.teamEmails 
+              : [] // If not an array, use empty array instead of trying to split
+          }
+        })
         
         setCases(caseData)
 
@@ -293,6 +355,8 @@ export default function ArbitrationTracker() {
       // Prepare data for Firestore
       const newCaseData = {
         ...caseData,
+        // Normalize time for Safari compatibility - ensure it's always in HH:mm format
+        time: normalizeTimeForStorage(caseData.time),
         createdAt: serverTimestamp(),
         // teamEmails is already an array, no need to split
         teamEmails: Array.isArray(caseData.teamEmails) ? caseData.teamEmails : []

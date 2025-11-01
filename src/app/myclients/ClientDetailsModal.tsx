@@ -290,19 +290,21 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
                             </div>
                           </div>
                           
-                          <div className="bg-[#f5f5f5] dark:bg-[#30261d] p-3 rounded-lg shadow-sm">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0">
-                                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-[#d39f10]/10 dark:bg-[#d39f10]/20 text-[#30261d] dark:text-[#f5f5f5]">
-                                  <FaRupeeSign />
+                          {client.source_database !== 'billcut' && (
+                            <div className="bg-[#f5f5f5] dark:bg-[#30261d] p-3 rounded-lg shadow-sm">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-[#d39f10]/10 dark:bg-[#d39f10]/20 text-[#30261d] dark:text-[#f5f5f5]">
+                                    <FaRupeeSign />
+                                  </div>
+                                </div>
+                                <div className="ml-3">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Monthly Fees</p>
+                                  <p className="font-bold text-[#d39f10] dark:text-[#d39f10]">₹{client.monthlyFees}</p>
                                 </div>
                               </div>
-                              <div className="ml-3">
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Monthly Fees</p>
-                                <p className="font-bold text-[#d39f10] dark:text-[#d39f10]">₹{client.monthlyFees}</p>
-                              </div>
                             </div>
-                          </div>
+                          )}
                           
                           <div className="bg-[#f5f5f5] dark:bg-[#30261d] p-3 rounded-lg shadow-sm">
                             <div className="flex items-center">

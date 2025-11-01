@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { FaTimes } from 'react-icons/fa'
 import { ArbitrationCaseData } from './NewArbitrationCaseModel'
 import { db } from '@/firebase/firebase' // Import your firebase configuration
@@ -21,6 +21,106 @@ const defaultEmails = [
   'latika.amalegal@gmail.com',
   'sanchaita.amalegal@gmail.com',
 ]
+
+// Normalize time value to HH:mm format for Safari compatibility and HTML5 time input
+const normalizeTimeForStorage = (timeValue: string | undefined | null): string => {
+  if (!timeValue) return '';
+  
+  const time = String(timeValue).trim();
+  
+  // Check for invalid patterns
+  const invalidPatterns = ['invalid', 'invaliddate', 'nan', 'invalid date', 'invalid time', 'null', 'undefined'];
+  if (invalidPatterns.some(pattern => time.toLowerCase() === pattern)) {
+    return '';
+  }
+  
+  // Check if it's in valid HH:mm format (required for HTML5 time input)
+  const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+  if (timeRegex.test(time)) {
+    return time;
+  }
+  
+  // Check if it's in HH:mm:ss format - extract just HH:mm
+  const timeWithSecondsRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]/;
+  if (timeWithSecondsRegex.test(time)) {
+    return time.substring(0, 5);
+  }
+  
+  // Safari might include milliseconds - handle HH:mm:ss.SSS
+  const timeWithMsRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.\d+/;
+  if (timeWithMsRegex.test(time)) {
+    return time.substring(0, 5);
+  }
+  
+  // Try to parse manually and format for HTML5 input
+  try {
+    const parts = time.split(':');
+    if (parts.length >= 2) {
+      const hoursStr = parts[0].trim();
+      const minutesStr = parts[1].split('.')[0].trim(); // Remove milliseconds if present
+      
+      const hours = parseInt(hoursStr, 10);
+      const minutes = parseInt(minutesStr, 10);
+      
+      // Validate and format for HTML5 time input (HH:mm)
+      if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
+    }
+  } catch (e) {
+    console.error('Error normalizing time:', time, e);
+  }
+  
+  // Extract HH:mm pattern from any string
+  const match = time.match(/([0-1][0-9]|2[0-3]):[0-5][0-9]/);
+  return match ? match[0] : '';
+}
+
+// Format time for HTML5 time input - ensures it's always in HH:mm format
+// Safari is very strict about time input format - must be exactly HH:mm
+const formatTimeForInput = (timeValue: string | undefined | null): string => {
+  if (!timeValue) return '';
+  
+  const time = String(timeValue).trim();
+  
+  // Check for invalid patterns first
+  const invalidPatterns = ['invalid', 'invaliddate', 'nan', 'invalid date', 'invalid time', 'null', 'undefined'];
+  if (invalidPatterns.some(pattern => time.toLowerCase() === pattern)) {
+    return '';
+  }
+  
+  // Safari requires exactly HH:mm format - validate strictly
+  const strictTimeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+  if (strictTimeRegex.test(time)) {
+    return time; // Already in correct format
+  }
+  
+  // Try to parse and reformat
+  try {
+    const parts = time.split(':');
+    if (parts.length >= 2) {
+      const hoursStr = parts[0].trim();
+      const minutesStr = parts[1].split('.')[0].trim(); // Remove seconds/milliseconds
+      
+      const hours = parseInt(hoursStr, 10);
+      const minutes = parseInt(minutesStr, 10);
+      
+      // Strict validation for Safari - must be valid hours (0-23) and minutes (0-59)
+      if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        // Format with leading zeros as Safari requires exact format
+        const formattedHours = hours.toString().padStart(2, '0');
+        const formattedMinutes = minutes.toString().padStart(2, '0');
+        return `${formattedHours}:${formattedMinutes}`;
+      }
+    }
+  } catch (e) {
+    // Continue to return empty string
+  }
+  
+  // Last attempt: extract valid HH:mm pattern
+  const match = time.match(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/);
+  return match ? match[0] : '';
+}
 
 export default function EditArbitrationCaseModal({
   isOpen,
@@ -43,15 +143,20 @@ export default function EditArbitrationCaseModal({
   })
   
   const [isSubmitting, setIsSubmitting] = useState(false) // Add loading state
+  const timeInputRef = useRef<HTMLInputElement>(null) // Ref for Safari compatibility
   
   // Initialize form with case data when modal opens
   useEffect(() => {
     if (caseData && isOpen) {
+      // Format time properly for HTML5 time input
+      const formattedTime = formatTimeForInput(caseData.time);
+      
       setEditData({
         clientName: caseData.clientName || '',
         type: caseData.type || 'Arbitration',
         startDate: caseData.startDate || '',
-        time: caseData.time || '',
+        // Format time for HTML5 time input compatibility
+        time: formattedTime,
         status: caseData.status || 'In progress',
         bankName: caseData.bankName || '',
         password: caseData.password || '',
@@ -72,10 +177,35 @@ export default function EditArbitrationCaseModal({
       console.log('Edit modal opened with case data:', caseData);
     }
   }, [isOpen, caseData]);
+
+  // Safari-specific: Directly set time value on DOM element to avoid "invalid value" error
+  useEffect(() => {
+    if (timeInputRef.current && editData.time) {
+      const formattedTime = formatTimeForInput(editData.time);
+      if (formattedTime && timeInputRef.current.value !== formattedTime) {
+        // Use setTimeout to ensure DOM is ready (Safari requirement)
+        setTimeout(() => {
+          if (timeInputRef.current && formattedTime) {
+            timeInputRef.current.value = formattedTime;
+            // Force Safari to recognize the value by triggering input event
+            const event = new Event('input', { bubbles: true });
+            timeInputRef.current.dispatchEvent(event);
+          }
+        }, 0);
+      }
+    }
+  }, [editData.time, isOpen]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setEditData(prev => ({ ...prev, [name]: value }))
+    // Normalize time field to ensure it's always in HH:mm format for HTML5 input
+    if (name === 'time') {
+      // HTML5 time input already provides HH:mm format, but normalize to be safe
+      const normalizedTime = formatTimeForInput(value) || value;
+      setEditData(prev => ({ ...prev, [name]: normalizedTime }))
+    } else {
+      setEditData(prev => ({ ...prev, [name]: value }))
+    }
   }
   
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,7 +283,12 @@ export default function EditArbitrationCaseModal({
       // Handle regular fields
       else if (editData[field] !== caseData[field]) {
         hasChanges = true;
-        updates[field] = editData[field];
+        // Normalize time field for Safari compatibility
+        if (field === 'time') {
+          updates[field] = normalizeTimeForStorage(editData[field]);
+        } else {
+          updates[field] = editData[field];
+        }
         resetEmailStatus = true; // Any change should reset email status
       }
     });
@@ -286,12 +421,22 @@ export default function EditArbitrationCaseModal({
                 Time*
               </label>
               <input
+                ref={timeInputRef}
                 type="time"
                 name="time"
                 required
-                value={editData.time}
+                value={editData.time || ''}
                 onChange={handleChange}
                 className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                // Safari-specific: ensure value is always in correct format
+                onBlur={(e) => {
+                  // Re-validate and format on blur for Safari compatibility
+                  const formatted = formatTimeForInput(e.target.value);
+                  if (formatted && formatted !== e.target.value) {
+                    e.target.value = formatted;
+                    handleChange({ target: { name: 'time', value: formatted } } as React.ChangeEvent<HTMLInputElement>);
+                  }
+                }}
               />
             </div>
             
