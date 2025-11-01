@@ -66,6 +66,52 @@ const formatDate = (dateString: string) => {
   return date.toLocaleDateString('en-GB'); // This formats as dd/mm/yyyy
 }
 
+// Time formatting function to handle invalid dates and different formats
+const formatTime = (timeString: string | undefined | null): string => {
+  if (!timeString) return '';
+  
+  // Remove any whitespace and check for invalid values
+  const time = String(timeString).trim();
+  
+  // Check for common invalid patterns
+  if (time.toLowerCase() === 'invalid' || time.toLowerCase() === 'invaliddate' || time === 'NaN' || time === 'Invalid Date') {
+    return '';
+  }
+  
+  // Check if it's in valid HH:mm format (most common from input type="time")
+  const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+  if (timeRegex.test(time)) {
+    return time; // Return as-is in 24-hour format
+  }
+  
+  // Check if it's in HH:mm:ss format
+  const timeWithSecondsRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+  if (timeWithSecondsRegex.test(time)) {
+    // Return just HH:mm
+    return time.substring(0, 5);
+  }
+  
+  // Try to parse and validate time parts
+  try {
+    const parts = time.split(':');
+    if (parts.length >= 2) {
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      
+      // Validate hours and minutes
+      if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+        // Format as HH:mm
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing time:', time, e);
+  }
+  
+  // If all else fails, return empty string to avoid showing "invalid"
+  return '';
+}
+
 export default function ArbitrationTracker() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -283,7 +329,26 @@ export default function ArbitrationTracker() {
       console.log(`Sending email to: ${recipients.join(', ')}`)
       
       // Calculate start and end date time from date and time strings
-      const startDate = new Date(arbitrationCase.startDate + 'T' + arbitrationCase.time);
+      // Normalize time format to HH:mm for ISO 8601 compatibility
+      const normalizedTime = formatTime(arbitrationCase.time);
+      if (!normalizedTime) {
+        alert('Invalid time format. Please update the time before sending email.');
+        return;
+      }
+      
+      // Ensure time is in HH:mm format (remove seconds if present)
+      const timeForISO = normalizedTime.length > 5 ? normalizedTime.substring(0, 5) : normalizedTime;
+      
+      // Create date string in ISO format (YYYY-MM-DDTHH:mm)
+      const dateTimeString = `${arbitrationCase.startDate}T${timeForISO}`;
+      const startDate = new Date(dateTimeString);
+      
+      // Validate the date
+      if (isNaN(startDate.getTime())) {
+        alert('Invalid date or time format. Please check the date and time values.');
+        return;
+      }
+      
       const endDate = new Date(startDate);
       endDate.setHours(endDate.getHours() + 1); // Default to 1 hour meeting
       
@@ -679,7 +744,7 @@ export default function ArbitrationTracker() {
                               {formatDate(arbitrationCase.startDate)}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                              {arbitrationCase.time}
+                              {formatTime(arbitrationCase.time) || '-'}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <StatusBadge status={arbitrationCase.status} />
@@ -970,7 +1035,7 @@ export default function ArbitrationTracker() {
                               {formatDate(arbitrationCase.startDate)}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                              {arbitrationCase.time}
+                              {formatTime(arbitrationCase.time) || '-'}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <StatusBadge status={arbitrationCase.status} />
@@ -1261,7 +1326,7 @@ export default function ArbitrationTracker() {
                               {formatDate(arbitrationCase.startDate)}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                              {arbitrationCase.time}
+                              {formatTime(arbitrationCase.time) || '-'}
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <StatusBadge status={arbitrationCase.status} />

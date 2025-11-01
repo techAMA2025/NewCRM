@@ -200,6 +200,10 @@ export default function ClientTableRow({
 
       <td className="px-3 py-2 whitespace-nowrap text-gray-200 text-xs">{client.city}</td>
 
+      <td className="px-3 py-2 whitespace-nowrap text-gray-200 text-xs">
+        {client.monthlyFees || "—"}
+      </td>
+
       <td className="px-3 py-2 whitespace-nowrap">
         {client.isPrimary && client.isSecondary ? (
           <span className="px-1.5 py-0.5 bg-purple-800 text-purple-200 rounded-full text-xs font-medium">
