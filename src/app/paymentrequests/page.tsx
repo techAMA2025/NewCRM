@@ -115,7 +115,12 @@ export default function PaymentRequestsPage() {
       
       if (request && request.salesPersonName) {
         // Update the salesperson's target with the new amount collected
-        await updateSalesTargetForApprovedPayment(request.salesPersonName, Number(request.amount));
+        // Use the payment request's timestamp to determine which month to update
+        await updateSalesTargetForApprovedPayment(
+          request.salesPersonName, 
+          Number(request.amount),
+          request.timestamp || new Date().toISOString()
+        );
       }
 
       // Update the local state
@@ -135,10 +140,10 @@ export default function PaymentRequestsPage() {
   };
 
   // Helper function to update sales target when a payment is approved
-  const updateSalesTargetForApprovedPayment = async (salesPersonName: string, amount: number) => {
+  const updateSalesTargetForApprovedPayment = async (salesPersonName: string, amount: number, timestamp: string) => {
     try {
-      // Get current month and year
-      const date = new Date();
+      // Use the payment request's timestamp to determine which month/year to update
+      const date = new Date(timestamp);
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const currentMonth = months[date.getMonth()];
       const currentYear = date.getFullYear();
@@ -281,11 +286,13 @@ export default function PaymentRequestsPage() {
       });
 
       // If this is an approved payment, update the target collection with the difference
+      // Use the payment request's timestamp to determine which month to update
       if (request && request.status === 'approved' && request.salesPersonName) {
         await updateSalesTargetForEditedPayment(
           request.salesPersonName, 
           oldAmount, 
-          newAmount
+          newAmount,
+          request.timestamp || new Date().toISOString()
         );
       }
 
@@ -307,7 +314,7 @@ export default function PaymentRequestsPage() {
   };
 
   // Helper function to update sales target when a payment is edited
-  const updateSalesTargetForEditedPayment = async (salesPersonName: string, oldAmount: number, newAmount: number) => {
+  const updateSalesTargetForEditedPayment = async (salesPersonName: string, oldAmount: number, newAmount: number, timestamp: string) => {
     try {
       // Calculate the difference (can be positive or negative)
       const amountDifference = newAmount - oldAmount;
@@ -315,8 +322,8 @@ export default function PaymentRequestsPage() {
       // If there's no change, we can exit early
       if (amountDifference === 0) return;
       
-      // Get current month and year
-      const date = new Date();
+      // Use the payment request's timestamp to determine which month/year to update
+      const date = new Date(timestamp);
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const currentMonth = months[date.getMonth()];
       const currentYear = date.getFullYear();
@@ -356,12 +363,12 @@ export default function PaymentRequestsPage() {
         } else {
           // No target found for this salesperson, create one (rare case)
           console.warn(`No target found for ${salesPersonName} during edit, creating new one`);
-          await updateSalesTargetForApprovedPayment(salesPersonName, newAmount);
+          await updateSalesTargetForApprovedPayment(salesPersonName, newAmount, timestamp);
         }
       } else {
         // Monthly document doesn't exist (rare case for an approved payment)
         console.warn(`No monthly document found during edit, creating new one`);
-        await updateSalesTargetForApprovedPayment(salesPersonName, newAmount);
+        await updateSalesTargetForApprovedPayment(salesPersonName, newAmount, timestamp);
       }
     } catch (error) {
       console.error('Error updating sales target during edit:', error);
@@ -387,8 +394,13 @@ export default function PaymentRequestsPage() {
       await deleteDoc(paymentRef);
 
       // If this was an approved request, update the salesperson's target
+      // Use the payment request's timestamp to determine which month to update
       if (request && request.status === 'approved' && request.salesPersonName) {
-        await updateSalesTargetForDeletedPayment(request.salesPersonName, Number(request.amount));
+        await updateSalesTargetForDeletedPayment(
+          request.salesPersonName, 
+          Number(request.amount),
+          request.timestamp || new Date().toISOString()
+        );
       }
 
       // Update the local state by removing the deleted request
@@ -404,10 +416,10 @@ export default function PaymentRequestsPage() {
   };
 
   // Helper function to update sales target when a payment is deleted
-  const updateSalesTargetForDeletedPayment = async (salesPersonName: string, amount: number) => {
+  const updateSalesTargetForDeletedPayment = async (salesPersonName: string, amount: number, timestamp: string) => {
     try {
-      // Get current month and year
-      const date = new Date();
+      // Use the payment request's timestamp to determine which month/year to update
+      const date = new Date(timestamp);
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const currentMonth = months[date.getMonth()];
       const currentYear = date.getFullYear();
