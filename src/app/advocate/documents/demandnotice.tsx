@@ -47,6 +47,10 @@ const findClosestBankMatch = (clientBankName: string, availableBanks: string[]):
     'boi': 'bank of india',
     'bank of maharashtra': 'bom',
     'bom': 'bank of maharashtra',
+    // Explicitly map indifi and mintifi to prevent confusion
+    'indifi': 'indifi capital private limited',
+    'indifi capital': 'indifi capital private limited',
+    'mintifi': 'mintifi',
   };
   
   // Normalize bank names for comparison
@@ -77,6 +81,17 @@ const findClosestBankMatch = (clientBankName: string, availableBanks: string[]):
   // Calculate similarity scores
   const similarityScores = availableBanks.map(bank => {
     const normalizedBank = normalizeBankName(bank);
+    
+    // IMPORTANT: Prevent Indifi and Mintifi from matching to each other
+    // They are two different banks despite similar names
+    const isIndifi = normalizedClientBank === 'indifi' || normalizedClientBank === 'indificapital';
+    const isMintifi = normalizedClientBank === 'mintifi';
+    const bankIsIndifi = normalizedBank === 'indifi' || normalizedBank === 'indificapital';
+    const bankIsMintifi = normalizedBank === 'mintifi';
+    
+    if ((isIndifi && bankIsMintifi) || (isMintifi && bankIsIndifi)) {
+      return { bank, similarity: 0, distance: 999 };
+    }
     
     // Calculate Levenshtein distance
     const distance = levenshteinDistance(normalizedClientBank, normalizedBank);

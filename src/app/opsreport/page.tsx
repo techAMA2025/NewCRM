@@ -223,6 +223,7 @@ export default function OpsReport() {
         'AXIOM FINANCE': [/AXIOM.*(?:FINANCE|SERVICES)?/i],
         'WORTGAGE FINANCE': [/WORTGAGE.*(?:FINANCE)?/i],
         'INDIFI': [/INDIFI/i],
+        'MINTIFI': [/MINTIFI/i],
         'KISTUK': [/KISTUK/i],
         'TRUEBALANCE': [/TRUEBALANCE/i],
         'SNAPMINT FINANCIAL': [/SNAPMINT.*(?:FINANCIAL)?/i],
