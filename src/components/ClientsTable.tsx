@@ -185,7 +185,7 @@ export default function ClientsTable({
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="p-1 text-[10px]">{client.phone}</TableCell>
+                <TableCell className="p-1 text-[10px]">{client.phone} <br /> {client.altPhone}</TableCell>
                 <TableCell className="p-1 text-[10px]">{client.city}</TableCell>
                 <TableCell className="p-1">
                   <div className="flex flex-col">
