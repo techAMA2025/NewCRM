@@ -85,6 +85,10 @@ export default function ViewDetailsModal({
                 <div className="text-white">{client.phone}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
+                <div className="text-gray-400">Alternate Phone</div>
+                <div className="text-white">{client.altPhone}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div className="text-gray-400">Email</div>
                 <div className="text-white break-all">{client.email}</div>
               </div>

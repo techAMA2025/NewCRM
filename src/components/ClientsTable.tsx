@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { 
   Table, 
   TableBody, 
@@ -34,6 +33,7 @@ const formatSourceName = (source: string): { name: string; color: string } => {
 
 interface ClientsTableProps {
   clients: Client[]
+  totalCount?: number
   onViewDetails: (client: Client) => void
   onEditClient: (client: Client) => void
   onDeleteClient: (client: Client) => void
@@ -54,6 +54,7 @@ interface ClientsTableProps {
 
 export default function ClientsTable({
   clients,
+  totalCount,
   onViewDetails,
   onEditClient,
   onDeleteClient,
@@ -72,6 +73,9 @@ export default function ClientsTable({
   userRole
 }: ClientsTableProps) {
   const isDark = theme === 'dark'
+  const overallCount = totalCount ?? clients.length
+  const visibleSelectedCount = clients.reduce((count, client) => (selectedClients.has(client.id) ? count + 1 : count), 0)
+  const allVisibleSelected = clients.length > 0 && visibleSelectedCount === clients.length
 
   const toggleTheme = () => {
     if (onThemeChange) {
@@ -100,7 +104,7 @@ export default function ClientsTable({
     <div className="space-y-1">
       <div className="flex justify-between items-center">
         <div className={`text-[10px] ${isDark ? 'text-red-500' : 'text-red-500'}`}>
-          {clients.length} clients
+          Total {overallCount} client{overallCount === 1 ? '' : 's'}
         </div>
         <Button
           onClick={toggleTheme}
@@ -136,7 +140,7 @@ export default function ClientsTable({
                       ? 'border-gray-600 text-blue-400 focus:ring-blue-400 bg-gray-700' 
                       : 'border-gray-300 text-blue-500 focus:ring-blue-500 bg-white'
                   } h-2.5 w-2.5`}
-                  checked={selectedClients.size === clients.length && clients.length > 0}
+                  checked={allVisibleSelected}
                   onChange={(e) => onSelectAll(e.target.checked)}
                   disabled={userRole === 'billcut' || userRole === 'assistant'}
                 />

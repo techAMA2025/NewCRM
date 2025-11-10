@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useRef, useCallback, Suspense } from "react"
 import type React from "react"
 
 import {
@@ -13,6 +13,11 @@ import {
   deleteDoc,
   limit,
   addDoc,
+  startAfter,
+  getCountFromServer,
+  type QueryDocumentSnapshot,
+  type DocumentData,
+  type QueryConstraint,
 } from "firebase/firestore"
 import { db } from "@/firebase/firebase"
 import { Button } from "@/components/ui/button"
@@ -195,6 +200,7 @@ function DocumentViewer({
 }
 
 // Separate component for URL parameter handling
+const ITEMS_PER_PAGE = 50
 function ClientsPageWithParams() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
@@ -239,6 +245,12 @@ function ClientsPageWithParams() {
 
   // Add new state for advocates list
   const [advocates, setAdvocates] = useState<User[]>([])
+  const [hasMore, setHasMore] = useState<boolean>(true)
+  const [isFetchingMore, setIsFetchingMore] = useState<boolean>(false)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null)
+  const hasMoreRef = useRef<boolean>(true)
+  const isFetchingMoreRef = useRef<boolean>(false)
 
   // Add these to your existing state declarations
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -277,9 +289,224 @@ function ClientsPageWithParams() {
 
   // Add new state for remarks management
   const [remarks, setRemarks] = useState<{ [key: string]: string }>({})
+  const [totalClientCount, setTotalClientCount] = useState<number>(0)
+  const [filteredTotalCount, setFilteredTotalCount] = useState<number>(0)
 
   // Add URL parameter handling
   const searchParams = useSearchParams()
+
+  const mergeAndSortClients = useCallback((existing: Client[], incoming: Client[]) => {
+    const mergedMap = new Map<string, Client>()
+    existing.forEach((client) => mergedMap.set(client.id, client))
+    incoming.forEach((client) => mergedMap.set(client.id, client))
+
+    const mergedClients = Array.from(mergedMap.values())
+    const clientsWithoutStartDate: Client[] = []
+    const clientsWithStartDate: Client[] = []
+
+    mergedClients.forEach((client) => {
+      const startDateValue = typeof client.startDate === "string" ? client.startDate : ""
+      if (!startDateValue || startDateValue.trim() === "") {
+        clientsWithoutStartDate.push(client)
+      } else {
+        clientsWithStartDate.push(client)
+      }
+    })
+
+    clientsWithStartDate.sort((a, b) => {
+      const startA = typeof a.startDate === "string" ? a.startDate : ""
+      const startB = typeof b.startDate === "string" ? b.startDate : ""
+      if (!startA || !startB) return 0
+
+      const dateA = new Date(startA)
+      const dateB = new Date(startB)
+      return dateB.getTime() - dateA.getTime()
+    })
+
+    return [...clientsWithoutStartDate, ...clientsWithStartDate]
+  }, [])
+
+  const enhanceClientData = useCallback(
+    async (client: Client): Promise<Client> => {
+      let enhancedClient = {
+        ...client,
+        adv_status: client.adv_status || "Inactive",
+      }
+
+      if (client.source_database === "billcut" && !client.documentUrl) {
+        try {
+          const documentName = `${client.name}_billcut_agreement.docx`
+          const storagePath = `clients/billcut/documents/${documentName}`
+          const docRef = ref(storage, storagePath)
+          const url = await getDownloadURL(docRef)
+          enhancedClient = { ...enhancedClient, documentUrl: url, documentName }
+        } catch (error: any) {
+          if (error.code !== "storage/object-not-found") {
+            console.error(`Error checking for document for ${client.name}:`, error)
+          }
+        }
+      }
+
+      try {
+        const historyQuery = query(
+          collection(db, "clients", client.id, "history"),
+          orderBy("timestamp", "desc"),
+          limit(1),
+        )
+        const historySnapshot = await getDocs(historyQuery)
+
+        if (!historySnapshot.empty) {
+          const latestHistoryDoc = historySnapshot.docs[0]
+          const historyData = latestHistoryDoc.data()
+          enhancedClient = {
+            ...enhancedClient,
+            latestRemark: {
+              remark: historyData.remark || "",
+              advocateName: historyData.advocateName || "",
+              timestamp: historyData.timestamp,
+            },
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching history for client ${client.name}:`, error)
+      }
+
+      return enhancedClient
+    },
+    [],
+  )
+
+  const buildServerConstraints = useCallback((): QueryConstraint[] => {
+    const constraints: QueryConstraint[] = []
+
+    if (statusFilter !== "all") {
+      constraints.push(where("adv_status", "==", statusFilter))
+    }
+
+    if (primaryAdvocateFilter !== "all") {
+      constraints.push(where("alloc_adv", "==", primaryAdvocateFilter))
+    }
+
+    if (secondaryAdvocateFilter !== "all") {
+      constraints.push(where("alloc_adv_secondary", "==", secondaryAdvocateFilter))
+    }
+
+    if (sourceFilter !== "all") {
+      constraints.push(where("source_database", "==", sourceFilter))
+    }
+
+    if (agreementFilter === "sent") {
+      constraints.push(where("sentAgreement", "==", true))
+    } else if (agreementFilter === "not_sent") {
+      constraints.push(where("sentAgreement", "==", false))
+    }
+
+    return constraints
+  }, [statusFilter, primaryAdvocateFilter, secondaryAdvocateFilter, sourceFilter, agreementFilter])
+
+  const fetchFilteredCount = useCallback(async () => {
+    try {
+      const constraints = buildServerConstraints()
+      const countQuery = query(collection(db, "clients"), ...constraints)
+      const totalSnapshot = await getCountFromServer(countQuery)
+      const count = totalSnapshot.data().count
+      setFilteredTotalCount(count)
+      if (constraints.length === 0) {
+        setTotalClientCount(count)
+      }
+    } catch (error) {
+      console.error("Error fetching filtered clients count:", error)
+      setFilteredTotalCount(0)
+      if (buildServerConstraints().length === 0) {
+        setTotalClientCount(0)
+      }
+    }
+  }, [buildServerConstraints])
+
+  const fetchClientsBatch = useCallback(
+    async ({ reset = false }: { reset?: boolean } = {}) => {
+      if (reset) {
+        setLoading(true)
+        setError(null)
+        lastDocRef.current = null
+        hasMoreRef.current = true
+        setHasMore(true)
+        setClients([])
+        setFilteredClients([])
+        setSelectedClients(new Set())
+        setIsFetchingMore(false)
+        isFetchingMoreRef.current = false
+        await fetchFilteredCount()
+      } else {
+        if (!hasMoreRef.current || isFetchingMoreRef.current) {
+          return
+        }
+        setIsFetchingMore(true)
+        isFetchingMoreRef.current = true
+      }
+
+      try {
+        const constraints = buildServerConstraints()
+        const collectionRef = collection(db, "clients")
+
+        const paginationConstraints: QueryConstraint[] = [
+          ...constraints,
+          ...(lastDocRef.current ? [startAfter(lastDocRef.current)] : []),
+          limit(ITEMS_PER_PAGE),
+        ]
+
+        const clientsQuery = query(collectionRef, ...paginationConstraints)
+
+        const querySnapshot = await getDocs(clientsQuery)
+
+        if (querySnapshot.empty) {
+          hasMoreRef.current = false
+          setHasMore(false)
+          return
+        }
+
+        lastDocRef.current = querySnapshot.docs[querySnapshot.docs.length - 1]
+
+        if (querySnapshot.size < ITEMS_PER_PAGE) {
+          hasMoreRef.current = false
+          setHasMore(false)
+        }
+
+        const batch = await Promise.all(
+          querySnapshot.docs.map(async (docSnap) => {
+            const client = {
+              id: docSnap.id,
+              ...docSnap.data(),
+            } as Client
+            return enhanceClientData(client)
+          }),
+        )
+
+        setClients((prev) => {
+          const base = reset ? [] : prev
+          const merged = mergeAndSortClients(base, batch)
+          return merged
+        })
+      } catch (err) {
+        console.error("Detailed error fetching clients:", err)
+        if (err instanceof Error) {
+          setError(`Failed to load clients data: ${err.message}`)
+        } else {
+          setError("Failed to load clients data: Unknown error")
+        }
+        hasMoreRef.current = false
+        setHasMore(false)
+      } finally {
+        if (reset) {
+          setLoading(false)
+        } else {
+          setIsFetchingMore(false)
+          isFetchingMoreRef.current = false
+        }
+      }
+    },
+    [enhanceClientData, mergeAndSortClients, buildServerConstraints, fetchFilteredCount],
+  )
 
   // Toast function to add new toast
   const showToast = (title: string, description: string, type: "success" | "error" | "info" = "info") => {
@@ -309,147 +536,17 @@ function ClientsPageWithParams() {
   }, [clients])
 
   useEffect(() => {
-    // Get user role from localStorage
     if (typeof window !== "undefined") {
       const role = localStorage.getItem("userRole") || ""
       setUserRole(role)
 
-      // If user is billcut, lock the source filter to billcut
       if (role === "billcut") {
         setSourceFilter("billcut")
       }
     }
 
-    const fetchClients = async () => {
-      try {
-        // Fetch all clients first
-        const allClientsQuery = query(collection(db, "clients"))
-        const querySnapshot = await getDocs(allClientsQuery)
-
-        let allClientsData: Client[] = querySnapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...doc.data(),
-            }) as Client,
-        )
-
-        // Mark clients with missing adv_status as "Inactive"
-        allClientsData = allClientsData.map((client) => ({
-          ...client,
-          adv_status: client.adv_status || "Inactive",
-        }))
-
-        // Separate clients based on startDate
-        const clientsWithoutStartDate: Client[] = []
-        const clientsWithStartDate: Client[] = []
-
-        allClientsData.forEach((client) => {
-          // Check if startDate is missing, null, undefined, or empty string
-          if (!client.startDate || client.startDate.trim() === "") {
-            clientsWithoutStartDate.push(client)
-          } else {
-            clientsWithStartDate.push(client)
-          }
-        })
-
-        // Sort clients with startDate by date (newest first)
-        clientsWithStartDate.sort((a, b) => {
-          if (!a.startDate || !b.startDate) return 0
-          const dateA = new Date(a.startDate)
-          const dateB = new Date(b.startDate)
-          return dateB.getTime() - dateA.getTime()
-        })
-
-        // Combine both arrays with clients without startDate at the top
-        let combinedClients = [...clientsWithoutStartDate, ...clientsWithStartDate]
-
-
-        // Enhance clients with document URLs if they are missing for billcut source
-        combinedClients = await Promise.all(
-          combinedClients.map(async (client) => {
-            let enhancedClient = client
-
-            // Add document URL for billcut source if missing
-            if (client.source_database === "billcut" && !client.documentUrl) {
-              try {
-                const documentName = `${client.name}_billcut_agreement.docx`
-                const storagePath = `clients/billcut/documents/${documentName}`
-                const docRef = ref(storage, storagePath)
-                const url = await getDownloadURL(docRef)
-                enhancedClient = { ...enhancedClient, documentUrl: url, documentName }
-              } catch (error: any) {
-                if (error.code !== "storage/object-not-found") {
-                  console.error(`Error checking for document for ${client.name}:`, error)
-                }
-              }
-            }
-
-            // Fetch latest remark from history subcollection
-            try {
-              const historyQuery = query(
-                collection(db, "clients", client.id, "history"),
-                orderBy("timestamp", "desc"),
-                limit(1),
-              )
-              const historySnapshot = await getDocs(historyQuery)
-
-              if (!historySnapshot.empty) {
-                const latestHistoryDoc = historySnapshot.docs[0]
-                const historyData = latestHistoryDoc.data()
-                enhancedClient = {
-                  ...enhancedClient,
-                  latestRemark: {
-                    remark: historyData.remark || "",
-                    advocateName: historyData.advocateName || "",
-                    timestamp: historyData.timestamp,
-                  },
-                }
-              }
-            } catch (error) {
-              console.error(`Error fetching history for client ${client.name}:`, error)
-            }
-
-            return enhancedClient
-          }),
-        )
-
-        setClients(combinedClients)
-        setFilteredClients(combinedClients)
-
-        const advocates = Array.from(
-          new Set(combinedClients.map((client) => client.alloc_adv).filter(Boolean) as string[]),
-        )
-
-        // Extract unique bank names from all clients
-        const bankNames: string[] = []
-        combinedClients.forEach((client) => {
-          if (client.banks && Array.isArray(client.banks)) {
-            client.banks.forEach((bank) => {
-              if (bank.bankName && typeof bank.bankName === "string") {
-                const trimmedName = bank.bankName.trim()
-                if (trimmedName && !bankNames.includes(trimmedName)) {
-                  bankNames.push(trimmedName)
-                }
-              }
-            })
-          }
-        })
-        setAllBankNames(bankNames.sort())
-      } catch (err) {
-        console.error("Detailed error fetching clients:", err)
-        if (err instanceof Error) {
-          setError(`Failed to load clients data: ${err.message}`)
-        } else {
-          setError("Failed to load clients data: Unknown error")
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchClients()
-  }, [])
+    fetchClientsBatch({ reset: true })
+  }, [fetchClientsBatch])
 
   // Add URL parameter handling
   useEffect(() => {
@@ -842,6 +939,51 @@ function ClientsPageWithParams() {
     agreementFilter,
   ])
 
+  useEffect(() => {
+    if (clients.length === 0) {
+      setAllBankNames([])
+      return
+    }
+
+    const bankNamesSet = new Set<string>()
+    clients.forEach((client) => {
+      if (client.banks && Array.isArray(client.banks)) {
+        client.banks.forEach((bank) => {
+          if (bank.bankName && typeof bank.bankName === "string") {
+            const trimmedName = bank.bankName.trim()
+            if (trimmedName) {
+              bankNamesSet.add(trimmedName)
+            }
+          }
+        })
+      }
+    })
+
+    setAllBankNames(Array.from(bankNamesSet).sort())
+  }, [clients])
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        if (!entry?.isIntersecting) return
+        if (!hasMoreRef.current || isFetchingMoreRef.current || loading) return
+
+        fetchClientsBatch()
+      },
+      { root: null, rootMargin: "0px 0px 200px 0px", threshold: 0 },
+    )
+
+    observer.observe(sentinel)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [fetchClientsBatch, loading])
+
   // Reset all filters
   const resetFilters = () => {
     setSearchTerm("")
@@ -1092,10 +1234,13 @@ function ClientsPageWithParams() {
   // Add function to handle bulk selection
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = filteredClients.map((client) => client.id)
-      setSelectedClients(new Set(allIds))
+      const newSelected = new Set(selectedClients)
+      filteredClients.forEach((client) => newSelected.add(client.id))
+      setSelectedClients(newSelected)
     } else {
-      setSelectedClients(new Set())
+      const currentIds = new Set(filteredClients.map((client) => client.id))
+      const newSelected = new Set(Array.from(selectedClients).filter((id) => !currentIds.has(id)))
+      setSelectedClients(newSelected)
     }
   }
 
@@ -1437,6 +1582,12 @@ function ClientsPageWithParams() {
     }
   }
 
+  const requiresClientSideRefinement =
+    searchTerm.trim() !== "" || documentFilter !== "all" || bankNameFilter !== "all"
+
+  const baseTotalCount = filteredTotalCount || totalClientCount || filteredClients.length
+  const displayedTotalCount = requiresClientSideRefinement ? filteredClients.length : baseTotalCount
+
   if (loading)
     return (
       <div className="flex min-h-screen bg-white">
@@ -1740,6 +1891,7 @@ function ClientsPageWithParams() {
         {/* Clients Table */}
         <ClientsTable
           clients={filteredClients}
+          totalCount={displayedTotalCount}
           onViewDetails={handleViewDetails}
           onEditClient={handleEditClient}
           onDeleteClient={handleDeleteInitiate}
@@ -1757,6 +1909,21 @@ function ClientsPageWithParams() {
           onAgreementToggle={handleAgreementToggle}
           userRole={userRole}
         />
+        <div ref={loadMoreRef} className="flex h-8 items-center justify-center">
+          {loading ? null : isFetchingMore ? (
+            <span className={`text-[10px] ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
+              Loading more clients...
+            </span>
+          ) : hasMore ? (
+            <span className={`text-[10px] ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+              Scroll to load more clients
+            </span>
+          ) : (
+            <span className={`text-[10px] ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}>
+              All clients loaded
+            </span>
+          )}
+        </div>
 
         {/* Modals */}
         {selectedClient && (
