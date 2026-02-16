@@ -529,6 +529,10 @@ export default function OpsReport() {
     loanAmount: string; // "306248" (string) field
     bankName: string;   // "SBI" (string) field
     status?: string;    // "Settled" (string) field
+    source?: string;    // "billcut" or other
+    settlementAmount?: string; // actual settlement amount
+    clientId?: string;  // maps to client doc ID
+    bankId?: string;    // maps to clients.banks[].id
     [key: string]: any;
   }
 
@@ -544,11 +548,25 @@ export default function OpsReport() {
       [key: string]: any;
   }
 
+  interface ClientBank {
+      id: string;
+      bankName: string;
+      loanAmount: string;
+      [key: string]: any;
+  }
+
+  interface ClientDoc {
+      banks: ClientBank[];
+      [key: string]: any;
+  }
+
   // New state variables for metrics
   const [totalSettledAmount, setTotalSettledAmount] = useState<number>(0);
+  const [billcutSettledAmount, setBillcutSettledAmount] = useState<number>(0);
+  const [amaSettledAmount, setAmaSettledAmount] = useState<number>(0);
   const [totalRevenueFromSettlement, setTotalRevenueFromSettlement] = useState<number>(0);
-  const [sbiSettledAmount, setSbiSettledAmount] = useState<number>(0);
   const [banksDistribution, setBanksDistribution] = useState<Array<{ name: string; count: number }>>([]);
+  const [bankSettlementPercentage, setBankSettlementPercentage] = useState<Array<{ name: string; percentage: number }>>([]);
 
   useEffect(() => {
     if (!authChecked) return;
@@ -559,25 +577,33 @@ export default function OpsReport() {
         const settlementsSnapshot = await getDocs(collection(db, 'settlements'));
         const settlementsData = settlementsSnapshot.docs.map(doc => doc.data() as Settlement);
 
-        // Calculate Total Amount Settled
+        // Calculate Total Amount Settled & Breakdown
         let totalSettled = 0;
-        let sbiSettled = 0;
+        let billcutSettled = 0;
+        let amaSettled = 0;
 
         settlementsData.forEach(settlement => {
+            // Filter by status "Settled" (case-insensitive)
+            if (settlement.status?.trim().toLowerCase() !== 'settled') return;
+
             const amount = parseFloat(settlement.loanAmount?.replace(/[^0-9.-]+/g, '') || '0');
             if (!isNaN(amount)) {
-                totalSettled += amount;
+                // Determine source (default to AMA if not specifically 'billcut')
+                // Note: User requirement "1 will be billcut ... anything which is not billcut will be added to AMA"
+                const source = settlement.source?.toLowerCase().trim();
                 
-                // Calculate SBI Settlement Amount
-                // Check if bankName contains "SBI" (case-insensitive) or matches exactly
-                const bankName = settlement.bankName?.toUpperCase() || '';
-                 if (bankName.includes('SBI') || bankName.includes('STATE BANK OF INDIA')) {
-                    sbiSettled += amount;
+                if (source === 'billcut') {
+                    billcutSettled += amount;
+                } else {
+                    amaSettled += amount;
                 }
+                
+                totalSettled += amount;
             }
         });
         setTotalSettledAmount(totalSettled);
-        setSbiSettledAmount(sbiSettled);
+        setBillcutSettledAmount(billcutSettled);
+        setAmaSettledAmount(amaSettled);
 
         // Fetch ops_payments
         const opsPaymentsSnapshot = await getDocs(collection(db, 'ops_payments'));
@@ -727,6 +753,58 @@ export default function OpsReport() {
         
         setBanksDistribution(sortedBanks);
 
+        // ---- Bank-wise Average Settlement Percentage ----
+        // 1. Fetch all clients and build a map: clientId -> banks[]
+        const clientsSnapshot = await getDocs(collection(db, 'clients'));
+        const clientsMap = new Map<string, ClientBank[]>();
+        clientsSnapshot.docs.forEach(doc => {
+            const data = doc.data() as ClientDoc;
+            clientsMap.set(doc.id, data.banks || []);
+        });
+
+        // 2. For each settled settlement, compute individual settlement %
+        const bankPercentages = new Map<string, number[]>(); // bankName -> [percentage1, percentage2, ...]
+
+        settlementsData.forEach(settlement => {
+            if (settlement.status?.trim().toLowerCase() !== 'settled') return;
+            if (!settlement.settlementAmount || !settlement.clientId || !settlement.bankId) return;
+
+            const settlementAmt = parseFloat(settlement.settlementAmount?.replace(/[^0-9.-]+/g, '') || '0');
+            if (isNaN(settlementAmt) || settlementAmt <= 0) return;
+
+            // Look up client
+            const clientBanks = clientsMap.get(settlement.clientId);
+            if (!clientBanks) return;
+
+            // Find matching bank in client's banks array
+            const matchingBank = clientBanks.find(b => b.id === settlement.bankId);
+            if (!matchingBank) return;
+
+            const originalLoanAmt = parseFloat(matchingBank.loanAmount?.replace(/[^0-9.-]+/g, '') || '0');
+            if (isNaN(originalLoanAmt) || originalLoanAmt <= 0) return;
+
+            const percentage = (settlementAmt / originalLoanAmt) * 100;
+            // Cap at 200% to avoid outliers skewing the average
+            if (percentage > 200) return;
+
+            const normalizedName = normalizeBankNameForAnalytic(settlement.bankName || 'Unknown');
+
+            if (!bankPercentages.has(normalizedName)) {
+                bankPercentages.set(normalizedName, []);
+            }
+            bankPercentages.get(normalizedName)!.push(percentage);
+        });
+
+        // 3. Calculate average percentage per bank
+        const avgPercentages = Array.from(bankPercentages.entries())
+            .map(([name, percentages]) => ({
+                name,
+                percentage: Math.round((percentages.reduce((sum, p) => sum + p, 0) / percentages.length) * 10) / 10
+            }))
+            .sort((a, b) => a.percentage - b.percentage);
+
+        setBankSettlementPercentage(avgPercentages);
+
       } catch (error) {
         console.error('Error fetching analytics data:', error);
       }
@@ -812,27 +890,86 @@ export default function OpsReport() {
                 </ResponsiveContainer>
           </div>
         </div>
+
  {/* Settlement Analytics Section */}
         <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-5 text-gray-100">Settlement Analytics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+              <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled (Billcut)</h3>
+              <p className="text-xl font-bold text-teal-400">₹{billcutSettledAmount.toLocaleString()}</p>
+              <p className="text-xs text-gray-400 mt-1">Source: billcut</p>
+            </div>
+            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+              <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled (AMA)</h3>
+              <p className="text-xl font-bold text-orange-400">₹{amaSettledAmount.toLocaleString()}</p>
+              <p className="text-xs text-gray-400 mt-1">Source: Other</p>
+            </div>
             <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
               <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled</h3>
               <p className="text-xl font-bold text-green-400">₹{totalSettledAmount.toLocaleString()}</p>
-              <p className="text-xs text-gray-400 mt-1">From Settlements Collection</p>
+              <p className="text-xs text-gray-400 mt-1">All Settlements</p>
             </div>
             <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
               <h3 className="text-base font-medium text-gray-200 mb-2">Total Revenue from Settlement</h3>
               <p className="text-xl font-bold text-blue-400">₹{totalRevenueFromSettlement.toLocaleString()}</p>
-              <p className="text-xs text-gray-400 mt-1">Source: billcut, Type: Success Fees</p>
-            </div>
-            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
-              <h3 className="text-base font-medium text-gray-200 mb-2">SBI Settlement Amount</h3>
-              <p className="text-xl font-bold text-yellow-400">₹{sbiSettledAmount.toLocaleString()}</p>
-              <p className="text-xs text-gray-400 mt-1">State Bank of India Settlements</p>
+              <p className="text-xs text-gray-400 mt-1">Billcut Success Fees</p>
             </div>
           </div>
         </div>
+
+        {/* Bank-wise Average Settlement Percentage */}
+        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+          <h2 className="text-xl font-semibold mb-5 text-gray-100">Bank-wise Avg Settlement %</h2>
+          <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={bankSettlementPercentage} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis 
+                        dataKey="name" 
+                        stroke="#9CA3AF" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        interval={0}
+                        tick={{ fontSize: 10 }}
+                    />
+                    <YAxis 
+                        stroke="#9CA3AF" 
+                        tickFormatter={(value) => `${value}%`} 
+                        label={{ value: 'Avg Settlement %', angle: -90, position: 'insideLeft', fill: '#9CA3AF', style: { textAnchor: 'middle' } }}
+                    />
+                    <Tooltip 
+                    formatter={(value: number) => `${value}%`}
+                    contentStyle={{ 
+                        backgroundColor: '#1F2937',
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                        color: '#F3F4F6'
+                    }}
+                    cursor={{ fill: '#374151', opacity: 0.2 }}
+                    />
+                    <Legend 
+                        wrapperStyle={{ color: '#ffffff' }} 
+                        formatter={(value) => <span style={{ color: '#ffffff' }}>{value}</span>}
+                    />
+                    <Bar dataKey="percentage" name="Avg Settlement %" radius={[4, 4, 0, 0]}>
+                        <LabelList 
+                            dataKey="percentage" 
+                            position="top" 
+                            fill="#ffffff" 
+                            fontSize={11}
+                            formatter={(value: number) => `${value}%`}
+                        />
+                        {bankSettlementPercentage.map((entry, index) => (
+                            <Cell key={`cell-pct-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                    </Bar>
+                </BarChart>
+                </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* Advocate Performance Section */}
         <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
           <h2 className="text-xl font-semibold mb-5 text-gray-100">Advocate Performance</h2>
