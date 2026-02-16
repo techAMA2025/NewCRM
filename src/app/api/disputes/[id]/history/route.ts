@@ -21,10 +21,11 @@ export async function GET(
 
         // Fetch history from the parent document's dispute_history collection
         // filtered by the unique disputeId (parentDocId_index)
+        // Note: We avoid combining .where() + .orderBy() as it requires a composite index.
+        // Instead, we filter with .where() and sort in-memory.
         const historyRef = amaAppDb.collection('file_disputes').doc(parentDocId).collection('dispute_history');
         const snapshot = await historyRef
             .where('disputeId', '==', id)
-            .orderBy('createdAt', 'desc')
             .get();
 
         const history = snapshot.docs.map(doc => {
@@ -34,6 +35,11 @@ export async function GET(
                 ...data,
                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
             };
+        }).sort((a, b) => {
+            // Sort by createdAt descending (newest first)
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
         });
 
         return NextResponse.json(history);
