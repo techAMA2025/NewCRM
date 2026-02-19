@@ -28,6 +28,14 @@ interface OpsPayment {
   approvedAt?: string;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  phone: string;
+  source_database?: string;
+  [key: string]: any;
+}
+
 export default function OpsPaymentsRequestPage() {
   const [formData, setFormData] = useState({
     name: '',
@@ -44,10 +52,37 @@ export default function OpsPaymentsRequestPage() {
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
+
+  // Client fetching and autocomplete state
+  const [clients, setClients] = useState<Client[]>([]);
+  const [suggestions, setSuggestions] = useState<Client[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === 'name') {
+      if (value.length > 0) {
+        const filtered = clients.filter(client => 
+          client.name && client.name.toLowerCase().includes(value.toLowerCase())
+        );
+        setSuggestions(filtered.slice(0, 10));
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
+    }
+  };
+
+  const selectClient = (client: Client) => {
+    setFormData(prev => ({
+      ...prev,
+      name: client.name,
+      phoneNumber: client.phone || prev.phoneNumber,
+      source: client.source_database || prev.source
+    }));
+    setShowSuggestions(false);
   };
   
   useEffect(() => {
@@ -56,6 +91,21 @@ export default function OpsPaymentsRequestPage() {
     const storedUserName = localStorage.getItem('userName') || '';
     setUserRole(storedUserRole);
     setUserName(storedUserName);
+
+    // Fetch all clients for autocomplete
+    const fetchClients = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'clients'));
+        const clientsList = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Client[];
+        setClients(clientsList);
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+      }
+    };
+    fetchClients();
   }, []);
   
   useEffect(() => {
@@ -310,10 +360,37 @@ export default function OpsPaymentsRequestPage() {
                         name="name"
                         value={formData.name}
                         onChange={handleChange}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                        onFocus={() => {
+                          if (formData.name) {
+                            const filtered = clients.filter(client => 
+                              client.name && client.name.toLowerCase().includes(formData.name.toLowerCase())
+                            );
+                            setSuggestions(filtered.slice(0, 10));
+                            setShowSuggestions(true);
+                          }
+                        }}
+                        autoComplete="off"
                         required
                         className="bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-3 transition-all duration-200"
                         placeholder="Enter full name"
                       />
+                      {showSuggestions && suggestions.length > 0 && (
+                        <ul className="absolute z-10 w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-lg">
+                          {suggestions.map((client) => (
+                            <li
+                              key={client.id}
+                              onClick={() => selectClient(client)}
+                              className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 cursor-pointer text-sm text-gray-700 dark:text-gray-200"
+                            >
+                              <div className="font-medium">{client.name}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {client.phone} {client.source_database ? `• ${client.source_database}` : ''}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </motion.div>
                   
