@@ -54,6 +54,7 @@ interface Settlement {
   successFeeStatus?: 'Paid' | 'Not Paid' | 'Partially Paid' | 'Not Required'
   successFeeAmount?: string
   settlementAmount?: string
+  letterAmount?: string
   source?: string
 }
 
@@ -94,12 +95,12 @@ const RemarkInput = ({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Remark..."
-        className={`w-full px-2 py-1 border rounded text-xs h-20 ${
+        className={`w-full px-2 py-1 border rounded text-[10px] h-16 resize-x min-w-[150px] ${
           isDarkMode 
-            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-            : 'bg-gray-100 border-gray-300 text-gray-800'
+            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500' 
+            : 'bg-gray-100 border-gray-300 text-gray-800 focus:ring-blue-500'
         }`}
-        rows={3}
+        rows={2}
       />
       <div className="flex space-x-1">
         <button
@@ -124,19 +125,46 @@ const SettlementAmountInput = ({
   settlementId,
   initialValue,
   isDarkMode,
-  onSave
+  onSave,
+  buttonColor = "bg-green-600 hover:bg-green-500"
 }: {
   settlementId: string
   initialValue: string
   isDarkMode: boolean
   onSave: (id: string, value: string) => void
+  buttonColor?: string
 }) => {
-  const [value, setValue] = useState(initialValue)
+  // Format initial value to Indian standard if it exists
+  const formatValue = (val: string) => {
+    if (!val) return ''
+    const clean = val.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')
+    if (clean === '') return ''
+    const num = parseFloat(clean)
+    if (isNaN(num)) return val
+    return num.toLocaleString('en-IN')
+  }
+
+  const [value, setValue] = useState(formatValue(initialValue))
+
+  // Update value if initialValue changes
+  useEffect(() => {
+    setValue(formatValue(initialValue))
+  }, [initialValue])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow numeric input
-    const newValue = e.target.value.replace(/[^0-9.]/g, '')
-    setValue(newValue)
+    const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+    if (rawValue === '') {
+      setValue('')
+      return
+    }
+    
+    // Support decimal points while typing
+    if (e.target.value.endsWith('.')) {
+        setValue(formatValue(rawValue) + '.')
+        return
+    }
+
+    setValue(formatValue(rawValue))
   }
 
   return (
@@ -146,15 +174,15 @@ const SettlementAmountInput = ({
         value={value}
         onChange={handleChange}
         placeholder="0"
-        className={`w-20 px-2 py-1 border rounded text-xs h-7 ${
+        className={`w-20 px-2 py-1 border rounded text-[10px] h-7 ${
           isDarkMode 
             ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
             : 'bg-white border-gray-300 text-gray-800'
         }`}
       />
       <button
-        onClick={() => onSave(settlementId, value)}
-        className="px-2 py-1 text-xs rounded transition-colors duration-200 bg-green-600 hover:bg-green-500 text-white h-7 flex items-center justify-center"
+        onClick={() => onSave(settlementId, value.replace(/,/g, ''))}
+        className={`px-2 py-1 text-xs rounded transition-colors duration-200 ${buttonColor} text-white h-7 flex items-center justify-center`}
         title="Save Amount"
       >
         ✓
@@ -183,6 +211,7 @@ const SettlementTracker = () => {
   const [manualLoanAmount, setManualLoanAmount] = useState('')
   const [manualLoanType, setManualLoanType] = useState('')
   const [settlementAmount, setSettlementAmount] = useState('')
+  const [letterAmount, setLetterAmount] = useState('')
   const [source, setSource] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
@@ -268,6 +297,7 @@ const SettlementTracker = () => {
   const [editAmount, setEditAmount] = useState('')
   const [editAccount, setEditAccount] = useState('')
   const [editSettlementAmount, setEditSettlementAmount] = useState('')
+  const [editLetterAmount, setEditLetterAmount] = useState('')
   const [editSource, setEditSource] = useState('')
   const [isEditing, setIsEditing] = useState(false)
 
@@ -638,7 +668,8 @@ const SettlementTracker = () => {
         remarks: remarks,
         createdAt: new Date(),
         createdBy: userName,
-        settlementAmount: settlementAmount,
+        settlementAmount: settlementAmount.replace(/,/g, ''),
+        letterAmount: letterAmount.replace(/,/g, ''),
         source: source
       }
 
@@ -658,6 +689,7 @@ const SettlementTracker = () => {
       setManualLoanAmount('')
       setManualLoanType('')
       setSettlementAmount('')
+      setLetterAmount('')
       setSource('')
       setIsNewClientMode(false)
       setNewClientName('')
@@ -853,6 +885,25 @@ const SettlementTracker = () => {
     }
   }
 
+  // Handle Letter Amount Save
+  const handleLetterAmountSave = async (settlementId: string, amount: string) => {
+    try {
+      const settlementRef = doc(db, "settlements", settlementId)
+      await updateDoc(settlementRef, {
+        letterAmount: amount,
+        lastModified: serverTimestamp(),
+      })
+
+      setSettlements(prev => prev.map(s => 
+        s.id === settlementId ? { ...s, letterAmount: amount } : s
+      ))
+      alert("Letter balance saved successfully")
+    } catch (error) {
+      console.error("Error updating letter amount:", error)
+      alert("Failed to update letter amount")
+    }
+  }
+
   // Handle Source Update
   const handleSourceUpdate = async (settlementId: string, newSource: string) => {
     try {
@@ -920,7 +971,8 @@ const SettlementTracker = () => {
     setEditDate(dateStr)
     setEditAmount(settlement.loanAmount)
     setEditAccount(settlement.accountNumber)
-    setEditSettlementAmount(settlement.settlementAmount || '')
+    setEditSettlementAmount(settlement.settlementAmount ? Number(settlement.settlementAmount).toLocaleString('en-IN') : '')
+    setEditLetterAmount(settlement.letterAmount ? Number(settlement.letterAmount).toLocaleString('en-IN') : '')
     setEditSource(settlement.source || '')
     setIsEditModalOpen(true)
   }
@@ -936,7 +988,8 @@ const SettlementTracker = () => {
       const updates: any = {
         loanAmount: editAmount,
         accountNumber: editAccount,
-        settlementAmount: editSettlementAmount,
+        settlementAmount: editSettlementAmount.replace(/,/g, ''),
+        letterAmount: editLetterAmount.replace(/,/g, ''),
         source: editSource,
         lastModified: serverTimestamp()
       }
@@ -1034,11 +1087,11 @@ const SettlementTracker = () => {
         return (
           <OverlordSidebar>
             {/* Header */}
-            <header className="bg-white shadow">
-              <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                <h1 className="text-xl font-bold text-gray-900">AMA Workspace</h1>
+            <header className={`${isDarkMode ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow'}`}>
+              <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex justify-between items-center">
+                <h1 className="text-lg font-bold text-gray-900">AMA Workspace</h1>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-600">Welcome, {userName}</span>
+                  <span className="text-xs text-gray-600">Welcome, {userName}</span>
                   <button 
                     onClick={() => logout()}
                     className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
@@ -1062,13 +1115,13 @@ const SettlementTracker = () => {
 
   // Render the main settlement tracker content
   const renderSettlementContent = () => (
-    <div className={`p-6 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`p-4 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <div className="max-w-full mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settlement Tracker</h1>
-            <p className={`mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Track settlement negotiations with recovery agents</p>
+            <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settlement Tracker</h1>
+            <p className={`mt-0.5 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Track settlement negotiations with recovery agents</p>
           </div>
           <div className="flex items-center gap-4">
             <Button 
@@ -1088,19 +1141,19 @@ const SettlementTracker = () => {
         </div>
 
         {/* Search Bar and Filter */}
-        <div className="mb-4 flex gap-4">
-          <div className="relative max-w-md flex-1">
+        <div className="mb-3 flex gap-3">
+          <div className="relative max-w-sm flex-1">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className={`h-4 w-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`h-3.5 w-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
             <Input
               type="text"
-              placeholder="Search by client, bank, account, remarks, or any field..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`pl-10 pr-4 py-2 w-full text-sm rounded-md focus:ring-green-500 focus:border-green-500 ${
+              className={`pl-9 pr-4 py-1.5 w-full text-[11px] rounded-md focus:ring-green-500 focus:border-green-500 ${
                 isDarkMode 
                   ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' 
                   : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
@@ -1111,22 +1164,22 @@ const SettlementTracker = () => {
                 onClick={() => setSearchTerm('')}
                 className={`absolute inset-y-0 right-0 pr-3 flex items-center hover:text-gray-600 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             )}
           </div>
 
-          <div className="w-48">
+          <div className="w-40">
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
                 <SelectValue placeholder="Filter by Status" />
               </SelectTrigger>
               <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}>
-                <SelectItem value="All" className={`cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Statuses</SelectItem>
+                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Statuses</SelectItem>
                 {statusOptions.map((status) => (
-                  <SelectItem key={status} value={status} className={`cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                  <SelectItem key={status} value={status} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
                     {getStatusDisplay(status)}
                   </SelectItem>
                 ))}
@@ -1137,11 +1190,11 @@ const SettlementTracker = () => {
 
         {/* Settlements Table */}
         <Card className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <CardHeader>
+          <CardHeader className="py-2.5 px-4 shadow-sm border-b border-gray-100/50">
             <div className="flex justify-between items-center">
-              <CardTitle className={`text-xl ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settlement Records</CardTitle>
-                <span className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                   Total Records: {totalCount}
+              <CardTitle className={`text-lg transition-all duration-200 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Settlement Records</CardTitle>
+                <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                   Total: {totalCount}
                 </span>
             </div>
           </CardHeader>
@@ -1157,85 +1210,88 @@ const SettlementTracker = () => {
                   <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
                     <thead className={`${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
                       <tr>
-                      <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-20 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[70px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Date
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-24 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[85px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Client
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-32 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[110px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Bank
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-36 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[125px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Account
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-20 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[75px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Amount
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-20 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[70px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Type
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-20 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[85px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Settlement Amt
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-20 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[85px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Letter Amount
+                        </th>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[90px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Source
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-28 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[100px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Status
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-28 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[100px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Created By
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-64 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Remarks
                         </th>
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-32 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[110px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Success Fee
                         </th>
                        
-                        <th className={`px-2 py-2 text-left text-xs font-medium uppercase tracking-wider w-16 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[65px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody className={`${isDarkMode ? 'bg-gray-800 divide-y divide-gray-700' : 'bg-white divide-y divide-gray-200'}`}>
                       {filteredSettlements.map((settlement) => (
-                        <tr key={settlement.id} className={`${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
-                            <div className="truncate max-w-24" title={settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}>
+                        <tr key={settlement.id} className={`${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                            <div className="truncate max-w-[65px]" title={settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}>
                               {settlement.createdAt?.toDate ? 
                                 settlement.createdAt.toDate().toLocaleDateString() : 
                                 'N/A'
                               }
                             </div>
                           </td>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
-                            <div className="truncate max-w-24" title={settlement.clientName}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+                            <div className="truncate max-w-[80px]" title={settlement.clientName}>
                               {settlement.clientName}
                             </div>
                           </td>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-32" title={settlement.bankName}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className="truncate max-w-[105px]" title={settlement.bankName}>
                               {settlement.bankName}
                             </div>
                           </td>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-36" title={settlement.accountNumber}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className="truncate max-w-[120px]" title={settlement.accountNumber}>
                               {settlement.accountNumber}
                             </div>
                           </td>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-20" title={`₹${formatLoanAmount(settlement.loanAmount)}`}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className="truncate max-w-[70px]" title={`₹${formatLoanAmount(settlement.loanAmount)}`}>
                               ₹{formatLoanAmount(settlement.loanAmount)}
                             </div>
                           </td>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-20" title={settlement.loanType}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className="truncate max-w-[65px]" title={settlement.loanType}>
                               {settlement.loanType}
                             </div>
                           </td>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                              <SettlementAmountInput 
                                 settlementId={settlement.id}
                                 initialValue={settlement.settlementAmount || ''}
@@ -1243,29 +1299,38 @@ const SettlementTracker = () => {
                                 onSave={handleSettlementAmountSave}
                              />
                           </td>
-                           <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                             <SettlementAmountInput 
+                                settlementId={settlement.id}
+                                initialValue={settlement.letterAmount || ''}
+                                isDarkMode={isDarkMode}
+                                onSave={handleLetterAmountSave}
+                                buttonColor="bg-blue-600 hover:bg-blue-500"
+                             />
+                          </td>
+                           <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             <Select value={settlement.source || ''} onValueChange={(value) => handleSourceUpdate(settlement.id, value)}>
-                              <SelectTrigger className={`w-28 h-7 text-xs ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white text-gray-900 border-gray-200'}`}>
-                                <SelectValue placeholder="Select" />
+                              <SelectTrigger className={`w-[85px] h-6 text-[10px] ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white text-gray-900 border-gray-200'}`}>
+                                <SelectValue placeholder="Source" />
                               </SelectTrigger>
                               <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : ''}`}>
                                 {sourceOptions.map((opt) => (
-                                   <SelectItem key={opt} value={opt} className={`text-xs ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                                   <SelectItem key={opt} value={opt} className={`text-[10px] ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
                                     {opt}
                                    </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
+                          <td className="px-1.5 py-1.5 whitespace-nowrap">
                             <Select value={settlement.status} onValueChange={(value) => handleStatusUpdate(settlement.id, value)}>
-                              <SelectTrigger className={`w-32 h-7 text-xs ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white text-gray-900 border-gray-200'}`}>
+                              <SelectTrigger className={`w-[95px] h-6 text-[10px] ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white text-gray-900 border-gray-200'}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : ''}`}>
                                 {statusOptions.map((status) => (
-                                  <SelectItem key={status} value={status} className={`text-xs ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
-                                    <span className={`inline-flex px-1 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(status)}`}>
+                                  <SelectItem key={status} value={status} className={`text-[10px] ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                                    <span className={`inline-flex px-1 py-0 px-0.5 text-[9px] font-semibold rounded-full ${getStatusColor(status)}`}>
                                       {getStatusDisplay(status)}
                                     </span>
                                   </SelectItem>
@@ -1273,12 +1338,12 @@ const SettlementTracker = () => {
                               </SelectContent>
                             </Select>
                           </td>
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-28" title={settlement.createdBy}>
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className="truncate max-w-[95px]" title={settlement.createdBy}>
                               {settlement.createdBy}
                             </div>
                           </td>
-                          <td className={`px-2 py-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <td className={`px-1.5 py-1.5 text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             <RemarkInput
                               settlementId={settlement.id}
                               initialValue={settlementRemarks[settlement.id] || ""}
@@ -1287,43 +1352,43 @@ const SettlementTracker = () => {
                               onHistory={handleViewHistory}
                             />
                           </td>
-                          <td className="px-2 py-2 whitespace-nowrap">
-                            <div className="flex flex-col gap-1">
+                          <td className="px-1.5 py-1.5 whitespace-nowrap">
+                            <div className="flex flex-col gap-0.5">
                               <Select 
                                 value={settlement.successFeeStatus || 'Not Paid'} 
                                 onValueChange={(value) => handleSuccessFeeStatusChange(settlement.id, value)}
                               >
-                                <SelectTrigger className={`w-28 h-7 text-xs border ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
+                                <SelectTrigger className={`w-[95px] h-6 text-[10px] border ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
                                   <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : ''}`}>
-                                  <SelectItem value="Paid" className="text-xs">Paid</SelectItem>
-                                  <SelectItem value="Not Paid" className="text-xs">Not Paid</SelectItem>
-                                  <SelectItem value="Partially Paid" className="text-xs">Partially Paid</SelectItem>
-                                  <SelectItem value="Not Required" className="text-xs">Not Required</SelectItem>
+                                  <SelectItem value="Paid" className="text-[10px]">Paid</SelectItem>
+                                  <SelectItem value="Not Paid" className="text-[10px]">Not Paid</SelectItem>
+                                  <SelectItem value="Partially Paid" className="text-[10px]">Partial</SelectItem>
+                                  <SelectItem value="Not Required" className="text-[10px]">None</SelectItem>
                                 </SelectContent>
                               </Select>
                               {settlement.successFeeStatus === 'Partially Paid' && settlement.successFeeAmount && (
-                                <span className={`text-xs px-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                <span className={`text-[9px] px-0.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                   ₹{formatLoanAmount(settlement.successFeeAmount)}
                                 </span>
                               )}
                             </div>
                           </td>
                           
-                          <td className={`px-2 py-2 whitespace-nowrap text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="flex gap-1">
+                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <div className="flex flex-col gap-1">
                               <button
                                 onClick={() => handleEditClick(settlement)}
-                                className="px-1 py-0.5 text-xs rounded transition-colors duration-200 bg-blue-600 hover:bg-blue-500 text-white w-full"
+                                className="px-1 py-0.5 text-[10px] rounded transition-colors duration-200 bg-blue-600 hover:bg-blue-500 text-white w-full"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteSettlement(settlement)}
-                                className="px-1 py-0.5 text-xs rounded transition-colors duration-200 bg-red-600 hover:bg-red-500 text-white w-full"
+                                className="px-1 py-0.5 text-[10px] rounded transition-colors duration-200 bg-red-600 hover:bg-red-500 text-white w-full"
                               >
-                                Delete
+                                Del
                               </button>
                             </div>
                           </td>
@@ -1577,14 +1642,36 @@ const SettlementTracker = () => {
 
               {/* Settlement Amount and Source */}
                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                   <div className="space-y-2">
                     <Label htmlFor="settlementAmount">Settlement Amount</Label>
                     <Input
                       id="settlementAmount"
                       value={settlementAmount}
-                      onChange={(e) => setSettlementAmount(e.target.value)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        if (raw === '') {
+                          setSettlementAmount('')
+                        } else {
+                          setSettlementAmount(Number(raw).toLocaleString('en-IN'))
+                        }
+                      }}
                       placeholder="Enter settlement amount"
-                      type="number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="letterAmount">Letter Amount</Label>
+                    <Input
+                      id="letterAmount"
+                      value={letterAmount}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        if (raw === '') {
+                          setLetterAmount('')
+                        } else {
+                          setLetterAmount(Number(raw).toLocaleString('en-IN'))
+                        }
+                      }}
+                      placeholder="Enter letter amount"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1682,9 +1769,32 @@ const SettlementTracker = () => {
                 <Label htmlFor="editSettlementAmount">Settlement Amount</Label>
                 <Input
                   id="editSettlementAmount"
-                  type="number"
                   value={editSettlementAmount}
-                  onChange={(e) => setEditSettlementAmount(e.target.value)}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                    if (raw === '') {
+                        setEditSettlementAmount('')
+                    } else {
+                        setEditSettlementAmount(Number(raw).toLocaleString('en-IN'))
+                    }
+                  }}
+                  placeholder="Enter settlement amount"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editLetterAmount">Letter Amount</Label>
+                <Input
+                  id="editLetterAmount"
+                  value={editLetterAmount}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                    if (raw === '') {
+                        setEditLetterAmount('')
+                    } else {
+                        setEditLetterAmount(Number(raw).toLocaleString('en-IN'))
+                    }
+                  }}
+                  placeholder="Enter letter amount"
                 />
               </div>
               <div className="space-y-2">
@@ -1927,10 +2037,10 @@ const SettlementTracker = () => {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className={`${isDarkMode ? 'bg-gray-800 border-b border-gray-700' : 'bg-white shadow'}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>AMA Workspace</h1>
+          <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex justify-between items-center">
+            <h1 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>AMA Workspace</h1>
             <div className="flex items-center gap-4">
-              <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Welcome, {userName}</span>
+              <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Welcome, {userName}</span>
               <button 
                 onClick={() => logout()}
                 className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"

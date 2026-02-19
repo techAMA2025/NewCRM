@@ -31,6 +31,8 @@ export default function PendingLettersPage() {
   const [productivityStatus, setProductivityStatus] = useState<string>('');
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string>('');
+  const [backfillSourceLoading, setBackfillSourceLoading] = useState(false);
+  const [backfillSourceStatus, setBackfillSourceStatus] = useState<string>('');
 
   const handleSyncSettlements = async () => {
     setSyncLoading(true);
@@ -130,6 +132,37 @@ export default function PendingLettersPage() {
       console.error('Productivity snapshot error:', error);
     } finally {
       setProductivityLoading(false);
+    }
+  };
+
+  const handleBackfillSource = async () => {
+    setBackfillSourceLoading(true);
+    setBackfillSourceStatus('Starting settlement source backfill...');
+    
+    try {
+      const response = await fetch('/api/settlement-tracker/backfill-source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const { summary } = data;
+        setBackfillSourceStatus(
+          `Backfill completed! Updated: ${summary.updated}, Skipped (already had source): ${summary.skipped}, Client not found: ${summary.clientNotFound}, No source_database: ${summary.noSourceDatabase}, Errors: ${summary.errors}`
+        );
+        toast.success(`Settlement source backfill completed! ${summary.updated} records updated.`);
+      } else {
+        throw new Error(data.error || 'Backfill failed');
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Unknown error occurred';
+      setBackfillSourceStatus(`Backfill failed: ${errorMessage}`);
+      toast.error(`Backfill failed: ${errorMessage}`);
+      console.error('Backfill error:', error);
+    } finally {
+      setBackfillSourceLoading(false);
     }
   };
 
@@ -449,6 +482,76 @@ export default function PendingLettersPage() {
                 <>
                   <FiRefreshCw className="text-lg mr-2" />
                   Test Sync Settlements
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Settlement Source Backfill Section */}
+          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-xl p-8">
+            <div className="flex items-center mb-6">
+              <div className="bg-orange-900/50 p-3 rounded-xl mr-4">
+                <FiTag className="text-orange-400 text-xl" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Settlement Source Backfill</h2>
+                <p className="text-gray-400 text-sm">Backfill missing source field in settlements from clients collection</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50 mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Backfill Details</h3>
+              <ul className="text-gray-300 text-sm space-y-2">
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-orange-500 rounded-full mr-3"></span>
+                  Checks each settlement for existing source field (skips if present)
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-orange-500 rounded-full mr-3"></span>
+                  Looks up clientId in clients collection to get source_database
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-orange-500 rounded-full mr-3"></span>
+                  Maps: ama → AMA, billcut → Billcut, credsettlee → Credsettle, settleloans → Settleloans
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                  This operation may take several minutes for large collections
+                </li>
+              </ul>
+            </div>
+
+            {backfillSourceStatus && (
+              <div className="mb-6 p-4 rounded-xl border border-gray-700/50 bg-gray-900/30">
+                <div className="flex items-center">
+                  {backfillSourceLoading ? (
+                    <FiRefreshCw className="text-blue-400 text-lg mr-3 animate-spin" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-orange-500 mr-3"></div>
+                  )}
+                  <span className="text-gray-300 text-sm">{backfillSourceStatus}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleBackfillSource}
+              disabled={backfillSourceLoading}
+              className={`flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                backfillSourceLoading
+                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white shadow-lg hover:shadow-orange-900/25'
+              }`}
+            >
+              {backfillSourceLoading ? (
+                <>
+                  <FiRefreshCw className="text-lg mr-2 animate-spin" />
+                  Backfilling Sources...
+                </>
+              ) : (
+                <>
+                  <FiTag className="text-lg mr-2" />
+                  Backfill Settlement Sources
                 </>
               )}
             </button>
