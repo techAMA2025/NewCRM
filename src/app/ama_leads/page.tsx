@@ -63,6 +63,7 @@ const AmaLeadsPage = () => {
   const [lastModifiedToDate, setLastModifiedToDate] = useState("")
 
   const [activeTab, setActiveTab] = useState<"all" | "callback">("all")
+  const [debtRangeSort, setDebtRangeSort] = useState<"none" | "low-to-high" | "high-to-low">("none")
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "ascending" | "descending" }>({
     key: "synced_at",
     direction: "descending",
@@ -81,6 +82,40 @@ const AmaLeadsPage = () => {
     performAction,
     setLeads, // For optimistic updates
   } = useLeads()
+
+  // --- Client-Side Sorting Logic ---
+  const sortedLeads = useMemo(() => {
+    const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
+      (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
+
+    if (debtRangeSort === "none" || hasAdvancedDateFilters) return leads
+    
+    return [...leads].sort((a, b) => {
+      // Handle the various debt range field names seen in the database
+      const debtA = Number(a.debt_Range ?? a.debt_range ?? a.debtRange ?? 0)
+      const debtB = Number(b.debt_Range ?? b.debt_range ?? b.debtRange ?? 0)
+      
+      if (debtRangeSort === "low-to-high") {
+        if (debtA !== debtB) return debtA - debtB
+      } else if (debtRangeSort === "high-to-low") {
+        if (debtA !== debtB) return debtB - debtA
+      }
+      
+      // Secondary sort: Latest lead first (using synced_at or date)
+      // Convert dates to time for comparison
+      const getTime = (val: any) => {
+        if (!val) return 0
+        if (typeof val.toDate === 'function') return val.toDate().getTime()
+        if (val instanceof Date) return val.getTime()
+        const parsed = new Date(val).getTime()
+        return isNaN(parsed) ? 0 : parsed
+      }
+      
+      const dateA = getTime(a.synced_at || a.date)
+      const dateB = getTime(b.synced_at || b.date)
+      return dateB - dateA // Newest first
+    })
+  }, [leads, debtRangeSort, userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
 
   // --- Local UI State ---
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
@@ -163,13 +198,19 @@ const AmaLeadsPage = () => {
       salespersonId: salesPersonFilter,
       tab: activeTab,
       sort: sortConfig.key,
-      order: sortConfig.direction === "ascending" ? "asc" : "desc" as "asc" | "desc",
+      order: (debtRangeSort !== "none" ? (debtRangeSort === "low-to-high" ? "asc" : "desc") : (sortConfig.direction === "ascending" ? "asc" : "desc")) as "asc" | "desc",
       startDate: fromDate,
       endDate: toDate,
       convertedStartDate: convertedFromDate,
       convertedEndDate: convertedToDate,
       lastModifiedStartDate: lastModifiedFromDate,
       lastModifiedEndDate: lastModifiedToDate,
+      debtRangeSort: debtRangeSort, // Pass debtRangeSort directly to API if needed, or handle via sort/order
+    }
+    
+    // Explicitly set sort key if debtRangeSort is active
+    if (debtRangeSort !== "none") {
+        params.sort = "debt_range"
     }
     
     fetchLeads(params)
@@ -194,6 +235,7 @@ const AmaLeadsPage = () => {
     convertedToDate,
     lastModifiedFromDate,
     lastModifiedToDate,
+    debtRangeSort,
     fetchLeads,
     fetchStats,
     fetchSalespersons
@@ -210,14 +252,15 @@ const AmaLeadsPage = () => {
       source: sourceFilter,
       salespersonId: salesPersonFilter,
       tab: activeTab,
-      sort: sortConfig.key,
-      order: sortConfig.direction === "ascending" ? "asc" : "desc",
+      sort: debtRangeSort !== "none" ? "debt_range" : sortConfig.key,
+      order: (debtRangeSort !== "none" ? (debtRangeSort === "low-to-high" ? "asc" : "desc") : (sortConfig.direction === "ascending" ? "asc" : "desc")) as "asc" | "desc",
       startDate: fromDate,
       endDate: toDate,
       convertedStartDate: convertedFromDate,
       convertedEndDate: convertedToDate,
       lastModifiedStartDate: lastModifiedFromDate,
       lastModifiedEndDate: lastModifiedToDate,
+      debtRangeSort: debtRangeSort,
     })
   }
 
@@ -231,14 +274,15 @@ const AmaLeadsPage = () => {
         source: sourceFilter,
         salespersonId: salesPersonFilter,
         tab: activeTab,
-        sort: sortConfig.key,
-        order: sortConfig.direction === "ascending" ? "asc" : "desc",
+        sort: debtRangeSort !== "none" ? "debt_range" : sortConfig.key,
+        order: (debtRangeSort !== "none" ? (debtRangeSort === "low-to-high" ? "asc" : "desc") : (sortConfig.direction === "ascending" ? "asc" : "desc")) as "asc" | "desc",
         startDate: fromDate,
         endDate: toDate,
         convertedStartDate: convertedFromDate,
         convertedEndDate: convertedToDate,
         lastModifiedStartDate: lastModifiedFromDate,
         lastModifiedEndDate: lastModifiedToDate,
+        debtRangeSort: debtRangeSort,
       }, true) // Pass true for append
     }
   }
@@ -690,14 +734,15 @@ const AmaLeadsPage = () => {
         source: sourceFilter,
         salespersonId: salesPersonFilter,
         tab: activeTab,
-        sort: sortConfig.key,
-        order: sortConfig.direction === "ascending" ? "asc" : "desc",
+        sort: debtRangeSort !== "none" ? "debt_range" : sortConfig.key,
+        order: (debtRangeSort !== "none" ? (debtRangeSort === "low-to-high" ? "asc" : "desc") : (sortConfig.direction === "ascending" ? "asc" : "desc")) as "asc" | "desc",
         startDate: fromDate,
         endDate: toDate,
         convertedStartDate: convertedFromDate,
         convertedEndDate: convertedToDate,
         lastModifiedStartDate: lastModifiedFromDate,
         lastModifiedEndDate: lastModifiedToDate,
+        debtRangeSort: debtRangeSort,
       })
       toast.success("All leads loaded")
     } catch (error) {
@@ -745,8 +790,8 @@ const AmaLeadsPage = () => {
               statusOptions={statusOptions}
               teamMembers={teamMembers}
               userRole={userRole}
-              filteredLeads={leads}
-              leads={leads}
+              filteredLeads={sortedLeads}
+              leads={sortedLeads}
               totalLeadsCount={stats.total}
               convertedFilter={convertedFilter}
               setConvertedFilter={setConvertedFilter}
@@ -767,11 +812,13 @@ const AmaLeadsPage = () => {
               setLastModifiedFromDate={setLastModifiedFromDate}
               lastModifiedToDate={lastModifiedToDate}
               setLastModifiedToDate={setLastModifiedToDate}
+              debtRangeSort={debtRangeSort}
+              setDebtRangeSort={setDebtRangeSort}
             />
 
             <AmaLeadsTable
-              filteredLeads={leads}
-              leads={leads}
+              filteredLeads={sortedLeads}
+              leads={sortedLeads}
               editingLeads={editingLeads}
               setEditingLeads={setEditingLeads}
               updateLead={updateLead}

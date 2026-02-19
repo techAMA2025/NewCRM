@@ -35,6 +35,7 @@ interface FetchParams {
     convertedEndDate?: string
     lastModifiedStartDate?: string
     lastModifiedEndDate?: string
+    debtRangeSort?: string
 }
 
 interface LeadsMeta {
@@ -78,6 +79,7 @@ export const useLeads = () => {
             if (params.convertedEndDate) queryParams.set("convertedEndDate", params.convertedEndDate)
             if (params.lastModifiedStartDate) queryParams.set("lastModifiedStartDate", params.lastModifiedStartDate)
             if (params.lastModifiedEndDate) queryParams.set("lastModifiedEndDate", params.lastModifiedEndDate)
+            if (params.debtRangeSort) queryParams.set("debtRangeSort", params.debtRangeSort)
 
             const response = await fetch(`/api/leads?${queryParams.toString()}`, {
                 cache: 'no-store',

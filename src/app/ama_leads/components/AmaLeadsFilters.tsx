@@ -47,6 +47,8 @@ type LeadsFiltersProps = {
   setLastModifiedFromDate?: (date: string) => void
   lastModifiedToDate?: string
   setLastModifiedToDate?: (date: string) => void
+  debtRangeSort: "none" | "low-to-high" | "high-to-low"
+  setDebtRangeSort: (sort: "none" | "low-to-high" | "high-to-low") => void
 }
 
 const AmaLeadsFilters = ({
@@ -86,6 +88,8 @@ const AmaLeadsFilters = ({
   setLastModifiedFromDate,
   lastModifiedToDate,
   setLastModifiedToDate,
+  debtRangeSort,
+  setDebtRangeSort,
 }: LeadsFiltersProps) => {
   const [salesUsers, setSalesUsers] = useState<{ id: string; name: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -375,7 +379,8 @@ const AmaLeadsFilters = ({
     if (setConvertedToDate) setConvertedToDate("")
     if (setLastModifiedFromDate) setLastModifiedFromDate("")
     if (setLastModifiedToDate) setLastModifiedToDate("")
-  }, [clearSearch, setSourceFilter, setStatusFilter, setSalesPersonFilter, setConvertedFilter, setFromDate, setToDate, setConvertedFromDate, setConvertedToDate, setLastModifiedFromDate, setLastModifiedToDate])
+    setDebtRangeSort("none")
+  }, [clearSearch, setSourceFilter, setStatusFilter, setSalesPersonFilter, setConvertedFilter, setFromDate, setToDate, setConvertedFromDate, setConvertedToDate, setLastModifiedFromDate, setLastModifiedToDate, setDebtRangeSort])
 
   // Check if any filters are active - memoized
   const hasActiveFilters = useMemo(() => {
@@ -384,6 +389,7 @@ const AmaLeadsFilters = ({
       sourceFilter !== "all" ||
       statusFilter !== "all" ||
       salesPersonFilter !== "all" ||
+      debtRangeSort !== "none" ||
       convertedFilter !== null ||
       fromDate ||
       toDate ||
@@ -392,7 +398,7 @@ const AmaLeadsFilters = ({
       lastModifiedFromDate ||
       lastModifiedToDate
     )
-  }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, convertedFilter, fromDate, toDate, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
+  }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, debtRangeSort, convertedFilter, fromDate, toDate, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
 
   // Fetch sales users
   useEffect(() => {
@@ -595,6 +601,20 @@ const AmaLeadsFilters = ({
                     {status}
                   </option>
                 ))}
+            </select>
+          </div>
+
+          {/* Debt Range Sort */}
+          <div className="space-y-1">
+            <label className="block text-xs text-[#5A4C33]/70">Debt Range</label>
+            <select
+              value={debtRangeSort}
+              onChange={(e) => setDebtRangeSort(e.target.value as "none" | "low-to-high" | "high-to-low")}
+              className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
+            >
+              <option value="none">No Sort</option>
+              <option value="low-to-high">Low to High</option>
+              <option value="high-to-low">High to Low</option>
             </select>
           </div>
 

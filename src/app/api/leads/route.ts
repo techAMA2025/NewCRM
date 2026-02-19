@@ -21,8 +21,22 @@ export async function GET(request: NextRequest) {
         const sortKey = searchParams.get("sort") || "synced_at"
         const sortDir = searchParams.get("order") === "asc" ? "asc" : "desc"
         const tab = searchParams.get("tab") || "all"
+        const debtRangeSort = searchParams.get("debtRangeSort") || "none"
 
-        // Base collection reference
+        // Handle debtRangeSort
+        let finalSortKey = sortKey
+        let finalSortDir: "asc" | "desc" = sortDir as "asc" | "desc"
+
+        const hasInequalityFilters = !!(
+            searchParams.get("startDate") || searchParams.get("endDate") ||
+            searchParams.get("convertedStartDate") || searchParams.get("convertedEndDate") ||
+            searchParams.get("lastModifiedStartDate") || searchParams.get("lastModifiedEndDate")
+        )
+
+        if (debtRangeSort !== "none" && !hasInequalityFilters) {
+            finalSortKey = "debt_range"
+            finalSortDir = debtRangeSort === "low-to-high" ? "asc" : "desc"
+        }
         let queryRef: FirebaseFirestore.Query = db.collection("ama_leads")
 
         // --- Filtering ---
@@ -335,24 +349,29 @@ export async function GET(request: NextRequest) {
             // Check for inequality filters which dictate sort order
             if (convertedFromDate || convertedToDate) {
                 // If filtering by convertedAt, we MUST sort by convertedAt first
-                queryRef = queryRef.orderBy("convertedAt", sortDir)
+                queryRef = queryRef.orderBy("convertedAt", finalSortDir)
                 // Secondary sort can be kept or default
-                if (sortKey !== "convertedAt") {
-                    queryRef = queryRef.orderBy(sortKey, sortDir)
+                if (finalSortKey !== "convertedAt") {
+                    queryRef = queryRef.orderBy(finalSortKey, finalSortDir)
                 }
             } else if (lastModifiedFromDate || lastModifiedToDate) {
                 // If filtering by lastModified, we MUST sort by lastModified first
-                queryRef = queryRef.orderBy("lastModified", sortDir)
+                queryRef = queryRef.orderBy("lastModified", finalSortDir)
                 // Secondary sort
-                if (sortKey !== "lastModified") {
-                    queryRef = queryRef.orderBy(sortKey, sortDir)
+                if (finalSortKey !== "lastModified") {
+                    queryRef = queryRef.orderBy(finalSortKey, finalSortDir)
                 }
             } else if (startDateParam || endDateParam) {
                 // synced_at filter
-                queryRef = queryRef.orderBy("synced_at", sortDir)
+                queryRef = queryRef.orderBy("synced_at", finalSortDir)
+            } else if (debtRangeSort !== "none") {
+                // Debt Range Sort (handled by finalSortKey already, but being explicit)
+                queryRef = queryRef.orderBy("debt_range", finalSortDir)
+                // Secondary sort by date (newest first)
+                queryRef = queryRef.orderBy("synced_at", "desc")
             } else {
                 // No inequality filters limiting sort order
-                queryRef = queryRef.orderBy(sortKey, sortDir)
+                queryRef = queryRef.orderBy(finalSortKey, finalSortDir)
             }
         }
 
