@@ -183,11 +183,11 @@ export default function EditArbitrationCaseModal({
   if (!isOpen) return null
   
   return (
-    <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">Edit Arbitration Case</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+    <div className="fixed inset-0 bg-gray-900/20 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white">Edit Arbitration Case</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
             <FaTimes />
           </button>
         </div>
@@ -195,7 +195,7 @@ export default function EditArbitrationCaseModal({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client Name*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client Name*</label>
               <input
                 type="text"
                 name="clientName"
@@ -203,12 +203,12 @@ export default function EditArbitrationCaseModal({
                 value={editData.clientName}
                 onChange={handleChange}
                 disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bank Name*</label>
               <input
                 type="text"
                 name="bankName"
@@ -216,18 +216,18 @@ export default function EditArbitrationCaseModal({
                 value={editData.bankName}
                 onChange={handleChange}
                 disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type*</label>
               <select
                 name="type"
                 required
                 value={editData.type}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700"
               >
                 <option value="Arbitration">Arbitration</option>
                 <option value="Mediation">Mediation</option>
@@ -236,19 +236,19 @@ export default function EditArbitrationCaseModal({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date*</label>
               <input
                 type="date"
                 name="startDate"
                 required
                 value={editData.startDate}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Time*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time*</label>
               <input
                 ref={timeInputRef}
                 type="time"
@@ -256,18 +256,18 @@ export default function EditArbitrationCaseModal({
                 required
                 value={editData.time || ''}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status*</label>
               <select
                 name="status"
                 required
                 value={editData.status}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
               >
                 <option value="In progress">In Progress</option>
                 <option value="Scheduled">Scheduled</option>
@@ -278,13 +278,13 @@ export default function EditArbitrationCaseModal({
             </div>
             
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Meet Link</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meet Link</label>
               <input
                 type="url"
                 name="meetLink"
                 value={editData.meetLink}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
                 placeholder="https://"
               />
             </div>
@@ -297,9 +297,9 @@ export default function EditArbitrationCaseModal({
                   name="vakalatnama"
                   checked={editData.vakalatnama}
                   onChange={handleCheckboxChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
                 />
-                <label htmlFor="vakalatnama" className="ml-2 block text-sm text-gray-700">Vakalatnama</label>
+                <label htmlFor="vakalatnama" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">Vakalatnama</label>
               </div>
               
               <div className="flex items-center">
@@ -309,9 +309,9 @@ export default function EditArbitrationCaseModal({
                   name="sod"
                   checked={editData.sod}
                   onChange={handleCheckboxChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
                 />
-                <label htmlFor="sod" className="ml-2 block text-sm text-gray-700">SOD (Statement Of Defense)</label>
+                <label htmlFor="sod" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">SOD (Statement Of Defense)</label>
               </div>
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function EditArbitrationCaseModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               disabled={isSubmitting}
             >
               Cancel

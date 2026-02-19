@@ -8,6 +8,7 @@ import AdminCloseAllButton from '@/components/AdminCloseAllButton';
 import ComplaintReminder from '@/components/ComplaintReminder';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,26 +49,33 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         // style={{width: 'fit-content'}}
       >
-        <AuthProvider>
-          <GlobalCallbackAlert />
-          <SalesLeadsCallbackAlert />
-          <AdminCloseAllButton />
-          <ComplaintReminder />
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="dark"
-            style={{ zIndex: 9999 }}
-          />
-          {children}
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <GlobalCallbackAlert />
+            <SalesLeadsCallbackAlert />
+            <AdminCloseAllButton />
+            <ComplaintReminder />
+            <ToastContainer
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="dark"
+              style={{ zIndex: 9999 }}
+            />
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

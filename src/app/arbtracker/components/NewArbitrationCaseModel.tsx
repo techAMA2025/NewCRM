@@ -218,11 +218,11 @@ export default function NewArbitrationCaseModal({
   const selectedClient = clients.find(c => c.id === caseData.clientId)
 
   return (
-    <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">Add New Arbitration Case</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+    <div className="fixed inset-0 bg-gray-900/20 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white">Add New Arbitration Case</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
             <FaTimes />
           </button>
         </div>
@@ -231,7 +231,7 @@ export default function NewArbitrationCaseModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Client Searchable Dropdown */}
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Select Client*
               </label>
               <input
@@ -246,25 +246,25 @@ export default function NewArbitrationCaseModal({
                   }
                 }}
                 onFocus={() => setIsDropdownOpen(true)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700"
                 required
               />
               {isDropdownOpen && (searchTerm || filteredClients.length > 0) && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {loadingClients ? (
-                    <div className="px-3 py-2 text-sm text-gray-500">Loading clients...</div>
+                    <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Loading clients...</div>
                   ) : filteredClients.length > 0 ? (
                     filteredClients.map(client => (
                       <div
                         key={client.id}
-                        className="px-3 py-2 cursor-pointer hover:bg-indigo-50 text-black text-sm"
+                        className="px-3 py-2 cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-600 text-black dark:text-white text-sm"
                         onClick={() => handleClientSelect(client)}
                       >
                         {client.name}
                       </div>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-gray-500">No clients found</div>
+                    <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No clients found</div>
                   )
                   }
                 </div>
@@ -273,7 +273,7 @@ export default function NewArbitrationCaseModal({
 
             {/* Bank Dropdown (dependent on client) */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Select Bank*
               </label>
               <select
@@ -282,7 +282,7 @@ export default function NewArbitrationCaseModal({
                 value={caseData.bankId}
                 onChange={handleBankSelect}
                 disabled={!caseData.clientId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black disabled:bg-gray-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500"
               >
                 <option value="">{caseData.clientId ? 'Select a bank' : 'Select a client first'}</option>
                 {selectedClient?.banks.map(bank => (
@@ -294,13 +294,13 @@ export default function NewArbitrationCaseModal({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type*</label>
               <select
                 name="type"
                 required
                 value={caseData.type}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700"
               >
                 <option value="Arbitration">Arbitration</option>
                 <option value="Mediation">Mediation</option>
@@ -309,37 +309,37 @@ export default function NewArbitrationCaseModal({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date*</label>
               <input
                 type="date"
                 name="startDate"
                 required
                 value={caseData.startDate}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Time*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time*</label>
               <input
                 type="time"
                 name="time"
                 required
                 value={caseData.time || ''}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status*</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status*</label>
               <select
                 name="status"
                 required
                 value={caseData.status}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
               >
                 <option value="In progress">In Progress</option>
                 <option value="Scheduled">Scheduled</option>
@@ -350,13 +350,13 @@ export default function NewArbitrationCaseModal({
             </div>
             
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Meet Link</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meet Link</label>
               <input
                 type="url"
                 name="meetLink"
                 value={caseData.meetLink}
                 onChange={handleChange}
-                className="text-black w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
                 placeholder="https://"
               />
             </div>
@@ -369,9 +369,9 @@ export default function NewArbitrationCaseModal({
                   name="vakalatnama"
                   checked={caseData.vakalatnama}
                   onChange={handleCheckboxChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
                 />
-                <label htmlFor="vakalatnama" className="ml-2 block text-sm text-gray-700">Vakalatnama</label>
+                <label htmlFor="vakalatnama" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">Vakalatnama</label>
               </div>
               
               <div className="flex items-center">
@@ -381,9 +381,9 @@ export default function NewArbitrationCaseModal({
                   name="sod"
                   checked={caseData.sod}
                   onChange={handleCheckboxChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
                 />
-                <label htmlFor="sod" className="ml-2 block text-sm text-gray-700">SOD (Statement Of Defense)</label>
+                <label htmlFor="sod" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">SOD (Statement Of Defense)</label>
               </div>
             </div>
           </div>
@@ -394,7 +394,7 @@ export default function NewArbitrationCaseModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               disabled={isSubmitting}
             >
               Cancel
