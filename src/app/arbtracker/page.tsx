@@ -220,8 +220,8 @@ export default function ArbitrationTracker() {
     const wrappedChildren = <div className="p-4 lg:p-8 w-full min-h-screen bg-gray-50">{children}</div>;
     switch (userRole) {
       case 'overlord': return <OverlordSidebar>{wrappedChildren}</OverlordSidebar>;
-      case 'assistant': return <><AssistantSidebar />{wrappedChildren}</>;
-      default: return <><AdvocateSidebar />{wrappedChildren}</>;
+      case 'assistant': return <div className="flex"><AssistantSidebar />{wrappedChildren}</div>;
+      default: return <div className="flex"><AdvocateSidebar />{wrappedChildren}</div>;
     }
   };
 
