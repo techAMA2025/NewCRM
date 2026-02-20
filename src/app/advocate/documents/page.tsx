@@ -6,6 +6,7 @@ import AssistantSidebar from "@/components/navigation/AssistantSidebar";
 import toast, { Toaster } from "react-hot-toast";
 import RequestLetterForm from "./requestletter";
 import DemandNoticeForm from "./demandnotice";
+import BulkDemandNoticeForm from "./BulkDemandNoticeForm";
 import CFHABForm from "./cfhab";
 import ReplyToNoticeForm from "./replytonotice";
 import Sec138Form from "./sec138";
@@ -125,6 +126,23 @@ const DocumentsPage = () => {
               {activeForm === 'demandNotice' ? "Hide Form" : "Create Demand Notice"}
             </button>
           </div>
+
+          <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm border-amber-500/30">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Bulk Demand Notice
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-amber-500 text-black font-bold rounded">PRO</span>
+            </h2>
+            <p className="text-gray-300 mb-4">Generate 50+ demand notices at once into a single ZIP file.</p>
+            <button
+              onClick={() => handleFormToggle('bulkDemandNotice')}
+              className="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-md transition-all duration-200 font-medium"
+            >
+              {activeForm === 'bulkDemandNotice' ? "Hide Form" : "Bulk Generate"}
+            </button>
+          </div>
           
           <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
@@ -201,6 +219,21 @@ const DocumentsPage = () => {
           <div className="mt-6 bg-gray-800/50 p-6 rounded-lg border border-gray-700 shadow-sm animate-fadeIn">
             <h2 className="text-xl font-semibold text-white mb-6">Generate Demand Notice</h2>
             <DemandNoticeForm onClose={() => setActiveForm(null)} />
+          </div>
+        )}
+
+        {activeForm === 'bulkDemandNotice' && (
+          <div className="mt-6 bg-gray-900/40 p-6 rounded-2xl border border-gray-700 shadow-xl border-amber-500/20 animate-fadeIn">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Bulk Demand Notice Generation</h2>
+                <p className="text-gray-400 text-sm">Select multiple clients to generate documents in parallel.</p>
+              </div>
+              <button onClick={() => setActiveForm(null)} className="text-gray-500 hover:text-white">
+                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <BulkDemandNoticeForm onClose={() => setActiveForm(null)} />
           </div>
         )}
         
