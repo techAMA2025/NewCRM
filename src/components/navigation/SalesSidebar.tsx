@@ -191,6 +191,15 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
               {!isCollapsed && <span>Calculator</span>}
             </Link>
           </li>
+          <li>
+            <Link href="/settlement-analysis" 
+              className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/settlement-analysis')}`}
+              title={isCollapsed ? "Settlement Analysis" : ""}
+            >
+              <FaChartPie className={isCollapsed ? '' : 'mr-3'} />
+              {!isCollapsed && <span>Settlement Analysis</span>}
+            </Link>
+          </li>
           {/* <li>
             <Link href="/pendingdetails" 
               className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/pendingdetails')}`}

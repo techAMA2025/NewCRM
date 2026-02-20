@@ -20,6 +20,7 @@ import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import AssistantSidebar from '@/components/navigation/AssistantSidebar';
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
+import SalesSidebar from '@/components/navigation/SalesSidebar';
 
 interface Settlement {
   loanAmount: string;
@@ -171,7 +172,8 @@ export default function SettlementAnalysis() {
       storedRole !== 'admin' &&
       storedRole !== 'overlord' &&
       storedRole !== 'assistant' &&
-      storedRole !== 'advocate'
+      storedRole !== 'advocate' &&
+      storedRole !== 'sales'
     ) {
       router.push('/dashboard');
       return;
@@ -346,6 +348,8 @@ export default function SettlementAnalysis() {
         <AssistantSidebar />
       ) : userRole === 'advocate' ? (
         <AdvocateSidebar />
+      ) : userRole === 'sales' ? (
+        <SalesSidebar />
       ) : (
         <OverlordSidebar />
       )}
