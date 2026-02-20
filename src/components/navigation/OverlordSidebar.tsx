@@ -190,6 +190,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       children: [
         { href: '/billcutLeadReport', icon: <FiPieChart />, label: 'Lead Reports', isActive: false },
         { href: '/opsreport', icon: <FiBarChart />, label: 'Operations Report', isActive: false },
+        { href: '/settlement-analysis', icon: <FiBarChart2 />, label: 'Settlement Analysis', isActive: false },
       ]
     },
     {
