@@ -119,6 +119,16 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Global form element styles — prevents white-on-white text during hydration */
+  input, textarea, select {
+    color: #111827;
+    background-color: #ffffff;
+  }
+  .dark input, .dark textarea, .dark select {
+    color: #ffffff;
+    background-color: #374151;
+    border-color: #4b5563;
+  }
   .react-day-picker-day button {
     width: 100% !important;
     height: 100% !important;
