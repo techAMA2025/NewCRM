@@ -216,6 +216,11 @@ const SettlementTracker = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('All')
+  const [filterSource, setFilterSource] = useState('All')
+  const [filterBank, setFilterBank] = useState('All')
+  const [filterAdvocate, setFilterAdvocate] = useState('All')
+  const [dbBanks, setDbBanks] = useState<string[]>([])
+  const [dbAdvocates, setDbAdvocates] = useState<string[]>([])
   const [totalCount, setTotalCount] = useState(0)
   
   // Add new state for remarks management
@@ -348,15 +353,27 @@ const SettlementTracker = () => {
       }
 
       const settlementsRef = collection(db, 'settlements')
-      let q = query(settlementsRef, orderBy('createdAt', 'desc'), limit(20))
+      let q = query(settlementsRef, orderBy('createdAt', 'desc'))
 
       if (filterStatus !== 'All') {
         q = query(q, where('status', '==', filterStatus))
+      }
+      if (filterSource !== 'All') {
+        q = query(q, where('source', '==', filterSource))
+      }
+      if (filterBank !== 'All') {
+        q = query(q, where('bankName', '==', filterBank))
+      }
+      if (filterAdvocate !== 'All') {
+        q = query(q, where('createdBy', '==', filterAdvocate))
       }
 
       if (isNextPage && lastVisible) {
         q = query(q, startAfter(lastVisible))
       }
+
+      // Re-apply limit after all conditions
+      q = query(q, limit(20))
 
       const snapshot = await getDocs(q)
       
@@ -397,13 +414,52 @@ const SettlementTracker = () => {
       let q = query(settlementsRef)
 
       if (filterStatus !== 'All') {
-        q = query(settlementsRef, where('status', '==', filterStatus))
+        q = query(q, where('status', '==', filterStatus))
+      }
+      if (filterSource !== 'All') {
+        q = query(q, where('source', '==', filterSource))
+      }
+      if (filterBank !== 'All') {
+        q = query(q, where('bankName', '==', filterBank))
+      }
+      if (filterAdvocate !== 'All') {
+        q = query(q, where('createdBy', '==', filterAdvocate))
       }
 
       const snapshot = await getCountFromServer(q)
       setTotalCount(snapshot.data().count)
     } catch (error) {
       console.error('Error fetching total count:', error)
+    }
+  }
+
+  // Fetch filter options (banks and advocates)
+  const fetchFilterOptions = async () => {
+    try {
+      // Fetch banks from 'banks' collection
+      const banksSnapshot = await getDocs(collection(db, 'banks'))
+      const banksList = banksSnapshot.docs
+        .map(doc => doc.data().name)
+        .filter(Boolean) as string[]
+      setDbBanks(Array.from(new Set(banksList)).sort())
+
+      // Fetch advocates from 'users' collection
+      const usersRef = collection(db, 'users')
+      const q = query(
+        usersRef, 
+        where('role', '==', 'advocate'),
+        where('status', '==', 'active')
+      )
+      const usersSnapshot = await getDocs(q)
+      const advocatesList = usersSnapshot.docs
+        .map(doc => {
+          const data = doc.data()
+          return `${data.firstName || ''} ${data.lastName || ''}`.trim()
+        })
+        .filter(Boolean) as string[]
+      setDbAdvocates(Array.from(new Set(advocatesList)).sort())
+    } catch (error) {
+      console.error('Error fetching filter options:', error)
     }
   }
 
@@ -434,19 +490,24 @@ const SettlementTracker = () => {
   useEffect(() => {
     const loadData = async () => {
       // Initial load
-      await Promise.all([fetchSettlements(false), fetchClients(), fetchTotalCount()])
+      await Promise.all([
+        fetchSettlements(false), 
+        fetchClients(), 
+        fetchTotalCount(),
+        fetchFilterOptions()
+      ])
     }
     
     loadData()
   }, [])
 
-  // Refetch when filter status changes
+  // Refetch when any filter changes
   useEffect(() => {
     setLastVisible(null)
     setHasMore(true)
     fetchSettlements(false)
     fetchTotalCount()
-  }, [filterStatus])
+  }, [filterStatus, filterSource, filterBank, filterAdvocate])
 
   // Infinite scroll observer
   useEffect(() => {
@@ -1174,13 +1235,61 @@ const SettlementTracker = () => {
           <div className="w-40">
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
-                <SelectValue placeholder="Filter by Status" />
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}>
                 <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Statuses</SelectItem>
                 {statusOptions.map((status) => (
                   <SelectItem key={status} value={status} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
                     {getStatusDisplay(status)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-40">
+            <Select value={filterSource} onValueChange={setFilterSource}>
+              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}>
+                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Sources</SelectItem>
+                {sourceOptions.map((source) => (
+                  <SelectItem key={source} value={source} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                    {source}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-48">
+            <Select value={filterBank} onValueChange={setFilterBank}>
+              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+                <SelectValue placeholder="Bank" />
+              </SelectTrigger>
+              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'} max-h-60 overflow-y-auto`}>
+                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Banks</SelectItem>
+                {dbBanks.map((bank) => (
+                  <SelectItem key={bank} value={bank} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                    {bank}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-48">
+            <Select value={filterAdvocate} onValueChange={setFilterAdvocate}>
+              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+                <SelectValue placeholder="Advocate" />
+              </SelectTrigger>
+              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}>
+                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Advocates</SelectItem>
+                {dbAdvocates.map((advocate) => (
+                  <SelectItem key={advocate} value={advocate} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                    {advocate}
                   </SelectItem>
                 ))}
               </SelectContent>
