@@ -19,6 +19,7 @@ import {
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import AdminSidebar from '@/components/navigation/AdminSidebar';
 import AssistantSidebar from '@/components/navigation/AssistantSidebar';
+import AdvocateSidebar from '@/components/navigation/AdvocateSidebar';
 
 interface Settlement {
   loanAmount: string;
@@ -166,7 +167,12 @@ export default function SettlementAnalysis() {
     const storedRole = localStorage.getItem('userRole');
     setUserRole(storedRole || '');
 
-    if (storedRole !== 'admin' && storedRole !== 'overlord' && storedRole !== 'assistant') {
+    if (
+      storedRole !== 'admin' &&
+      storedRole !== 'overlord' &&
+      storedRole !== 'assistant' &&
+      storedRole !== 'advocate'
+    ) {
       router.push('/dashboard');
       return;
     }
@@ -338,6 +344,8 @@ export default function SettlementAnalysis() {
         <AdminSidebar />
       ) : userRole === 'assistant' ? (
         <AssistantSidebar />
+      ) : userRole === 'advocate' ? (
+        <AdvocateSidebar />
       ) : (
         <OverlordSidebar />
       )}
@@ -347,89 +355,93 @@ export default function SettlementAnalysis() {
         </h1>
 
         {/* Settlement Analytics Section */}
-        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
-          <h2 className="text-xl font-semibold mb-5 text-gray-100">Settlement Analytics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
-              <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled (Billcut)</h3>
-              <p className="text-xl font-bold text-teal-400">₹{billcutSettledAmount.toLocaleString()}</p>
-              <p className="text-xs text-gray-400 mt-1">Source: billcut</p>
-            </div>
-            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
-              <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled (AMA)</h3>
-              <p className="text-xl font-bold text-orange-400">₹{amaSettledAmount.toLocaleString()}</p>
-              <p className="text-xs text-gray-400 mt-1">Source: Other</p>
-            </div>
-            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
-              <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled</h3>
-              <p className="text-xl font-bold text-green-400">₹{totalSettledAmount.toLocaleString()}</p>
-              <p className="text-xs text-gray-400 mt-1">All Settlements</p>
-            </div>
-            <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
-              <h3 className="text-base font-medium text-gray-200 mb-2">Total Revenue from Settlement</h3>
-              <p className="text-xl font-bold text-blue-400">₹{totalRevenueFromSettlement.toLocaleString()}</p>
-              <p className="text-xs text-gray-400 mt-1">Billcut Success Fees</p>
+        {userRole === 'overlord' && (
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">Settlement Analytics</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+                <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled (Billcut)</h3>
+                <p className="text-xl font-bold text-teal-400">₹{billcutSettledAmount.toLocaleString()}</p>
+                <p className="text-xs text-gray-400 mt-1">Source: billcut</p>
+              </div>
+              <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+                <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled (AMA)</h3>
+                <p className="text-xl font-bold text-orange-400">₹{amaSettledAmount.toLocaleString()}</p>
+                <p className="text-xs text-gray-400 mt-1">Source: Other</p>
+              </div>
+              <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+                <h3 className="text-base font-medium text-gray-200 mb-2">Total Amount Settled</h3>
+                <p className="text-xl font-bold text-green-400">₹{totalSettledAmount.toLocaleString()}</p>
+                <p className="text-xs text-gray-400 mt-1">All Settlements</p>
+              </div>
+              <div className="bg-gray-700/50 rounded-lg p-5 border border-gray-600">
+                <h3 className="text-base font-medium text-gray-200 mb-2">Total Revenue from Settlement</h3>
+                <p className="text-xl font-bold text-blue-400">₹{totalRevenueFromSettlement.toLocaleString()}</p>
+                <p className="text-xs text-gray-400 mt-1">Billcut Success Fees</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Banks Distribution Section */}
-        <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
-          <h2 className="text-xl font-semibold mb-5 text-gray-100">Banks Distribution</h2>
-          <div className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={banksDistribution} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis
-                  dataKey="name"
-                  stroke="#9CA3AF"
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  interval={0}
-                  tick={{ fontSize: 10 }}
-                />
-                <YAxis
-                  stroke="#9CA3AF"
-                  tickFormatter={(value) => `₹${(value / 100000).toFixed(1)}L`}
-                  label={{
-                    value: 'Amount (in Lakhs)',
-                    angle: -90,
-                    position: 'insideLeft',
-                    fill: '#9CA3AF',
-                    style: { textAnchor: 'middle' },
-                  }}
-                />
-                <Tooltip
-                  formatter={(value: number) => `₹${value.toLocaleString()}`}
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: '#F3F4F6',
-                  }}
-                  cursor={{ fill: '#374151', opacity: 0.2 }}
-                />
-                <Legend
-                  wrapperStyle={{ color: '#ffffff' }}
-                  formatter={(value) => <span style={{ color: '#ffffff' }}>{value}</span>}
-                />
-                <Bar dataKey="count" name="Settled Amount" radius={[4, 4, 0, 0]}>
-                  <LabelList
-                    dataKey="count"
-                    position="top"
-                    fill="#ffffff"
-                    fontSize={12}
-                    formatter={(value: number) => `₹${(value / 100000).toFixed(1)}L`}
+        {userRole === 'overlord' && (
+          <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-5 text-gray-100">Banks Distribution</h2>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={banksDistribution} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#9CA3AF"
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    interval={0}
+                    tick={{ fontSize: 10 }}
                   />
-                  {banksDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  <YAxis
+                    stroke="#9CA3AF"
+                    tickFormatter={(value) => `₹${(value / 100000).toFixed(1)}L`}
+                    label={{
+                      value: 'Amount (in Lakhs)',
+                      angle: -90,
+                      position: 'insideLeft',
+                      fill: '#9CA3AF',
+                      style: { textAnchor: 'middle' },
+                    }}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => `₹${value.toLocaleString()}`}
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#F3F4F6',
+                    }}
+                    cursor={{ fill: '#374151', opacity: 0.2 }}
+                  />
+                  <Legend
+                    wrapperStyle={{ color: '#ffffff' }}
+                    formatter={(value) => <span style={{ color: '#ffffff' }}>{value}</span>}
+                  />
+                  <Bar dataKey="count" name="Settled Amount" radius={[4, 4, 0, 0]}>
+                    <LabelList
+                      dataKey="count"
+                      position="top"
+                      fill="#ffffff"
+                      fontSize={12}
+                      formatter={(value: number) => `₹${(value / 100000).toFixed(1)}L`}
+                    />
+                    {banksDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bank-wise Average Settlement Percentage */}
         <div className="bg-gray-800 rounded-lg shadow-2xl p-5 mb-6 border border-gray-700">
