@@ -127,4 +127,4 @@ function formatDateToDDMMYYYY(dateString: string): string {
     const year = date.getFullYear();
 
     return `${day}/${month}/${year}`;
-}
+}   

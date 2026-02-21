@@ -307,7 +307,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     
     try {
       // Call the document generation API
-      const response = await fetch('/api/demand-document', {
+      const response = await fetch('/api/demand-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,13 +340,13 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${formData.name2}_demand_notice.docx`;
+      a.download = `${formData.name2}_demand_notice.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast.success("Demand Notice successfully generated and downloaded.");
+      toast.success("Demand Notice PDF successfully generated and downloaded.");
       onClose();
     } catch (error) {
       console.error("Error generating demand notice:", error);

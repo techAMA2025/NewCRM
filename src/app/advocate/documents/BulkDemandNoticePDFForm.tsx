@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import { findClosestBankMatch } from "@/utils/bankMatching";
@@ -24,7 +24,7 @@ interface FirestoreClient {
   banks: BankAccount[];
 }
 
-interface BulkNoticeRow {
+interface BulkPdfRow {
   clientId: string;
   clientName: string;
   clientEmail: string;
@@ -36,20 +36,22 @@ interface BulkNoticeRow {
   originalBankName: string;
 }
 
-interface BulkDemandNoticeFormProps {
+interface BulkDemandNoticePDFFormProps {
   onClose: () => void;
 }
 
-export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormProps) {
+export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDFFormProps) {
   const { bankData, isLoading: isLoadingBanks } = useBankDataSimple();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [clients, setClients] = useState<FirestoreClient[]>([]);
-  const [selectedClients, setSelectedClients] = useState<BulkNoticeRow[]>([]);
+  const [selectedClients, setSelectedClients] = useState<BulkPdfRow[]>([]);
   const [pendingClientId, setPendingClientId] = useState("");
   const [pendingBankId, setPendingBankId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [addAllBanks, setAddAllBanks] = useState(false);
 
-  // Fetch clients ... (omitted same as before)
+  // Fetch clients on mount
   useEffect(() => {
     const fetchClients = async () => {
       try {
@@ -74,26 +76,15 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
     fetchClients();
   }, []);
 
-  const handleAddRow = () => {
-    if (!pendingClientId || !pendingBankId) {
-      toast.error("Please select both a client and a bank account.");
-      return;
-    }
-    
-    const client = clients.find(c => c.id === pendingClientId);
-    if (!client) return;
-
-    const bank = client.banks.find(b => b.id === pendingBankId);
-    if (!bank) return;
-
+  const createRow = (client: FirestoreClient, bank: BankAccount): BulkPdfRow => {
     const matchedName = findClosestBankMatch(bank.bankName, Object.keys(bankData));
     const details = bankData[matchedName || bank.bankName];
     
-    let status: BulkNoticeRow['status'] = 'missing';
+    let status: BulkPdfRow['status'] = 'missing';
     if (bankData[bank.bankName]) status = 'matched';
     else if (matchedName) status = 'fuzzy';
 
-    const newRow: BulkNoticeRow = {
+    return {
       clientId: client.id,
       clientName: client.name,
       clientEmail: client.email,
@@ -104,31 +95,61 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
       status,
       originalBankName: bank.bankName
     };
+  };
 
-    setSelectedClients(prev => [...prev, newRow]);
-    setPendingBankId(""); // Reset bank only, keep client for convenience or reset both? 
-    // Usually user wants to add multiple banks for same client or different. Let's reset bank.
-    toast.success(`Added ${bank.bankName} for ${client.name}`);
+  const handleAddRow = () => {
+    if (!pendingClientId) {
+      toast.error("Please select a client.");
+      return;
+    }
+
+    const client = clients.find(c => c.id === pendingClientId);
+    if (!client) return;
+
+    if (addAllBanks) {
+      // Add all banks for the selected client
+      if (client.banks.length === 0) {
+        toast.error("This client has no bank accounts.");
+        return;
+      }
+      const newRows = client.banks.map(bank => createRow(client, bank));
+      setSelectedClients(prev => [...prev, ...newRows]);
+      toast.success(`Added all ${client.banks.length} bank accounts for ${client.name}`);
+    } else {
+      if (!pendingBankId) {
+        toast.error("Please select a bank account.");
+        return;
+      }
+      const bank = client.banks.find(b => b.id === pendingBankId);
+      if (!bank) return;
+
+      const newRow = createRow(client, bank);
+      setSelectedClients(prev => [...prev, newRow]);
+      toast.success(`Added ${bank.bankName} for ${client.name}`);
+    }
+
+    setPendingBankId("");
   };
 
   const handleRemoveRow = (index: number) => {
     setSelectedClients(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleRowChange = (index: number, field: keyof BulkNoticeRow, value: string) => {
+  const handleRowChange = (index: number, field: keyof BulkPdfRow, value: string) => {
     setSelectedClients(prev => prev.map((row, i) => 
       i === index ? { ...row, [field]: value } : row
     ));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (selectedClients.length === 0) {
       toast.error("Please add at least one client.");
       return;
     }
 
     setIsSubmitting(true);
+    setProgress(10);
+
     try {
       const notices = selectedClients.map(row => ({
         name2: row.clientName,
@@ -140,102 +161,141 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
         date: date
       }));
 
-      const response = await fetch('/api/bulk-demand-document', {
+      setProgress(25);
+
+      const response = await fetch('/api/bulk-demand-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notices }),
       });
 
-      if (!response.ok) throw new Error("Failed to generate bulk notices");
+      setProgress(75);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || "Failed to generate bulk PDF notices");
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Bulk_Demand_Notices_${new Date().toISOString().split('T')[0]}.zip`;
+      a.download = `Bulk_Demand_Notices_PDF_${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.success(`Successfully generated ${selectedClients.length} notices!`);
-      // onClose(); // Optional: close form after success
+      setProgress(100);
+      toast.success(`Successfully generated ${selectedClients.length} PDF notices!`);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setIsSubmitting(false);
+      setProgress(0);
     }
   };
 
+  const matchedCount = selectedClients.filter(r => r.status === 'matched').length;
+  const fuzzyCount = selectedClients.filter(r => r.status === 'fuzzy').length;
+  const missingCount = selectedClients.filter(r => r.status === 'missing').length;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-4 items-end bg-gray-900/50 p-4 rounded-xl border border-gray-700">
-        <div className="flex-1 min-w-[250px]">
-          <label className="block text-xs font-medium text-gray-400 mb-1">1. Select Client</label>
-          <SearchableDropdown
-            options={clients.map(c => ({ value: c.id, label: `${c.name} (${c.phone})` }))}
-            value={pendingClientId}
-            onChange={(val) => {
-              setPendingClientId(val);
-              setPendingBankId(""); // Reset bank when client changes
-            }}
-            placeholder="Search client..."
-          />
+      {/* Add Client Controls */}
+      <div className="bg-gray-900/50 p-5 rounded-xl border border-gray-700">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[250px]">
+            <label className="block text-xs font-medium text-gray-400 mb-1">1. Select Client</label>
+            <SearchableDropdown
+              options={clients.map(c => ({ value: c.id, label: `${c.name} (${c.phone})` }))}
+              value={pendingClientId}
+              onChange={(val) => {
+                setPendingClientId(val);
+                setPendingBankId("");
+              }}
+              placeholder="Search client..."
+            />
+          </div>
+
+          {!addAllBanks && (
+            <div className="flex-1 min-w-[250px]">
+              <label className="block text-xs font-medium text-gray-400 mb-1">2. Select Bank Account</label>
+              <select
+                value={pendingBankId}
+                onChange={(e) => setPendingBankId(e.target.value)}
+                disabled={!pendingClientId}
+                className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white text-sm disabled:opacity-50 h-[38px] outline-none focus:ring-1 focus:ring-red-500"
+              >
+                <option value="">-- Select Client Bank --</option>
+                {pendingClientId && clients.find(c => c.id === pendingClientId)?.banks.map(bank => (
+                  <option key={bank.id} value={bank.id}>
+                    {bank.bankName} - {bank.accountNumber} ({bank.loanType})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-400 bg-gray-800/50 px-3 py-2 rounded-lg border border-gray-700 hover:border-red-500/50 transition-all">
+              <input
+                type="checkbox"
+                checked={addAllBanks}
+                onChange={(e) => setAddAllBanks(e.target.checked)}
+                className="w-3.5 h-3.5 accent-red-500"
+              />
+              <span>Add all banks</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleAddRow}
+              disabled={!pendingClientId || (!addAllBanks && !pendingBankId)}
+              className="px-6 py-2 bg-red-600 hover:bg-red-500 disabled:bg-gray-700 text-white rounded-md text-sm font-medium transition-all"
+            >
+              Add to Queue
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 min-w-[250px]">
-          <label className="block text-xs font-medium text-gray-400 mb-1">2. Select Bank Account</label>
-          <select
-            value={pendingBankId}
-            onChange={(e) => setPendingBankId(e.target.value)}
-            disabled={!pendingClientId}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white text-sm disabled:opacity-50 h-[38px] outline-none focus:ring-1 focus:ring-purple-500"
-          >
-            <option value="">-- Select Client Bank --</option>
-            {pendingClientId && clients.find(c => c.id === pendingClientId)?.banks.map(bank => (
-              <option key={bank.id} value={bank.id}>
-                {bank.bankName} - {bank.accountNumber} ({bank.loanType})
-              </option>
-            ))}
-          </select>
-        </div>
+        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-800">
+          <div className="flex-none">
+            <label className="block text-xs font-medium text-gray-400 mb-1">Notice Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white text-sm w-40"
+            />
+          </div>
 
-        <div className="flex-none">
-          <button
-            type="button"
-            onClick={handleAddRow}
-            disabled={!pendingClientId || !pendingBankId}
-            className="px-6 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 text-white rounded-md text-sm font-medium transition-all"
-          >
-            Add to Queue
-          </button>
-        </div>
-
-        <div className="w-40 border-l border-gray-700 pl-4 ml-2">
-          <label className="block text-xs font-medium text-gray-400 mb-1">Notice Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white text-sm"
-          />
-        </div>
-        
-        <div className="flex-none">
-          <button
-            type="button"
-            onClick={() => setSelectedClients([])}
-            className="px-4 py-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
-          >
-            Clear All
-          </button>
+          <div className="flex-1 flex justify-end gap-3">
+            {selectedClients.length > 0 && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                {matchedCount > 0 && <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded">✓ {matchedCount}</span>}
+                {fuzzyCount > 0 && <span className="bg-blue-500/10 text-blue-400 px-2 py-1 rounded">~ {fuzzyCount}</span>}
+                {missingCount > 0 && <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded">⚠ {missingCount}</span>}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedClients([])}
+              disabled={selectedClients.length === 0}
+              className="px-4 py-1.5 text-xs text-red-400 hover:text-red-300 disabled:text-gray-600 transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Queue Table */}
       <div className="overflow-x-auto rounded-xl border border-gray-700 bg-gray-900/30">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-800/80 text-gray-400 text-xs uppercase">
             <tr>
+              <th className="px-4 py-3 w-8">#</th>
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Bank & Ref</th>
               <th className="px-4 py-3">Contact Details (Editable)</th>
@@ -245,6 +305,7 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
           <tbody className="divide-y divide-gray-800">
             {selectedClients.map((row, idx) => (
               <tr key={idx} className="hover:bg-gray-800/40 transition-colors">
+                <td className="px-4 py-3 text-gray-600 text-xs font-mono">{idx + 1}</td>
                 <td className="px-4 py-3 align-top">
                   <div className="font-medium text-white">{row.clientName}</div>
                   <div className="text-xs text-gray-500">{row.clientEmail}</div>
@@ -254,15 +315,16 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
                     <input
                       value={row.bankName}
                       onChange={(e) => handleRowChange(idx, 'bankName', e.target.value)}
-                      className="w-full bg-transparent border-b border-gray-700 focus:border-purple-500 outline-none text-white text-xs py-0.5"
+                      className="w-full bg-transparent border-b border-gray-700 focus:border-red-500 outline-none text-white text-xs py-0.5"
                     />
                     <div className="flex items-center gap-2">
                       <input
                         value={row.reference}
                         onChange={(e) => handleRowChange(idx, 'reference', e.target.value)}
-                        className="bg-transparent border-b border-gray-700 focus:border-purple-500 outline-none text-gray-400 text-[11px] py-0.5"
+                        className="bg-transparent border-b border-gray-700 focus:border-red-500 outline-none text-gray-400 text-[11px] py-0.5"
                         placeholder="Ref/Acc No"
                       />
+                      {row.status === 'matched' && <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">Matched</span>}
                       {row.status === 'fuzzy' && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">Fuzzy</span>}
                       {row.status === 'missing' && <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">No Data</span>}
                     </div>
@@ -275,14 +337,14 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
                       onChange={(e) => handleRowChange(idx, 'bankEmail', e.target.value)}
                       placeholder="Bank Email(s)"
                       rows={1}
-                      className="w-full bg-transparent border border-gray-700/50 rounded p-1 text-[11px] text-gray-300 focus:border-purple-500 outline-none"
+                      className="w-full bg-transparent border border-gray-700/50 rounded p-1 text-[11px] text-gray-300 focus:border-red-500 outline-none"
                     />
                     <textarea
                       value={row.bankAddress}
                       onChange={(e) => handleRowChange(idx, 'bankAddress', e.target.value)}
                       placeholder="Bank Address"
                       rows={2}
-                      className="w-full bg-transparent border border-gray-700/50 rounded p-1 text-[11px] text-gray-400 focus:border-purple-500 outline-none"
+                      className="w-full bg-transparent border border-gray-700/50 rounded p-1 text-[11px] text-gray-400 focus:border-red-500 outline-none"
                     />
                   </div>
                 </td>
@@ -298,8 +360,11 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
             ))}
             {selectedClients.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-gray-500 italic">
-                  No clients in queue. Use the dropdown above to add clients and their bank accounts.
+                <td colSpan={5} className="px-4 py-14 text-center">
+                  <div className="flex flex-col items-center gap-2 text-gray-500">
+                    <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    <span className="italic text-sm">No PDFs in queue. Select clients and banks above to start building your batch.</span>
+                  </div>
                 </td>
               </tr>
             )}
@@ -307,9 +372,30 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
         </table>
       </div>
 
+      {/* Progress Bar (visible during generation) */}
+      {isSubmitting && (
+        <div className="bg-gray-900/50 p-4 rounded-xl border border-red-500/30">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Generating {selectedClients.length} PDF notices...</span>
+            <span className="text-sm font-mono text-red-400">{progress}%</span>
+          </div>
+          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-red-600 to-rose-500 rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">Each notice is rendered as a high-quality PDF with letterhead & signature. This may take a moment...</p>
+        </div>
+      )}
+
+      {/* Footer Actions */}
       <div className="flex justify-between items-center py-4 border-t border-gray-800">
         <div className="text-sm text-gray-400">
-          Total Notices: <span className="text-white font-semibold">{selectedClients.length}</span>
+          Total PDFs: <span className="text-white font-semibold">{selectedClients.length}</span>
+          {selectedClients.length > 0 && (
+            <span className="ml-2 text-red-400/60 text-xs">(Letterhead + Signature)</span>
+          )}
         </div>
         <div className="flex gap-3">
           <button
@@ -322,15 +408,18 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || selectedClients.length === 0}
-            className="px-8 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-lg font-semibold shadow-lg shadow-amber-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-8 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-lg font-semibold shadow-lg shadow-red-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting ? (
               <>
                 <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                Processing...
+                Generating PDFs...
               </>
             ) : (
-              <>Generate All Notices (.zip)</>
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                Generate All PDFs (.zip)
+              </>
             )}
           </button>
         </div>
