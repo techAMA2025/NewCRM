@@ -32,6 +32,7 @@ interface BulkPdfRow {
   bankAddress: string;
   bankEmail: string;
   reference: string;
+  referenceNumber: string;
   status: 'matched' | 'fuzzy' | 'missing' | 'custom';
   originalBankName: string;
 }
@@ -92,6 +93,7 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
       bankAddress: details?.address || "",
       bankEmail: details?.email || "",
       reference: bank.accountNumber,
+      referenceNumber: "",
       status,
       originalBankName: bank.bankName
     };
@@ -152,12 +154,14 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
 
     try {
       const notices = selectedClients.map(row => ({
+        clientId: row.clientId,
         name2: row.clientName,
         email: row.clientEmail,
         bankName: row.bankName,
         bankAddress: row.bankAddress,
         bankEmail: row.bankEmail,
         reference: row.reference,
+        referenceNumber: row.referenceNumber,
         date: date
       }));
 
@@ -208,7 +212,7 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
           <div className="flex-1 min-w-[250px]">
             <label className="block text-xs font-medium text-gray-400 mb-1">1. Select Client</label>
             <SearchableDropdown
-              options={clients.map(c => ({ value: c.id, label: `${c.name} (${c.phone})` }))}
+              options={clients.map(c => ({ value: c.id, label: `${c.name} (${c.email || c.phone})` }))}
               value={pendingClientId}
               onChange={(val) => {
                 setPendingClientId(val);
@@ -298,6 +302,7 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
               <th className="px-4 py-3 w-8">#</th>
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Bank & Ref</th>
+              <th className="px-4 py-3">Reference No.</th>
               <th className="px-4 py-3">Contact Details (Editable)</th>
               <th className="px-4 py-3 text-right">Action</th>
             </tr>
@@ -331,6 +336,14 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
                   </div>
                 </td>
                 <td className="px-4 py-3 align-top">
+                  <input
+                    value={row.referenceNumber}
+                    onChange={(e) => handleRowChange(idx, 'referenceNumber', e.target.value)}
+                    className="w-full bg-transparent border-b border-gray-700 focus:border-red-500 outline-none text-white text-xs py-0.5"
+                    placeholder="e.g. AMA/DN/2026/001"
+                  />
+                </td>
+                <td className="px-4 py-3 align-top">
                   <div className="space-y-2 max-w-xs">
                     <textarea
                       value={row.bankEmail}
@@ -360,7 +373,7 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
             ))}
             {selectedClients.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-14 text-center">
+                <td colSpan={6} className="px-4 py-14 text-center">
                   <div className="flex flex-col items-center gap-2 text-gray-500">
                     <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                     <span className="italic text-sm">No PDFs in queue. Select clients and banks above to start building your batch.</span>

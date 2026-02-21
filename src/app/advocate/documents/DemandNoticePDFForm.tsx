@@ -66,6 +66,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     bankAddress: "",
     bankEmail: "",
     reference: "",
+    referenceNumber: "",
     date: new Date().toISOString().split('T')[0],
   });
   
@@ -365,7 +366,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
           <SearchableDropdown
             options={clients.map(client => ({
               value: client.id,
-              label: `${client.name} - ${client.phone}`
+              label: `${client.name} - ${client.email || client.phone}`
             }))}
             value={selectedClientId}
             onChange={(value) => handleClientChange({ target: { value } } as React.ChangeEvent<HTMLSelectElement>)}
@@ -495,6 +496,20 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
               🔄 Using fuzzy-matched bank details (→ {findClosestBankMatch(selectedBank.split('|')[0], Object.keys(bankData))})
             </p>
           )}
+        </div>
+
+        {/* Reference Number (Advocate's own reference) */}
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Reference Number (Your Ref.)</label>
+          <input
+            type="text"
+            name="referenceNumber"
+            value={formData.referenceNumber}
+            onChange={handleChange}
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent text-sm"
+            placeholder="Enter your reference number (e.g. AMA/DN/2026/001)"
+          />
+          <p className="text-xs text-gray-500 mt-0.5">Optional — advocate&apos;s own reference number for this notice</p>
         </div>
 
         {/* Date */}

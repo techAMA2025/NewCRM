@@ -9,6 +9,7 @@ import DemandNoticeForm from "./demandnotice";
 import DemandNoticePDFForm from "./DemandNoticePDFForm";
 import BulkDemandNoticeForm from "./BulkDemandNoticeForm";
 import BulkDemandNoticePDFForm from "./BulkDemandNoticePDFForm";
+import PendingDispatches from "./PendingDispatches";
 import CFHABForm from "./cfhab";
 import ReplyToNoticeForm from "./replytonotice";
 import Sec138Form from "./sec138";
@@ -330,6 +331,9 @@ const DocumentsPage = () => {
           </div>
         )}
         
+        <div className="mt-8">
+          <PendingDispatches />
+        </div>
         
         <Toaster 
           position="top-right"

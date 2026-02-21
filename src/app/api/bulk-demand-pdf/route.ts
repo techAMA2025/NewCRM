@@ -3,13 +3,21 @@ import puppeteer from 'puppeteer-core';
 import { fillDemandNoticeTemplate } from '../../../utils/demandNoticePdfTemplate';
 import fs from 'fs';
 import PizZip from 'pizzip';
+import { storage, db } from '../../../firebase/firebase-admin';
+import admin from 'firebase-admin';
+
+// Vercel serverless config — bulk PDF generation needs more time
+export const maxDuration = 300; // 5 minutes (requires Vercel Pro plan)
+export const dynamic = 'force-dynamic';
 
 interface NoticeData {
+    clientId?: string;
     name2: string;
     bankName: string;
     bankAddress: string;
     bankEmail: string;
     reference: string;
+    referenceNumber?: string;
     email: string;
     date: string;
 }
@@ -85,7 +93,7 @@ export async function POST(request: Request) {
         let skippedCount = 0;
 
         for (const notice of notices) {
-            const { name2, bankName, bankAddress, bankEmail, reference, email, date } = notice;
+            const { clientId, name2, bankName, bankAddress, bankEmail, reference, referenceNumber, email, date } = notice;
 
             // Skip invalid entries
             if (!name2 || !bankName || !bankAddress || !bankEmail || !reference || !email || !date) {
@@ -100,6 +108,7 @@ export async function POST(request: Request) {
                 bankAddress: bankAddress.replace(/\.\s+(?=Mr\.|Ms\.|Mrs\.|Smt\.|Shri\b|The\b)/gi, '.\n').trim(),
                 bankEmail: bankEmail.split(',').map((e: string) => e.trim()).join('\n'),
                 reference,
+                referenceNumber: referenceNumber || '',
                 email,
                 date: formatDateToDDMMYYYY(date)
             };
@@ -132,6 +141,41 @@ export async function POST(request: Request) {
 
             bulkZip.file(fileName, pdf);
             generatedCount++;
+
+            // Save PDF to Firebase Storage and track in Firestore
+            if (storage && db) {
+                try {
+                    const safeClientId = clientId || 'unknown_client';
+                    const timestamp = Date.now();
+                    const storagePath = `demand_notices/${safeClientId}/${timestamp}_${fileName}`;
+
+                    const bucket = storage.bucket();
+                    const file = bucket.file(storagePath);
+                    await file.save(pdf, {
+                        metadata: {
+                            contentType: 'application/pdf',
+                        },
+                    });
+
+                    // Save metadata to Firestore
+                    await db.collection('generated_outbox').add({
+                        clientId: safeClientId,
+                        clientName: name2,
+                        clientEmail: email,
+                        bankName: bankName,
+                        bankEmail: bankEmail,
+                        reference: reference,
+                        referenceNumber: referenceNumber || '',
+                        storagePath: storagePath,
+                        fileName: fileName,
+                        status: 'pending_dispatch',
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                        generatedAt: new Date().toISOString()
+                    });
+                } catch (e) {
+                    console.error("Failed to upload/save metadata for", name2, e);
+                }
+            }
         }
 
         await browser.close();

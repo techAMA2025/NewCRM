@@ -11,6 +11,7 @@ interface DemandNoticeData {
   bankAddress: string;
   bankEmail: string;
   reference: string;
+  referenceNumber?: string;
   email: string;
   date: string;
 }
@@ -43,6 +44,8 @@ export function fillDemandNoticeTemplate(data: DemandNoticeData): string {
   <meta charset="UTF-8">
   <title>Demand Notice - ${data.name2}</title>
   <style>
+    @import url('https://fonts.cdnfonts.com/css/bookman-old-style');
+
     @page {
       size: A4;
       margin: 12mm 15mm 18mm 15mm;
@@ -437,7 +440,8 @@ export function fillDemandNoticeTemplate(data: DemandNoticeData): string {
             </div>
 
             <!-- ===== REFERENCE ===== -->
-            <div class="ref-line">Ref: <span class="bld">${data.reference}</span></div>
+            ${data.referenceNumber ? `<div class="ref-line">Ref: <span class="bld">${data.referenceNumber}</span></div>` : ''}
+            <div class="ref-line">${data.referenceNumber ? 'Account No:' : 'Ref:'} <span class="bld">${data.reference}</span></div>
 
             <!-- ===== SALUTATION ===== -->
             <div class="salutation-line">Dear Sir/Madam,</div>

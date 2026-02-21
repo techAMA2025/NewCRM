@@ -3,6 +3,10 @@ import puppeteer from 'puppeteer-core';
 import { fillDemandNoticeTemplate } from '../../../utils/demandNoticePdfTemplate';
 import fs from 'fs';
 
+// Vercel serverless config
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 // Local Chrome paths to check (macOS, Linux, Windows)
 const LOCAL_CHROME_PATHS = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -32,6 +36,7 @@ export async function POST(request: Request) {
       bankAddress,
       bankEmail,
       reference,
+      referenceNumber,
       email,
       date
     } = body;
@@ -48,6 +53,7 @@ export async function POST(request: Request) {
       bankAddress: bankAddress.replace(/\.\s+(?=Mr\.|Ms\.|Mrs\.|Smt\.|Shri\b|The\b)/gi, '.\n').trim(),
       bankEmail: bankEmail.split(',').map((e: string) => e.trim()).join('\n'),
       reference,
+      referenceNumber: referenceNumber || '',
       email,
       date: formatDateToDDMMYYYY(date)
     };
