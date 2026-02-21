@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import PizZip from 'pizzip';
-import { generatePDF } from '@/utils/pdfGenerator';
+import { generatePDF } from '../../../utils/pdfGenerator';
 
 interface NoticeData {
     name2: string;
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         const finalBuffer = bulkZip.generate({ type: 'nodebuffer' });
 
         // Create response with appropriate headers
-        return new NextResponse(finalBuffer as any, {
+        return new NextResponse(new Uint8Array(finalBuffer), {
             headers: {
                 'Content-Disposition': `attachment; filename="bulk_demand_notices.zip"`,
                 'Content-Type': 'application/zip'

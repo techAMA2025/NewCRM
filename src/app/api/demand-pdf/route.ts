@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generatePDF } from '@/utils/pdfGenerator';
+import { generatePDF } from '../../../utils/pdfGenerator';
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const pdfBuffer = await generatePDF(requestData, 'demand-notice');
 
     // Create response with appropriate headers
-    return new NextResponse(pdfBuffer as any, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Disposition': `attachment; filename="${name2}_demand_notice.pdf"`,
         'Content-Type': 'application/pdf'

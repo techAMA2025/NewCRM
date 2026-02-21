@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     const buffer = doc.getZip().generate({ type: 'nodebuffer' });
 
     // Create response with appropriate headers
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Disposition': `attachment; filename="${clientName}_harassment_complaint.docx"`,
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
