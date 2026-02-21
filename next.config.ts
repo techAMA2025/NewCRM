@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
 
+  // Remove the lightning bolt indicator and favor the standard Next.js logo
+  devIndicators: {
+    appIsrStatus: false,
+  },
+
   // Configure headers for better caching and performance
   async headers() {
     return [
