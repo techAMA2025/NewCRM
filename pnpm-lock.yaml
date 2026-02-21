@@ -120,8 +120,8 @@ importers:
         specifier: 1.1.6
         version: 1.1.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@sparticuz/chromium':
-        specifier: ^127.0.0
-        version: 127.0.0
+        specifier: ^131.0.1
+        version: 131.0.1
       '@tinymce/tinymce-react':
         specifier: ^6.1.0
         version: 6.3.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -2083,8 +2083,8 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
-  '@sparticuz/chromium@127.0.0':
-    resolution: {integrity: sha512-3YdElfXb6kqcFtlgaArNZohhZ1gWAiWg5kPYIZbaoHFau7dHZvbYg3EEjeE30bYi6cfOnB8wVpluuasF8Y3QyQ==}
+  '@sparticuz/chromium@131.0.1':
+    resolution: {integrity: sha512-VfmHkQmb/Px0zjwdSQwjRMwFw63Qfj+g4Giumz4jiAGEpXHgIZk6xEwlUz6yiUHVDveK2TEgMR2MR6I3okOE7w==}
     engines: {node: '>= 16'}
 
   '@swc/helpers@0.5.15':
@@ -5876,7 +5876,7 @@ snapshots:
     dependencies:
       react: 19.0.0
 
-  '@sparticuz/chromium@127.0.0':
+  '@sparticuz/chromium@131.0.1':
     dependencies:
       follow-redirects: 1.15.11
       tar-fs: 3.1.1

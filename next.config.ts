@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
 
+  // Exclude puppeteer/chromium from webpack bundling (required for serverless PDF generation)
+  serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
+
   // Remove the lightning bolt indicator and favor the standard Next.js logo
   devIndicators: {
     appIsrStatus: false,
