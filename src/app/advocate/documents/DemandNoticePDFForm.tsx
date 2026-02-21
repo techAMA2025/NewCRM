@@ -374,7 +374,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             isLoading={false}
           />
         </div>
-      
+       
         {/* Client Details */}
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Client Name</label>
