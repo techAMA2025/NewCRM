@@ -406,8 +406,9 @@ const AmaLeadsPage = () => {
                               if (l.id === id) {
                                   if (l.status !== leadData.status || 
                                       l.assignedTo !== leadData.assignedTo || 
-                                      l.salesNotes !== leadData.salesNotes) {
-                                      return { ...l, ...leadData };
+                                      l.salesNotes !== leadData.salesNotes ||
+                                      JSON.stringify(l.statusHistory) !== JSON.stringify(leadData.statusHistory || [])) {
+                                      return { ...l, ...leadData, statusHistory: leadData.statusHistory || [] };
                                   }
                               }
                               return l;
@@ -454,7 +455,8 @@ const AmaLeadsPage = () => {
 
                               if (l.status !== newStatus || 
                                   l.assignedTo !== newAssignedTo || 
-                                  l.salesNotes !== newSalesNotes) {
+                                  l.salesNotes !== newSalesNotes ||
+                                  JSON.stringify(l.statusHistory) !== JSON.stringify(data.statusHistory || [])) {
                                   
                                   return {
                                       ...l,
@@ -462,6 +464,7 @@ const AmaLeadsPage = () => {
                                       assignedTo: newAssignedTo,
                                       assignedToId: newAssignedToId,
                                       salesNotes: newSalesNotes,
+                                      statusHistory: data.statusHistory || [],
                                   }
                               }
                           }

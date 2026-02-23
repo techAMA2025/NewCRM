@@ -846,6 +846,7 @@ const BillCutLeadsPage = () => {
               callbackInfo: null,
               debtRange: data.debt_range || 0,
               convertedAt: data.convertedAt || null,
+              statusHistory: data.statusHistory || [],
             }
 
             // Fetch callback info for callback leads
@@ -1143,7 +1144,7 @@ const BillCutLeadsPage = () => {
                     }
                 } else if (change.type === "modified") {
                     fetchLatestSalesNote(id, data.sales_notes || "").then(latestNote => {
-                        setLeads(prev => prev.map(l => {
+                        const updater = (prev: Lead[]) => prev.map(l => {
                             if (l.id === id) {
                                 // Only update if relevant fields changed to avoid unnecessary re-renders
                                 if (l.status !== leadData.status || 
@@ -1154,7 +1155,9 @@ const BillCutLeadsPage = () => {
                                 }
                             }
                             return l;
-                        }));
+                        });
+                        setLeads(updater);
+                        setSearchResults(updater);
                     });
                     if (leadData.status === "Callback") {
                         refreshLeadCallbackInfo(id);
@@ -1196,7 +1199,7 @@ const BillCutLeadsPage = () => {
                 if (docSnapshot.exists()) {
                     const data = docSnapshot.data()
                     fetchLatestSalesNote(id, data.sales_notes || "").then(latestNote => {
-                        setLeads(prevLeads => prevLeads.map(l => {
+                        const updater = (prevLeads: Lead[]) => prevLeads.map(l => {
                             if (l.id === id) {
                                 const newStatus = data.category || "No Status"
                                 const newAssignedTo = data.assigned_to || ""
@@ -1217,7 +1220,9 @@ const BillCutLeadsPage = () => {
                                 }
                             }
                             return l
-                        }))
+                        });
+                        setLeads(updater);
+                        setSearchResults(updater);
                     })
                 }
             })
@@ -1275,7 +1280,9 @@ const BillCutLeadsPage = () => {
     stickyLeadsRef.current.add(id)
 
     // Handle count updates optimistically - OUTSIDE setLeads to avoid double execution
-    const lead = leads.find(l => l.id === id)
+    // Check both states to find the lead
+    const lead = leads.find(l => l.id === id) || searchResults.find(l => l.id === id)
+    
     if (lead) {
       if (updates.status && updates.status !== lead.status) {
         // Check if the old status matched the current filter
@@ -1307,39 +1314,39 @@ const BillCutLeadsPage = () => {
         return lead
       })
     
-    // Always update main leads state
+    // Always update both leads and searchResults state if they contain the lead
     setLeads(updateFunction)
-    
-    // Update search results if there's an active search and the lead exists in search results
-    if (searchQuery.trim()) {
-      setSearchResults(prev => {
-        // Only update if the lead exists in search results
-        if (prev.some(lead => lead.id === id)) {
-          return prev.map((lead) => {
-            if (lead.id === id) {
-              const updatedLead = { ...lead, ...updates, lastModified: new Date() }
-              // If changing from "Converted" to another status, set convertedAt to null
-              if (lead.status === 'Converted' && updates.status && updates.status !== 'Converted') {
-                updatedLead.convertedAt = null
-              }
-              return updatedLead
-            }
-            return lead
-          })
-        }
-        return prev
-      })
-    }
-  }, [searchQuery, statusFilter, leads])
+    setSearchResults(updateFunction)
+  }, [searchQuery, statusFilter, leads, searchResults])
 
   // Update lead with optimistic updates
   const updateLead = async (id: string, data: any) => {
+    // Look for the lead in both states to ensure we have the most recent data (especially for history)
+    // IMPORTANT: Check the main 'leads' state first as it's the primary source of truth for onSnapshot updates
+    const currentLead = leads.find(lead => lead.id === id) || searchResults.find(lead => lead.id === id);
+    
+    // Debug log to trace history issues
+    console.log(`[updateLead] Updating lead ${id}. Current history length: ${currentLead?.statusHistory?.length || 0}`);
     // Check if we're changing from "Converted" to another status
-    const currentLead = leads.find(lead => lead.id === id);
     const isChangingFromConverted = currentLead?.status === 'Converted' && data.status && data.status !== 'Converted';
     
-    // Apply optimistic update immediately
-    updateLeadOptimistic(id, data)
+    // Prepare updates for optimistic UI
+    const leadUpdates = { ...data };
+    let newHistory = currentLead?.statusHistory || [];
+
+    if ("status" in data && data.status !== currentLead?.status) {
+        const newHistoryEntry = {
+            status: data.status,
+            timestamp: new Date().toISOString(),
+            updatedBy: currentUser?.email || currentUser?.displayName || "Unknown User"
+        };
+        // Use a Set-like logic or just ensure we don't duplicate the exact same status sequentially
+        newHistory = [...newHistory, newHistoryEntry].slice(-5);
+        leadUpdates.statusHistory = newHistory;
+    }
+
+    // Apply optimistic update immediately with history
+    updateLeadOptimistic(id, leadUpdates)
 
     try {
       const leadRef = doc(crmDb, "billcutLeads", id)
@@ -1350,24 +1357,7 @@ const BillCutLeadsPage = () => {
 
       if ("status" in data) {
         updateData.category = data.status
-
-        // --- Status History Logic ---
-        const existingHistory = currentLead?.statusHistory || []
-        const newHistoryEntry = {
-          status: data.status,
-          timestamp: new Date().toISOString(),
-          updatedBy: currentUser?.email || currentUser?.displayName || "Unknown User"
-        }
-        
-        let newHistory = [...existingHistory, newHistoryEntry]
-        
-        // Enforce Limit of 5 (FIFO)
-        if (newHistory.length > 5) {
-          newHistory = newHistory.slice(newHistory.length - 5)
-        }
-        
         updateData.statusHistory = newHistory
-        // ---------------------------
       }
 
       if ("assignedTo" in data) {
@@ -2299,6 +2289,7 @@ const BillCutLeadsPage = () => {
             callbackInfo: null,
             debtRange: data.debt_range || 0,
             convertedAt: data.convertedAt || null,
+            statusHistory: data.statusHistory || [],
           }
 
           // Fetch callback info for callback leads
