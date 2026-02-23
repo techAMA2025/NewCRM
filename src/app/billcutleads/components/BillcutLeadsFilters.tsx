@@ -397,7 +397,7 @@ const BillcutLeadsFiltersOptimized = ({
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-10 py-3 border border-gray-600/50 bg-gray-800/50 text-gray-100 rounded-xl focus:outline-none focus:ring-blue-500 focus:border-blue-400 transition-all duration-200 placeholder-gray-500"
+            className="block w-full pl-10 pr-10 py-3 border border-gray-600/50 text-gray-100 rounded-xl focus:outline-none focus:ring-blue-500 focus:border-blue-400 transition-all duration-200 placeholder-gray-500"
             placeholder="Search by name, email, or phone number... (searches entire database)"
             value={searchInput}
             onChange={handleSearchInputChange}
@@ -521,14 +521,14 @@ const BillcutLeadsFiltersOptimized = ({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600"
+              className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600"
             >
-              <option value="all" className="bg-[#0b1437]">All Status</option>
-              <option value="No Status" className="bg-[#0b1437]">No Status</option>
+              <option value="all">All Status</option>
+              <option value="No Status">No Status</option>
               {statusOptions
                 .filter((status) => status !== "No Status")
                 .map((status) => (
-                  <option key={status} value={status} className="bg-[#0b1437]">
+                  <option key={status} value={status}>
                     {status}
                   </option>
                 ))}
@@ -542,17 +542,17 @@ const BillcutLeadsFiltersOptimized = ({
               <select
                 value={salesPersonFilter}
                 onChange={(e) => setSalesPersonFilter && setSalesPersonFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600 appearance-none"
+                className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600 appearance-none"
               >
-                <option value="all" className="bg-[#0b1437]">All Salesperson</option>
-                <option value="-" className="bg-[#0b1437]">Unassigned</option>
+                <option value="all">All Salesperson</option>
+                <option value="-">Unassigned</option>
                 {isLoading ? (
-                  <option value="" disabled className="bg-[#0b1437]">
+                  <option value="" disabled>
                     Loading...
                   </option>
                 ) : (
                   salesTeamMembers.map((user) => (
-                    <option key={user.id} value={user.name} className="bg-[#0b1437]">
+                    <option key={user.id} value={user.name}>
                       {user.name}
                     </option>
                   ))
@@ -593,11 +593,11 @@ const BillcutLeadsFiltersOptimized = ({
             <select
               value={debtRangeSort}
               onChange={(e) => setDebtRangeSort(e.target.value as "none" | "low-to-high" | "high-to-low")}
-              className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600"
+              className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600"
             >
-              <option value="none" className="bg-[#0b1437]">No Sort</option>
-              <option value="low-to-high" className="bg-[#0b1437]">Low to High</option>
-              <option value="high-to-low" className="bg-[#0b1437]">High to Low</option>
+              <option value="none">No Sort</option>
+              <option value="low-to-high">Low to High</option>
+              <option value="high-to-low">High to Low</option>
             </select>
           </div>
 
@@ -649,7 +649,7 @@ const BillcutLeadsFiltersOptimized = ({
                   value={convertedFromDate}
                   onChange={(e) => setConvertedFromDate(e.target.value)}
                   max={convertedToDate || getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-emerald-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 rounded-xl transition-all duration-200 shadow-sm"
+                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-emerald-600/50 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 rounded-xl transition-all duration-200 shadow-sm"
                 />
               </div>
 
@@ -661,7 +661,7 @@ const BillcutLeadsFiltersOptimized = ({
                   onChange={(e) => setConvertedToDate(e.target.value)}
                   min={convertedFromDate}
                   max={getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-emerald-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 rounded-xl transition-all duration-200 shadow-sm"
+                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-emerald-600/50 text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 rounded-xl transition-all duration-200 shadow-sm"
                 />
               </div>
 
@@ -673,7 +673,7 @@ const BillcutLeadsFiltersOptimized = ({
                   value={lastModifiedFromDate}
                   onChange={(e) => setLastModifiedFromDate(e.target.value)}
                   max={lastModifiedToDate || getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-blue-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm"
+                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-blue-600/50 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm"
                 />
               </div>
 
@@ -685,7 +685,7 @@ const BillcutLeadsFiltersOptimized = ({
                   onChange={(e) => setLastModifiedToDate(e.target.value)}
                   min={lastModifiedFromDate}
                   max={getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-blue-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm"
+                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-blue-600/50 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm"
                 />
               </div>
             </div>

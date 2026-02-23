@@ -58,7 +58,7 @@ const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
         <h3 className="text-xl font-semibold text-gray-100 mb-4">Bulk WhatsApp Message</h3>
         

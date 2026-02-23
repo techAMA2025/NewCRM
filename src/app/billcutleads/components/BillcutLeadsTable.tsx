@@ -852,8 +852,8 @@ const BillcutLeadsTableOptimized = React.memo(
                   disabled={!canEditLead(lead, showMyLeads)}
                   className={`w-full px-3 py-1.5 rounded-lg border text-sm ${
                     canEditLead(lead, showMyLeads)
-                      ? "bg-gray-700/50 border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-100"
-                      : "bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed"
+                      ? "border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-100"
+                      : "border-gray-700/50 text-gray-500 cursor-not-allowed"
                   }`}
                 >
                   {statusOptions.filter(status => status !== "Retargeting").map((status) => (
@@ -922,7 +922,7 @@ const BillcutLeadsTableOptimized = React.memo(
                         handleChange(lead.id, "assignedTo", e.target.value)
                         handleSave(lead.id)
                       }}
-                      className="w-full px-3 py-1.5 bg-gray-700/50 rounded-lg border border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm text-gray-100"
+                      className="w-full px-3 py-1.5 rounded-lg border border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm text-gray-100"
                     >
                       <option value="">Unassigned</option>
                       {salesPeople.map((person) => (

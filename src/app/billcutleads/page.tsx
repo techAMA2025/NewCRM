@@ -2644,7 +2644,7 @@ const BillCutLeadsPage = () => {
 
               {/* Bulk Assignment Modal */}
               {showBulkAssignment && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 flex items-center justify-center z-50">
                   <div className="bg-gray-800 rounded-xl p-6 w-full max-w-lg border border-gray-700">
                     <h3 className="text-xl font-semibold text-gray-100 mb-4">Bulk Assign Leads</h3>
                     <div className="mb-4">
