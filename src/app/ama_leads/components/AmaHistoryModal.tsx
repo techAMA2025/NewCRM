@@ -51,15 +51,13 @@ const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="ama-history-modal-title">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div className="absolute inset-0" onClick={onClose}></div>
-        </div>
-
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div className="inline-block align-bottom bg-[#ffffff] rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 border border-[#5A4C33]/10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div 
+        className="absolute inset-0 bg-black/40" 
+        onClick={onClose}
+        aria-hidden="true"
+      ></div>
+      <div className="relative bg-[#ffffff] border border-[#5A4C33]/10 rounded-lg p-6 w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] shadow-xl">
           <div className="absolute top-0 right-0 pt-4 pr-4">
             <button
               type="button"
@@ -74,7 +72,7 @@ const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
             </button>
           </div>
 
-          <div>
+          <div className="flex-1 overflow-y-auto pr-2">
             <h3 className="text-lg leading-6 font-medium text-[#5A4C33] mb-3 flex items-center gap-2" id="ama-history-modal-title">
               <FaHistory /> Sales Notes History
             </h3>
@@ -89,7 +87,11 @@ const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
                 <p>No history available for this lead yet.</p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              <div 
+                className="space-y-4 overscroll-contain"
+                onWheel={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+              >
                 {history.map((entry, index) => (
                   <div key={`history-${leadId}-${index}`} className="bg-[#F8F5EC] p-3 rounded-lg border border-[#5A4C33]/10">
                     <div className="flex justify-between items-start mb-2">
@@ -114,19 +116,18 @@ const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
                 ))}
               </div>
             )}
+          </div>
 
-            <div className="mt-5 sm:mt-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
-              >
-                Close
-              </button>
-            </div>
+          <div className="mt-6 pt-4 border-t border-[#5A4C33]/10">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-sm font-medium text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+            >
+              Close
+            </button>
           </div>
         </div>
-      </div>
     </div>
   );
 };

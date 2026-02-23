@@ -787,19 +787,17 @@ const BillcutLeadsTableOptimized = React.memo(
                   {lead.status || "Select Status"}
                 </span>
 
-                {userRole === "overlord" && (
-                    <button
-                    onClick={() => {
-                        setHistoryLeadName(lead.name);
-                        setHistoryData(lead.statusHistory || []);
-                        setShowStatusHistoryModal(true);
-                    }}
-                    className="mt-1 text-[10px] text-blue-600 hover:text-blue-800 underline block text-center w-full"
-                    title="View Status History"
-                    >
-                    History
-                    </button>
-                )}
+                <button
+                  onClick={() => {
+                      setHistoryLeadName(lead.name);
+                      setHistoryData(lead.statusHistory || []);
+                      setShowStatusHistoryModal(true);
+                  }}
+                  className="mt-1 text-[10px] text-blue-600 hover:text-blue-800 underline block text-center w-full"
+                  title="View Status History"
+                >
+                  History
+                </button>
                 
                 {/* Show lastModified and convertedAt info only for admin and overlord roles */}
                 {(userRole === "admin" || userRole === "overlord") && (

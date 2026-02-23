@@ -15,41 +15,43 @@ const HistoryModal = ({
   if (!showHistoryModal) return null;
   
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div className="absolute inset-0" onClick={() => setShowHistoryModal(false)}></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div 
+        className="absolute inset-0 bg-black/40" 
+        onClick={() => setShowHistoryModal(false)}
+        aria-hidden="true"
+      ></div>
+      <div className="relative bg-gray-900 border border-gray-700 rounded-lg p-6 w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg leading-6 font-medium text-blue-400" id="history-modal-title">
+            Sales Notes History
+          </h3>
+          <button
+            type="button"
+            onClick={() => setShowHistoryModal(false)}
+            className="text-gray-400 hover:text-white transition-colors duration-200"
+            aria-label="Close modal"
+          >
+            <span className="sr-only">Close</span>
+            <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
-        <div className="inline-block align-bottom bg-gray-900 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 border border-gray-700">
-          <div className="absolute top-0 right-0 pt-4 pr-4">
-            <button
-              type="button"
-              onClick={() => setShowHistoryModal(false)}
-              className="bg-gray-900 rounded-md text-gray-400 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Close modal"
-            >
-              <span className="sr-only">Close</span>
-              <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div>
-            <h3 className="text-lg leading-6 font-medium text-blue-400 mb-3" id="history-modal-title">
-              Sales Notes History
-            </h3>
+        <div 
+          className="flex-1 overflow-y-auto pr-2 overscroll-contain"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
             
-            {currentHistory.length === 0 ? (
-              <div className="text-center py-6 text-gray-400">
-                <FaHistory className="mx-auto h-10 w-10 text-gray-600 mb-3" />
-                <p>No history available for this lead yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+          {currentHistory.length === 0 ? (
+            <div className="text-center py-6 text-gray-400">
+              <FaHistory className="mx-auto h-10 w-10 text-gray-600 mb-3" />
+              <p>No history available for this lead yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
                 {(() => {
                   // Filter out entries without createdAt field
                   const validHistory = currentHistory.filter(entry => entry.createdAt != null);
@@ -171,19 +173,18 @@ const HistoryModal = ({
                     </div>
                   ));
                 })()}
-              </div>
-            )}
-            
-            <div className="mt-5 sm:mt-6">
-              <button
-                type="button"
-                onClick={() => setShowHistoryModal(false)}
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
-              >
-                Close
-              </button>
             </div>
-          </div>
+          )}
+        </div>
+        
+        <div className="mt-6 pt-4 border-t border-gray-700">
+          <button
+            type="button"
+            onClick={() => setShowHistoryModal(false)}
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-sm font-medium text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
