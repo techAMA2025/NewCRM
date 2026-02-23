@@ -128,6 +128,9 @@ const AmaSalespersonCell = ({
       const salesPersonId = selected[0];
       const salesPersonName = selected[1];
       assignLeadToSalesperson(lead.id, salesPersonName, salesPersonId);
+    } else {
+      // If "Unassigned" is selected (empty value)
+      unassignLead?.(lead.id);
     }
   };
 

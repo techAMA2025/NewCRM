@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
             leadIds.forEach((id) => {
                 const docRef = leadsRef.doc(id)
                 batch.update(docRef, {
-                    assignedTo: FieldValue.delete(),
-                    assignedToId: FieldValue.delete(),
-                    assigned_to: FieldValue.delete(), // Delete snake_case field
-                    assigned_to_id: FieldValue.delete(), // Delete snake_case field
+                    assignedTo: "-",
+                    assignedToId: "-",
+                    assigned_to: "-", // Important for filters
+                    assigned_to_id: "-",
                     assignedAt: FieldValue.delete(),
                     lastModified: FieldValue.serverTimestamp(),
                 })

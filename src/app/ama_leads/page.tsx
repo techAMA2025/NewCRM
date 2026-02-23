@@ -550,7 +550,7 @@ const AmaLeadsPage = () => {
       toast.success("Lead unassigned")
       setLeads((prev) =>
         prev.map((lead) =>
-          lead.id === leadId ? { ...lead, assignedTo: undefined, assignedToId: undefined } : lead
+          lead.id === leadId ? { ...lead, assignedTo: "-", assignedToId: "-" } : lead
         )
       )
     }
