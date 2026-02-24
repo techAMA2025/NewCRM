@@ -55,6 +55,12 @@ interface Client {
   request_letter?: boolean
   shouldGenerateAgreement?: boolean
   feePercentage?: string
+  client_app_status?: {
+    index: string;
+    remarks: string;
+    createdAt: number;
+    createdBy: string;
+  }[];
 }
 
 interface UserType {

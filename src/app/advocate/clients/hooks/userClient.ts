@@ -228,11 +228,38 @@ export function useClients(advocateName: string) {
     try {
       const clientRef = doc(db, "clients", clientId)
 
-      if (newStatus === "Inactive") {
-        await updateDoc(clientRef, { adv_status: null })
-      } else {
-        await updateDoc(clientRef, { adv_status: newStatus })
+      let updateData: any = { adv_status: newStatus === "Inactive" ? null : newStatus }
+
+      // Custom app status messages based on the new status
+      let appStatusRemark = ""
+      if (newStatus === "Not Responding") {
+        appStatusRemark = "Awaiting Client Response"
+      } else if (newStatus === "Dropped") {
+        appStatusRemark = "Case File Dropped"
+      } else if (newStatus === "On Hold") {
+        appStatusRemark = "Process On Hold"
       }
+
+      if (appStatusRemark) {
+        const confirmed = window.confirm(`Changing status to "${newStatus}" will also update the client's App Status to: "${appStatusRemark}". Proceed?`)
+        if (!confirmed) return
+
+        const client = clients.find(c => c.id === clientId)
+        const currentAppStatus = client?.client_app_status || []
+        const advocateName = localStorage.getItem("userName") || "System"
+
+        const newAppStatus = {
+          index: currentAppStatus.length.toString(),
+          remarks: appStatusRemark,
+          createdAt: Math.floor(Date.now() / 1000),
+          createdBy: advocateName
+        }
+
+        const { arrayUnion } = await import("firebase/firestore")
+        updateData.client_app_status = arrayUnion(newAppStatus)
+      }
+
+      await updateDoc(clientRef, updateData)
 
       toast.success(`Client status updated to ${newStatus}`)
     } catch (error) {

@@ -1111,10 +1111,48 @@ function ClientsPageWithParams() {
       const { id, shouldGenerateAgreement, feePercentage, ...clientDataToSave } = finalClientData;
 
       // Update last modified timestamp and search keywords
-      const updatedData = {
+      const updatedData: any = {
         ...clientDataToSave,
         searchKeywords: generateSearchKeywords(clientDataToSave.name),
         lastModified: new Date(),
+      }
+
+      // Check if status changed to something that requires an app status update
+      const originalClient = clients.find(c => c.id === editingClient.id)
+      const oldStatus = originalClient?.adv_status
+      const newStatus = clientDataToSave.adv_status
+
+      if (newStatus !== oldStatus) {
+        let appStatusRemark = ""
+        if (newStatus === "Not Responding") {
+          appStatusRemark = "Awaiting Client Response"
+        } else if (newStatus === "Dropped") {
+          appStatusRemark = "Case File Dropped"
+        } else if (newStatus === "On Hold") {
+          appStatusRemark = "Process On Hold"
+        }
+
+        if (appStatusRemark) {
+          const confirmed = window.confirm(`Changing status to "${newStatus}" will also update the client's App Status to: "${appStatusRemark}". Proceed?`)
+          if (!confirmed) {
+            setIsSaving(false)
+            return
+          }
+
+          const currentAppStatus = originalClient?.client_app_status || []
+          const advocateName = localStorage.getItem("userName") || "System Admin"
+          
+          const newAppStatus = {
+            index: currentAppStatus.length.toString(),
+            remarks: appStatusRemark,
+            createdAt: Math.floor(Date.now() / 1000),
+            createdBy: advocateName
+          }
+          
+          updatedData.client_app_status = arrayUnion(newAppStatus)
+          // Also update local finalClientData for state update
+          finalClientData.client_app_status = [...currentAppStatus, newAppStatus]
+        }
       }
 
       await updateDoc(clientRef, updatedData)
@@ -1264,21 +1302,68 @@ function ClientsPageWithParams() {
     setIsSaving(true)
     try {
       const clientRef = doc(db, "clients", clientId)
-
-      await updateDoc(clientRef, {
+      let updateData: any = {
         adv_status: newStatus,
         lastModified: new Date(),
-      })
+      }
 
-      // Update the local state
-      setClients(clients.map((client) => (client.id === clientId ? { ...client, adv_status: newStatus } : client)))
+      // Automatically add app status for specific statuses
+      let appStatusRemark = ""
+      if (newStatus === "Not Responding") {
+        appStatusRemark = "Awaiting Client Response"
+      } else if (newStatus === "Dropped") {
+        appStatusRemark = "Case File Dropped"
+      } else if (newStatus === "On Hold") {
+        appStatusRemark = "Process On Hold"
+      }
 
-      // Show success toast
-      showToast("Status updated", `Client status has been updated to ${newStatus}.`, "success")
-    } catch (err) {
-      console.error("Error updating client status:", err)
-      // Show error toast
-      showToast("Update failed", "Failed to update client status. Please try again.", "error")
+      if (appStatusRemark) {
+        const confirmed = window.confirm(`Changing status to "${newStatus}" will also update the client's App Status to: "${appStatusRemark}". Proceed?`)
+        if (!confirmed) {
+          setIsSaving(false)
+          return
+        }
+
+        const client = clients.find(c => c.id === clientId)
+        const currentAppStatus = client?.client_app_status || []
+        const advocateName = localStorage.getItem("userName") || "System Admin"
+        
+        const newAppStatus = {
+          index: currentAppStatus.length.toString(),
+          remarks: appStatusRemark,
+          createdAt: Math.floor(Date.now() / 1000),
+          createdBy: advocateName
+        }
+        
+        updateData.client_app_status = arrayUnion(newAppStatus)
+      }
+
+      await updateDoc(clientRef, updateData)
+
+      // Update local state
+      setClients((prevClients) =>
+        prevClients.map((client) => {
+          if (client.id === clientId) {
+            const updatedClient = { ...client, adv_status: newStatus, lastModified: new Date() }
+            if (appStatusRemark) {
+              const newStatusObj = {
+                index: (client.client_app_status?.length || 0).toString(),
+                remarks: appStatusRemark,
+                createdAt: Math.floor(Date.now() / 1000),
+                createdBy: localStorage.getItem("userName") || "System Admin"
+              }
+              updatedClient.client_app_status = [...(client.client_app_status || []), newStatusObj]
+            }
+            return updatedClient
+          }
+          return client
+        }),
+      )
+
+      showToast("Status Updated", `Client status changed to ${newStatus}`, "success")
+    } catch (error) {
+      console.error("Error updating advocate status:", error)
+      showToast("Update Failed", "Failed to update client status", "error")
     } finally {
       setIsSaving(false)
     }

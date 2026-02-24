@@ -42,6 +42,13 @@ interface Client {
   documentUrl?: string;
   documentName?: string;
   documentUploadedAt?: Date;
+  adv_status?: string;
+  client_app_status?: {
+    index: string;
+    remarks: string;
+    createdAt: number;
+    createdBy: string;
+  }[];
 }
 
 interface ClientEditModalProps {
@@ -124,7 +131,7 @@ export default function ClientEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData) return;
+    if (!formData || !client) return;
     
     setLoading(true);
     setError(null);
@@ -133,13 +140,51 @@ export default function ClientEditModal({
     try {
       const clientDocRef = doc(db, "clients", formData.id);
       
-      // Remove the id field before updating (Firestore doesn't need it in the update)
-      const { id, ...dataToUpdate } = formData;
+      // Start with the current form data
+      let finalDataToSave = { ...formData };
+      
+      // Check if status changed to something that requires an app status update
+      const oldStatus = client.adv_status;
+      const newStatus = formData.adv_status;
+
+      if (newStatus !== oldStatus) {
+        let appStatusRemark = "";
+        if (newStatus === "Not Responding") {
+          appStatusRemark = "Awaiting Client Response";
+        } else if (newStatus === "Dropped") {
+          appStatusRemark = "Case File Dropped";
+        } else if (newStatus === "On Hold") {
+          appStatusRemark = "Process On Hold";
+        }
+
+        if (appStatusRemark) {
+          const confirmed = window.confirm(`Changing status to "${newStatus}" will also update the client's App Status to: "${appStatusRemark}". Proceed?`);
+          if (!confirmed) {
+            setLoading(false);
+            return;
+          }
+
+          const currentAppStatus = client.client_app_status || [];
+          const advocateName = localStorage.getItem("userName") || "Advocate";
+          
+          const newAppStatus = {
+            index: currentAppStatus.length.toString(),
+            remarks: appStatusRemark,
+            createdAt: Math.floor(Date.now() / 1000),
+            createdBy: advocateName
+          };
+          
+          finalDataToSave.client_app_status = [...currentAppStatus, newAppStatus];
+        }
+      }
+      
+      // Remove the id field before updating
+      const { id, ...dataToUpdate } = finalDataToSave;
       
       await updateDoc(clientDocRef, dataToUpdate);
       
       setSuccessMessage("Client updated successfully!");
-      onClientUpdated(formData);
+      onClientUpdated(finalDataToSave);
       
       // Close modal after short delay
       setTimeout(() => {
@@ -272,6 +317,23 @@ export default function ClientEditModal({
                     onChange={handleInputChange}
                     className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
+                </div>
+                
+                <div>
+                  <label htmlFor="adv_status" className="block text-sm font-medium text-gray-300 mb-1">Advocate Status</label>
+                  <select
+                    id="adv_status"
+                    name="adv_status"
+                    value={formData.adv_status || "Inactive"}
+                    onChange={handleInputChange}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Dropped">Dropped</option>
+                    <option value="Not Responding">Not Responding</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
                 </div>
                 
                 <div>
