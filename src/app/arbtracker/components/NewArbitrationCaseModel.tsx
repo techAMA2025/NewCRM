@@ -21,7 +21,6 @@ export interface ArbitrationCaseData {
   status: string
   bankName: string
   bankId: string
-  accountNumber: string
   meetLink: string
   vakalatnama: boolean
   sod: boolean
@@ -76,7 +75,6 @@ const initialCaseData: ArbitrationCaseData = {
   status: 'In progress',
   bankName: '',
   bankId: '',
-  accountNumber: '',
   meetLink: '',
   vakalatnama: false,
   sod: false,
@@ -92,13 +90,15 @@ export default function NewArbitrationCaseModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clients, setClients] = useState<Client[]>([])
+  const [allBanks, setAllBanks] = useState<any[]>([])
   const [loadingClients, setLoadingClients] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [meetLinkType, setMeetLinkType] = useState<'url' | 'other'>('url')
 
-  // Fetch clients from Firestore
+  // Fetch clients and global banks from Firestore
   useEffect(() => {
-    const fetchClients = async () => {
+    const fetchData = async () => {
       setLoadingClients(true)
       try {
         const clientsRef = collection(db, 'clients')
@@ -110,16 +110,25 @@ export default function NewArbitrationCaseModal({
           banks: doc.data().banks || []
         }))
         setClients(clientsData)
+
+        // Fetch master banks
+        const banksRef = collection(db, 'banks')
+        const banksSnapshot = await getDocs(query(banksRef, orderBy('name', 'asc')))
+        const banksData = banksSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setAllBanks(banksData)
       } catch (err) {
-        console.error('Error fetching clients:', err)
-        toast.error('Failed to load clients')
+        console.error('Error fetching data:', err)
+        toast.error('Failed to load data')
       } finally {
         setLoadingClients(false)
       }
     }
 
     if (isOpen) {
-      fetchClients()
+      fetchData()
     }
   }, [isOpen])
 
@@ -140,7 +149,6 @@ export default function NewArbitrationCaseModal({
       clientId: client.id,
       bankName: '',
       bankId: '',
-      accountNumber: ''
     }))
     setSearchTerm(client.name)
     setIsDropdownOpen(false)
@@ -149,21 +157,38 @@ export default function NewArbitrationCaseModal({
   const handleBankSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const bankId = e.target.value
     const selectedClient = clients.find(c => c.id === caseData.clientId)
-    const bank = selectedClient?.banks.find(b => b.id === bankId)
+    const bank = selectedClient?.banks.find((b: any) => b.id === bankId)
     
     if (bank) {
       setCaseData(prev => ({
         ...prev,
         bankName: bank.bankName,
         bankId: bank.id,
-        accountNumber: bank.accountNumber
       }))
     } else {
       setCaseData(prev => ({
         ...prev,
         bankName: '',
         bankId: '',
-        accountNumber: ''
+      }))
+    }
+  }
+
+  const handleGlobalBankSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const bankId = e.target.value
+    const bank = allBanks.find(b => b.id === bankId)
+    
+    if (bank) {
+      setCaseData(prev => ({
+        ...prev,
+        bankName: bank.name,
+        bankId: bank.id,
+      }))
+    } else {
+      setCaseData(prev => ({
+        ...prev,
+        bankName: '',
+        bankId: '',
       }))
     }
   }
@@ -276,22 +301,40 @@ export default function NewArbitrationCaseModal({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Select Bank*
               </label>
-              <select
-                name="bankId"
-                required
-                value={caseData.bankId}
-                onChange={handleBankSelect}
-                disabled={!caseData.clientId}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500"
-              >
-                <option value="">{caseData.clientId ? 'Select a bank' : 'Select a client first'}</option>
-                {selectedClient?.banks.map(bank => (
-                  <option key={bank.id} value={bank.id}>
-                    {bank.bankName} - {bank.accountNumber}
-                  </option>
-                ))}
-              </select>
+              {caseData.clientId && selectedClient && selectedClient.banks.length > 0 ? (
+                <select
+                  name="bankId"
+                  required
+                  value={caseData.bankId}
+                  onChange={handleBankSelect}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500"
+                >
+                  <option value="">Select a bank</option>
+                  {selectedClient.banks.map(bank => (
+                    <option key={bank.id} value={bank.id}>
+                      {bank.bankName}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  name="bankId"
+                  required
+                  value={caseData.bankId}
+                  onChange={handleGlobalBankSelect}
+                  disabled={!caseData.clientId}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500"
+                >
+                  <option value="">{caseData.clientId ? 'Select from Banks Collection' : 'Select a client first'}</option>
+                  {allBanks.map(bank => (
+                    <option key={bank.id} value={bank.id}>
+                      {bank.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
+
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type*</label>
@@ -351,14 +394,24 @@ export default function NewArbitrationCaseModal({
             
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meet Link</label>
-              <input
-                type="url"
-                name="meetLink"
-                value={caseData.meetLink}
-                onChange={handleChange}
-                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
-                placeholder="https://"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={meetLinkType}
+                  onChange={(e) => setMeetLinkType(e.target.value as 'url' | 'other')}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700 w-32"
+                >
+                  <option value="url">URL</option>
+                  <option value="other">Other</option>
+                </select>
+                <input
+                  type={meetLinkType === 'url' ? 'url' : 'text'}
+                  name="meetLink"
+                  value={caseData.meetLink}
+                  onChange={handleChange}
+                  className="text-black dark:text-white flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
+                  placeholder={meetLinkType === 'url' ? 'https://' : 'Enter meeting details'}
+                />
+              </div>
             </div>
             
             <div className="flex space-x-6">

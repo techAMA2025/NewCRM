@@ -79,12 +79,12 @@ export default function EditArbitrationCaseModal({
     status: 'In progress',
     bankName: '',
     bankId: '',
-    accountNumber: '',
     meetLink: '',
     vakalatnama: false,
     sod: false
   })
   
+  const [meetLinkType, setMeetLinkType] = useState<'url' | 'other'>('url')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const timeInputRef = useRef<HTMLInputElement>(null)
   
@@ -99,11 +99,21 @@ export default function EditArbitrationCaseModal({
         status: caseData.status || 'In progress',
         bankName: caseData.bankName || '',
         bankId: caseData.bankId || '',
-        accountNumber: caseData.accountNumber || '',
         meetLink: caseData.meetLink || '',
         vakalatnama: caseData.vakalatnama || false,
         sod: caseData.sod || false
       })
+
+      // Determine initial meetLinkType
+      const isUrl = (url: string) => {
+        try {
+          new URL(url);
+          return true;
+        } catch (_) {
+          return url.startsWith('http://') || url.startsWith('https://');
+        }
+      }
+      setMeetLinkType(isUrl(caseData.meetLink || '') ? 'url' : 'other');
     }
   }, [caseData, isOpen])
 
@@ -279,14 +289,24 @@ export default function EditArbitrationCaseModal({
             
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meet Link</label>
-              <input
-                type="url"
-                name="meetLink"
-                value={editData.meetLink}
-                onChange={handleChange}
-                className="text-black dark:text-white w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
-                placeholder="https://"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={meetLinkType}
+                  onChange={(e) => setMeetLinkType(e.target.value as 'url' | 'other')}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black dark:text-white bg-white dark:bg-gray-700 w-32"
+                >
+                  <option value="url">URL</option>
+                  <option value="other">Other</option>
+                </select>
+                <input
+                  type={meetLinkType === 'url' ? 'url' : 'text'}
+                  name="meetLink"
+                  value={editData.meetLink}
+                  onChange={handleChange}
+                  className="text-black dark:text-white flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700"
+                  placeholder={meetLinkType === 'url' ? 'https://' : 'Enter meeting details'}
+                />
+              </div>
             </div>
             
             <div className="flex space-x-6">
