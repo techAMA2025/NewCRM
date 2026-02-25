@@ -19,6 +19,7 @@ interface NoticeData {
     reference: string;
     referenceNumber?: string;
     email: string;
+    lawyerEmail?: string;
     date: string;
 }
 
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
         let skippedCount = 0;
 
         for (const notice of notices) {
-            const { clientId, name2, bankName, bankAddress, bankEmail, reference, referenceNumber, email, date } = notice;
+            const { clientId, name2, bankName, bankAddress, bankEmail, lawyerEmail, reference, referenceNumber, email, date } = notice;
 
             // Skip invalid entries
             if (!name2 || !bankName || !bankAddress || !bankEmail || !reference || !email || !date) {
@@ -164,6 +165,7 @@ export async function POST(request: Request) {
                         clientEmail: email,
                         bankName: bankName,
                         bankEmail: bankEmail,
+                        lawyerEmail: lawyerEmail || '',
                         reference: reference,
                         referenceNumber: referenceNumber || '',
                         storagePath: storagePath,

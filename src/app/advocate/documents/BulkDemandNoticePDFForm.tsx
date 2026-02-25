@@ -31,6 +31,7 @@ interface BulkPdfRow {
   bankName: string;
   bankAddress: string;
   bankEmail: string;
+  lawyerEmail: string;
   reference: string;
   referenceNumber: string;
   status: 'matched' | 'fuzzy' | 'missing' | 'custom';
@@ -92,6 +93,7 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
       bankName: matchedName || bank.bankName,
       bankAddress: details?.address || "",
       bankEmail: details?.email || "",
+      lawyerEmail: "",
       reference: bank.accountNumber,
       referenceNumber: "",
       status,
@@ -160,6 +162,7 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
         bankName: row.bankName,
         bankAddress: row.bankAddress,
         bankEmail: row.bankEmail,
+        lawyerEmail: row.lawyerEmail,
         reference: row.reference,
         referenceNumber: row.referenceNumber,
         date: date
@@ -350,6 +353,12 @@ export default function BulkDemandNoticePDFForm({ onClose }: BulkDemandNoticePDF
                       onChange={(e) => handleRowChange(idx, 'bankEmail', e.target.value)}
                       placeholder="Bank Email(s)"
                       rows={1}
+                      className="w-full bg-transparent border border-gray-700/50 rounded p-1 text-[11px] text-gray-300 focus:border-red-500 outline-none"
+                    />
+                    <input
+                      value={row.lawyerEmail}
+                      onChange={(e) => handleRowChange(idx, 'lawyerEmail', e.target.value)}
+                      placeholder="Lawyer Email (Optional)"
                       className="w-full bg-transparent border border-gray-700/50 rounded p-1 text-[11px] text-gray-300 focus:border-red-500 outline-none"
                     />
                     <textarea

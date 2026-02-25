@@ -15,6 +15,7 @@ interface OutboxDocument {
   clientEmail: string;
   bankName: string;
   bankEmail: string;
+  lawyerEmail: string;
   reference: string;
   referenceNumber: string;
   fileName: string;
@@ -395,6 +396,11 @@ export default function PendingDispatches() {
                       <td className="px-4 py-3">
                         <div className="text-gray-300 font-medium">{doc.bankName}</div>
                         <div className="text-xs text-gray-500 truncate max-w-[200px]" title={doc.bankEmail}>{doc.bankEmail}</div>
+                        {doc.lawyerEmail && (
+                          <div className="text-[10px] text-blue-400 mt-0.5 truncate max-w-[200px]" title={doc.lawyerEmail}>
+                            Lawyer: {doc.lawyerEmail}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-400 font-mono text-xs">
                         {doc.referenceNumber || '-'}
