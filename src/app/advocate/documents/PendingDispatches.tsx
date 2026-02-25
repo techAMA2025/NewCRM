@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { db, functions, storage } from "@/firebase/firebase";
-import { ref, getDownloadURL } from "firebase/storage";
+import { ref, getDownloadURL, deleteObject } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
 import { toast } from "react-hot-toast";
-import { FaEye, FaPaperPlane, FaSpinner, FaSync } from "react-icons/fa";
+import { FaEye, FaPaperPlane, FaSpinner, FaSync, FaTrash } from "react-icons/fa";
 
 interface OutboxDocument {
   id: string;
@@ -58,6 +58,7 @@ export default function PendingDispatches() {
   const [subjectOption, setSubjectOption] = useState(subjectTemplates[0].text);
   const [customSubject, setCustomSubject] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -120,6 +121,88 @@ export default function PendingDispatches() {
   };
 
   const currentTemplate = draftTemplates.find(t => t.id === selectedTemplateId)?.content || "";
+
+  const handleDeleteSingle = async (docItem: OutboxDocument, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Delete the document for ${docItem.clientName} (${docItem.bankName})?`)) return;
+    
+    try {
+      // Delete from Firebase Storage
+      if (docItem.storagePath) {
+        try {
+          const fileRef = ref(storage, docItem.storagePath);
+          await deleteObject(fileRef);
+        } catch (storageErr: any) {
+          // File may already be deleted, continue with Firestore cleanup
+          console.warn("Storage file not found or already deleted:", storageErr.message);
+        }
+      }
+      // Delete from Firestore
+      await deleteDoc(doc(db, "generated_outbox", docItem.id));
+      toast.success(`Deleted document for ${docItem.clientName}`);
+      setDocuments(prev => prev.filter(d => d.id !== docItem.id));
+      setSelectedDocs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(docItem.id);
+        return newSet;
+      });
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete document.");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDocs.size === 0) {
+      toast.error("Please select at least one document to delete.");
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete ${selectedDocs.size} selected document(s)? This action cannot be undone.`)) return;
+
+    setIsDeleting(true);
+    const toastId = toast.loading(`Deleting ${selectedDocs.size} documents...`);
+    let deletedCount = 0;
+    let failedCount = 0;
+
+    try {
+      for (const docId of Array.from(selectedDocs)) {
+        const docItem = documents.find(d => d.id === docId);
+        if (!docItem) continue;
+
+        try {
+          // Delete from Firebase Storage
+          if (docItem.storagePath) {
+            try {
+              const fileRef = ref(storage, docItem.storagePath);
+              await deleteObject(fileRef);
+            } catch (storageErr: any) {
+              console.warn("Storage file not found:", storageErr.message);
+            }
+          }
+          // Delete from Firestore
+          await deleteDoc(doc(db, "generated_outbox", docItem.id));
+          deletedCount++;
+        } catch (err) {
+          console.error(`Failed to delete doc ${docId}:`, err);
+          failedCount++;
+        }
+      }
+
+      if (failedCount === 0) {
+        toast.success(`Successfully deleted ${deletedCount} document(s)!`, { id: toastId });
+      } else {
+        toast.error(`Deleted ${deletedCount}, failed ${failedCount}.`, { id: toastId });
+      }
+
+      setSelectedDocs(new Set());
+      fetchDocuments();
+    } catch (error: any) {
+      console.error("Bulk delete error:", error);
+      toast.error(error.message || "Failed to delete documents.", { id: toastId });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleBulkDispatch = async () => {
     if (selectedDocs.size === 0) {
@@ -244,17 +327,30 @@ export default function PendingDispatches() {
               </div>
             </div>
 
-            <button 
-              onClick={handleBulkDispatch}
-              disabled={isSending || selectedDocs.size === 0}
-              className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20"
-            >
-              {isSending ? (
-                <><FaSpinner className="animate-spin" /> Dispatching...</>
-              ) : (
-                <><FaPaperPlane /> Bulk Dispatch ({selectedDocs.size})</>
-              )}
-            </button>
+            <div className="mt-6 flex flex-col gap-2">
+              <button 
+                onClick={handleBulkDispatch}
+                disabled={isSending || isDeleting || selectedDocs.size === 0}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-900/20"
+              >
+                {isSending ? (
+                  <><FaSpinner className="animate-spin" /> Dispatching...</>
+                ) : (
+                  <><FaPaperPlane /> Bulk Dispatch ({selectedDocs.size})</>
+                )}
+              </button>
+              <button 
+                onClick={handleBulkDelete}
+                disabled={isSending || isDeleting || selectedDocs.size === 0}
+                className="w-full py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 hover:text-red-300 border border-red-500/30 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                {isDeleting ? (
+                  <><FaSpinner className="animate-spin" /> Deleting...</>
+                ) : (
+                  <><FaTrash /> Delete Selected ({selectedDocs.size})</>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Queue Table - Takes 2/3 width */}
@@ -304,13 +400,22 @@ export default function PendingDispatches() {
                         {doc.referenceNumber || '-'}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button 
-                          onClick={(e) => handlePreview(doc.storagePath, e)}
-                          className="p-2 text-gray-400 hover:text-blue-400 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
-                          title="Preview PDF"
-                        >
-                          <FaEye />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={(e) => handlePreview(doc.storagePath, e)}
+                            className="p-2 text-gray-400 hover:text-blue-400 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
+                            title="Preview PDF"
+                          >
+                            <FaEye />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteSingle(doc, e)}
+                            className="p-2 text-gray-400 hover:text-red-400 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
+                            title="Delete Document"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

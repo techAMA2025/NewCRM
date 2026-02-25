@@ -508,8 +508,7 @@ export function fillDemandNoticeTemplate(data: DemandNoticeData): string {
                 who are currently handling the matter and can assist in
                 facilitating the settlement process, as the agent referenced in
                 the notice is no longer assigned to this case.</li>
-              <li>To withdraw the illegal notice which is without the lawyer&rsquo;s
-                name and proper address.</li>
+              <li>To withdraw the illegal notice which is without the lawyer&rsquo;s enrollment number.</li>
             </ol>
 
             <p class="body-paragraph">
