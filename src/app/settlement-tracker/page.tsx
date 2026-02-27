@@ -241,6 +241,10 @@ const SettlementTracker = () => {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   
+  // Add state for settlement confirmation
+  const [isSettledModalOpen, setIsSettledModalOpen] = useState(false)
+  const [pendingStatusUpdate, setPendingStatusUpdate] = useState<{id: string, status: string} | null>(null)
+  
   // Add state for new client creation
   const [isNewClientMode, setIsNewClientMode] = useState(false)
   const [newClientName, setNewClientName] = useState('')
@@ -902,28 +906,51 @@ const SettlementTracker = () => {
 
   // Add function to handle status update
   const handleStatusUpdate = async (settlementId: string, newStatus: string) => {
+    if (newStatus === 'Settled') {
+      setPendingStatusUpdate({ id: settlementId, status: newStatus })
+      setIsSettledModalOpen(true)
+      return
+    }
+    
+    await performStatusUpdate(settlementId, newStatus)
+  }
+
+  const performStatusUpdate = async (settlementId: string, newStatus: string) => {
     setIsUpdatingStatus(true)
     try {
       const settlementRef = doc(db, "settlements", settlementId)
       
-      await updateDoc(settlementRef, {
+      const updateData: any = {
         status: newStatus,
         lastModified: new Date(),
-      })
+      }
+
+      // If status is changed to 'Settled', update the record date to today
+      if (newStatus === 'Settled') {
+        updateData.createdAt = new Date()
+      }
+      
+      await updateDoc(settlementRef, updateData)
 
       // Update the local state
-      setSettlements(settlements.map((settlement) => 
+      setSettlements(prev => prev.map((settlement) => 
         settlement.id === settlementId 
-          ? { ...settlement, status: newStatus }
+          ? { 
+              ...settlement, 
+              status: newStatus,
+              ...(newStatus === 'Settled' ? { createdAt: { toDate: () => new Date() } } : {})
+            }
           : settlement
       ))
 
-      alert("Status updated successfully")
+      alert(`Status updated to ${newStatus === 'Settled' ? 'Settled (Date updated)' : newStatus} successfully`)
     } catch (error) {
       console.error("Error updating status:", error)
       alert("Failed to update status. Please try again.")
     } finally {
       setIsUpdatingStatus(false)
+      setIsSettledModalOpen(false)
+      setPendingStatusUpdate(null)
     }
   }
 
@@ -1994,6 +2021,58 @@ const SettlementTracker = () => {
                     ) : (
                       "Yes, Delete"
                     )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settled Confirmation Modal */}
+        {isSettledModalOpen && pendingStatusUpdate && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+            <div className="bg-white rounded-lg border border-gray-300 p-4 max-w-xs w-full shadow-xl">
+              <div className="flex flex-col items-center text-center">
+                <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-emerald-600"
+                  >
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold text-emerald-600 mb-1.5">Confirm Settlement</h3>
+                <p className="text-gray-600 text-xs mb-3">
+                  Are you sure you want to mark this as <span className="font-semibold">Settled</span>?
+                  <br />
+                  <span className="text-blue-600 font-medium">This will automatically update the record date to today's date.</span>
+                </p>
+
+                <div className="flex gap-1.5 w-full">
+                  <Button
+                    onClick={() => {
+                      setIsSettledModalOpen(false)
+                      setPendingStatusUpdate(null)
+                    }}
+                    variant="outline"
+                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-100 text-xs h-6"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => performStatusUpdate(pendingStatusUpdate.id, pendingStatusUpdate.status)}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-6"
+                    disabled={isUpdatingStatus}
+                  >
+                    {isUpdatingStatus ? "Updating..." : "Confirm"}
                   </Button>
                 </div>
               </div>
