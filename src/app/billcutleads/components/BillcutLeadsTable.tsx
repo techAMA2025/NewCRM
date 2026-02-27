@@ -359,7 +359,7 @@ const BillcutLeadsTableOptimized = React.memo(
                 if (success) {
                   setEditingData((prev) => {
                     const newData = { ...prev }
-                    delete newData[callbackLeadId]
+                    delete newData[id]
                     return newData
                   })
                 }
@@ -854,7 +854,7 @@ const BillcutLeadsTableOptimized = React.memo(
                       : "bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed"
                   }`}
                 >
-                  {statusOptions.filter(status => status !== "Retargeting").map((status) => (
+                  {statusOptions.filter(status => status !== "Retargeting" || lead.status === "Retargeting").map((status) => (
                     <option key={status} value={status}>
                       {status}
                     </option>
