@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { storage } from '../../../firebase/firebase';
@@ -6,13 +6,17 @@ import { ref, uploadBytes, getDownloadURL, getBytes } from 'firebase/storage';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { verifyAuth } from '@/lib/auth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     // Get template from Firebase Storage
     const templateRef = ref(storage, 'templates/ama_agreement.docx');
     let templateBuffer;
-    
+
     try {
       templateBuffer = await getBytes(templateRef);
       console.log('Template fetched successfully from Firebase');
@@ -23,10 +27,10 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-    
+
     const data = await request.json();
     console.log('Received data for agreement generation:', { id: data.id, name: data.name });
-    
+
     const {
       id,
       name,
@@ -57,34 +61,34 @@ export async function POST(request: Request) {
     const formattedDate = formatDate(agreementDate);
     const formattedStartDate = formatDate(new Date(startDate));
     const formattedDob = dob ? formatDate(new Date(dob)) : 'Not provided';
-    
+
     // Calculate total debt
     const totalDebt = calculateTotalDebt(personalLoanDues, creditCardDues);
     const totalFees = parseFloat(monthlyFees) * parseInt(tenure);
-    
+
     // Helper function to format numbers with Indian commas (1,00,000)
     function formatIndianNumber(num: number): string {
       if (!num) return "0";
       let numStr = num.toString();
       let afterPoint = "";
-      
+
       if (numStr.includes(".")) {
         [numStr, afterPoint] = numStr.split(".");
         afterPoint = "." + afterPoint;
       }
-      
+
       let lastThree = numStr.length > 3 ? numStr.substring(numStr.length - 3) : numStr;
       let otherNumbers = numStr.substring(0, numStr.length - 3);
-      
+
       if (otherNumbers) {
         lastThree = "," + lastThree;
       }
-      
-      let formattedNumber = 
-        otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + 
-        lastThree + 
+
+      let formattedNumber =
+        otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") +
+        lastThree +
         afterPoint;
-        
+
       return formattedNumber;
     }
 
@@ -136,17 +140,17 @@ export async function POST(request: Request) {
     // Generate document as buffer
     const buffer = doc.getZip().generate({ type: "nodebuffer" });
     console.log('Document generated successfully');
-    
+
     // Save to temporary file (needed for verification)
     const tempDir = os.tmpdir();
     const tempFilePath = path.join(tempDir, `${name}_ama_agreement_${Date.now()}.docx`);
     fs.writeFileSync(tempFilePath, buffer);
     console.log('Temporary file created at:', tempFilePath);
-    
+
     // Upload to Firebase Storage
     const documentPath = `clients/${id}/documents/${name}_agreement.docx`;
     console.log('Uploading to Firebase path:', documentPath);
-    
+
     const storageRef = ref(storage, documentPath);
     await uploadBytes(storageRef, buffer).then(snapshot => {
       console.log('Upload successful, metadata:', snapshot.metadata);
@@ -154,21 +158,21 @@ export async function POST(request: Request) {
       console.error('Firebase upload error details:', error);
       throw error; // Rethrow to be caught by the outer try/catch
     });
-    
+
     // Get download URL
     const downloadUrl = await getDownloadURL(storageRef);
     console.log('Download URL obtained:', downloadUrl);
-    
+
     // Clean up temp file
     fs.unlinkSync(tempFilePath);
-    
-    return NextResponse.json({ 
-      success: true, 
+
+    return NextResponse.json({
+      success: true,
       documentUrl: downloadUrl,
       documentName: `${name}_agreement.docx`,
       documentUploadedAt: new Date().toISOString()
     });
-    
+
   } catch (error: any) {
     console.error('Error generating agreement:', error);
     return NextResponse.json(
@@ -214,18 +218,18 @@ function formatIndianNumber(num: number): string {
   if (!num) return "0";
   let numStr = num.toString();
   let afterPoint = "";
-  
+
   if (numStr.includes(".")) {
     [numStr, afterPoint] = numStr.split(".");
     afterPoint = "." + afterPoint;
   }
-  
+
   let lastThree = numStr.length > 3 ? numStr.substring(numStr.length - 3) : numStr;
   let otherNumbers = numStr.substring(0, numStr.length - 3);
-  
+
   if (otherNumbers) {
     lastThree = "," + lastThree;
   }
-  
+
   return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree + afterPoint;
 }

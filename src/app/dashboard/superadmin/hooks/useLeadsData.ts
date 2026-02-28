@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { LeadsBySourceData, SourceTotals, Salesperson } from '../types';
+import { useAuth } from '@/context/AuthContext';
 
 interface UseLeadsDataParams {
   startDate: string;
@@ -19,6 +20,7 @@ export const useLeadsData = ({
   enabled = true,
   onLoadComplete
 }: UseLeadsDataParams) => {
+  const { user } = useAuth();
   const [leadsBySourceData, setLeadsBySourceData] = useState<LeadsBySourceData>({
     labels: ['Settleloans', 'Credsettlee', 'AMA', 'Billcut'],
     datasets: [],
@@ -40,14 +42,15 @@ export const useLeadsData = ({
   onLoadCompleteRef.current = onLoadComplete;
 
   useEffect(() => {
-    if (!enabled) {
-      setIsLoading(false);
+    if (!enabled || !user) {
+      if (!enabled) setIsLoading(false);
       return;
     }
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        const token = await user.getIdToken();
         const params = new URLSearchParams({
           startDate,
           endDate,
@@ -55,7 +58,11 @@ export const useLeadsData = ({
           selectedLeadsSalesperson: selectedLeadsSalesperson || 'all'
         });
 
-        const response = await fetch(`/api/dashboard/superadmin/leads?${params.toString()}`);
+        const response = await fetch(`/api/dashboard/superadmin/leads?${params.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!response.ok) throw new Error('Failed to fetch leads data');
 
         const data = await response.json();
@@ -73,7 +80,7 @@ export const useLeadsData = ({
     };
 
     fetchData();
-  }, [startDate, endDate, isFilterApplied, selectedLeadsSalesperson, enabled]);
+  }, [startDate, endDate, isFilterApplied, selectedLeadsSalesperson, enabled, user]);
 
   return {
     leadsBySourceData,

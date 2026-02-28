@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { storage } from '../../../firebase/firebase';
@@ -6,8 +6,12 @@ import { ref, uploadBytes, getDownloadURL, getBytes } from 'firebase/storage';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { verifyAuth } from '@/lib/auth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     // Get PAS template from Firebase Storage
     const templateRef = ref(storage, 'templates/billcut-pas-template.docx');

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/firebase/firebase-admin";
+import { verifyAuth } from "@/lib/auth";
 
 // Map source_database values to standardized source names
 const SOURCE_DATABASE_MAP: Record<string, string> = {
@@ -10,6 +11,9 @@ const SOURCE_DATABASE_MAP: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
+    const auth = await verifyAuth(request);
+    if (auth.error) return auth.error;
+
     if (!adminDb) {
         return NextResponse.json(
             { error: "Firebase Admin not initialized" },

@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
 import { fillDemandNoticeTemplate } from '../../../utils/demandNoticePdfTemplate';
 import fs from 'fs';
 import PizZip from 'pizzip';
 import { storage, db } from '../../../firebase/firebase-admin';
 import admin from 'firebase-admin';
+import { verifyAuth } from '@/lib/auth';
 
 // Vercel serverless config — bulk PDF generation needs more time
 export const maxDuration = 300; // 5 minutes (requires Vercel Pro plan)
@@ -57,7 +58,10 @@ function formatDateToDDMMYYYY(dateString: string): string {
     return `${day}/${month}/${year}`;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+    const auth = await verifyAuth(request);
+    if (auth.error) return auth.error;
+
     let browser = null;
     try {
         const body = await request.json();

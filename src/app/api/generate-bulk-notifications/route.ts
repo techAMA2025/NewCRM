@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+    const auth = await verifyAuth(request);
+    if (auth.error) return auth.error;
+
     try {
         const { startDate, topic } = await request.json();
 

@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { storage } from '../../../firebase/firebase-admin';
 
-export async function POST(request: Request) {
+import { verifyAuth } from '@/lib/auth';
+export async function POST(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   if (!storage) {
     return NextResponse.json({ error: "Firebase Admin Storage not initialized" }, { status: 500 });
   }

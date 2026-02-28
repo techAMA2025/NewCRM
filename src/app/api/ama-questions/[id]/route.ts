@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/firebase/ama_app';
 import { doc, deleteDoc } from 'firebase/firestore';
+import { verifyAuth } from '@/lib/auth';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
 

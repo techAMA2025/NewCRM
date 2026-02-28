@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { amaAppDb, amaAppMessaging } from '@/firebase/firebase-admin';
+import { verifyAuth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { user_id, topic, n_title, n_body, send_weekly } = body;
@@ -17,8 +21,8 @@ export async function POST(request: NextRequest) {
 
     // Verify app admin initialized
     if (!amaAppDb || !amaAppMessaging) {
-       console.error("Firebase Admin (Ama App) not initialized");
-       return NextResponse.json({
+      console.error("Firebase Admin (Ama App) not initialized");
+      return NextResponse.json({
         success: false,
         message: "Service configuration error: AMA App Admin not initialized",
       }, { status: 500 });
@@ -125,12 +129,12 @@ export async function POST(request: NextRequest) {
           throw err;
         }
       }));
-      
+
       const successCount = sendResults.filter(r => r.status === 'fulfilled').length;
       if (successCount === 0 && topics.length > 0) {
-         // If all failed, throw the first error to go to catch block
-         const firstFailure = sendResults.find(r => r.status === 'rejected');
-         throw new Error(`All notifications failed. First error: ${firstFailure?.reason}`);
+        // If all failed, throw the first error to go to catch block
+        const firstFailure = sendResults.find(r => r.status === 'rejected');
+        throw new Error(`All notifications failed. First error: ${firstFailure?.reason}`);
       }
 
       const messageDoc = {

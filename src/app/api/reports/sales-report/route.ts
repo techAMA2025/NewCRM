@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { adminDb } from "@/firebase/firebase-admin"
+import { verifyAuth } from "@/lib/auth"
 
 export const dynamic = 'force-dynamic'
 
@@ -7,7 +8,10 @@ export const dynamic = 'force-dynamic'
 const cache = new Map<string, { data: any; timestamp: number }>()
 const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+    const auth = await verifyAuth(request);
+    if (auth.error) return auth.error;
+
     const { searchParams } = new URL(request.url)
     const type = searchParams.get("type")
 

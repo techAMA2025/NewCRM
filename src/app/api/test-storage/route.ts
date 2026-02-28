@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/firebase/firebase-admin';
+import { verifyAuth } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   if (!storage) {
     return NextResponse.json({ error: "Firebase Admin Storage not initialized" }, { status: 500 });
   }

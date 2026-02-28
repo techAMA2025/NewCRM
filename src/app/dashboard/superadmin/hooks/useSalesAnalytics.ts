@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { SalesAnalytics, Salesperson, IndividualSalesData } from '../types';
 import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
+import { useAuth } from '@/context/AuthContext';
 
 interface UseSalesAnalyticsParams {
   selectedAnalyticsMonth: number | null;
@@ -18,6 +19,7 @@ export const useSalesAnalytics = ({
   enabled = true,
   onLoadComplete
 }: UseSalesAnalyticsParams) => {
+  const { user } = useAuth();
   const [salesAnalytics, setSalesAnalytics] = useState<SalesAnalytics>({
     totalTargetAmount: 0,
     totalCollectedAmount: 0,
@@ -36,20 +38,25 @@ export const useSalesAnalytics = ({
   onLoadCompleteRef.current = onLoadComplete;
 
   useEffect(() => {
-    if (!enabled) {
-      setIsLoading(false);
+    if (!enabled || !user) {
+      if (!enabled) setIsLoading(false);
       return;
     }
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        const token = await user.getIdToken();
         const params = new URLSearchParams();
         if (selectedAnalyticsMonth !== null) params.append('month', selectedAnalyticsMonth.toString());
         if (selectedAnalyticsYear !== null) params.append('year', selectedAnalyticsYear.toString());
         if (selectedSalesperson) params.append('salesperson', selectedSalesperson);
 
-        const response = await fetch(`/api/dashboard/superadmin/sales?${params.toString()}`);
+        const response = await fetch(`/api/dashboard/superadmin/sales?${params.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!response.ok) throw new Error('Failed to fetch sales analytics');
 
         const data = await response.json();
@@ -82,7 +89,6 @@ export const useSalesAnalytics = ({
     fetchData();
 
     // Real-time listener for Sales Revenue (payments collection)
-    // Fix: Use null check for month/year to handle January (0) correctly
     const targetMonth = selectedAnalyticsMonth !== null ? selectedAnalyticsMonth : new Date().getMonth();
     const targetYear = selectedAnalyticsYear !== null ? selectedAnalyticsYear : new Date().getFullYear();
 
@@ -133,7 +139,7 @@ export const useSalesAnalytics = ({
     });
 
     return () => unsubscribe();
-  }, [selectedAnalyticsMonth, selectedAnalyticsYear, selectedSalesperson, enabled]);
+  }, [selectedAnalyticsMonth, selectedAnalyticsYear, selectedSalesperson, enabled, user]);
 
   return {
     salesAnalytics,

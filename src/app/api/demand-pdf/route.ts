@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
 import { fillDemandNoticeTemplate } from '../../../utils/demandNoticePdfTemplate';
 import fs from 'fs';
+import { verifyAuth } from '@/lib/auth';
 
 // Vercel serverless config
 export const maxDuration = 60;
@@ -27,7 +28,10 @@ function findLocalChrome(): string | null {
   return null;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const {

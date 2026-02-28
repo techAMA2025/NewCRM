@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ClientAnalytics } from '../types';
+import { useAuth } from '@/context/AuthContext';
 
 interface UseClientAnalyticsParams {
   enabled?: boolean;
@@ -10,6 +11,7 @@ export const useClientAnalytics = ({
   enabled = true,
   onLoadComplete
 }: UseClientAnalyticsParams = {}) => {
+  const { user } = useAuth();
   const [clientAnalytics, setClientAnalytics] = useState<ClientAnalytics>({
     totalClients: 0,
     statusDistribution: {
@@ -35,15 +37,20 @@ export const useClientAnalytics = ({
   onLoadCompleteRef.current = onLoadComplete;
 
   useEffect(() => {
-    if (!enabled) {
-      setIsLoading(false);
+    if (!enabled || !user) {
+      if (!enabled) setIsLoading(false);
       return;
     }
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/dashboard/superadmin/clients');
+        const token = await user.getIdToken();
+        const response = await fetch('/api/dashboard/superadmin/clients', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!response.ok) throw new Error('Failed to fetch client analytics');
 
         const data = await response.json();
@@ -58,7 +65,7 @@ export const useClientAnalytics = ({
     };
 
     fetchData();
-  }, [enabled]);
+  }, [enabled, user]);
 
   return {
     clientAnalytics,

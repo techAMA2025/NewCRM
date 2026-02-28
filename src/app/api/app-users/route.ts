@@ -15,11 +15,15 @@ import {
   addDoc,
   setDoc
 } from 'firebase/firestore';
+import { verifyAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const limitParam = parseInt(searchParams.get('limit') || '50');
@@ -173,6 +177,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { id, ...updateData } = body;
@@ -208,6 +215,9 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
 

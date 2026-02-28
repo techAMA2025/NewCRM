@@ -9,10 +9,14 @@ import {
   getDocs,
   getCountFromServer
 } from 'firebase/firestore';
+import { verifyAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const limitParam = parseInt(searchParams.get('limit') || '50');
@@ -35,25 +39,25 @@ export async function GET(request: NextRequest) {
     );
 
     if (lastSubmittedAtParam && lastIdParam) {
-        q = query(
-          collectionRef,
-          orderBy('submittedAt', 'desc'),
-          orderBy('__name__', 'desc'),
-          startAfter(lastSubmittedAtParam, lastIdParam),
-          limit(limitParam)
-        );
+      q = query(
+        collectionRef,
+        orderBy('submittedAt', 'desc'),
+        orderBy('__name__', 'desc'),
+        startAfter(lastSubmittedAtParam, lastIdParam),
+        limit(limitParam)
+      );
     }
 
     const snapshot = await getDocs(q);
 
     const feedbacks = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            feedback: data.feedback,
-            rate: data.rate,
-            submittedAt: data.submittedAt
-        };
+      const data = doc.data();
+      return {
+        id: doc.id,
+        feedback: data.feedback,
+        rate: data.rate,
+        submittedAt: data.submittedAt
+      };
     });
 
     return NextResponse.json({

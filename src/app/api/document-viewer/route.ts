@@ -1,45 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const documentUrl = searchParams.get('url');
-    const documentName = searchParams.get('name') || 'Document';
-    
-    if (!documentUrl) {
-      return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
-    }
-    
-    // Extract Firebase Storage path from URL for proxy usage
-    function extractStoragePath(url: string): string | null {
-      try {
-        const urlObj = new URL(url);
-        if (urlObj.hostname === 'firebasestorage.googleapis.com' && urlObj.pathname.includes('/o/')) {
-          const pathMatch = urlObj.pathname.match(/\/o\/(.+)$/);
-          if (pathMatch) {
-            return decodeURIComponent(pathMatch[1]);
-          }
+    const auth = await verifyAuth(request);
+    if (auth.error) return auth.error;
+
+    try {
+        const searchParams = request.nextUrl.searchParams;
+        const documentUrl = searchParams.get('url');
+        const documentName = searchParams.get('name') || 'Document';
+
+        if (!documentUrl) {
+            return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
         }
-        return null;
-      } catch (error) {
-        console.error('Error extracting storage path:', error);
-        return null;
-      }
-    }
-    
-    const storagePath = extractStoragePath(documentUrl);
-    const proxyUrl = storagePath 
-      ? `/api/document-proxy?path=${encodeURIComponent(storagePath)}`
-      : documentUrl;
-    
-    // Determine file type for appropriate handling
-    const fileName = documentName || documentUrl;
-    const extension = fileName.toLowerCase().split('.').pop();
-    const isDocx = extension === 'docx' || extension === 'doc';
-    const isPdf = extension === 'pdf';
-    
-    // Generate HTML content for document viewing
-    const htmlContent = `
+
+        // Extract Firebase Storage path from URL for proxy usage
+        function extractStoragePath(url: string): string | null {
+            try {
+                const urlObj = new URL(url);
+                if (urlObj.hostname === 'firebasestorage.googleapis.com' && urlObj.pathname.includes('/o/')) {
+                    const pathMatch = urlObj.pathname.match(/\/o\/(.+)$/);
+                    if (pathMatch) {
+                        return decodeURIComponent(pathMatch[1]);
+                    }
+                }
+                return null;
+            } catch (error) {
+                console.error('Error extracting storage path:', error);
+                return null;
+            }
+        }
+
+        const storagePath = extractStoragePath(documentUrl);
+        const proxyUrl = storagePath
+            ? `/api/document-proxy?path=${encodeURIComponent(storagePath)}`
+            : documentUrl;
+
+        // Determine file type for appropriate handling
+        const fileName = documentName || documentUrl;
+        const extension = fileName.toLowerCase().split('.').pop();
+        const isDocx = extension === 'docx' || extension === 'doc';
+        const isPdf = extension === 'pdf';
+
+        // Generate HTML content for document viewing
+        const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -210,10 +214,10 @@ export async function GET(request: NextRequest) {
                 </h2>
                 
                 <p style="font-size: 18px; opacity: 0.9; margin-bottom: 24px; max-width: 500px; line-height: 1.5;">
-                    ${isDocx ? 
-                        'This Word document cannot be previewed in web browsers. Download it to view and edit in Microsoft Word, Google Docs, or your preferred application.' :
-                        'This document is ready for download. Click below to save it to your device.'
-                    }
+                    ${isDocx ?
+                'This Word document cannot be previewed in web browsers. Download it to view and edit in Microsoft Word, Google Docs, or your preferred application.' :
+                'This document is ready for download. Click below to save it to your device.'
+            }
                 </p>
                 
                 <div class="file-info">
@@ -283,16 +287,16 @@ export async function GET(request: NextRequest) {
 </body>
 </html>
     `;
-    
-    return new NextResponse(htmlContent, {
-      headers: {
-        'Content-Type': 'text/html',
-        'Cache-Control': 'no-cache',
-        'X-Frame-Options': 'ALLOWALL',
-      },
-    });
-  } catch (error) {
-    console.error('Error generating document viewer:', error);
-    return NextResponse.json({ error: 'Failed to generate document viewer' }, { status: 500 });
-  }
+
+        return new NextResponse(htmlContent, {
+            headers: {
+                'Content-Type': 'text/html',
+                'Cache-Control': 'no-cache',
+                'X-Frame-Options': 'ALLOWALL',
+            },
+        });
+    } catch (error) {
+        console.error('Error generating document viewer:', error);
+        return NextResponse.json({ error: 'Failed to generate document viewer' }, { status: 500 });
+    }
 } 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { PaymentAnalytics, CurrentMonthPayments } from '../types';
+import { useAuth } from '@/context/AuthContext';
 
 interface UsePaymentAnalyticsParams {
   enabled?: boolean;
@@ -10,6 +11,7 @@ export const usePaymentAnalytics = ({
   enabled = true,
   onLoadComplete
 }: UsePaymentAnalyticsParams = {}) => {
+  const { user } = useAuth();
   const [paymentAnalytics, setPaymentAnalytics] = useState<PaymentAnalytics>({
     totalPaymentsAmount: 0,
     totalPaidAmount: 0,
@@ -36,15 +38,20 @@ export const usePaymentAnalytics = ({
   onLoadCompleteRef.current = onLoadComplete;
 
   useEffect(() => {
-    if (!enabled) {
-      setIsLoading(false);
+    if (!enabled || !user) {
+      if (!enabled) setIsLoading(false);
       return;
     }
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/dashboard/superadmin/payments');
+        const token = await user.getIdToken();
+        const response = await fetch('/api/dashboard/superadmin/payments', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!response.ok) throw new Error('Failed to fetch payment analytics');
 
         const data = await response.json();
@@ -60,7 +67,7 @@ export const usePaymentAnalytics = ({
     };
 
     fetchData();
-  }, [enabled]);
+  }, [enabled, user]);
 
   return {
     paymentAnalytics,

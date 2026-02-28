@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,9 @@ import {
 } from 'firebase/firestore';
 
 export async function GET(request: NextRequest) {
+    const auth = await verifyAuth(request);
+    if (auth.error) return auth.error;
+
     try {
         const searchParams = request.nextUrl.searchParams;
         const limitParam = parseInt(searchParams.get('limit') || '50');
@@ -137,6 +141,9 @@ import { amaAppDb } from '@/firebase/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export async function PATCH(request: NextRequest) {
+    const auth = await verifyAuth(request);
+    if (auth.error) return auth.error;
+
     if (!amaAppDb) {
         return NextResponse.json({ error: 'AMA App Admin not initialized' }, { status: 500 });
     }

@@ -11,10 +11,14 @@ import {
   doc,
   updateDoc
 } from 'firebase/firestore';
+import { verifyAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const limitParam = parseInt(searchParams.get('limit') || '20');
@@ -39,34 +43,34 @@ export async function GET(request: NextRequest) {
 
     // Pagination
     if (lastTimestampParam && lastIdParam) {
-        const lastTimestamp = parseInt(lastTimestampParam);
-        if (!isNaN(lastTimestamp)) {
-            q = query(
-              collectionRef,
-              orderBy('timestamp', 'desc'),
-              orderBy('__name__', 'desc'),
-              startAfter(lastTimestamp, lastIdParam),
-              limit(limitParam)
-            );
-        }
+      const lastTimestamp = parseInt(lastTimestampParam);
+      if (!isNaN(lastTimestamp)) {
+        q = query(
+          collectionRef,
+          orderBy('timestamp', 'desc'),
+          orderBy('__name__', 'desc'),
+          startAfter(lastTimestamp, lastIdParam),
+          limit(limitParam)
+        );
+      }
     }
 
     const snapshot = await getDocs(q);
 
     const questions = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            answer: data.answer,
-            commentsCount: data.commentsCount || 0,
-            content: data.content,
-            phone: data.phone,
-            profileImgUrl: data.profileImgUrl,
-            timestamp: data.timestamp,
-            userId: data.userId,
-            userName: data.userName,
-            userRole: data.userRole
-        };
+      const data = doc.data();
+      return {
+        id: doc.id,
+        answer: data.answer,
+        commentsCount: data.commentsCount || 0,
+        content: data.content,
+        phone: data.phone,
+        profileImgUrl: data.profileImgUrl,
+        timestamp: data.timestamp,
+        userId: data.userId,
+        userName: data.userName,
+        userRole: data.userRole
+      };
     });
 
     return NextResponse.json({
@@ -81,22 +85,25 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const { id, answer } = body;
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.error;
 
-        if (!id || !answer) {
-            return NextResponse.json({ error: 'Missing id or answer' }, { status: 400 });
-        }
+  try {
+    const body = await request.json();
+    const { id, answer } = body;
 
-        const docRef = doc(db, 'questions', id);
-        await updateDoc(docRef, {
-            answer: answer
-        });
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Error updating question:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    if (!id || !answer) {
+      return NextResponse.json({ error: 'Missing id or answer' }, { status: 400 });
     }
+
+    const docRef = doc(db, 'questions', id);
+    await updateDoc(docRef, {
+      answer: answer
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error updating question:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
