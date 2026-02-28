@@ -7,6 +7,7 @@ import EditUserModal from './components/EditUserModal';
 import AddUserModal from './components/AddUserModal';
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import { FiSearch } from 'react-icons/fi';
+import { authFetch } from '@/lib/authFetch';
 
 export default function AppUsersPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -46,7 +47,7 @@ export default function AppUsersPage() {
       // Add cache busting
       params.append('_t', Date.now().toString());
 
-      const response = await fetch(`/api/app-users?${params.toString()}`, {
+      const response = await authFetch(`/api/app-users?${params.toString()}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -135,7 +136,7 @@ export default function AppUsersPage() {
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
       try {
-          const response = await fetch('/api/app-users', {
+          const response = await authFetch('/api/app-users', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id, status: newStatus })
@@ -159,7 +160,7 @@ export default function AppUsersPage() {
 
   const handleSaveUser = async (id: string, data: Partial<AppUser>) => {
     try {
-        const response = await fetch('/api/app-users', {
+        const response = await authFetch('/api/app-users', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, ...data })
@@ -180,7 +181,7 @@ export default function AppUsersPage() {
 
   const handleAddUser = async (data: Omit<AppUser, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-        const response = await fetch('/api/app-users', {
+        const response = await authFetch('/api/app-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

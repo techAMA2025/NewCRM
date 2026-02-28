@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AmaQuestion } from '../types';
+import { authFetch } from '@/lib/authFetch';
 
 interface AnswerModalProps {
   question: AmaQuestion;
@@ -32,7 +33,7 @@ export default function AnswerModal({ question, onClose }: AnswerModalProps) {
             timestamp: Date.now()
         };
 
-        const response = await fetch('/api/ama-questions', {
+        const response = await authFetch('/api/ama-questions', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',

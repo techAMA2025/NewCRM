@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FaHistory } from 'react-icons/fa';
+import { authFetch } from '@/lib/authFetch';
 
 export type AppHistoryItem = {
   content: string;
@@ -28,7 +29,7 @@ const AppLeadsHistoryModal = ({ isOpen, onClose, leadId, leadName, apiPath = '/a
       
       setLoading(true);
       try {
-        const response = await fetch(`${apiPath}/${leadId}/history`, {
+        const response = await authFetch(`${apiPath}/${leadId}/history`, {
             cache: 'no-store',
             headers: {
                 'Pragma': 'no-cache',

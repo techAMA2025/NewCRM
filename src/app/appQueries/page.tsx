@@ -5,6 +5,7 @@ import { AppQuery } from './types';
 import AppQueriesList from './components/AppQueriesList';
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import { FiSearch } from 'react-icons/fi';
+import { authFetch } from '@/lib/authFetch';
 
 export default function AppQueriesPage() {
   const [queries, setQueries] = useState<AppQuery[]>([]);
@@ -37,7 +38,7 @@ export default function AppQueriesPage() {
       }
 
       // Fetch with no-store to ensure we always get fresh data from our dynamic API
-      const response = await fetch(`/api/app-queries?${params.toString()}`, {
+      const response = await authFetch(`/api/app-queries?${params.toString()}`, {
         cache: 'no-store',
         headers: {
           'Pragma': 'no-cache',

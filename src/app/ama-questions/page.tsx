@@ -6,6 +6,7 @@ import AmaQuestionsList from './components/AmaQuestionsList';
 import CommentsModal from './components/CommentsModal';
 import AnswerModal from './components/AnswerModal';
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
+import { authFetch } from '@/lib/authFetch';
 
 export default function AmaQuestionsPage() {
   const [questions, setQuestions] = useState<AmaQuestion[]>([]);
@@ -32,7 +33,7 @@ export default function AmaQuestionsPage() {
         params.append('lastId', lastId);
       }
 
-      const response = await fetch(`/api/ama-questions?${params.toString()}`, {
+      const response = await authFetch(`/api/ama-questions?${params.toString()}`, {
         cache: 'no-store',
         headers: {
           'Pragma': 'no-cache',
@@ -87,7 +88,7 @@ export default function AmaQuestionsPage() {
     }
 
     try {
-      const response = await fetch(`/api/ama-questions/${questionId}`, {
+      const response = await authFetch(`/api/ama-questions/${questionId}`, {
         method: 'DELETE',
       });
 

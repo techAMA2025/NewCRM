@@ -11,6 +11,7 @@ import SalesSidebar from "@/components/navigation/SalesSidebar";
 import AppLeadsHistoryModal from './components/AppLeadsHistoryModal';
 import { FiSearch, FiDownload } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { authFetch } from '@/lib/authFetch';
 
 const statusOptions = [
   "No Status",
@@ -81,7 +82,7 @@ export default function AppLeadsPage() {
           params.append('status', statusFilter);
         }
 
-        const response = await fetch(`/api/app-leads?${params.toString()}`, { cache: 'no-store' });
+        const response = await authFetch(`/api/app-leads?${params.toString()}`, { cache: 'no-store' });
         
         if (!response.ok) {
           throw new Error(`Error: ${response.statusText}`);
@@ -159,7 +160,7 @@ export default function AppLeadsPage() {
 
   const handleUpdateLead = async (id: string, updates: Partial<AppLead>) => {
     try {
-      const response = await fetch('/api/app-leads', {
+      const response = await authFetch('/api/app-leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -203,7 +204,7 @@ export default function AppLeadsPage() {
         params.append('status', statusFilter);
       }
 
-      const response = await fetch(`/api/app-leads?${params.toString()}`, { cache: 'no-store' });
+      const response = await authFetch(`/api/app-leads?${params.toString()}`, { cache: 'no-store' });
       
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);

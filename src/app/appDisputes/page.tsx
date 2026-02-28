@@ -15,6 +15,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/firebase/firebase';
+import { authFetch } from '@/lib/authFetch';
 
 const statusOptions = [
   "No Status",
@@ -86,7 +87,7 @@ export default function DisputesPage() {
           params.append('status', statusFilter);
         }
 
-        const response = await fetch(`/api/disputes?${params.toString()}`, { cache: 'no-store' });
+        const response = await authFetch(`/api/disputes?${params.toString()}`, { cache: 'no-store' });
         
         if (!response.ok) {
           throw new Error(`Error: ${response.statusText}`);
@@ -163,7 +164,7 @@ export default function DisputesPage() {
 
   const handleUpdateDispute = async (id: string, updates: Partial<Dispute>) => {
     try {
-      const response = await fetch('/api/disputes', {
+      const response = await authFetch('/api/disputes', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -207,7 +208,7 @@ export default function DisputesPage() {
         params.append('status', statusFilter);
       }
 
-      const response = await fetch(`/api/disputes?${params.toString()}`, { cache: 'no-store' });
+      const response = await authFetch(`/api/disputes?${params.toString()}`, { cache: 'no-store' });
       
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);

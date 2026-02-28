@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AmaQuestion, AmaComment } from '../types';
 import { FaUser, FaUserShield } from 'react-icons/fa';
+import { authFetch } from '@/lib/authFetch';
 
 interface CommentsModalProps {
   question: AmaQuestion;
@@ -23,7 +24,7 @@ export default function CommentsModal({ question, onClose }: CommentsModalProps)
     const fetchComments = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/ama-questions/${question.id}/comments?_t=${Date.now()}`, {
+        const response = await authFetch(`/api/ama-questions/${question.id}/comments?_t=${Date.now()}`, {
             cache: 'no-store'
         });
         

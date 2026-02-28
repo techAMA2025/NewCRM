@@ -3,6 +3,7 @@ import { doc, updateDoc, setDoc, writeBatch, Timestamp, collection } from 'fireb
 import { db, storage } from '../../firebase/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import BankForm from './BankForm';
+import { authFetch } from '@/lib/authFetch';
 
 interface EditClientDetailsModalProps {
   clientData: any;
@@ -148,7 +149,7 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
       setUploading(true);
       setUploadError(null);
       
-      const response = await fetch('/api/agreement', {
+      const response = await authFetch('/api/agreement', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

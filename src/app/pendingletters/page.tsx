@@ -7,6 +7,7 @@ import { httpsCallable } from 'firebase/functions';
 import OverlordSidebar from '@/components/navigation/OverlordSidebar';
 import { FiFileText, FiMail, FiUser, FiCreditCard, FiTag, FiBriefcase, FiDatabase, FiRefreshCw, FiBarChart } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+import { authFetch } from '@/lib/authFetch';
 
 interface Client {
   id: string;
@@ -140,7 +141,7 @@ export default function PendingLettersPage() {
     setBackfillSourceStatus('Starting settlement source backfill...');
     
     try {
-      const response = await fetch('/api/settlement-tracker/backfill-source', {
+      const response = await authFetch('/api/settlement-tracker/backfill-source', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

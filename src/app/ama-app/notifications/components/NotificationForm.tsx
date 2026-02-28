@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FaPaperPlane, FaBell } from 'react-icons/fa';
+import { authFetch } from '@/lib/authFetch';
 
 export default function NotificationForm() {
   const [title, setTitle] = useState('');
@@ -62,7 +63,7 @@ export default function NotificationForm() {
       // Let's try to get it from somewhere or fallback.
       const userId = 'admin_6666666666'; // Fallback for Overlord
 
-      const response = await fetch('/api/app-notifications', {
+      const response = await authFetch('/api/app-notifications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

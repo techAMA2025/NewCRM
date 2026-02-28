@@ -5,6 +5,7 @@ import { collection, query, where, onSnapshot, Timestamp } from "firebase/firest
 import { db as crmDb } from "@/firebase/firebase"
 import { toast } from "react-toastify"
 import { useRouter } from "next/navigation"
+import { authFetch } from '@/lib/authFetch'
 import OverlordSidebar from "@/components/navigation/OverlordSidebar"
 import BillcutSidebar from "@/components/navigation/BillcutSidebar"
 import AdminSidebar from "@/components/navigation/AdminSidebar"
@@ -732,7 +733,7 @@ const BillcutLeadReportContent = () => {
           params.append("endDate", dateRange.endDate)
         }
 
-        const response = await fetch(`/api/reports/billcut-leads?${params.toString()}`, { cache: 'no-store' })
+        const response = await authFetch(`/api/reports/billcut-leads?${params.toString()}`, { cache: 'no-store' })
         if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("API Error Details:", errorData);
@@ -769,7 +770,7 @@ const BillcutLeadReportContent = () => {
             params.append("productivityEndDate", productivityDateRange.endDate.toISOString())
         }
 
-        const response = await fetch(`/api/reports/billcut-leads?${params.toString()}`, { cache: 'no-store' })
+        const response = await authFetch(`/api/reports/billcut-leads?${params.toString()}`, { cache: 'no-store' })
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           console.error("API Error Details:", errorData);

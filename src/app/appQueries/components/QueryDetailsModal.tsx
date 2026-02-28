@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AppQuery } from '../types';
+import { authFetch } from '@/lib/authFetch';
 
 interface QueryDetailsModalProps {
   query: AppQuery;
@@ -51,7 +52,7 @@ export default function QueryDetailsModal({ query, onClose }: QueryDetailsModalP
             phone: '' // Can't get phone easily from localStorage based on Login implementation
         };
 
-        const response = await fetch('/api/app-queries', {
+        const response = await authFetch('/api/app-queries', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',

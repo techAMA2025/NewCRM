@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { db } from '@/firebase/ama_app';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { FaTimes, FaRobot, FaCalendarAlt, FaCheckCircle, FaExclamationTriangle, FaEdit, FaTrash, FaClock } from 'react-icons/fa';
+import { authFetch } from '@/lib/authFetch';
 
 interface GeneratedNotification {
   day: number;
@@ -55,7 +56,7 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
 
     try {
       setGenerating(true);
-      const res = await fetch('/api/generate-bulk-notifications', {
+      const res = await authFetch('/api/generate-bulk-notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ startDate, topic: topics }),

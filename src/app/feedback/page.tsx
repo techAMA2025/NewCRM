@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { AppFeedback } from './types';
 import FeedbackList from './components/FeedbackList';
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
+import { authFetch } from '@/lib/authFetch';
 
 export default function FeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<AppFeedback[]>([]);
@@ -28,7 +29,7 @@ export default function FeedbackPage() {
         params.append('lastId', lastId);
       }
 
-      const response = await fetch(`/api/feedback?${params.toString()}`, {
+      const response = await authFetch(`/api/feedback?${params.toString()}`, {
         cache: 'no-store',
         headers: {
           'Pragma': 'no-cache',
