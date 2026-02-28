@@ -81,7 +81,8 @@ export default function EditArbitrationCaseModal({
     bankId: '',
     meetLink: '',
     vakalatnama: false,
-    sod: false
+    sod: false,
+    clientAdvocate: ''
   })
   
   const [meetLinkType, setMeetLinkType] = useState<'url' | 'other'>('url')
@@ -101,7 +102,8 @@ export default function EditArbitrationCaseModal({
         bankId: caseData.bankId || '',
         meetLink: caseData.meetLink || '',
         vakalatnama: caseData.vakalatnama || false,
-        sod: caseData.sod || false
+        sod: caseData.sod || false,
+        clientAdvocate: caseData.clientAdvocate || ''
       })
 
       // Determine initial meetLinkType

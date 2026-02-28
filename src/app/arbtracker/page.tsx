@@ -34,7 +34,8 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 const DEFAULT_COLUMNS = [
   { id: 'date', label: 'Date', width: 'w-32' },
   { id: 'clientName', label: 'Client Name', width: 'w-48' },
-  { id: 'advocate', label: 'Advocate', width: 'w-32' },
+  { id: 'clientAdvocate', label: 'Client Advocate', width: 'w-40' },
+  { id: 'advocate', label: 'Case Advocate', width: 'w-32' },
   { id: 'time', label: 'Time', width: 'w-24' },
   { id: 'hearing', label: 'Hearing #', width: 'w-24' },
   { id: 'status', label: 'Status', width: 'w-32' },
@@ -297,6 +298,8 @@ const ArbitrationRow = ({
               <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5 uppercase tracking-wide">{c.type}</div>
             </td>
           );
+        case 'clientAdvocate':
+          return <td key="clientAdvocate" className="px-6 py-5 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 italic font-medium">{c.clientAdvocate || '-'}</td>;
         case 'advocate':
           return <td key="advocate" className="px-6 py-5 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{c.adv_name || '-'}</td>;
         case 'time':
@@ -443,17 +446,38 @@ export default function ArbitrationTracker() {
         const q = query(arbitrationRef, orderBy('createdAt', 'desc'))
         const snapshot = await getDocs(q)
         
-        const caseData = snapshot.docs.map(doc => {
+        const caseData: any[] = snapshot.docs.map(doc => {
           const data = doc.data();
           const normalizedTime = data.time ? normalizeTimeForStorage(data.time) : '';
           return {
-            id: doc.id,
             ...data,
+            id: doc.id,
             time: normalizedTime
           }
         })
+
+        // Fetch client advocates from clients collection
+        const clientsRef = collection(db, 'clients');
+        const clientsSnapshot = await getDocs(clientsRef);
+        const clientMap: Record<string, string> = {};
+        clientsSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.name) {
+                // Normalize key: lowercase and trim
+                const normalizedKey = data.name.toLowerCase().trim().replace(/\s+/g, ' ');
+                clientMap[normalizedKey] = data.alloc_adv || '';
+            }
+        });
+
+        const enrichedCases = caseData.map(c => {
+            const normalizedLookupName = (c.clientName || '').toLowerCase().trim().replace(/\s+/g, ' ');
+            return {
+                ...c,
+                clientAdvocate: c.clientAdvocate || clientMap[normalizedLookupName] || '-'
+            };
+        });
         
-        setCases(caseData)
+        setCases(enrichedCases)
       } catch (error) {
         console.error('Error fetching arbitration cases:', error)
       } finally {

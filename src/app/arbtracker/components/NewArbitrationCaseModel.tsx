@@ -26,12 +26,14 @@ export interface ArbitrationCaseData {
   sod: boolean
   adv_name?: string
   hearingCount?: number
+  clientAdvocate?: string
 }
 
 interface Client {
   id: string
   name: string
   banks: any[]
+  alloc_adv?: string
 }
 
 // Format time for HTML5 time input - ensures it's always in HH:mm format
@@ -78,7 +80,8 @@ const initialCaseData: ArbitrationCaseData = {
   meetLink: '',
   vakalatnama: false,
   sod: false,
-  adv_name: ''
+  adv_name: '',
+  clientAdvocate: ''
 }
 
 export default function NewArbitrationCaseModal({
@@ -107,7 +110,8 @@ export default function NewArbitrationCaseModal({
         const clientsData = snapshot.docs.map(doc => ({
           id: doc.id,
           name: doc.data().name,
-          banks: doc.data().banks || []
+          banks: doc.data().banks || [],
+          alloc_adv: doc.data().alloc_adv || ''
         }))
         setClients(clientsData)
 
@@ -149,6 +153,7 @@ export default function NewArbitrationCaseModal({
       clientId: client.id,
       bankName: '',
       bankId: '',
+      clientAdvocate: client.alloc_adv || ''
     }))
     setSearchTerm(client.name)
     setIsDropdownOpen(false)
