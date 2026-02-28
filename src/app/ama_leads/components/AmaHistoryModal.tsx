@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FaHistory } from 'react-icons/fa';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
+import { useAuth } from '@/context/AuthContext';
 
 export type AmaHistoryItem = {
   content: string;
@@ -19,20 +20,23 @@ type AmaHistoryModalProps = {
 };
 
 const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
+  const { user } = useAuth();
   const [history, setHistory] = useState<AmaHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!isOpen || !leadId) return;
+      if (!isOpen || !leadId || !user) return;
       
       setLoading(true);
       try {
+        const token = await user.getIdToken();
         const response = await fetch(`/api/leads/${leadId}/history`, {
             cache: 'no-store',
             headers: {
                 'Pragma': 'no-cache',
-                'Cache-Control': 'no-cache'
+                'Cache-Control': 'no-cache',
+                'Authorization': `Bearer ${token}`
             }
         });
         if (!response.ok) throw new Error("Failed to fetch history");
@@ -46,7 +50,7 @@ const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
     };
 
     fetchHistory();
-  }, [isOpen, leadId]);
+  }, [isOpen, leadId, user]);
 
   if (!isOpen) return null;
 

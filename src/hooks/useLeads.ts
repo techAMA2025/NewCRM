@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react"
 import { toast } from "react-toastify"
+import { useAuth } from "@/context/AuthContext"
 
 export interface Lead {
     id: string
@@ -52,6 +53,7 @@ interface Stats {
 }
 
 export const useLeads = () => {
+    const { user } = useAuth()
     const [leads, setLeads] = useState<Lead[]>([])
     const [meta, setMeta] = useState<LeadsMeta>({ total: 0, page: 1, limit: 50, totalPages: 0 })
     const [stats, setStats] = useState<Stats>({ total: 0, callback: 0, today: 0 })
@@ -60,9 +62,12 @@ export const useLeads = () => {
     const [error, setError] = useState<string | null>(null)
 
     const fetchLeads = useCallback(async (params: FetchParams, append: boolean = false) => {
+        if (!user) return; // Don't fetch if not logged in
+
         setIsLoading(true)
         setError(null)
         try {
+            const token = await user.getIdToken()
             const queryParams = new URLSearchParams()
             if (params.page) queryParams.set("page", params.page.toString())
             if (params.limit) queryParams.set("limit", params.limit.toString())
@@ -85,7 +90,8 @@ export const useLeads = () => {
                 cache: 'no-store',
                 headers: {
                     'Pragma': 'no-cache',
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache',
+                    'Authorization': `Bearer ${token}`
                 }
             })
             if (!response.ok) {
@@ -120,11 +126,13 @@ export const useLeads = () => {
         } finally {
             setIsLoading(false)
         }
-    }, [])
+    }, [user])
 
     const fetchStats = useCallback(async (params: FetchParams) => {
+        if (!user) return;
         setIsStatsLoading(true)
         try {
+            const token = await user.getIdToken()
             const queryParams = new URLSearchParams()
             if (params.status && params.status !== "all") queryParams.set("status", params.status)
             if (params.source && params.source !== "all") queryParams.set("source", params.source)
@@ -135,7 +143,8 @@ export const useLeads = () => {
                 cache: 'no-store',
                 headers: {
                     'Pragma': 'no-cache',
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache',
+                    'Authorization': `Bearer ${token}`
                 }
             })
             if (!response.ok) throw new Error("Failed to fetch stats")
@@ -148,13 +157,18 @@ export const useLeads = () => {
         } finally {
             setIsStatsLoading(false)
         }
-    }, [])
+    }, [user])
 
     const performAction = useCallback(async (action: string, leadIds: string[], payload: any = {}) => {
+        if (!user) return false;
         try {
+            const token = await user.getIdToken()
             const response = await fetch("/api/leads/actions", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ action, leadIds, payload }),
             })
 
@@ -169,17 +183,20 @@ export const useLeads = () => {
             toast.error(err instanceof Error ? err.message : "Action failed")
             return false
         }
-    }, [])
+    }, [user])
 
     const [salespersons, setSalespersons] = useState<any[]>([])
 
     const fetchSalespersons = useCallback(async () => {
+        if (!user) return;
         try {
+            const token = await user.getIdToken()
             const response = await fetch("/api/users/salespersons", {
                 cache: 'no-store',
                 headers: {
                     'Pragma': 'no-cache',
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache',
+                    'Authorization': `Bearer ${token}`
                 }
             })
             if (!response.ok) throw new Error("Failed to fetch salespersons")
@@ -188,7 +205,7 @@ export const useLeads = () => {
         } catch (err) {
             console.error(err)
         }
-    }, [])
+    }, [user])
 
     return {
         leads,

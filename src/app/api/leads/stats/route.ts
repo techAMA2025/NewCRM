@@ -1,81 +1,94 @@
 import { NextRequest, NextResponse } from "next/server"
-import { adminDb } from "@/firebase/firebase-admin"
+import { adminDb, adminAuth } from "@/firebase/firebase-admin"
 import { Timestamp } from "firebase-admin/firestore"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
-    if (!adminDb) {
+    if (!adminDb || !adminAuth) {
         return NextResponse.json({ error: "Firebase Admin not initialized" }, { status: 500 });
     }
 
+    // --- Authentication Check ---
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+        return NextResponse.json({ error: "Unauthorized: Missing or invalid token" }, { status: 401 });
+    }
+
+    const idToken = authHeader.split("Bearer ")[1];
+
     try {
-        const searchParams = request.nextUrl.searchParams
-        const status = searchParams.get("status")
-        const source = searchParams.get("source")
-        const salespersonId = searchParams.get("salespersonId")
-        const tab = searchParams.get("tab") || "all"
+        // Verify the token
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const uid = decodedToken.uid;
 
-        // Base collection reference
-        const baseRef = adminDb.collection("ama_leads")
+        // Verify user exists in your 'users' collection
+        const userDoc = await adminDb.collection("users").where("uid", "==", uid).limit(1).get();
 
-        // Helper to apply common filters
-        const applyFilters = (query: FirebaseFirestore.Query) => {
-            if (status && status !== "all") query = query.where("status", "==", status)
-            if (source && source !== "all") query = query.where("source", "==", source)
-            if (salespersonId && salespersonId !== "all") {
-                if (salespersonId === "unassigned") {
-                    query = query.where("assigned_to", "in", ["–", "-", "", null])
-                } else {
-                    query = query.where("assigned_to", "==", salespersonId)
-                }
-            }
-            return query
+        if (userDoc.empty) {
+            console.warn(`[AUTH] Unauthorized stats access attempt by UID: ${uid}`);
+            return NextResponse.json({ error: "Unauthorized: User not found in database" }, { status: 403 });
         }
 
-        // 1. Total Count (matching current filters)
-        let totalQuery = applyFilters(baseRef)
+        try {
+            const searchParams = request.nextUrl.searchParams
+            const status = searchParams.get("status")
+            const source = searchParams.get("source")
+            const salespersonId = searchParams.get("salespersonId")
+            const tab = searchParams.get("tab") || "all"
 
-        // Apply tab logic to total count if needed, but usually "Total" means "All leads matching filters"
-        // If we are in "Callback" tab, the total count shown should probably be the callback count?
-        // Usually, the UI shows "Total Leads: X" (global) and then counts for tabs.
-        // Let's return specific counts for tabs regardless of current selection, 
-        // AND a "filtered" count for the current view.
+            // Base collection reference
+            const baseRef = adminDb.collection("ama_leads")
 
-        // A. Global Stats (ignoring current filters, but maybe respecting salesperson filter if user is sales?)
-        // For now, we'll return raw counts for tabs.
+            // Helper to apply common filters
+            const applyFilters = (query: FirebaseFirestore.Query) => {
+                if (status && status !== "all") query = query.where("status", "==", status)
+                if (source && source !== "all") query = query.where("source", "==", source)
+                if (salespersonId && salespersonId !== "all") {
+                    if (salespersonId === "unassigned") {
+                        query = query.where("assigned_to", "in", ["–", "-", "", null])
+                    } else {
+                        query = query.where("assigned_to", "==", salespersonId)
+                    }
+                }
+                return query
+            }
 
-        const callbackQuery = baseRef.where("status", "==", "Callback")
+            // Execute aggregations in parallel
+            const callbackQuery = baseRef.where("status", "==", "Callback")
 
-        const startOfDay = new Date()
-        startOfDay.setHours(0, 0, 0, 0)
-        const endOfDay = new Date()
-        endOfDay.setHours(23, 59, 59, 999)
-        const todayQuery = baseRef
-            .where("synced_at", ">=", Timestamp.fromDate(startOfDay))
-            .where("synced_at", "<=", Timestamp.fromDate(endOfDay))
+            const startOfDay = new Date()
+            startOfDay.setHours(0, 0, 0, 0)
+            const endOfDay = new Date()
+            endOfDay.setHours(23, 59, 59, 999)
+            const todayQuery = baseRef
+                .where("synced_at", ">=", Timestamp.fromDate(startOfDay))
+                .where("synced_at", "<=", Timestamp.fromDate(endOfDay))
 
-        // Execute aggregations in parallel
-        const [totalSnap, callbackSnap, todaySnap] = await Promise.all([
-            applyFilters(baseRef).count().get(), // Count matching *current* filters
-            callbackQuery.count().get(),         // Total callbacks (global)
-            todayQuery.count().get()             // Total today (global)
-        ])
+            const [totalSnap, callbackSnap, todaySnap] = await Promise.all([
+                applyFilters(baseRef).count().get(),
+                callbackQuery.count().get(),
+                todayQuery.count().get()
+            ])
 
-        const totalCount = totalSnap.data().count
-        const callbackCount = callbackSnap.data().count
-        const todayCount = todaySnap.data().count
-        const estimatedReads = Math.ceil(totalCount / 1000) + Math.ceil(callbackCount / 1000) + Math.ceil(todayCount / 1000)
-        console.log(`[API DEBUG] fetchStats: Total: ${totalCount}, Callback: ${callbackCount}, Today: ${todayCount}, Estimated Reads: ${estimatedReads}`)
+            const totalCount = totalSnap.data().count
+            const callbackCount = callbackSnap.data().count
+            const todayCount = todaySnap.data().count
 
-        return NextResponse.json({
-            total: totalSnap.data().count,
-            callback: callbackSnap.data().count,
-            today: todaySnap.data().count
-        })
+            console.log(`[API DEBUG] fetchStats: Total: ${totalCount}, Callback: ${callbackCount}, Today: ${todayCount}`)
 
-    } catch (error) {
-        console.error("Error fetching lead stats:", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+            return NextResponse.json({
+                total: totalCount,
+                callback: callbackCount,
+                today: todayCount
+            })
+
+        } catch (error) {
+            console.error("Error fetching lead stats:", error)
+            return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        }
+    } catch (authError: any) {
+        console.error("Authentication Error:", authError);
+        return NextResponse.json({ error: "Unauthorized: Invalid or expired token" }, { status: 401 });
     }
 }
