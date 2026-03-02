@@ -5,13 +5,13 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBSeECr8rLsXuiWXDujOLRDU8c3FiLF8fM",
-  authDomain: "amalegal-app.firebaseapp.com",
-  projectId: "amalegal-app",
-  storageBucket: "amalegal-app.firebasestorage.app",
-  messagingSenderId: "7012510059",
-  appId: "1:7012510059:web:851ec10c1f83c55ec5442e",
-  measurementId: "G-7ELKYC91G6"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_AMA_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AMA_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_AMA_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_AMA_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_AMA_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_AMA_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_AMA_MEASUREMENT_ID
 };
 
 // Initialize Firebase
