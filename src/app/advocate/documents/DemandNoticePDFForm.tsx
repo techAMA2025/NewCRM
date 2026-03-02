@@ -7,6 +7,7 @@ import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import SearchableDropdown from "@/components/SearchableDropdown";
 import { findClosestBankMatch } from "@/utils/bankMatching";
+import { authFetch } from "@/lib/authFetch";
 
 // Utility used from @/utils/bankMatching
 
@@ -308,7 +309,7 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
     
     try {
       // Call the document generation API
-      const response = await fetch('/api/demand-pdf', {
+      const response = await authFetch('/api/demand-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

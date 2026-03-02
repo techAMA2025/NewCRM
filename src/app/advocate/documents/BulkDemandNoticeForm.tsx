@@ -7,6 +7,7 @@ import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import { findClosestBankMatch } from "@/utils/bankMatching";
 import SearchableDropdown from "@/components/SearchableDropdown";
+import { authFetch } from "@/lib/authFetch";
 
 interface BankAccount {
   id: string;
@@ -140,7 +141,7 @@ export default function BulkDemandNoticeForm({ onClose }: BulkDemandNoticeFormPr
         date: date
       }));
 
-      const response = await fetch('/api/bulk-demand-document', {
+      const response = await authFetch('/api/bulk-demand-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notices }),

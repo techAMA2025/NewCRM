@@ -119,6 +119,27 @@ export async function GET(request: NextRequest) {
             ]);
 
             // 3. Fetch Salesperson Stats (Interested/Converted)
+            // Always filter by current month for salesperson stats, even when no explicit date filter is applied
+            const applyMonthFilters = (query: FirebaseFirestore.Query, type: 'ama' | 'billcut') => {
+                let q = query;
+                if (isFilterApplied && (startDateParam || endDateParam)) {
+                    // Use the explicit date filter when applied
+                    if (startDateParam) {
+                        const start = new Date(startDateParam);
+                        q = q.where(type === 'ama' ? "synced_at" : "synced_date", ">=", Timestamp.fromDate(start));
+                    }
+                    if (endDateParam) {
+                        const end = new Date(`${endDateParam}T23:59:59`);
+                        q = q.where(type === 'ama' ? "synced_at" : "synced_date", "<=", Timestamp.fromDate(end));
+                    }
+                } else {
+                    // Default to current month when no filter is applied
+                    q = q.where(type === 'ama' ? "synced_at" : "synced_date", ">=", Timestamp.fromDate(currentMonthStart));
+                    q = q.where(type === 'ama' ? "synced_at" : "synced_date", "<=", Timestamp.fromDate(currentMonthEnd));
+                }
+                return q;
+            };
+
             const usersRef = adminDb.collection("users");
             const salesUsersSnapshot = await usersRef.where("role", "==", "sales").get();
             const salesUsers: string[] = [];
@@ -132,14 +153,14 @@ export async function GET(request: NextRequest) {
 
             const salespersonPromises = salesUsers.flatMap(name => [
                 (async () => {
-                    const qLeads = applyBaseFilters(amaLeadsCol, 'ama').where('assigned_to', '==', name).where('status', '==', 'Interested');
-                    const qBillcut = applyBaseFilters(billcutLeadsCol, 'billcut').where('assigned_to', '==', name).where('category', '==', 'Interested');
+                    const qLeads = applyMonthFilters(amaLeadsCol, 'ama').where('assigned_to', '==', name).where('status', '==', 'Interested');
+                    const qBillcut = applyMonthFilters(billcutLeadsCol, 'billcut').where('assigned_to', '==', name).where('category', '==', 'Interested');
                     const [s1, s2] = await Promise.all([qLeads.count().get(), qBillcut.count().get()]);
                     return { name, type: 'interested', count: s1.data().count + s2.data().count };
                 })(),
                 (async () => {
-                    const qLeads = applyBaseFilters(amaLeadsCol, 'ama').where('assigned_to', '==', name).where('status', '==', 'Converted');
-                    const qBillcut = applyBaseFilters(billcutLeadsCol, 'billcut').where('assigned_to', '==', name).where('category', '==', 'Converted');
+                    const qLeads = applyMonthFilters(amaLeadsCol, 'ama').where('assigned_to', '==', name).where('status', '==', 'Converted');
+                    const qBillcut = applyMonthFilters(billcutLeadsCol, 'billcut').where('assigned_to', '==', name).where('category', '==', 'Converted');
                     const [s1, s2] = await Promise.all([qLeads.count().get(), qBillcut.count().get()]);
                     return { name, type: 'converted', count: s1.data().count + s2.data().count };
                 })()

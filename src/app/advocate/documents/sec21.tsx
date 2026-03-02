@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import SearchableDropdown from "@/components/SearchableDropdown";
+import { authFetch } from "@/lib/authFetch";
 
 // Fuzzy matching function to find closest bank name
 const findClosestBankMatch = (clientBankName: string, availableBanks: string[]): string | null => {
@@ -415,7 +416,7 @@ export default function Sec21Form({ onClose }: Sec21FormProps) {
     
     try {
       // Call the document generation API
-      const response = await fetch('/api/sec21-notice', {
+      const response = await authFetch('/api/sec21-notice', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

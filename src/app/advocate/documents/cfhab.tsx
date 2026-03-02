@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import SearchableDropdown from "@/components/SearchableDropdown";
+import { authFetch } from "@/lib/authFetch";
 
 // Fuzzy matching function to find closest bank name
 const findClosestBankMatch = (clientBankName: string, availableBanks: string[]): string | null => {
@@ -415,7 +416,7 @@ export default function CFHABForm({ onClose }: CFHABFormProps) {
     
     try {
       // Call the API to generate the Word document
-      const response = await fetch('/api/cfhab', {
+      const response = await authFetch('/api/cfhab', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

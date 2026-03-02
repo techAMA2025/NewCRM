@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { useBankDataSimple } from "@/components/BankDataProvider";
 import SearchableDropdown from "@/components/SearchableDropdown";
+import { authFetch } from "@/lib/authFetch";
 
 // Fuzzy matching function to find closest bank name
 const findClosestBankMatch = (clientBankName: string, availableBanks: string[]): string | null => {
@@ -459,7 +460,7 @@ export default function LegalNoticeForm({ client, onClose }: LegalNoticeFormProp
 
     try {
       // Format the data for API submission
-      const response = await fetch("/api/sec138", {
+      const response = await authFetch("/api/sec138", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
