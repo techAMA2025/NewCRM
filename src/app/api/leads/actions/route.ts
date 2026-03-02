@@ -117,32 +117,13 @@ export async function POST(request: NextRequest) {
                     updateData.language = payload.language
                 }
 
-                // --- Status History Logic ---
-                // Get existing history or initialize
-                const existingHistory = data?.statusHistory || [];
-                const newHistoryEntry = {
-                    status: status,
-                    timestamp: new Date().toISOString(),
-                    updatedBy: 'api' // Default, will try to get from user context if available
-                };
-
-                // If we have access to the user performing the action, we should use it. 
-                // But this route handler doesn't seem to extract user from request easily without auth middleware details.
-                // However, target updates logic below extracts userId/Name from the lead doc (assignedTo). 
-                // That might not be the *updater*, but the *assignee*.
-                // For now, we'll store 'api' or if payload has updatedBy.
+                // --- Status History ---
+                // statusHistory is now automatically managed by the Firestore trigger
+                // (onAmaLeadStatusChange in Cloud Functions). We just set lastStatusUpdatedBy
+                // so the trigger knows who made the change.
                 if (payload.updatedBy) {
-                    newHistoryEntry.updatedBy = payload.updatedBy;
+                    updateData.lastStatusUpdatedBy = payload.updatedBy;
                 }
-
-                let newHistory = [...existingHistory, newHistoryEntry];
-
-                // Enforce Limit of 5 (FIFO)
-                if (newHistory.length > 5) {
-                    newHistory = newHistory.slice(newHistory.length - 5);
-                }
-
-                updateData.statusHistory = newHistory;
                 // ---------------------------
 
                 batch.update(docRef, updateData)

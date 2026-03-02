@@ -1332,20 +1332,12 @@ const BillCutLeadsPage = () => {
     
     // Prepare updates for optimistic UI
     const leadUpdates = { ...data };
-    let newHistory = currentLead?.statusHistory || [];
 
-    if ("status" in data && data.status !== currentLead?.status) {
-        const newHistoryEntry = {
-            status: data.status,
-            timestamp: new Date().toISOString(),
-            updatedBy: currentUser?.email || currentUser?.displayName || "Unknown User"
-        };
-        // Use a Set-like logic or just ensure we don't duplicate the exact same status sequentially
-        newHistory = [...newHistory, newHistoryEntry].slice(-5);
-        leadUpdates.statusHistory = newHistory;
-    }
+    // statusHistory is now automatically managed by the Firestore trigger
+    // (onBillcutLeadStatusChange in Cloud Functions). We just set lastStatusUpdatedBy
+    // so the trigger knows who made the change.
 
-    // Apply optimistic update immediately with history
+    // Apply optimistic update immediately
     updateLeadOptimistic(id, leadUpdates)
 
     try {
@@ -1357,7 +1349,7 @@ const BillCutLeadsPage = () => {
 
       if ("status" in data) {
         updateData.category = data.status
-        updateData.statusHistory = newHistory
+        updateData.lastStatusUpdatedBy = currentUser?.email || currentUser?.displayName || "Unknown User"
       }
 
       if ("assignedTo" in data) {
