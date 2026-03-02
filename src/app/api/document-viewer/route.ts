@@ -42,6 +42,28 @@ export async function GET(request: NextRequest) {
         const isDocx = extension === 'docx' || extension === 'doc';
         const isPdf = extension === 'pdf';
 
+        // Sanitize inputs to prevent XSS
+        const escapeHTML = (str: string) => str.replace(/[&<>"']/g, (m) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[m] || m));
+
+        const escapeJS = (str: string) => JSON.stringify(str).slice(1, -1).replace(/</g, '\\u003c');
+
+        const sanitizedDocumentName = escapeHTML(documentName);
+        const sanitizedExtension = escapeHTML(extension || '');
+
+        // Ensure proxyUrl doesn't contain javascript: or other dangerous schemes
+        const safeProxyUrl = (proxyUrl.toLowerCase().includes('javascript:') || proxyUrl.toLowerCase().includes('data:'))
+            ? '#'
+            : proxyUrl;
+        const sanitizedProxyUrl = escapeHTML(safeProxyUrl);
+        const sanitizedProxyUrlJS = escapeJS(safeProxyUrl);
+        const sanitizedDocumentNameJS = escapeJS(documentName);
+
         // Generate HTML content for document viewing
         const htmlContent = `
 <!DOCTYPE html>
@@ -49,7 +71,7 @@ export async function GET(request: NextRequest) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${documentName}</title>
+    <title>${sanitizedDocumentName}</title>
     <style>
         body {
             margin: 0;
@@ -191,7 +213,7 @@ export async function GET(request: NextRequest) {
         <div class="header">
             <div style="display: flex; align-items: center;">
                 <span style="margin-right: 12px;">📄</span>
-                <span>${documentName}</span>
+                <span>${sanitizedDocumentName}</span>
             </div>
             <button class="close-btn" onclick="closeViewer()">×</button>
         </div>
@@ -221,12 +243,12 @@ export async function GET(request: NextRequest) {
                 </p>
                 
                 <div class="file-info">
-                    <strong>File:</strong> ${documentName}<br>
-                    <strong>Type:</strong> ${extension?.toUpperCase()} Document
+                    <strong>File:</strong> ${sanitizedDocumentName}<br>
+                    <strong>Type:</strong> ${sanitizedExtension.toUpperCase()} Document
                 </div>
                 
                 <div style="margin-top: 32px;">
-                    <a href="${proxyUrl}" class="download-btn" onclick="trackDownload()">
+                    <a href="${sanitizedProxyUrl}" class="download-btn" onclick="trackDownload()">
                         📥 Download Document
                     </a>
                     <br>
@@ -241,14 +263,14 @@ export async function GET(request: NextRequest) {
     
     <script>
         const isPdf = ${isPdf};
-        const proxyUrl = '${proxyUrl}';
+        const proxyUrl = '${sanitizedProxyUrlJS}';
         
         function closeViewer() {
             window.parent.postMessage({action: 'closeViewer'}, '*');
         }
         
         function trackDownload() {
-            console.log('Document download initiated:', '${documentName}');
+            console.log('Document download initiated:', '${sanitizedDocumentNameJS}');
         }
         
         ${isPdf ? `
