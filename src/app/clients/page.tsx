@@ -25,6 +25,7 @@ import {
   arrayRemove,
 } from "firebase/firestore"
 import { db } from "@/firebase/firebase"
+import { authFetch } from '@/lib/authFetch'
 import { Button } from "@/components/ui/button"
 import { 
   Download, 
@@ -1037,7 +1038,7 @@ function ClientsPageWithParams() {
         }
       }
       
-      const response = await fetch(apiEndpoint, {
+      const response = await authFetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
