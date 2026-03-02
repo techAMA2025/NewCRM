@@ -5,6 +5,7 @@ import  {db, storage}  from '../../firebase/firebase'
 import { doc, setDoc, writeBatch } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { getBankDataSync, getBankData } from '../../data/bankData'
+import { authFetch } from '@/lib/authFetch'
 
 // Define Indian states array
 const indianStates = [
@@ -443,7 +444,7 @@ const EditClientModal = ({
       }
       
 
-      const response = await fetch(apiEndpoint, {
+      const response = await authFetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
