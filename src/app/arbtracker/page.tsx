@@ -9,6 +9,7 @@ import { FaPlus, FaSearch, FaCheck, FaTimes, FaGripVertical } from 'react-icons/
 import { Moon, Sun } from 'lucide-react'
 import NewArbitrationCaseModal, { ArbitrationCaseData } from './components/NewArbitrationCaseModel'
 import EditArbitrationCaseModal from './components/EditArbitrationCaseModal'
+import CustomDateInput from './components/CustomDateInput'
 import { db } from '@/firebase/firebase'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, deleteDoc } from 'firebase/firestore'
 import {
@@ -389,8 +390,8 @@ export default function ArbitrationTracker() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [dateFilter, setDateFilter] = useState('')
-  const [customStartDate, setCustomStartDate] = useState('')
-  const [customEndDate, setCustomEndDate] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [cases, setCases] = useState<any[]>([])
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -553,11 +554,16 @@ export default function ArbitrationTracker() {
           thirtyDays.setDate(today.getDate() + 30);
           return caseDate >= today && caseDate <= thirtyDays;
         case 'custom':
-          if (!customStartDate || !customEndDate) return true;
-          const startDate = new Date(customStartDate);
-          const endDate = new Date(customEndDate);
-          endDate.setHours(23, 59, 59, 999); 
-          return caseDate >= startDate && caseDate <= endDate;
+          if (!fromDate && !toDate) return true;
+          const start = fromDate ? new Date(fromDate) : null;
+          if (start) start.setHours(0, 0, 0, 0);
+          const end = toDate ? new Date(toDate) : null;
+          if (end) end.setHours(23, 59, 59, 999);
+
+          if (start && end) return caseDate >= start && caseDate <= end;
+          if (start) return caseDate >= start;
+          if (end) return caseDate <= end;
+          return true;
         default:
           return true;
       }
@@ -667,6 +673,22 @@ export default function ArbitrationTracker() {
             <option value="30days">Next 30 Days</option>
             <option value="custom">Custom Range</option>
           </select>
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <CustomDateInput 
+                value={fromDate} 
+                onChange={setFromDate}
+                placeholder="From Date"
+                max={toDate || undefined}
+              />
+              <CustomDateInput 
+                value={toDate} 
+                onChange={setToDate}
+                placeholder="To Date"
+                min={fromDate || undefined}
+              />
+            </div>
+          )}
         </div>
         <div className="relative">
           <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm" />
