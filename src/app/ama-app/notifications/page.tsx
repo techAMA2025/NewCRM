@@ -6,12 +6,14 @@ import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import NotificationHistoryModal from './components/NotificationHistoryModal';
 import ScheduleNotificationModal from './components/ScheduleNotificationModal';
 import BulkScheduleModal from './components/BulkScheduleModal';
-import { FaHistory, FaBell, FaRobot } from 'react-icons/fa';
+import BulkManagementModal from './components/BulkManagementModal';
+import { FaHistory, FaBell, FaRobot, FaCalendarAlt } from 'react-icons/fa';
 
 export default function NotificationsPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [isManageOpen, setIsManageOpen] = useState(false);
 
   return (
     <OverlordSidebar>
@@ -27,18 +29,25 @@ export default function NotificationsPage() {
                 AI Bulk Schedule
               </button>
               <button
-                onClick={() => setIsScheduleOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
+                onClick={() => setIsManageOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 shadow-sm"
               >
-                <FaBell className="text-purple-500" />
-                Schedule Notifications
+                <FaCalendarAlt size={14} />
+                Manage Scheduled
+              </button>
+              <button
+                onClick={() => setIsScheduleOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 shadow-sm"
+              >
+                <FaBell size={14} className="text-purple-500" />
+                Individual Schedule
               </button>
               <button
                 onClick={() => setIsHistoryOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 shadow-sm"
               >
-                <FaHistory />
-                View History
+                <FaHistory size={14} />
+                Sent History
               </button>
             </div>
         </header>
@@ -78,6 +87,11 @@ export default function NotificationsPage() {
         <BulkScheduleModal
           isOpen={isBulkOpen}
           onClose={() => setIsBulkOpen(false)}
+        />
+
+        <BulkManagementModal 
+          isOpen={isManageOpen}
+          onClose={() => setIsManageOpen(false)}
         />
       </div>
     </OverlordSidebar>
