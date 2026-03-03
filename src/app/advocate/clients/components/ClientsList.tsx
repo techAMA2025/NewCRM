@@ -8,6 +8,7 @@ import ClientEditModal from "@/components/clients/ClientEditModal"
 import RequestLetterForm from "../requestletter"
 import DemandNoticeForm from "../demandnotice"
 import ComplaintForHarassmentForm from "../cfhab"
+import VakalatnamaPDFForm from "../../documents/VakalatnamaPDFForm"
 import DocumentEditor from "../DocumentEditor"
 import { useClients } from "../hooks/userClient"
 import { getWeekFromStartDate } from "../utils/formatters"
@@ -110,6 +111,7 @@ export default function ClientsList() {
   const [isLegalNoticeModalOpen, setIsLegalNoticeModalOpen] = useState(false)
   const [isDemandNoticeModalOpen, setIsDemandNoticeModalOpen] = useState(false)
   const [isHarassmentComplaintModalOpen, setIsHarassmentComplaintModalOpen] = useState(false)
+  const [isVakalatnamaModalOpen, setIsVakalatnamaModalOpen] = useState(false)
   const [selectedClientForDoc, setSelectedClientForDoc] = useState<Client | null>(null)
 
   // History modal
@@ -287,6 +289,11 @@ export default function ClientsList() {
     setIsHarassmentComplaintModalOpen(true)
   }
 
+  const openVakalatnamaModal = (client: Client) => {
+    setSelectedClientForDoc(client)
+    setIsVakalatnamaModalOpen(true)
+  }
+
   const openDocumentEditor = (url: string, name: string, index: number, clientId: string) => {
     setEditingDocument({ url, name, index, clientId })
   }
@@ -462,6 +469,7 @@ export default function ClientsList() {
         openHarassmentComplaintModal={openHarassmentComplaintModal}
         openDocumentEditor={openDocumentEditor}
         openBillCutDocument={openBillCutDocument}
+        openVakalatnamaModal={openVakalatnamaModal}
       />
 
       <ClientEditModal
@@ -588,6 +596,26 @@ export default function ClientsList() {
             <ComplaintForHarassmentForm
               client={selectedClientForDoc}
               onClose={() => setIsHarassmentComplaintModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {isVakalatnamaModalOpen && selectedClientForDoc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-3xl w-full animate-fadeIn shadow-2xl">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">Generate Vakalatnama</h2>
+              <button
+                onClick={() => setIsVakalatnamaModalOpen(false)}
+                className="rounded-full h-8 w-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <VakalatnamaPDFForm 
+                initialClient={selectedClientForDoc} 
+                onClose={() => setIsVakalatnamaModalOpen(false)} 
             />
           </div>
         </div>

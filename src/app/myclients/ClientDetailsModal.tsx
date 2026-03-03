@@ -70,10 +70,11 @@ interface ClientDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   formatDate: (timestamp: any) => string;
-  openDocumentViewer: (url: string, name: string) => void; // Add this prop
+  openDocumentViewer: (url: string, name: string) => void;
+  openVakalatnamaModal?: (client: any) => void;
 }
 
-export default function ClientDetailsModal({ client, isOpen, onClose, formatDate, openDocumentViewer }: ClientDetailsModalProps) {
+export default function ClientDetailsModal({ client, isOpen, onClose, formatDate, openDocumentViewer, openVakalatnamaModal }: ClientDetailsModalProps) {
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-10" onClose={onClose}>

@@ -8,6 +8,7 @@ import ClientDetailsModal from './ClientDetailsModal';
 import ClientEditModal from './ClientEditModal';
 import SalesSidebar from '@/components/navigation/SalesSidebar';
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendarAlt, FaEye, FaFileAlt } from 'react-icons/fa';
+import VakalatnamaPDFForm from '../advocate/documents/VakalatnamaPDFForm';
 
 // Define the Bank type to match Firebase structure
 interface Bank {
@@ -67,6 +68,8 @@ export default function MyClientsPage() {
   const [viewingDocumentUrl, setViewingDocumentUrl] = useState("");
   const [viewingDocumentName, setViewingDocumentName] = useState("");
   const [selectedSource, setSelectedSource] = useState<string>('all');
+  const [isVakalatnamaModalOpen, setIsVakalatnamaModalOpen] = useState(false);
+  const [selectedClientForVakalatnama, setSelectedClientForVakalatnama] = useState<Client | null>(null);
 
   // Set dark theme on component mount and fetch clients
   useEffect(() => {
@@ -142,6 +145,11 @@ export default function MyClientsPage() {
   const handleClientUpdated = () => {
     // Refresh the clients list after an update
     fetchClients(userName);
+  };
+
+  const openVakalatnamaModal = (client: Client) => {
+    setSelectedClientForVakalatnama(client);
+    setIsVakalatnamaModalOpen(true);
   };
 
   // Handle agreement sent toggle
@@ -405,6 +413,7 @@ export default function MyClientsPage() {
               onClose={() => setIsModalOpen(false)}
               formatDate={formatDate}
               openDocumentViewer={openDocumentViewer}
+              openVakalatnamaModal={openVakalatnamaModal}
             />
             
             <ClientEditModal
@@ -414,6 +423,30 @@ export default function MyClientsPage() {
               onClientUpdated={handleClientUpdated}
             />
           </>
+        )}
+
+        {/* Vakalatnama Modal */}
+        {isVakalatnamaModalOpen && selectedClientForVakalatnama && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl animate-fade-in">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white flex items-center">
+                  <FaFileAlt className="mr-2 text-indigo-500" />
+                  Generate Vakalatnama
+                </h3>
+                <button
+                  onClick={() => setIsVakalatnamaModalOpen(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <VakalatnamaPDFForm 
+                initialClient={selectedClientForVakalatnama} 
+                onClose={() => setIsVakalatnamaModalOpen(false)} 
+              />
+            </div>
+          </div>
         )}
 
         {/* Document Viewer Modal */}

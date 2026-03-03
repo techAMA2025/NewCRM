@@ -80,6 +80,7 @@ interface ClientViewModalProps {
   openHarassmentComplaintModal: (client: Client) => void
   openDocumentEditor: (url: string, name: string, index: number, clientId: string) => void
   openBillCutDocument: (client: Client) => void
+  openVakalatnamaModal: (client: Client) => void
 }
 
 export default function ClientViewModal({
@@ -93,6 +94,7 @@ export default function ClientViewModal({
   openHarassmentComplaintModal,
   openDocumentEditor,
   openBillCutDocument,
+  openVakalatnamaModal,
 }: ClientViewModalProps) {
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false)
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
@@ -754,6 +756,20 @@ export default function ClientViewModal({
                             />
                           </svg>
                           Harassment Complaint
+                        </button>
+                        <button
+                          onClick={() => openVakalatnamaModal(client)}
+                          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          Vakalatnama
                         </button>
                       </div>
                     </div>

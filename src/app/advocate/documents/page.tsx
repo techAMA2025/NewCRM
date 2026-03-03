@@ -14,6 +14,7 @@ import CFHABForm from "./cfhab";
 import ReplyToNoticeForm from "./replytonotice";
 import Sec138Form from "./sec138";
 import Sec21Form from "./sec21";
+import VakalatnamaPDFForm from "./VakalatnamaPDFForm";
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 
 interface Bank {
@@ -245,6 +246,23 @@ const DocumentsPage = () => {
               {activeForm === 'sec21' ? "Hide Form" : "Create Section 21"}
             </button>
           </div>
+
+          <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm border-indigo-500/30">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Vakalatnama
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-indigo-500 text-white font-bold rounded">PDF</span>
+            </h2>
+            <p className="text-gray-300 mb-4">Generate Vakalatnama with dynamic ARB details & advocate signatures.</p>
+            <button
+              onClick={() => handleFormToggle('vakalatnama')}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors duration-200"
+            >
+              {activeForm === 'vakalatnama' ? "Hide Form" : "Create Vakalatnama"}
+            </button>
+          </div>
         </div>
         
         {activeForm === 'requestLetter' && (
@@ -328,6 +346,16 @@ const DocumentsPage = () => {
           <div className="mt-6 bg-gray-800/50 p-6 rounded-lg border border-gray-700 shadow-sm animate-fadeIn">
             <h2 className="text-xl font-semibold text-white mb-6">Generate Section 21 Notice</h2>
             <Sec21Form onClose={() => setActiveForm(null)} />
+          </div>
+        )}
+
+        {activeForm === 'vakalatnama' && (
+          <div className="mt-6 bg-gray-800/50 p-6 rounded-lg border border-gray-700 shadow-sm border-indigo-500/20 animate-fadeIn">
+            <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
+              Generate Vakalatnama PDF
+              <span className="ml-2 px-2 py-0.5 text-xs bg-indigo-500 text-white font-bold rounded">PDF</span>
+            </h2>
+            <VakalatnamaPDFForm onClose={() => setActiveForm(null)} />
           </div>
         )}
         
