@@ -34,10 +34,14 @@ export default function BulkManagementModal({ isOpen, onClose }: BulkManagementM
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchScheduled();
+      setSelectedIds([]);
     }
   }, [isOpen]);
 
@@ -123,9 +127,44 @@ export default function BulkManagementModal({ isOpen, onClose }: BulkManagementM
     try {
       await deleteDoc(doc(db, 'scheduled_notifications', id));
       setNotifications(prev => prev.filter(n => n.id !== id));
+      setSelectedIds(prev => prev.filter(sid => sid !== id));
     } catch (err) {
       console.error('Error deleting notification:', err);
       alert('Failed to delete.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} notifications?`)) return;
+
+    try {
+      setDeletingBulk(true);
+      for (const id of selectedIds) {
+        await deleteDoc(doc(db, 'scheduled_notifications', id));
+      }
+      setNotifications(prev => prev.filter(n => !selectedIds.includes(n.id)));
+      setSelectedIds([]);
+      alert(`Successfully deleted ${selectedIds.length} notifications.`);
+    } catch (err) {
+      console.error('Error in bulk delete:', err);
+      alert('Failed to delete some notifications.');
+    } finally {
+      setDeletingBulk(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredNotifications.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredNotifications.map(n => n.id));
     }
   };
 
@@ -160,17 +199,48 @@ export default function BulkManagementModal({ isOpen, onClose }: BulkManagementM
           </button>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar & Bulk Actions */}
         <div className="px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search notifications by title or body..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-sm"
-            />
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-0">
+            <div className="relative flex-1 w-full">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search notifications by title or body..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-sm"
+              />
+            </div>
+            
+            {filteredNotifications.length > 0 && (
+              <div className="flex items-center gap-4 shrink-0">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 transition-all cursor-pointer"
+                    checked={selectedIds.length === filteredNotifications.length && filteredNotifications.length > 0}
+                    onChange={toggleSelectAll}
+                  />
+                  Select All
+                </label>
+                
+                {selectedIds.length > 0 && (
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={deletingBulk}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-sm font-semibold transition-all animate-in slide-in-from-right-4"
+                  >
+                    {deletingBulk ? (
+                      <div className="w-4 h-4 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" />
+                    ) : (
+                      <FaTrash size={12} />
+                    )}
+                    Delete Selected ({selectedIds.length})
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -202,132 +272,146 @@ export default function BulkManagementModal({ isOpen, onClose }: BulkManagementM
               {filteredNotifications.map((n) => (
                 <div 
                   key={n.id} 
-                  className={`bg-white rounded-xl border transition-all p-5 flex flex-col ${
-                    editingId === n.id ? 'border-indigo-400 ring-2 ring-indigo-50 shadow-md' : 'border-gray-200 hover:shadow-md'
+                  className={`bg-white rounded-xl border transition-all p-5 flex flex-col relative ${
+                    selectedIds.includes(n.id) ? 'border-indigo-500 bg-indigo-50/10' : 'border-gray-200'
+                  } ${
+                    editingId === n.id ? 'border-indigo-400 ring-2 ring-indigo-50 shadow-md' : 'hover:shadow-md'
                   }`}
                 >
-                  {editingId === n.id ? (
-                    /* ── EDIT MODE ── */
-                    <div className="space-y-4 flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Editing Message</span>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={handleSaveEdit}
-                            disabled={savingEdit}
-                            className="text-green-600 hover:bg-green-50 p-1.5 rounded-lg transition-colors"
-                            title="Save Changes"
-                          >
-                            {savingEdit ? <div className="w-4 h-4 border-2 border-green-200 border-t-green-600 rounded-full animate-spin" /> : <FaCheck size={14} />}
-                          </button>
-                          <button 
-                            onClick={() => setEditingId(null)}
-                            className="text-gray-400 hover:bg-gray-100 p-1.5 rounded-lg transition-colors"
-                            title="Cancel"
-                          >
-                            <FaTimes size={14} />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Title ({editTitle.length}/30)</label>
-                        <input
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value.slice(0, 30))}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-semibold"
-                        />
-                      </div>
+                  {/* Selection Checkbox */}
+                  <div className="absolute top-5 left-4 z-10">
+                    <input 
+                      type="checkbox"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 transition-all cursor-pointer"
+                      checked={selectedIds.includes(n.id)}
+                      onChange={() => toggleSelect(n.id)}
+                    />
+                  </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Date</label>
-                          <input
-                            type="date"
-                            value={editDate}
-                            onChange={(e) => setEditDate(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Time</label>
-                          <input
-                            type="time"
-                            value={editTime}
-                            onChange={(e) => setEditTime(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex-1">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Message ({editBody.length}/150)</label>
-                        <textarea
-                          value={editBody}
-                          onChange={(e) => setEditBody(e.target.value.slice(0, 150))}
-                          rows={4}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    /* ── VIEW MODE ── */
-                    <>
-                      <div className="flex justify-between items-start gap-3 mb-3">
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-gray-900 text-base truncate pr-2">
-                            {n.n_title}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button 
-                            onClick={() => handleStartEdit(n)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <FaEdit size={14} />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(n.id)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <FaTrash size={13} />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <p className="text-gray-600 text-xs mb-4 flex-1 leading-relaxed line-clamp-3">
-                        {n.n_body}
-                      </p>
-                      
-                      <div className="pt-4 border-t border-gray-50 flex items-center justify-between mt-auto">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">
-                            <FaCalendarAlt size={10} />
-                            {n.scheduled_at.toDate().toLocaleDateString('en-IN', {
-                              day: 'numeric', month: 'short'
-                            })}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
-                            <FaClock size={10} />
-                            {n.scheduled_at.toDate().toLocaleTimeString('en-IN', {
-                              hour: '2-digit', minute: '2-digit'
-                            })}
+                  <div className="pl-8 flex-1 flex flex-col">
+                    {editingId === n.id ? (
+                      /* ── EDIT MODE ── */
+                      <div className="space-y-4 flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Editing Message</span>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={handleSaveEdit}
+                              disabled={savingEdit}
+                              className="text-green-600 hover:bg-green-50 p-1.5 rounded-lg transition-colors"
+                              title="Save Changes"
+                            >
+                              {savingEdit ? <div className="w-4 h-4 border-2 border-green-200 border-t-green-600 rounded-full animate-spin" /> : <FaCheck size={14} />}
+                            </button>
+                            <button 
+                              onClick={() => setEditingId(null)}
+                              className="text-gray-400 hover:bg-gray-100 p-1.5 rounded-lg transition-colors"
+                              title="Cancel"
+                            >
+                              <FaTimes size={14} />
+                            </button>
                           </div>
                         </div>
-                        <div className="flex gap-1 overflow-hidden">
-                           {n.topic.slice(0, 2).map((t, i) => (
-                             <span key={i} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded border border-gray-200 uppercase font-bold whitespace-nowrap">
-                               {t.split('_')[1] || t}
-                             </span>
-                           ))}
-                           {n.topic.length > 2 && <span className="text-[9px] text-gray-400">+{n.topic.length - 2}</span>}
+                        
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Title ({editTitle.length}/30)</label>
+                          <input
+                            type="text"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value.slice(0, 30))}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-semibold"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Date</label>
+                            <input
+                              type="date"
+                              value={editDate}
+                              onChange={(e) => setEditDate(e.target.value)}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Time</label>
+                            <input
+                              type="time"
+                              value={editTime}
+                              onChange={(e) => setEditTime(e.target.value)}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Message ({editBody.length}/150)</label>
+                          <textarea
+                            value={editBody}
+                            onChange={(e) => setEditBody(e.target.value.slice(0, 150))}
+                            rows={4}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                          />
                         </div>
                       </div>
-                    </>
-                  )}
+                    ) : (
+                      /* ── VIEW MODE ── */
+                      <>
+                        <div className="flex justify-between items-start gap-3 mb-3">
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-gray-900 text-base truncate pr-2">
+                              {n.n_title}
+                            </h3>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button 
+                              onClick={() => handleStartEdit(n)}
+                              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <FaEdit size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(n.id)}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <FaTrash size={13} />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-600 text-xs mb-4 flex-1 leading-relaxed line-clamp-3">
+                          {n.n_body}
+                        </p>
+                        
+                        <div className="pt-4 border-t border-gray-50 flex items-center justify-between mt-auto">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">
+                              <FaCalendarAlt size={10} />
+                              {n.scheduled_at.toDate().toLocaleDateString('en-IN', {
+                                day: 'numeric', month: 'short'
+                              })}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-md">
+                              <FaClock size={10} />
+                              {n.scheduled_at.toDate().toLocaleTimeString('en-IN', {
+                                hour: '2-digit', minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                          <div className="flex gap-1 overflow-hidden">
+                             {n.topic.slice(0, 2).map((t, i) => (
+                               <span key={i} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded border border-gray-200 uppercase font-bold whitespace-nowrap">
+                                 {t.split('_')[1] || t}
+                               </span>
+                             ))}
+                             {n.topic.length > 2 && <span className="text-[9px] text-gray-400">+{n.topic.length - 2}</span>}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -338,6 +422,7 @@ export default function BulkManagementModal({ isOpen, onClose }: BulkManagementM
         <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center rounded-b-xl shrink-0">
           <p className="text-xs text-gray-500">
             Total Pending: <strong>{notifications.length}</strong>
+            {selectedIds.length > 0 && <span className="ml-2 text-indigo-600 font-semibold">• {selectedIds.length} selected</span>}
           </p>
           <button
             onClick={onClose}
