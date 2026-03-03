@@ -384,7 +384,7 @@ export default function ClientAllocationPage() {
                     value={searchTerm}
                     onChange={handleSearch}
                   />
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-white" />
                 </div>
                 
                 <Button 
