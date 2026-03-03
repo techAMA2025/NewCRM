@@ -761,6 +761,46 @@ export default function ClientViewModal({
                 </div>
               </div>
 
+              {/* Notes & Remarks Section */}
+              <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm md:col-span-2 mt-5">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                  Notes & Remarks
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {client.remarks && (
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+                      <p className="text-sm font-medium text-purple-300 mb-2">Client Message/Query</p>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{client.remarks}</p>
+                    </div>
+                  )}
+                  {client.queries && (
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+                      <p className="text-sm font-medium text-purple-300 mb-2">Client Queries</p>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{client.queries}</p>
+                    </div>
+                  )}
+                  {client.salesNotes && (
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700 md:col-span-2">
+                      <p className="text-sm font-medium text-purple-300 mb-2">Sales Notes</p>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{client.salesNotes}</p>
+                    </div>
+                  )}
+                </div>
+                {!client.remarks && !client.queries && !client.salesNotes && (
+                  <div className="flex items-center justify-center h-20 text-gray-400 bg-gray-800/30 rounded-lg border border-dashed border-gray-700">
+                    No notes or remarks available
+                  </div>
+                )}
+              </div>
+
               {/* WATI Templates Section */}
               <div className="bg-gray-800/50 p-5 rounded-lg border border-gray-700 shadow-sm md:col-span-2 mt-5">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
