@@ -21,6 +21,7 @@ interface BulkScheduleModalProps {
 export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModalProps) {
   const [startDate, setStartDate] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
+  const [frequency, setFrequency] = useState<'daily' | 'alternate' | 'weekly' | 'biweekly'>('daily');
   const [sendTime, setSendTime] = useState('10:00');
   const [topics, setTopics] = useState<string[]>(['all_advocates']);
   const [notifications, setNotifications] = useState<GeneratedNotification[]>([]);
@@ -128,12 +129,19 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
       setProgress(0);
 
       const base = new Date(startDate);
+      const getFrequencyOffset = (idx: number) => {
+        if (frequency === 'daily') return idx;
+        if (frequency === 'alternate') return idx * 2;
+        if (frequency === 'weekly') return idx * 7;
+        if (frequency === 'biweekly') return idx * 14;
+        return idx;
+      };
 
       for (let i = 0; i < notifications.length; i++) {
         const n = notifications[i];
         const [hours, minutes] = n.time.split(':').map(Number);
         const scheduledDate = new Date(base);
-        scheduledDate.setDate(scheduledDate.getDate() + i);
+        scheduledDate.setDate(scheduledDate.getDate() + getFrequencyOffset(i));
         scheduledDate.setHours(hours, minutes, 0, 0);
 
         const payload = {
@@ -169,6 +177,7 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
     setNotifications([]);
     setProgress(0);
     setStartDate('');
+    setFrequency('daily');
     setSendTime('10:00');
     setUserPrompt('');
     setTopics(['all_advocates']);
@@ -255,6 +264,35 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <FaClock className="text-purple-500" size={14} />
+                  Scheduling Frequency
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { id: 'daily', label: 'Daily', desc: 'Every day' },
+                    { id: 'alternate', label: 'Alternate', desc: 'Every 2nd day' },
+                    { id: 'weekly', label: 'Weekly', desc: 'Every 7 days' },
+                    { id: 'biweekly', label: '2 Weeks', desc: 'Every 14 days' },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setFrequency(f.id as any)}
+                      className={`flex flex-col items-center p-3 border rounded-lg transition-all ${
+                        frequency === f.id
+                          ? 'bg-purple-50 border-purple-200 text-purple-700 ring-1 ring-purple-500'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="text-sm font-bold">{f.label}</span>
+                      <span className="text-[10px] opacity-70">{f.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                   <FaRobot className="text-purple-500" />
                   AI Prompt Guide (Optional)
@@ -332,8 +370,15 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
 
               <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
                 {notifications.map((n, idx) => {
+                  const getFrequencyOffset = (i: number) => {
+                    if (frequency === 'daily') return i;
+                    if (frequency === 'alternate') return i * 2;
+                    if (frequency === 'weekly') return i * 7;
+                    if (frequency === 'biweekly') return i * 14;
+                    return i;
+                  };
                   const scheduledDate = new Date(startDate);
-                  scheduledDate.setDate(scheduledDate.getDate() + idx);
+                  scheduledDate.setDate(scheduledDate.getDate() + getFrequencyOffset(idx));
                   const dateLabel = scheduledDate.toLocaleDateString('en-IN', {
                     weekday: 'short', day: 'numeric', month: 'short',
                   });
