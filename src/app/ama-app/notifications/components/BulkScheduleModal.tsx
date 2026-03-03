@@ -156,7 +156,7 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
           sent_at: null,
           status: 'pending',
           topic: topics,
-          user_id: 'admin_8178310300',
+          user_id: 'admin_8700343611',
         };
 
         await addDoc(collection(db, 'scheduled_notifications'), payload);

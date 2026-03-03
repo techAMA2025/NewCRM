@@ -68,7 +68,7 @@ export default function ScheduleNotificationModal({ isOpen, onClose }: ScheduleN
         sent_at: null,
         status: "pending",
         topic: topics,
-        user_id: "admin_9999999999"
+        user_id: "admin_8700343611"
       };
 
       await addDoc(collection(db, 'scheduled_notifications'), payload);

@@ -36,7 +36,7 @@ export default function NotificationHistoryModal({ isOpen, onClose }: Notificati
       setLoading(true);
       setError(null);
       // Hardcoded admin ID as per current implementation context
-      const adminId = 'admin_6666666666';
+      const adminId = 'admin_8700343611';
       const messagesRef = collection(db, 'notification_history', adminId, 'messages');
       
       // Try to order by timestamp descending
