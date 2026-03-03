@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     if (auth.error) return auth.error;
 
     try {
-        const { startDate, topic } = await request.json();
+        const { startDate, topic, userPrompt } = await request.json();
 
         const apiKey = process.env.HELLO_DROP_CHOO;
         if (!apiKey) {
@@ -23,20 +23,20 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const prompt = `You are a legal tips notification content generator for a legal services app called AMA Legal Solutions.
+        let prompt = `You are a legal tips notification content generator for a legal services app called AMA Legal Solutions.
 
 TASK: Generate EXACTLY 30 push notifications — no more, no less. Output a JSON array with exactly 30 objects.
 
-CONTENT DISTRIBUTION (strictly follow this):
-- 21 notifications (70%) about Loan Settlement — tips about debt negotiation, bank settlements, EMI issues, loan restructuring, RBI guidelines, moratorium, OTS (One Time Settlement), arbitration against banks, SARFAESI Act, consumer protection against loan harassment, etc.
-- 6 notifications (20%) about Trademark Registration & IPR — tips about trademark filing process, IP protection, copyright registration, patent basics, design registration, brand protection, etc.
-- 3 notifications (10%) about Other Legal Fields — corporate law, entertainment law, civil disputes, contract law, RERA, family law, criminal law, etc.
+USER CUSTOM INSTRUCTIONS/CONTEXT:
+${userPrompt ? `CRITICAL: The user has provided the following specific instructions OR content to base the notifications on. JUDGE this text and generate notifications accordingly:
+"""
+${userPrompt}
+"""` : 'Generate 30 unique, high-value legal tip notifications for general users, focusing on loan settlement, debt relief, and business legal protection.'}
 
 CONSTRAINTS:
-- "title" must be 20 characters or fewer (including spaces). Keep it punchy.
+- "title" must be 30 characters or fewer (including spaces). 
 - "body" must be 150 characters or fewer (including spaces). Make it informative yet concise.
 - Each notification must be unique and provide genuine legal value.
-- Mix the categories randomly across the 30 days (don't group them).
 - Titles should be catchy and engaging to encourage users to open the app.
 - Use simple English accessible to Indian users.
 
@@ -107,26 +107,26 @@ Respond with ONLY a valid JSON array of 30 objects. Each object has exactly two 
         // Validate and trim to constraints
         let validated = notifications.slice(0, 30).map((n, i) => ({
             day: i + 1,
-            title: (n.title || `Legal Tip #${i + 1}`).slice(0, 20),
+            title: (n.title || `Legal Tip #${i + 1}`).slice(0, 30),
             body: (n.body || 'Stay informed about your legal rights.').slice(0, 150),
         }));
 
         // Pad to exactly 30 if AI returned fewer
         const fallbackTips = [
-            { title: 'Know Your Rights', body: 'Understanding your legal rights is the first step to protecting yourself. Consult a lawyer for personalized guidance on your situation.' },
-            { title: 'Settle Smartly', body: 'Loan settlement can reduce your debt burden significantly. Always negotiate with your bank before agreeing to any terms or conditions.' },
-            { title: 'Protect Your Brand', body: 'Trademark registration protects your brand identity. File early to secure exclusive rights to your business name and logo in India.' },
-            { title: 'EMI Troubles?', body: 'If you are unable to pay EMIs, contact your bank immediately. Restructuring options may be available under RBI guidelines for borrowers.' },
-            { title: 'IP Matters', body: 'Intellectual property is your competitive advantage. From patents to copyrights, ensure you register and protect your creative work today.' },
-            { title: 'Legal Aid Tip', body: 'Free legal aid is available to eligible citizens under the Legal Services Authority Act. Check your local legal aid office for assistance.' },
-            { title: 'OTS Benefits', body: 'One Time Settlement with banks can help you clear outstanding loans at a reduced amount. Seek legal advice before signing any OTS agreement.' },
-            { title: 'Contract Basics', body: 'Always read contracts carefully before signing. Key clauses like termination, liability, and dispute resolution can impact your rights.' },
+            { title: 'Know Your Rights Today', body: 'Understanding your legal rights is the first step to protecting yourself. Consult a lawyer for personalized guidance on your situation.' },
+            { title: 'Settle Debt Smartly', body: 'Loan settlement can reduce your debt burden significantly. Always negotiate with your bank before agreeing to any terms or conditions.' },
+            { title: 'Protect Your Brand Name', body: 'Trademark registration protects your brand identity. File early to secure exclusive rights to your business name and logo in India.' },
+            { title: 'Facing EMI Troubles?', body: 'If you are unable to pay EMIs, contact your bank immediately. Restructuring options may be available under RBI guidelines for borrowers.' },
+            { title: 'Protect Your IP', body: 'Intellectual property is your competitive advantage. From patents to copyrights, ensure you register and protect your creative work today.' },
+            { title: 'Free Legal Aid Tip', body: 'Free legal aid is available to eligible citizens under the Legal Services Authority Act. Check your local legal aid office for assistance.' },
+            { title: 'OTS Settlement Benefits', body: 'One Time Settlement with banks can help you clear outstanding loans at a reduced amount. Seek legal advice before signing any OTS agreement.' },
+            { title: 'Basic Contract Rules', body: 'Always read contracts carefully before signing. Key clauses like termination, liability, and dispute resolution can impact your rights.' },
         ];
         while (validated.length < 30) {
             const fb = fallbackTips[validated.length % fallbackTips.length];
             validated.push({
                 day: validated.length + 1,
-                title: fb.title.slice(0, 20),
+                title: fb.title.slice(0, 30),
                 body: fb.body.slice(0, 150),
             });
         }

@@ -20,6 +20,7 @@ interface BulkScheduleModalProps {
 
 export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModalProps) {
   const [startDate, setStartDate] = useState('');
+  const [userPrompt, setUserPrompt] = useState('');
   const [sendTime, setSendTime] = useState('10:00');
   const [topics, setTopics] = useState<string[]>(['all_advocates']);
   const [notifications, setNotifications] = useState<GeneratedNotification[]>([]);
@@ -59,7 +60,7 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
       const res = await authFetch('/api/generate-bulk-notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startDate, topic: topics }),
+        body: JSON.stringify({ startDate, topic: topics, userPrompt }),
       });
       const data = await res.json();
 
@@ -95,7 +96,7 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
       const updated = [...prev];
       updated[editingIndex] = {
         ...updated[editingIndex],
-        title: editTitle.slice(0, 20),
+        title: editTitle.slice(0, 30),
         body: editBody.slice(0, 150),
         time: editTime,
       };
@@ -169,6 +170,7 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
     setProgress(0);
     setStartDate('');
     setSendTime('10:00');
+    setUserPrompt('');
     setTopics(['all_advocates']);
     setEditingIndex(null);
   };
@@ -222,14 +224,6 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
           {/* STEP 1: CONFIGURE */}
           {step === 'config' && (
             <div className="space-y-6">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-                <FaExclamationTriangle className="text-amber-500 mt-0.5 shrink-0" />
-                <div className="text-sm text-amber-800">
-                  <p className="font-semibold mb-1">How it works</p>
-                  <p>AI will generate <strong>30 unique legal tip notifications</strong> (one per day) using ChatGPT. Distribution: <strong>70% Loan Settlement</strong>, <strong>20% Trademark & IPR</strong>, <strong>10% Other Legal</strong>. You can review and edit each one before saving.</p>
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
@@ -258,6 +252,23 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
                   />
                   <p className="text-xs text-gray-500 mt-1">Default time for all notifications (can be changed individually later)</p>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                  <FaRobot className="text-purple-500" />
+                  AI Prompt Guide (Optional)
+                </label>
+                <textarea
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
+                  placeholder="Tell AI what to focus on (e.g., 'Focus more on credit card settlement rules', 'Use a professional tone', 'Include tips about SARFAESI Act')..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1 italic">
+                  Provide specific instructions, topics, or paste content for the AI to analyze and generate notifications from.
+                </p>
               </div>
 
               <div>
@@ -338,13 +349,13 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="text-xs font-medium text-gray-500 mb-1 block">
-                                Title ({editTitle.length}/20)
+                                Title ({editTitle.length}/30)
                               </label>
                               <input
                                 type="text"
                                 value={editTitle}
-                                onChange={(e) => setEditTitle(e.target.value.slice(0, 20))}
-                                maxLength={20}
+                                onChange={(e) => setEditTitle(e.target.value.slice(0, 30))}
+                                maxLength={30}
                                 className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                               />
                             </div>
@@ -399,7 +410,7 @@ export default function BulkScheduleModal({ isOpen, onClose }: BulkScheduleModal
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-gray-900 text-sm truncate">
                               {n.title}
-                              <span className="ml-2 text-[10px] text-gray-400 font-normal">({n.title.length}/20)</span>
+                              <span className="ml-2 text-[10px] text-gray-400 font-normal">({n.title.length}/30)</span>
                             </h4>
                             <p className="text-gray-600 text-xs mt-1 leading-relaxed">
                               {n.body}
