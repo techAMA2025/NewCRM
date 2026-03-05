@@ -149,6 +149,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      docx-preview:
+        specifier: ^0.3.7
+        version: 0.3.7
       docxtemplater:
         specifier: ^3.61.1
         version: 3.68.2
@@ -2636,6 +2639,9 @@ packages:
 
   dingbat-to-unicode@1.0.1:
     resolution: {integrity: sha512-98l0sW87ZT58pU4i61wa2OHwxbiYSbuxsCBozaVnYX2iCnr3bLM3fIes1/ej7h1YdOKuKt/MLs706TVnALA65w==}
+
+  docx-preview@0.3.7:
+    resolution: {integrity: sha512-Lav69CTA/IYZPJTsKH7oYeoZjyg96N0wEJMNslGJnZJ+dMUZK85Lt5ASC79yUlD48ecWjuv+rkcmFt6EVPV0Xg==}
 
   docxtemplater@3.68.2:
     resolution: {integrity: sha512-I6sWuB9kH1etjhGrAJkFKlzidf8ng12m4ZqY2iOpZmY38Z+Xkumn3IcagoFJmjnIxuDuExI1ZvIMrUa9gy1ZAQ==}
@@ -6380,6 +6386,10 @@ snapshots:
   devtools-protocol@0.0.1566079: {}
 
   dingbat-to-unicode@1.0.1: {}
+
+  docx-preview@0.3.7:
+    dependencies:
+      jszip: 3.10.1
 
   docxtemplater@3.68.2:
     dependencies:
