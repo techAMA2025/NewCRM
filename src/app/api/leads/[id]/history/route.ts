@@ -48,39 +48,32 @@ export async function GET(
         const history = snapshot.docs.map((doc) => {
             const data = doc.data()
 
-            // Format displayDate as dd-mm-yyyy if possible
             let displayDate = data.displayDate
-            if (!displayDate && data.createdAt) {
-                const date = data.createdAt.toDate()
-                const day = String(date.getDate()).padStart(2, '0')
-                const month = String(date.getMonth() + 1).padStart(2, '0')
-                const year = date.getFullYear()
-                const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })
-                displayDate = `${day}-${month}-${year}, ${time}`
+            let dateObj: Date | null = null
+
+            // Prioritize the actual timestamp if available
+            if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+                dateObj = data.createdAt.toDate()
             } else if (displayDate) {
-                // Try to reformat if it matches standard formats
-                // Assuming displayDate might be in various formats, we leave it if it's already a string
-                // But user requested dd-mm-yyyy.
-                // If displayDate is "12/16/2025, 10:55:05 AM", let's try to parse and reformat
-                try {
-                    const date = new Date(displayDate)
-                    if (!isNaN(date.getTime())) {
-                        const day = String(date.getDate()).padStart(2, '0')
-                        const month = String(date.getMonth() + 1).padStart(2, '0')
-                        const year = date.getFullYear()
-                        const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })
-                        displayDate = `${day}-${month}-${year}, ${time}`
-                    }
-                } catch (e) {
-                    // Keep original if parsing fails
+                const parsed = new Date(displayDate)
+                if (!isNaN(parsed.getTime())) {
+                    dateObj = parsed
                 }
+            }
+
+            if (dateObj) {
+                const day = String(dateObj.getDate()).padStart(2, '0')
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+                const year = dateObj.getFullYear()
+                // Format exactly as requested: dd/mm/yyyy
+                displayDate = `${day}/${month}/${year}`
             }
 
             return {
                 id: doc.id,
                 ...data,
-                createdAt: data.createdAt?.toDate().toISOString(),
-                displayDate: displayDate
+                createdAt: data.createdAt?.toDate().toISOString() || null,
+                displayDate: displayDate || "Unknown Date"
             }
         })
 
