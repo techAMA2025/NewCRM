@@ -362,7 +362,7 @@ export default function ClientAllocationPage() {
       {renderSidebar()}
       
       <div className="flex-1 min-h-screen bg-gray-950 text-gray-100">
-        <div className="p-6 max-w-[1400px] mx-auto">
+        <div className="p-6 w-full">
           {/* Header section */}
           <div className="mb-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
@@ -380,7 +380,7 @@ export default function ClientAllocationPage() {
                   <input 
                     type="text" 
                     placeholder="Search clients..." 
-                    className="pl-10 pr-4 py-2 rounded-lg bg-gray-900 border border-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full md:w-64 text-sm"
+                    className="text-white pl-10 pr-4 py-2 rounded-lg bg-gray-900 border border-gray-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full md:w-64 text-sm"
                     value={searchTerm}
                     onChange={handleSearch}
                   />
@@ -507,19 +507,19 @@ export default function ClientAllocationPage() {
                           const clientSecondaryAdvocate = client.alloc_adv_secondary || "";
                           return (
                             <TableRow key={client.id} className="border-gray-800 hover:bg-gray-800/50">
-                              <TableCell className="text-gray-300 max-w-[100px] truncate">
+                              <TableCell className="text-gray-300">
                                 <div className="overflow-x-auto">
                                   {client.convertedAt ? 
                                     new Date(client.convertedAt.seconds * 1000).toLocaleDateString() : 
                                     "N/A"}
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium text-white truncate max-w-[130px]">
+                              <TableCell className="font-medium text-white">
                                 <div className="overflow-x-auto">
                                   {client.name.toUpperCase()}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-gray-300 max-w-[100px] truncate">
+                              <TableCell className="text-gray-300">
                                 <div className="overflow-x-auto">
                                   <span
                                     className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -546,17 +546,17 @@ export default function ClientAllocationPage() {
                                   </span>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-gray-300 max-w-[120px] truncate">
+                              <TableCell className="text-gray-300">
                                 <div className="overflow-x-auto">
                                   {client.phone}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-gray-300 max-w-[150px] truncate">
+                              <TableCell className="text-gray-300">
                                 <div className="overflow-x-auto">
                                   {client.email}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-gray-300 max-w-[120px] truncate">
+                              <TableCell className="text-gray-300">
                                 <div className="overflow-x-auto">
                                   <div className="flex items-center">
                                     <FaRupeeSign className="h-3 w-3 text-red-500 mr-1 flex-shrink-0" />
@@ -564,7 +564,7 @@ export default function ClientAllocationPage() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-gray-300 max-w-[120px] truncate">
+                              <TableCell className="text-gray-300">
                                 <div className="overflow-x-auto">
                                   <div className="flex items-center">
                                     <FaRupeeSign className="h-3 w-3 text-red-500 mr-1 flex-shrink-0" />
@@ -572,7 +572,7 @@ export default function ClientAllocationPage() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="max-w-[120px] truncate">
+                              <TableCell>
                                 <div className="overflow-x-auto">
                                   <div className="flex items-center">
                                     <div className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center mr-2 flex-shrink-0">
@@ -582,7 +582,7 @@ export default function ClientAllocationPage() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="max-w-[150px]">
+                              <TableCell>
                                 <div className="overflow-x-auto">
                                   <div className="flex items-center space-x-2">
                                     <Select 
@@ -607,7 +607,7 @@ export default function ClientAllocationPage() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell className="max-w-[150px]">
+                              <TableCell>
                                 <div className="overflow-x-auto">
                                   <div className="flex items-center space-x-2">
                                     <Select 
