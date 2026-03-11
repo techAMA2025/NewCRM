@@ -4,9 +4,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { getFunctions, httpsCallable } from "firebase/functions"
 import { app } from "@/firebase/firebase"
+import Link from "next/link"
 import BillcutLeadNotesCell from "./BillcutLeadNotesCell"
 import CallbackSchedulingModal from "./CallbackSchedulingModal"
 import StatusChangeConfirmationModal from "./StatusChangeConfirmationModal"
+import BillcutMobileLeadCard from "./BillcutMobileLeadCard"
 import type { Lead } from "../types"
 import { toast } from "react-toastify"
 import LeadStatusHistoryModal from "@/components/modals/LeadStatusHistoryModal"
@@ -1027,7 +1029,8 @@ const BillcutLeadsTableOptimized = React.memo(
 
     return (
       <>
-        <div className="overflow-x-auto rounded-xl border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm">
           <table className="min-w-full divide-y divide-gray-700/50">
             <thead className="bg-gray-800/50">
               <tr>
@@ -1069,6 +1072,41 @@ const BillcutLeadsTableOptimized = React.memo(
             </thead>
             <tbody className="divide-y divide-gray-700/50 bg-gray-800/10">{tableRows}</tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {leads.length > 0 ? (
+            leads.map((lead) => (
+              <BillcutMobileLeadCard
+                key={lead.id}
+                lead={lead}
+                editingLeads={editingData}
+                setEditingLeads={setEditingData as any}
+                updateLead={updateLead}
+                fetchNotesHistory={fetchNotesHistory}
+                statusOptions={statusOptions}
+                userRole={userRole}
+                salesTeamMembers={salesPeople}
+                assignLeadToSalesperson={async (lid, name, uid) => {
+                  await handleChange(lid, 'assignedTo', name)
+                }}
+                updateLeadsState={(lid, val) => {
+                  // Handled via editingData
+                }}
+                activeTab={activeTab}
+                onStatusChangeToLanguageBarrier={onStatusChangeToLanguageBarrier || (() => {})}
+                onStatusChangeToConverted={onStatusChangeToConverted || (() => {})}
+                onEditCallback={handleEditCallback}
+                selectedLeads={selectedLeads}
+                handleSelectLead={onSelectLead}
+              />
+            ))
+          ) : (
+            <div className="text-center py-12 bg-gray-800/20 rounded-xl border border-gray-700/50">
+              <p className="text-gray-500 text-sm">No leads match your criteria</p>
+            </div>
+          )}
         </div>
 
         {/* Callback Scheduling Modal */}

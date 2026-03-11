@@ -106,8 +106,9 @@ const CallbackSchedulingModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
+    <div className="fixed inset-0 flex items-center justify-center z-[60] p-4">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleGoBack}></div>
+      <div className="bg-gray-800 rounded-2xl p-6 md:p-8 w-full max-w-md border border-gray-700 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-gray-100">
             {isEditing ? 'Edit Callback' : 'Schedule Callback'}

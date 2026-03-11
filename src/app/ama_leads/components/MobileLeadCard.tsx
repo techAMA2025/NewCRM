@@ -54,6 +54,30 @@ const getFormattedDate = (lead: any) => {
   return { date, time }
 }
 
+// Get callback date color based on scheduled date for visual priority indicators
+const getCallbackDateColor = (scheduledDate: Date) => {
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const dayAfterTomorrow = new Date(today)
+  dayAfterTomorrow.setDate(today.getDate() + 2)
+
+  const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate())
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
+  const dayAfterTomorrowOnly = new Date(dayAfterTomorrow.getFullYear(), dayAfterTomorrow.getMonth(), dayAfterTomorrow.getDate())
+
+  if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
+    return { borderColor: "border-l-4 border-l-red-600", dotColor: "bg-red-600", label: "Today" }
+  } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
+    return { borderColor: "border-l-4 border-l-yellow-500", dotColor: "bg-yellow-500", label: "Tomorrow" }
+  } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
+    return { borderColor: "border-l-4 border-l-green-600", dotColor: "bg-green-600", label: "Upcoming" }
+  } else {
+    return { borderColor: "border-l-4 border-l-gray-500", dotColor: "bg-gray-500", label: "Past" }
+  }
+}
+
 type MobileLeadCardProps = {
   lead: any
   editingLeads: { [key: string]: any }
@@ -113,6 +137,11 @@ const MobileLeadCard = ({
   const currentUserRole = typeof window !== "undefined" ? localStorage.getItem("userRole") || "" : ""
   const isUnassigned = !lead.assignedTo || lead.assignedTo === "" || lead.assignedTo === "-" || lead.assignedTo === "–"
 
+  // Callback priority colors
+  const callbackColors = activeTab === "callback" && lead.callbackInfo?.scheduled_dt
+    ? getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt))
+    : null
+
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditingLeads({ ...editingLeads, [lead.id]: { ...(editingLeads[lead.id] || {}), salesNotes: e.target.value } })
   }
@@ -167,7 +196,14 @@ const MobileLeadCard = ({
   }
 
   return (
-    <div className={`bg-white rounded-xl border ${selectedLeads.includes(lead.id) ? "border-[#D2A02A] ring-2 ring-[#D2A02A]/20" : "border-[#5A4C33]/10"} p-4 shadow-sm transition-all duration-200`}>
+    <div className={`bg-white rounded-xl border ${selectedLeads.includes(lead.id) ? "border-[#D2A02A] ring-2 ring-[#D2A02A]/20" : "border-[#5A4C33]/10"} ${callbackColors ? callbackColors.borderColor : ""} p-4 shadow-sm transition-all duration-200`}>
+      {/* Callback priority indicator */}
+      {callbackColors && (
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`inline-block w-2.5 h-2.5 rounded-full ${callbackColors.dotColor}`}></span>
+          <span className="text-[10px] font-semibold text-[#5A4C33]/70 uppercase tracking-wide">{callbackColors.label} Callback</span>
+        </div>
+      )}
       {/* Top: Checkbox + Date + Source */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">

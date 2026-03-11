@@ -94,6 +94,7 @@ const BillcutLeadsFiltersOptimized = ({
   const [isLoading, setIsLoading] = useState(true)
   const [searchInput, setSearchInput] = useState(searchQuery)
   const [searchResultsCount, setSearchResultsCount] = useState(0)
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   // Normalize phone number for search
   const normalizePhoneNumber = (phone: string): string => {
@@ -467,6 +468,13 @@ const BillcutLeadsFiltersOptimized = ({
           <div className="flex items-center">
             <FaFilter className="text-gray-400 mr-2" />
             <span className="text-sm font-medium text-gray-300">Filters</span>
+            {/* Mobile toggle */}
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="md:hidden ml-3 px-2 py-1 text-[10px] font-bold text-blue-400 border border-blue-400/30 rounded uppercase tracking-wider bg-blue-400/5"
+            >
+              {showMobileFilters ? "▲ Hide" : "▼ Show"}
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -515,8 +523,8 @@ const BillcutLeadsFiltersOptimized = ({
           </div>
         </div>
 
-        {/* Your existing filter grid remains exactly the same */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block transition-all duration-300`}>
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-3 md:gap-4">
           {/* Status Filter */}
           <div className="space-y-1">
             <label className="block text-xs font-medium text-gray-400 mb-1">Status</label>
@@ -639,10 +647,10 @@ const BillcutLeadsFiltersOptimized = ({
               <svg className="w-4 h-4 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-              <span className="text-sm font-medium text-yellow-400">Advanced Date Filters (Admin/Overlord Only)</span>
+              <span className="text-sm font-medium text-yellow-400">Advanced Date Filters</span>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               {/* Converted Date Range */}
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-emerald-400 mb-1">Converted From</label>
@@ -693,6 +701,7 @@ const BillcutLeadsFiltersOptimized = ({
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

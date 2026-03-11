@@ -33,9 +33,9 @@ import BillcutLeadsHeader from "./components/BillcutLeadsHeader"
 import BillcutLeadsFilters from "./components/BillcutLeadsFilters"
 import BillcutLeadsTable from "./components/BillcutLeadsTable"
 import BillcutLeadsTabs from "./components/BillcutLeadsTabs"
-import HistoryModal from "../sales/leads/components/HistoryModal"
-import LanguageBarrierModal from "../sales/leads/components/LanguageBarrierModal"
-import ConversionConfirmationModal from "../sales/leads/components/ConversionConfirmationModal"
+import BillcutHistoryModal from "./components/BillcutHistoryModal"
+import BillcutLanguageBarrierModal from "./components/BillcutLanguageBarrierModal"
+import BillcutConversionConfirmationModal from "./components/BillcutConversionConfirmationModal"
 import AdminSidebar from "@/components/navigation/AdminSidebar"
 import SalesSidebar from "@/components/navigation/SalesSidebar"
 import OverlordSidebar from "@/components/navigation/OverlordSidebar"
@@ -213,6 +213,9 @@ const BillCutLeadsPage = () => {
 
   // Add new state for bulk WhatsApp
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false)
+  
+  // Mobile UI States
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   // Real-time Listeners
   const listenersRef = useRef<{ [key: string]: () => void }>({})
@@ -2521,10 +2524,23 @@ const BillCutLeadsPage = () => {
   }, [userRole])
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
-      {SidebarComponent && <SidebarComponent />}
-      <div className="flex-1 overflow-auto p-6 bg-gradient-to-br from-gray-900 via-gray-850 to-gray-800">
-        <div className="container mx-auto">
+    <div className="flex h-screen bg-[#0b1437] overflow-hidden">
+      {/* Sidebar - Desktop and Mobile Overlay */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
+        {SidebarComponent && <SidebarComponent />}
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-auto bg-[#0b1437] relative custom-scrollbar">
+        <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
           <BillcutLeadsHeader
             isLoading={isLoading}
             userRole={userRole}
@@ -2532,6 +2548,7 @@ const BillCutLeadsPage = () => {
             exportToCSV={exportToCSV}
             loadAllLeads={loadAllLeads}
             isLoadAllLoading={isLoadAllLoading}
+            onMenuToggle={() => setIsMobileSidebarOpen(true)}
           />
 
           <BillcutLeadsTabs
@@ -2754,14 +2771,15 @@ const BillCutLeadsPage = () => {
               )}
 
               {/* History Modal */}
-              <HistoryModal
+              <BillcutHistoryModal
                 showHistoryModal={showHistoryModal}
                 setShowHistoryModal={setShowHistoryModal}
                 currentHistory={currentHistory}
+                leadName={leads.find(l => l.id === currentHistory[0]?.leadId)?.name}
               />
 
               {/* Language Barrier Modal */}
-              <LanguageBarrierModal
+              <BillcutLanguageBarrierModal
                 isOpen={showLanguageBarrierModal}
                 onClose={handleLanguageBarrierClose}
                 onConfirm={handleLanguageBarrierConfirm}
@@ -2771,7 +2789,7 @@ const BillCutLeadsPage = () => {
               />
 
               {/* Conversion Confirmation Modal */}
-              <ConversionConfirmationModal
+              <BillcutConversionConfirmationModal
                 isOpen={showConversionModal}
                 onClose={handleConversionClose}
                 onConfirm={handleConversionConfirm}
