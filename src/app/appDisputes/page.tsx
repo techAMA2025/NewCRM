@@ -56,6 +56,7 @@ export default function DisputesPage() {
   // Selection & Bulk WhatsApp State
   const [selectedDisputes, setSelectedDisputes] = useState<string[]>([]);
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Export to CSV function
   const exportToCSV = async () => {
@@ -350,30 +351,41 @@ export default function DisputesPage() {
   const content = (
       <div className="flex flex-col h-full">
         <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm space-y-4">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">App Leads</h1>
-                <div className="flex items-center space-x-3">
-                  <div className="bg-[#D2A02A] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm">
-                  Total Leads: {total.toLocaleString()}
+            <div className="flex justify-between items-center flex-wrap gap-3">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(true)}
+                    className="md:hidden mr-3 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
+                    aria-label="Toggle menu"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">App Leads</h1>
+                </div>
+                <div className="flex items-center flex-wrap gap-2">
+                  <div className="bg-[#D2A02A] text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium shadow-sm">
+                  Total: {total.toLocaleString()}
                   </div>
                    <button
                     onClick={exportToCSV}
                     disabled={exporting}
-                    className={`flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D2A02A] ${
+                    className={`flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D2A02A] ${
                       exporting ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    <FiDownload className={`mr-2 h-4 w-4 ${exporting ? 'animate-bounce' : ''}`} />
-                    {exporting ? (exportProgress || 'Exporting...') : 'Export CSV'}
+                    <FiDownload className={`mr-1.5 h-3.5 w-3.5 ${exporting ? 'animate-bounce' : ''}`} />
+                    {exporting ? (exportProgress || '...') : 'Export'}
                   </button>
 
                   {selectedDisputes.length > 0 && (
                     <button
                       onClick={() => setShowBulkWhatsAppModal(true)}
-                      className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
+                      className="flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-medium shadow-sm transition-colors"
                     >
-                      <FaWhatsapp className="mr-2 h-4 w-4" />
-                      Bulk WhatsApp ({selectedDisputes.length})
+                      <FaWhatsapp className="mr-1.5 h-3.5 w-3.5" />
+                      Bulk ({selectedDisputes.length})
                     </button>
                   )}
                 </div>
@@ -422,7 +434,7 @@ export default function DisputesPage() {
             </div>
         </header>
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden">
           <div className="space-y-6">
              {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -467,9 +479,21 @@ export default function DisputesPage() {
 
   if (userRole === 'admin') {
     return (
-      <div className="flex h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex h-screen bg-gray-100 overflow-hidden">
+        {/* Sidebar - Desktop and Mobile Overlay */}
+        <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
+          <AdminSidebar />
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+
+        <div className="flex-1 flex flex-col overflow-hidden w-full">
           <div className="flex-1 overflow-y-auto">
              {content}
           </div>
@@ -480,9 +504,21 @@ export default function DisputesPage() {
 
   if (userRole === 'sales' || userRole === 'salesperson') {
     return (
-      <div className="flex h-screen bg-gray-100">
-        <SalesSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex h-screen bg-gray-100 overflow-hidden">
+        {/* Sidebar - Desktop and Mobile Overlay */}
+        <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
+          <SalesSidebar />
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+
+        <div className="flex-1 flex flex-col overflow-hidden w-full">
           <div className="flex-1 overflow-y-auto">
              {content}
           </div>
@@ -492,8 +528,25 @@ export default function DisputesPage() {
   }
 
   return (
-    <OverlordSidebar>
-      {content}
-    </OverlordSidebar>
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar - Desktop and Mobile Overlay */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
+        <OverlordSidebar />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      <div className="flex-1 flex flex-col overflow-hidden w-full">
+        <div className="flex-1 overflow-y-auto">
+          {content}
+        </div>
+      </div>
+    </div>
   );
 }

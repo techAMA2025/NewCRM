@@ -109,6 +109,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [username, setUsername] = useState<string>('');
 
   useEffect(() => {
@@ -227,12 +228,22 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen grid transition-all duration-300" 
-         style={{
-           gridTemplateColumns: isExpanded ? '250px 1fr' : '50px 1fr'
-         }}>
+    <div className="min-h-screen flex transition-all duration-300 overflow-hidden relative">
+      {/* Sidebar Overlay (Mobile) */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="flex flex-col bg-gray-900 shadow-xl overflow-hidden">
+      <div 
+        className={`fixed md:relative inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col bg-gray-900 shadow-xl overflow-hidden flex-shrink-0`}
+        style={{
+          width: isExpanded ? '250px' : '64px'
+        }}
+      >
         <div className="sticky top-0 z-10 bg-gray-900">
           <div className="flex items-center justify-between px-2 py-5">
             {isExpanded ? (
@@ -317,7 +328,16 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       </div>
 
       {/* Main Content Area */}
-      <div className="min-h-screen overflow-x-hidden bg-gray-100">
+      <div className="flex-1 min-h-screen overflow-y-auto bg-gray-100 relative">
+        {/* Mobile Header Toggle (Only if sidebar is hidden or it's mobile) */}
+        {!isMobileOpen && (
+          <button
+            onClick={() => setIsMobileOpen(true)}
+            className="md:hidden fixed top-4 left-4 z-30 p-2 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition-all opacity-80"
+          >
+            <FiChevronRight className="w-5 h-5" />
+          </button>
+        )}
         {children}
       </div>
     </div>

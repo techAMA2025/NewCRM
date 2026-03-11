@@ -1213,58 +1213,54 @@ export default function SalesDashboard() {
   const leadsPercentage = Math.round((actualConvertedLeads / targetData.convertedLeadsTarget) * 100);
 
   return (
-    <div className="p-6 bg-gray-900 text-gray-100 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-900 text-gray-100 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+            <h1 className="text-xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
               Sales Dashboard for {targetData?.userName}
               {(leadAnalytics || billcutAnalytics) && (
-                <span className="text-lg text-gray-400 ml-2">
+                <span className="text-sm sm:text-lg text-gray-400 block sm:inline mt-1 sm:mt-0 sm:ml-2">
                   ({analyticsSource} Data)
                 </span>
               )}
             </h1>
           </div>
           
-          {/* Cache management controls */}
-          <div className="flex items-center gap-2 mr-4">
-            <button
-              onClick={clearAllCache}
-              className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-md transition-colors"
-              title="Clear cache"
-            >
-              🗑️ Clear Cache
-            </button>
-            <button
-              onClick={refreshAllData}
-              className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded-md transition-colors"
-              title="Refresh all data"
-            >
-              🔄 Refresh
-            </button>
-            <div className="text-xs text-gray-400">
-              Cache: {cacheSize} items
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Cache management controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={clearAllCache}
+                className="text-[10px] sm:text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-md transition-colors"
+                title="Clear cache"
+              >
+                🗑️ Clear
+              </button>
+              <button
+                onClick={refreshAllData}
+                className="text-[10px] sm:text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded-md transition-colors"
+                title="Refresh all data"
+              >
+                🔄 Refresh
+              </button>
             </div>
-          </div>
-          
-          {/* Month selector */}
-          <div className="flex items-center space-x-2">
-            <label htmlFor="monthSelector" className="text-sm text-gray-400">
-              Select Month:
-            </label>
-            <select
-              id="monthSelector"
-              className="bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm"
-              value={`${currentMonth}_${currentYear}`}
-              onChange={(e) => debouncedMonthYearChange(e.target.value)}
-            >
-              {availableMonths.map(({ month, year }) => (
-                <option key={`${month}_${year}`} value={`${month}_${year}`}>
-                  {month} {year}
-                </option>
-              ))}
-            </select>
+            
+            {/* Month selector */}
+            <div className="flex items-center space-x-2 ml-auto sm:ml-0">
+              <select
+                id="monthSelector"
+                className="bg-gray-800 border border-gray-700 text-white rounded-md px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm"
+                value={`${currentMonth}_${currentYear}`}
+                onChange={(e) => debouncedMonthYearChange(e.target.value)}
+              >
+                {availableMonths.map(({ month, year }) => (
+                  <option key={`${month}_${year}`} value={`${month}_${year}`}>
+                    {month} {year}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         
@@ -1272,11 +1268,11 @@ export default function SalesDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-indigo-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Collection Target ({currentMonth} {currentYear})</CardTitle>
+              <CardTitle className="text-gray-100 text-lg">Collection Target</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold mb-3 text-indigo-400">₹{amountCollected.toLocaleString()} 
-                <span className="text-gray-400 text-xl"> / ₹{targetData.amountCollectedTarget.toLocaleString()}</span>
+              <div className="text-2xl sm:text-3xl font-bold mb-3 text-indigo-400">₹{amountCollected.toLocaleString()} 
+                <span className="text-gray-400 text-lg sm:text-xl"> / ₹{targetData.amountCollectedTarget?.toLocaleString() || '0'}</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5 mb-3">
                 <div 
@@ -1284,17 +1280,17 @@ export default function SalesDashboard() {
                   style={{ width: `${amountPercentage}%` }}
                 ></div>
               </div>
-              <p className="text-sm text-gray-400">{amountPercentage}% of target achieved</p>
+              <p className="text-xs sm:text-sm text-gray-400">{amountPercentage}% of target achieved</p>
             </CardContent>
           </Card>
-
+ 
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Converted Leads Target ({currentMonth} {currentYear})</CardTitle>
+              <CardTitle className="text-gray-100 text-lg">Converted Leads Target</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold mb-3 text-emerald-400">{actualConvertedLeads} 
-                <span className="text-gray-400 text-xl"> / {targetData.convertedLeadsTarget}</span>
+              <div className="text-2xl sm:text-3xl font-bold mb-3 text-emerald-400">{actualConvertedLeads} 
+                <span className="text-gray-400 text-lg sm:text-xl"> / {targetData.convertedLeadsTarget || '0'}</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5 mb-3">
                 <div 
@@ -1302,7 +1298,7 @@ export default function SalesDashboard() {
                   style={{ width: `${leadsPercentage}%` }}
                 ></div>
               </div>
-              <p className="text-sm text-gray-400">{leadsPercentage}% of target achieved</p>
+              <p className="text-xs sm:text-sm text-gray-400">{leadsPercentage}% of target achieved</p>
             </CardContent>
           </Card>
         </div>
@@ -1323,23 +1319,23 @@ export default function SalesDashboard() {
               <div className="space-y-4">
                 {assignedTasks.length > 0 ? (
                   assignedTasks.map(task => (
-                    <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-750 p-2 rounded transition-all duration-200">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium text-white">{task.title}</h3>
+                    <div key={task.id} className="border-b border-gray-700 pb-3 hover:bg-gray-800/50 p-3 rounded-lg transition-all duration-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 className="font-medium text-white text-sm sm:text-base">{task.title}</h3>
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
+                          <span className={`px-2 py-0.5 text-[10px] sm:text-xs rounded-full ${
                             task.status === 'completed' 
-                              ? 'bg-green-900 text-green-200' 
-                              : 'bg-yellow-900 text-yellow-200'
+                              ? 'bg-green-900/50 text-green-200 border border-green-700/50' 
+                              : 'bg-yellow-900/50 text-yellow-200 border border-yellow-700/50'
                           }`}>
                             {task.status}
                           </span>
                           {task.status !== 'completed' && (
                             <button
                               onClick={() => markTaskAsCompleted(task.id)}
-                              className="ml-2 px-2 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                              className="px-2 py-1 text-[10px] sm:text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
                             >
-                              Mark Complete
+                              Complete
                             </button>
                           )}
                         </div>
@@ -1368,60 +1364,60 @@ export default function SalesDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
             <CardHeader className="pb-2">
-              <CardTitle className="text-gray-100">Lead Conversion Trend</CardTitle>
+              <CardTitle className="text-gray-100 text-base sm:text-lg">Lead Conversion Trend</CardTitle>
             </CardHeader>
-            <CardContent className="h-80">
+            <CardContent className="h-64 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={leadsChartData.length > 0 ? leadsChartData : leadsData}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                  <XAxis dataKey="name" stroke={chartColors.text} />
-                  <YAxis stroke={chartColors.text} />
+                  <XAxis dataKey="name" stroke={chartColors.text} tick={{fontSize: 10}} />
+                  <YAxis stroke={chartColors.text} tick={{fontSize: 10}} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
+                    contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5', fontSize: '12px' }}
                     itemStyle={{ color: '#e5e5e5' }}
                   />
-                  <Legend wrapperStyle={{ color: chartColors.text }} />
+                  <Legend wrapperStyle={{ color: chartColors.text, fontSize: '10px' }} />
                   <Line 
                     type="monotone" 
                     dataKey="converted" 
                     stroke={chartColors.primary} 
-                    strokeWidth={3}
-                    dot={{ stroke: chartColors.primary, strokeWidth: 2, r: 4, fill: chartColors.primary }}
-                    activeDot={{ stroke: chartColors.primary, strokeWidth: 2, r: 6, fill: '#1e1e1e' }}
+                    strokeWidth={2}
+                    dot={{ stroke: chartColors.primary, strokeWidth: 1, r: 3, fill: chartColors.primary }}
+                    activeDot={{ stroke: chartColors.primary, strokeWidth: 1, r: 5, fill: '#1e1e1e' }}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="total" 
                     stroke={chartColors.secondary} 
-                    strokeWidth={3}
-                    dot={{ stroke: chartColors.secondary, strokeWidth: 2, r: 4, fill: chartColors.secondary }}
-                    activeDot={{ stroke: chartColors.secondary, strokeWidth: 2, r: 6, fill: '#1e1e1e' }}
+                    strokeWidth={2}
+                    dot={{ stroke: chartColors.secondary, strokeWidth: 1, r: 3, fill: chartColors.secondary }}
+                    activeDot={{ stroke: chartColors.secondary, strokeWidth: 1, r: 5, fill: '#1e1e1e' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
-
+ 
           {/* Target vs Collected Amount Chart */}
           {targetData && (
             <Card className="border-0 bg-gradient-to-br from-gray-800 to-gray-900 shadow-purple-500/10 transition-all duration-300">
               <CardHeader className="pb-2">
-                <CardTitle className="text-gray-100">Target vs Collected Amount</CardTitle>
+                <CardTitle className="text-gray-100 text-base sm:text-lg">Target vs Collected Amount</CardTitle>
               </CardHeader>
-              <CardContent className="h-80">
+              <CardContent className="h-64 sm:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={targetTrendData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
-                    <XAxis dataKey="name" stroke={chartColors.text} />
-                    <YAxis stroke={chartColors.text} />
+                    <XAxis dataKey="name" stroke={chartColors.text} tick={{fontSize: 10}} />
+                    <YAxis stroke={chartColors.text} tick={{fontSize: 10}} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5' }}
+                      contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#e5e5e5', fontSize: '12px' }}
                       itemStyle={{ color: '#e5e5e5' }}
                       formatter={(value: number) => `₹${value.toLocaleString()}`}
                     />
-                    <Legend wrapperStyle={{ color: chartColors.text }} />
-                    <Bar dataKey="target" fill={chartColors.primary} name="Target Amount" />
-                    <Bar dataKey="collected" fill={chartColors.secondary} name="Collected Amount" />
+                    <Legend wrapperStyle={{ color: chartColors.text, fontSize: '10px' }} />
+                    <Bar dataKey="target" fill={chartColors.primary} name="Target Amount" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="collected" fill={chartColors.secondary} name="Collected Amount" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

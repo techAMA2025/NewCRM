@@ -1036,13 +1036,13 @@ www.amalegalsolutions.com`,
       <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
         {userRole === 'advocate' ? <AdvocateSidebar /> : userRole === 'sales' ? <SalesSidebar /> : <OverlordSidebar />}
 
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4 sm:p-8">
           <div className="max-w-5xl mx-auto">
-            <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-              <FaFileContract className="mr-3 text-green-400" />
-              Send Email Templates (From: {selectedAgreement === "agreement-draft" ? "notify@amalegalsolutions.com" : selectedAgreement === "service-proposal" ? "notify@amalegalsolutions.com" : "finance@amalegalsolutions.com"})
+            <h1 className="text-xl sm:text-3xl font-bold text-white mb-2 flex items-center">
+              <FaFileContract className="mr-3 text-green-400 flex-shrink-0" />
+              <span>Send Email Templates <span className="text-xs font-normal block sm:inline text-gray-400 mt-1 sm:mt-0 sm:ml-2">(From: {selectedAgreement === "agreement-draft" ? "notify" : "finance"}@amalegalsolutions.com)</span></span>
             </h1>
-            <p className="text-gray-400 mb-8">
+            <p className="text-xs sm:text-sm text-gray-400 mb-6 sm:mb-8">
               {selectedAgreement === "agreement-draft" 
                 ? "Send agreement drafts from notify@amalegalsolutions.com" 
                 : selectedAgreement === "service-proposal"
@@ -1053,7 +1053,7 @@ www.amalegalsolutions.com`,
             
             <form
               onSubmit={handleSubmit}
-              className="bg-gray-800/50 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-xl"
+              className="bg-gray-800/50 rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-gray-700/50 shadow-xl"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {/* Agreement Template Selection */}
@@ -1259,7 +1259,7 @@ www.amalegalsolutions.com`,
                   <h3 className="text-sm font-medium text-gray-300 mb-2">
                     Add Manual Recipient
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3">
                     <div className="md:col-span-1">
                       <input
                         type="text"
@@ -1311,36 +1311,36 @@ www.amalegalsolutions.com`,
                           } p-2 flex items-center justify-between`}
                         >
                           {recipient.editing ? (
-                            <div className="flex-1 flex items-center">
-                              <div className="flex-1 grid grid-cols-2 gap-2">
-                                <input
-                                  type="text"
-                                  value={recipient.name}
-                                  onChange={(e) =>
-                                    updateRecipient(
-                                      recipient.id,
-                                      "name",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
-                                  placeholder="Name"
-                                />
-                                <input
-                                  type="email"
-                                  value={recipient.email}
-                                  onChange={(e) =>
-                                    updateRecipient(
-                                      recipient.id,
-                                      "email",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
-                                  placeholder="Email"
-                                />
-                              </div>
-                              <div className="flex">
+                              <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                                  <input
+                                    type="text"
+                                    value={recipient.name}
+                                    onChange={(e) =>
+                                      updateRecipient(
+                                        recipient.id,
+                                        "name",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="px-2 py-1.5 bg-gray-600 border border-gray-500 rounded-md text-white text-sm w-full"
+                                    placeholder="Name"
+                                  />
+                                  <input
+                                    type="email"
+                                    value={recipient.email}
+                                    onChange={(e) =>
+                                      updateRecipient(
+                                        recipient.id,
+                                        "email",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="px-2 py-1.5 bg-gray-600 border border-gray-500 rounded-md text-white text-sm w-full"
+                                    placeholder="Email"
+                                  />
+                                </div>
+                                <div className="flex sm:ml-2">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -1417,7 +1417,7 @@ www.amalegalsolutions.com`,
                     <h3 className="text-sm font-medium text-gray-300 mb-2">
                       Add Manual CC Recipient
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3">
                       <div className="md:col-span-1">
                         <input
                           type="text"
@@ -1596,7 +1596,7 @@ www.amalegalsolutions.com`,
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center"
+                      className="px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center text-xs sm:text-sm"
                     >
                       <FaPlus size={12} className="mr-1" />
                       Add Files
@@ -1644,11 +1644,11 @@ www.amalegalsolutions.com`,
               </div>
 
               {/* Submit Button */}
-              <div className="flex justify-end">
+              <div className="flex justify-end mt-4">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-3 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 text-white rounded-md transition-colors flex items-center"
+                  className="w-full sm:w-auto px-6 py-3 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 text-white rounded-md transition-colors flex items-center justify-center"
                 >
                   {loading ? (
                     <>

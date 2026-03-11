@@ -4,6 +4,7 @@ import { Dispute } from '../types';
 import { useEffect, useRef, useState } from 'react';
 import QueryViewModal from './QueryViewModal';
 import { FaWhatsapp } from 'react-icons/fa';
+import DisputeMobileCard from './DisputeMobileCard';
 
 interface DisputesTableProps {
   disputes: Dispute[];
@@ -57,7 +58,6 @@ export default function DisputesTable({
   
   // WhatsApp state is now handled by parent via modal
   // Removed local showWhatsAppMenu and isSendingWhatsApp states
-
   // WhatsApp handling is now passed to parent
   
   // Query view state
@@ -110,8 +110,33 @@ export default function DisputesTable({
   };
 
   return (
-    <div className="overflow-hidden bg-white shadow-md rounded-lg border border-gray-200">
-      <div className="overflow-x-auto">
+    <div className="space-y-4">
+      {/* Mobile view - Card stack */}
+      <div className="md:hidden space-y-4">
+        {disputes.length === 0 && !loading && (
+          <div className="bg-white p-8 text-center rounded-xl border border-gray-200 text-sm text-gray-500">
+            No disputes found.
+          </div>
+        )}
+        {disputes.map((dispute) => (
+          <DisputeMobileCard
+            key={dispute.id}
+            dispute={dispute}
+            statusOptions={statusOptions}
+            onUpdateDispute={onUpdateDispute}
+            onViewHistory={onViewHistory}
+            onOpenWhatsApp={onOpenWhatsApp}
+            isSelected={selectedDisputes.includes(dispute.id)}
+            onSelect={onSelectDispute}
+            onViewQuery={(text, name) => setSelectedQuery({ text, name })}
+          />
+        ))}
+      </div>
+
+      {/* Desktop view - Standard table */}
+      <div className="hidden md:block overflow-hidden bg-white shadow-md rounded-lg border border-gray-200">
+        <div className="overflow-x-auto">
+
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -135,7 +160,7 @@ export default function DisputesTable({
           <tbody className="bg-white divide-y divide-gray-200">
             {disputes.length === 0 && !loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                   No disputes found.
                 </td>
               </tr>
@@ -247,26 +272,27 @@ export default function DisputesTable({
           </tbody>
         </table>
       </div>
-      
-      <div ref={observerTarget} className="h-16 w-full flex items-center justify-center p-4 bg-gray-50 border-t border-gray-200">
-        {loading ? (
-          <div className="flex items-center space-x-2 text-gray-500">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
-            <span className="text-sm">Loading more disputes...</span>
-          </div>
-        ) : (
-          !hasMore && disputes.length > 0 && (
-            <span className="text-gray-500 text-sm font-medium">End of list</span>
-          )
-        )}
-      </div>
-
-      <QueryViewModal 
-        isOpen={!!selectedQuery}
-        onClose={() => setSelectedQuery(null)}
-        query={selectedQuery?.text || ''}
-        name={selectedQuery?.name || ''}
-      />
     </div>
-  );
+    
+    <div ref={observerTarget} className="h-16 w-full flex items-center justify-center p-4 bg-gray-50 border-t border-gray-200">
+      {loading ? (
+        <div className="flex items-center space-x-2 text-gray-500">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
+          <span className="text-sm">Loading more disputes...</span>
+        </div>
+      ) : (
+        !hasMore && disputes.length > 0 && (
+          <span className="text-gray-500 text-sm font-medium">End of list</span>
+        )
+      )}
+    </div>
+
+    <QueryViewModal 
+      isOpen={!!selectedQuery}
+      onClose={() => setSelectedQuery(null)}
+      query={selectedQuery?.text || ''}
+      name={selectedQuery?.name || ''}
+    />
+  </div>
+);
 }

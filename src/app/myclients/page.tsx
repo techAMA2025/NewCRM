@@ -70,6 +70,7 @@ export default function MyClientsPage() {
   const [selectedSource, setSelectedSource] = useState<string>('all');
   const [isVakalatnamaModalOpen, setIsVakalatnamaModalOpen] = useState(false);
   const [selectedClientForVakalatnama, setSelectedClientForVakalatnama] = useState<Client | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Set dark theme on component mount and fetch clients
   useEffect(() => {
@@ -227,7 +228,7 @@ export default function MyClientsPage() {
       <button
         onClick={() => onSourceChange('credsettlee')}
         className={`px-3 py-1 rounded-full text-sm font-medium ${
-          selectedSource === 'credsettle'
+          selectedSource === 'credsettlee'
             ? 'bg-blue-600 text-white'
             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
         }`}
@@ -268,13 +269,37 @@ export default function MyClientsPage() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      <SalesSidebar />
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      {/* Sidebar - Desktop and Mobile Overlay */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
+        <SalesSidebar />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
       
-      <div className="flex-1 overflow-auto p-6 dark:bg-gray-900 dark:text-white">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">My Clients</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Manage and view all your assigned clients</p>
+      <div className="flex-1 overflow-auto p-4 sm:p-6 dark:bg-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          <div className="flex items-center">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden mr-3 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-all"
+              aria-label="Toggle menu"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">My Clients</h1>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-xs sm:text-sm">Manage and view all your assigned clients</p>
+            </div>
+          </div>
         </div>
 
         <SourceFilter 

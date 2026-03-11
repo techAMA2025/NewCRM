@@ -101,13 +101,13 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-[#f5f5f5] dark:bg-[#30261d] text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-[#f5f5f5] dark:bg-[#30261d] text-left align-middle shadow-xl transition-all max-h-[95vh] flex flex-col">
                 <div className={`h-2 w-full ${
                   client.status === 'Converted' ? 'bg-[#d39f10]' :
                   client.status === 'Pending' ? 'bg-[#d39f10]/70' : 'bg-[#d39f10]/40'
                 }`}></div>
                 
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="flex justify-between items-center border-b dark:border-gray-700 pb-4">
                     <Dialog.Title
                       as="h3"
@@ -132,7 +132,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
                     </p>
                   </div>
                   
-                  <div className="mt-6 space-y-8 max-h-[70vh] overflow-y-auto pr-2">
+                  <div className="mt-6 space-y-8 max-h-[75vh] overflow-y-auto pr-2">
                     {/* Document Section - Add this new section */}
                     {client.documentUrl && (
                       <div className="bg-[#f5f5f5] dark:bg-[#30261d] rounded-lg overflow-hidden shadow">

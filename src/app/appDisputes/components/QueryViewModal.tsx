@@ -30,9 +30,9 @@ const QueryViewModal: React.FC<QueryViewModalProps> = ({ isOpen, onClose, query,
         </div>
 
         {/* Content */}
-        <div className="px-6 py-8">
-          <div className="bg-gray-50 border border-gray-100 rounded-lg p-5">
-            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap italic">
+        <div className="px-4 sm:px-6 py-6 sm:py-8 max-h-[60vh] overflow-y-auto">
+          <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 sm:p-5">
+            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap italic text-sm sm:text-base">
               "{query}"
             </p>
           </div>
