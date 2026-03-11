@@ -536,8 +536,8 @@ const EditClientModal = ({
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center overflow-y-auto">
-      <div className="relative bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full">
-        <div className="p-6">
+      <div className="relative bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        <div className="p-4 sm:p-6 flex flex-col h-full overflow-hidden">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-white">
               {lead.id?.startsWith('new-') ? 'Add New Client' : 'Edit Client Details'}
@@ -564,8 +564,8 @@ const EditClientModal = ({
             </div>
           )}
           
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
+          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
+            <div className="space-y-6 overflow-y-auto px-1 flex-1">
               <FormSection title="Personal Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <InputField

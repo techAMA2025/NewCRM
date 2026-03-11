@@ -23,6 +23,7 @@ const MyClientsPage = () => {
   const [currentUserName, setCurrentUserName] = useState<string>('')
   const [userProfileReady, setUserProfileReady] = useState(false)
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [viewingLead, setViewingLead] = useState<Lead | null>(null)
   const [savingLead, setSavingLead] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -860,16 +861,27 @@ const MyClientsPage = () => {
   }
 
   return (
-    <div className="bg-gray-950">
+    <div className="bg-gray-950 min-h-screen">
       <div className="flex">
-        {/* Conditional sidebar rendering based on user role */}
-        {typedUserRole === 'admin' && <AdminSidebar />}
-        {typedUserRole === 'sales' && <SalesSidebar />}
+        {/* Sidebar - Desktop and Mobile Overlay */}
+        <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
+          {typedUserRole === 'admin' && <AdminSidebar />}
+          {typedUserRole === 'sales' && <SalesSidebar />}
+        </div>
         
-        <div className="p-4 sm:p-6 lg:p-8 flex-1">
+        {/* Mobile Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+        
+        <div className="p-4 sm:p-6 lg:p-8 flex-1 w-full overflow-x-hidden">
           <PageHeader 
             onAddNewClient={handleAddNewClient}
             leadsCount={filteredLeads.length}
+            onMenuToggle={() => setIsMobileSidebarOpen(true)}
           />
           
           <SourceFilter 
@@ -948,25 +960,40 @@ const AccessDeniedState = () => (
 
 const PageHeader = ({ 
   onAddNewClient, 
-  leadsCount 
+  leadsCount,
+  onMenuToggle
 }: { 
   onAddNewClient: () => void,
-  leadsCount: number
+  leadsCount: number,
+  onMenuToggle?: () => void
 }) => (
   <>
     <div className="sm:flex sm:items-center">
-      <div className="sm:flex-auto">
-        <h1 className="text-2xl font-semibold text-gray-100">Pending Details</h1>
-        <p className="mt-2 text-sm text-gray-400">
-          Showing all converted leads whose client details are pending from multiple sources.
-        </p>
+      <div className="flex items-center">
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            className="md:hidden mr-3 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
+            aria-label="Toggle menu"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+        <div className="sm:flex-auto">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-100">Pending Details</h1>
+          <p className="mt-2 text-sm text-gray-400 hidden sm:block">
+            Showing all converted leads whose client details are pending from multiple sources.
+          </p>
+        </div>
       </div>
       
       {/* Add New Client button */}
       <div className="mt-4 sm:mt-0 sm:ml-16">
         <button
           onClick={onAddNewClient}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

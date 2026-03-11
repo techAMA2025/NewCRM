@@ -36,8 +36,8 @@ const ViewClientModal = ({ lead, loading, error, onClose }: ViewClientModalProps
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
-        <div className="p-6">
+      <div className="bg-gray-800 rounded-lg max-w-3xl w-full max-h-[95vh] overflow-y-auto border border-gray-700 shadow-xl">
+        <div className="p-4 sm:p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-white">Client Details</h2>
             <button
