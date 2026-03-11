@@ -1,6 +1,6 @@
-"use client"
-
+import { useState } from "react"
 import type { FilterState } from "../types/client"
+import { FaFilter, FaSearch, FaTimes, FaChevronDown, FaChevronUp } from "react-icons/fa"
 
 interface FiltersSectionProps {
   filters: FilterState
@@ -27,6 +27,8 @@ export default function FiltersSection({
   totalClients,
   filteredCount,
 }: FiltersSectionProps) {
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+
   const clearAllFilters = () => {
     onFiltersChange({
       searchQuery: "",
@@ -47,138 +49,158 @@ export default function FiltersSection({
     filters.weekFilter !== "all"
 
   return (
-    <div className="mb-4 bg-gray-800 p-3 rounded-lg shadow-md">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        {/* Search Bar */}
-        <div className="col-span-1 md:col-span-2">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
-              <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-8 pr-2 py-1.5 border-0 rounded-md bg-gray-700 text-white text-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-              placeholder="Search by name, phone, or email..."
-              value={filters.searchQuery}
-              onChange={(e) => onFiltersChange({ searchQuery: e.target.value })}
-            />
+    <div className="mb-4 space-y-3">
+      {/* Search and Mobile Toggle */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex-1 relative">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <FaSearch className="w-3 h-3 text-gray-400" />
           </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2.5 bg-gray-800 border-0 rounded-xl text-white text-sm placeholder-gray-500 focus:ring-2 focus:ring-purple-600 focus:outline-none shadow-lg transition-all"
+            placeholder="Search name, phone, email..."
+            value={filters.searchQuery}
+            onChange={(e) => onFiltersChange({ searchQuery: e.target.value })}
+          />
         </div>
-
-        {/* Status Filter */}
-        <div>
-          <select
-            value={filters.statusFilter}
-            onChange={(e) => onFiltersChange({ statusFilter: e.target.value })}
-            className="block w-full py-1.5 px-2 text-sm border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-          >
-            <option value="all">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Dropped">Dropped</option>
-            <option value="Not Responding">Not Responding</option>
-            <option value="On Hold">On Hold</option>
-          </select>
-        </div>
-
-        {/* Source Filter */}
-        <div>
-          <select
-            value={filters.sourceFilter}
-            onChange={(e) => onFiltersChange({ sourceFilter: e.target.value })}
-            className="block w-full py-1.5 px-2 text-sm border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-          >
-            <option value="all">All Sources</option>
-            {uniqueSources.map((source) => (
-              <option key={source} value={source}>
-                {source === "credsettlee"
-                  ? "Cred Settle"
-                  : source === "ama"
-                    ? "AMA"
-                    : source === "settleloans"
-                      ? "Settle Loans"
-                      : source === "billcut"
-                        ? "Bill Cut"
-                        : source}
-              </option>
-            ))}
-          </select>
-        </div>
+        
+        <button
+          onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
+          className="md:hidden flex items-center justify-between px-4 py-2.5 bg-gray-800 rounded-xl text-white text-sm font-bold shadow-lg border border-gray-700 active:scale-95 transition-all"
+        >
+          <div className="flex items-center gap-2">
+            <FaFilter className={hasActiveFilters ? "text-purple-500" : "text-gray-400"} />
+            <span>ADVANCED FILTERS</span>
+            {hasActiveFilters && (
+              <span className="bg-purple-600 text-[10px] px-1.5 py-0.5 rounded-full ml-1">
+                ACT
+              </span>
+            )}
+          </div>
+          {isMobileFiltersOpen ? <FaChevronUp /> : <FaChevronDown />}
+        </button>
       </div>
 
-      {/* Second Row */}
-      <div className="mt-3">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          {/* Assignment Filter */}
-          <div>
-            <select
-              value={filters.assignmentFilter}
-              onChange={(e) => onFiltersChange({ assignmentFilter: e.target.value })}
-              className="block w-full py-1.5 px-2 text-sm border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            >
-              <option value="all">All Assignments</option>
-              <option value="primary">Primary</option>
-              <option value="secondary">Secondary</option>
-              <option value="both">Primary & Secondary</option>
-            </select>
-          </div>
-
-          {/* Week Filter */}
-          <div>
-            <select
-              value={filters.weekFilter}
-              onChange={(e) => onFiltersChange({ weekFilter: e.target.value })}
-              className="block w-full py-1.5 px-2 text-sm border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            >
-              <option value="all">All Weeks</option>
-              <option value="1">Week 1 (1-7) - {weekStats.week1} clients</option>
-              <option value="2">Week 2 (8-14) - {weekStats.week2} clients</option>
-              <option value="3">Week 3 (15-21) - {weekStats.week3} clients</option>
-              <option value="4">Week 4 (22-31) - {weekStats.week4} clients</option>
-            </select>
-          </div>
-
-          {/* City Filter */}
-          <div>
-            <select
-              value={filters.cityFilter}
-              onChange={(e) => onFiltersChange({ cityFilter: e.target.value })}
-              className="block w-full py-1.5 px-2 text-sm border-0 rounded-md bg-gray-700 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            >
-              <option value="all">All Cities</option>
-              {uniqueCities.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter Stats */}
-          <div className="flex items-end">
-            <div className="text-gray-400 text-xs">
-              Showing <span className="text-white font-medium">{filteredCount}</span> of{" "}
-              <span className="text-white font-medium">{totalClients}</span> clients
-              {filters.searchQuery && <span> • Search: "{filters.searchQuery}"</span>}
-              {hasActiveFilters && (
-                <button
-                  onClick={clearAllFilters}
-                  className="ml-2 text-purple-400 hover:text-purple-300 focus:outline-none"
-                >
-                  Clear Filters
-                </button>
-              )}
+      {/* Filters Content */}
+      <div className={`${isMobileFiltersOpen ? 'block' : 'hidden md:block'} animate-fadeIn`}>
+        <div className="bg-gray-800 border border-gray-700/50 p-4 md:p-5 rounded-2xl shadow-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
+            {/* Status Filter */}
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold uppercase mb-1.5 block px-1">Status</label>
+              <select
+                value={filters.statusFilter}
+                onChange={(e) => onFiltersChange({ statusFilter: e.target.value })}
+                className="block w-full py-2.5 px-3 text-sm border-0 rounded-xl bg-gray-900 text-white focus:ring-2 focus:ring-purple-600 focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">ALL STATUSES</option>
+                <option value="Active">ACTIVE</option>
+                <option value="Inactive">INACTIVE</option>
+                <option value="Dropped">DROPPED</option>
+                <option value="Not Responding">NOT RESPONDING</option>
+                <option value="On Hold">ON HOLD</option>
+              </select>
             </div>
+
+            {/* Source Filter */}
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold uppercase mb-1.5 block px-1">Source</label>
+              <select
+                value={filters.sourceFilter}
+                onChange={(e) => onFiltersChange({ sourceFilter: e.target.value })}
+                className="block w-full py-2.5 px-3 text-sm border-0 rounded-xl bg-gray-900 text-white focus:ring-2 focus:ring-purple-600 focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">ALL SOURCES</option>
+                {uniqueSources.map((source) => (
+                  <option key={source} value={source}>
+                    {(source === "credsettlee" ? "CRED SETTLE" : 
+                      source === "ama" ? "AMA" : 
+                      source === "settleloans" ? "SETTLE LOANS" : 
+                      source === "billcut" ? "BILL CUT" : source).toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Assignment Filter */}
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold uppercase mb-1.5 block px-1">Assignment</label>
+              <select
+                value={filters.assignmentFilter}
+                onChange={(e) => onFiltersChange({ assignmentFilter: e.target.value })}
+                className="block w-full py-2.5 px-3 text-sm border-0 rounded-xl bg-gray-900 text-white focus:ring-2 focus:ring-purple-600 focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">ALL ASSIGNMENTS</option>
+                <option value="primary">PRIMARY ONLY</option>
+                <option value="secondary">SECONDARY ONLY</option>
+                <option value="both">BOTH P & S</option>
+              </select>
+            </div>
+
+            {/* Week Filter */}
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold uppercase mb-1.5 block px-1">Week Period</label>
+              <select
+                value={filters.weekFilter}
+                onChange={(e) => onFiltersChange({ weekFilter: e.target.value })}
+                className="block w-full py-2.5 px-3 text-sm border-0 rounded-xl bg-gray-900 text-white focus:ring-2 focus:ring-purple-600 focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">ALL WEEKS</option>
+                <option value="1">WEEK 1 (1-7) — {weekStats.week1}</option>
+                <option value="2">WEEK 2 (8-14) — {weekStats.week2}</option>
+                <option value="3">WEEK 3 (15-21) — {weekStats.week3}</option>
+                <option value="4">WEEK 4 (22-31) — {weekStats.week4}</option>
+              </select>
+            </div>
+
+            {/* City Filter */}
+            <div>
+              <label className="text-[10px] text-gray-400 font-bold uppercase mb-1.5 block px-1">City Selection</label>
+              <select
+                value={filters.cityFilter}
+                onChange={(e) => onFiltersChange({ cityFilter: e.target.value })}
+                className="block w-full py-2.5 px-3 text-sm border-0 rounded-xl bg-gray-900 text-white focus:ring-2 focus:ring-purple-600 focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="all">ALL CITIES</option>
+                {uniqueCities.map((city) => (
+                  <option key={city} value={city}>
+                    {city.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Filter Footer */}
+          <div className="mt-6 pt-4 border-t border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-[11px] text-gray-500 font-bold uppercase tracking-widest">
+              Showing <span className="text-white">{filteredCount}</span> of <span className="text-white">{totalClients}</span> records
+              {filters.searchQuery && <span className="ml-2 text-purple-400 lowercase"> • "{filters.searchQuery}"</span>}
+            </div>
+            
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="flex items-center gap-2 px-4 py-1.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-[10px] font-bold rounded-full transition-all border border-red-800/50 uppercase tracking-wider"
+              >
+                <FaTimes />
+                Reset All Filters
+              </button>
+            )}
           </div>
         </div>
       </div>
+      
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+      `}</style>
     </div>
   )
 }

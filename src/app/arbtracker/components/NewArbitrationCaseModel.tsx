@@ -419,7 +419,7 @@ export default function NewArbitrationCaseModal({
               </div>
             </div>
             
-            <div className="flex space-x-6">
+            <div className="flex flex-col sm:flex-row sm:space-x-6 gap-4">
               <div className="flex items-center">
                 <input
                   type="checkbox"

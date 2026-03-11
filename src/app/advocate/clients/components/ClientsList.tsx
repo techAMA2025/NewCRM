@@ -15,6 +15,7 @@ import { getWeekFromStartDate } from "../utils/formatters"
 import type { FilterState, RemarkHistory } from "../types/client"
 import FiltersSection from "../components/FiltersSection"
 import ClientsTable from "../components/ClientsTable"
+import ClientMobileCard from "../components/ClientMobileCard"
 import ClientViewModal from "../components/ClientViewModal"
 import DocumentViewer from "../components/DocumentViewer"
 
@@ -425,9 +426,13 @@ export default function ClientsList() {
   const weekStats = getWeekStats()
 
   return (
-    <div className="flex-1 h-full overflow-hidden flex flex-col">
-      <div className="p-4 overflow-y-auto flex-1">
-        <h1 className="text-xl font-bold mb-4 text-white">My Clients ({clients.length})</h1>
+    <div className="flex-1 h-full overflow-hidden flex flex-col bg-gray-900">
+      <div className="p-3 md:p-6 overflow-y-auto flex-1">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+            MY CLIENTS <span className="ml-2 text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded-lg text-sm">{clients.length}</span>
+          </h1>
+        </div>
 
         <FiltersSection
           filters={filters}
@@ -439,7 +444,7 @@ export default function ClientsList() {
           filteredCount={filteredClients.length}
         />
 
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 hidden md:block overflow-x-auto">
           <ClientsTable
             clients={filteredClients}
             latestRemarks={latestRemarks}
@@ -454,6 +459,34 @@ export default function ClientsList() {
             onTemplateSelect={handleTemplateSelect}
             isSendingWhatsApp={isSendingWhatsApp}
           />
+        </div>
+
+        {/* Mobile View */}
+        <div className="mt-4 md:hidden space-y-4">
+          {filteredClients.length > 0 ? (
+            filteredClients.map((client) => (
+              <ClientMobileCard
+                key={client.id}
+                client={client}
+                requestLetterState={client.request_letter || false}
+                latestRemark={latestRemarks[client.id] || ""}
+                onStatusChange={updateClientStatus}
+                onRequestLetterChange={updateRequestLetterStatus}
+                onRemarkSave={saveRemark}
+                onAppStatusSave={saveAppStatus}
+                onViewHistory={handleViewHistory}
+                onViewAppStatusHistory={handleViewAppStatusHistory}
+                onViewDetails={handleViewDetails}
+                onEditClient={handleEditClient}
+                onTemplateSelect={handleTemplateSelect}
+                isSendingWhatsApp={isSendingWhatsApp}
+              />
+            ))
+          ) : (
+            <div className="text-center p-6 bg-gray-800 rounded-lg">
+              <p className="text-gray-300 text-sm">No clients match your search criteria.</p>
+            </div>
+          )}
         </div>
       </div>
 

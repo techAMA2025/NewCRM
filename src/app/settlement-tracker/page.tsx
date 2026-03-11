@@ -29,6 +29,8 @@ import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
 import SearchableDropdown from '@/components/SearchableDropdown'
 import { useRouter } from 'next/navigation'
+import SettlementMobileCard from './components/SettlementMobileCard'
+import { RemarkInput, SettlementAmountInput } from './components/SettlementInputs'
 
 // Interface for settlement data
 interface Settlement {
@@ -73,123 +75,7 @@ interface Client {
   source_database?: string
 }
 
-// Separate component for the remark input to prevent re-rendering the whole list
-const RemarkInput = ({ 
-  settlementId, 
-  initialValue, 
-  isDarkMode, 
-  onSave, 
-  onHistory 
-}: { 
-  settlementId: string
-  initialValue: string
-  isDarkMode: boolean
-  onSave: (id: string, value: string) => void
-  onHistory: (id: string) => void
-}) => {
-  const [value, setValue] = useState(initialValue)
-
-  return (
-    <div className="flex flex-col space-y-1">
-      <textarea
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Remark..."
-        className={`w-full px-2 py-1 border rounded text-[10px] h-16 resize-x min-w-[150px] ${
-          isDarkMode 
-            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500' 
-            : 'bg-gray-100 border-gray-300 text-gray-800 focus:ring-blue-500'
-        }`}
-        rows={2}
-      />
-      <div className="flex space-x-1">
-        <button
-          onClick={() => onSave(settlementId, value)}
-          className="px-1 py-0.5 text-xs rounded transition-colors duration-200 bg-green-600 hover:bg-green-500 text-white"
-        >
-          Save
-        </button>
-        <button
-          onClick={() => onHistory(settlementId)}
-          className="px-1 py-0.5 text-xs rounded transition-colors duration-200 bg-purple-600 hover:bg-purple-500 text-white"
-        >
-          Hist
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// Component for inline settlement amount editing
-const SettlementAmountInput = ({
-  settlementId,
-  initialValue,
-  isDarkMode,
-  onSave,
-  buttonColor = "bg-green-600 hover:bg-green-500"
-}: {
-  settlementId: string
-  initialValue: string
-  isDarkMode: boolean
-  onSave: (id: string, value: string) => void
-  buttonColor?: string
-}) => {
-  // Format initial value to Indian standard if it exists
-  const formatValue = (val: string) => {
-    if (!val) return ''
-    const clean = val.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')
-    if (clean === '') return ''
-    const num = parseFloat(clean)
-    if (isNaN(num)) return val
-    return num.toLocaleString('en-IN')
-  }
-
-  const [value, setValue] = useState(formatValue(initialValue))
-
-  // Update value if initialValue changes
-  useEffect(() => {
-    setValue(formatValue(initialValue))
-  }, [initialValue])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-    if (rawValue === '') {
-      setValue('')
-      return
-    }
-    
-    // Support decimal points while typing
-    if (e.target.value.endsWith('.')) {
-        setValue(formatValue(rawValue) + '.')
-        return
-    }
-
-    setValue(formatValue(rawValue))
-  }
-
-  return (
-    <div className="flex items-center space-x-1">
-       <input
-        type="text"
-        value={value}
-        onChange={handleChange}
-        placeholder="0"
-        className={`w-20 px-2 py-1 border rounded text-[10px] h-7 ${
-          isDarkMode 
-            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-            : 'bg-white border-gray-300 text-gray-800'
-        }`}
-      />
-      <button
-        onClick={() => onSave(settlementId, value.replace(/,/g, ''))}
-        className={`px-2 py-1 text-xs rounded transition-colors duration-200 ${buttonColor} text-white h-7 flex items-center justify-center`}
-        title="Save Amount"
-      >
-        ✓
-      </button>
-    </div>
-  )
-}
+// Reusable components are now imported from components/SettlementInputs.tsx
 
 const SettlementTracker = () => {
   const { user, userRole, userName, loading: authLoading, logout } = useAuth()
@@ -1206,22 +1092,22 @@ const SettlementTracker = () => {
     <div className={`p-4 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <div className="max-w-full mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settlement Tracker</h1>
-            <p className={`mt-0.5 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Track settlement negotiations with recovery agents</p>
+            <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settlement Tracker</h1>
+            <p className={`mt-1 text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Track settlement negotiations with recovery agents</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 w-full md:w-auto">
             <Button 
               onClick={() => setIsDarkMode(!isDarkMode)}
               variant="outline"
-              className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700' : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50'}`}
+              className={`flex-1 md:flex-none h-10 w-10 p-0 rounded-xl transition-all active:scale-95 ${isDarkMode ? 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700 shadow-lg shadow-black/20' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50 shadow-md'}`}
             >
               {isDarkMode ? '☀️' : '🌙'}
             </Button>
             <Button 
               onClick={() => setIsDialogOpen(true)}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="flex-[4] md:flex-none h-10 px-6 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-green-900/20 active:scale-95 transition-all"
             >
               Add New Settlement
             </Button>
@@ -1229,45 +1115,35 @@ const SettlementTracker = () => {
         </div>
 
         {/* Search Bar and Filter */}
-        <div className="mb-3 flex gap-3">
-          <div className="relative max-w-sm flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="relative col-span-1 lg:col-span-1">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <svg className={`h-3.5 w-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
             <Input
               type="text"
-              placeholder="Search..."
+              placeholder="Search anything..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`pl-9 pr-4 py-1.5 w-full text-[11px] rounded-md focus:ring-green-500 focus:border-green-500 ${
+              className={`h-11 pl-10 pr-4 w-full text-xs font-medium rounded-xl border-0 focus:ring-2 focus:ring-green-600 shadow-lg transition-all ${
                 isDarkMode 
-                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' 
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                  ? 'bg-gray-800 text-white placeholder-gray-500' 
+                  : 'bg-white text-gray-900 placeholder-gray-400'
               }`}
             />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className={`absolute inset-y-0 right-0 pr-3 flex items-center hover:text-gray-600 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}
-              >
-                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
 
-          <div className="w-40">
+          <div className="h-11">
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+              <SelectTrigger className={`h-full text-xs font-bold uppercase rounded-xl border-0 shadow-lg ${isDarkMode ? 'bg-gray-800 text-white focus:ring-green-600' : 'bg-white text-gray-900'}`}>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}>
-                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Statuses</SelectItem>
+              <SelectContent className={`rounded-xl border-0 shadow-2xl ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900'}`}>
+                <SelectItem value="All" className="text-xs font-bold uppercase py-2.5">All Statuses</SelectItem>
                 {statusOptions.map((status) => (
-                  <SelectItem key={status} value={status} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                  <SelectItem key={status} value={status} className="text-xs font-bold uppercase py-2.5">
                     {getStatusDisplay(status)}
                   </SelectItem>
                 ))}
@@ -1275,15 +1151,15 @@ const SettlementTracker = () => {
             </Select>
           </div>
 
-          <div className="w-40">
+          <div className="h-11">
             <Select value={filterSource} onValueChange={setFilterSource}>
-              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+              <SelectTrigger className={`h-full text-xs font-bold uppercase rounded-xl border-0 shadow-lg ${isDarkMode ? 'bg-gray-800 text-white focus:ring-green-600' : 'bg-white text-gray-900'}`}>
                 <SelectValue placeholder="Source" />
               </SelectTrigger>
-              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}>
-                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Sources</SelectItem>
+              <SelectContent className={`rounded-xl border-0 shadow-2xl ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900'}`}>
+                <SelectItem value="All" className="text-xs font-bold uppercase py-2.5">All Sources</SelectItem>
                 {sourceOptions.map((source) => (
-                  <SelectItem key={source} value={source} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                  <SelectItem key={source} value={source} className="text-xs font-bold uppercase py-2.5">
                     {source}
                   </SelectItem>
                 ))}
@@ -1291,15 +1167,15 @@ const SettlementTracker = () => {
             </Select>
           </div>
 
-          <div className="w-48">
+          <div className="h-11">
             <Select value={filterBank} onValueChange={setFilterBank}>
-              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+              <SelectTrigger className={`h-full text-xs font-bold uppercase rounded-xl border-0 shadow-lg ${isDarkMode ? 'bg-gray-800 text-white focus:ring-green-600' : 'bg-white text-gray-900'}`}>
                 <SelectValue placeholder="Bank" />
               </SelectTrigger>
-              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'} max-h-60 overflow-y-auto`}>
-                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Banks</SelectItem>
+              <SelectContent className={`max-h-80 rounded-xl border-0 shadow-2xl ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900'}`}>
+                <SelectItem value="All" className="text-xs font-bold uppercase py-2.5">All Banks</SelectItem>
                 {dbBanks.map((bank) => (
-                  <SelectItem key={bank} value={bank} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                  <SelectItem key={bank} value={bank} className="text-xs font-bold uppercase py-2.5">
                     {bank}
                   </SelectItem>
                 ))}
@@ -1307,15 +1183,15 @@ const SettlementTracker = () => {
             </Select>
           </div>
 
-          <div className="w-48">
+          <div className="h-11">
             <Select value={filterAdvocate} onValueChange={setFilterAdvocate}>
-              <SelectTrigger className={`h-8 text-[11px] ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'}`}>
+              <SelectTrigger className={`h-full text-xs font-bold uppercase rounded-xl border-0 shadow-lg ${isDarkMode ? 'bg-gray-800 text-white focus:ring-green-600' : 'bg-white text-gray-900'}`}>
                 <SelectValue placeholder="Advocate" />
               </SelectTrigger>
-              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}>
-                <SelectItem value="All" className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>All Advocates</SelectItem>
+              <SelectContent className={`rounded-xl border-0 shadow-2xl ${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900'}`}>
+                <SelectItem value="All" className="text-xs font-bold uppercase py-2.5">All Advocates</SelectItem>
                 {dbAdvocates.map((advocate) => (
-                  <SelectItem key={advocate} value={advocate} className={`text-[11px] cursor-pointer hover:bg-gray-100 ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
+                  <SelectItem key={advocate} value={advocate} className="text-xs font-bold uppercase py-2.5">
                     {advocate}
                   </SelectItem>
                 ))}
@@ -1324,248 +1200,240 @@ const SettlementTracker = () => {
           </div>
         </div>
 
-        {/* Settlements Table */}
-        <Card className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <CardHeader className="py-2.5 px-4 shadow-sm border-b border-gray-100/50">
-            <div className="flex justify-between items-center">
-              <CardTitle className={`text-lg transition-all duration-200 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Settlement Records</CardTitle>
-                <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                   Total: {totalCount}
-                </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDarkMode ? 'border-white' : 'border-gray-900'}`}></div>
-                <p className={`mt-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading settlements...</p>
+        {/* Settlements Table/Cards */}
+        <div className="space-y-4">
+          <Card className={`border-0 shadow-2xl overflow-hidden ${isDarkMode ? 'bg-gray-800/50 backdrop-blur-md' : 'bg-white'}`}>
+            <CardHeader className={`py-4 px-6 border-b ${isDarkMode ? 'border-gray-700/50' : 'border-gray-100'}`}>
+              <div className="flex justify-between items-center">
+                <CardTitle className={`text-xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                  Settlement Records
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                   <span className={`px-3 py-1 rounded-lg text-xs font-bold ${isDarkMode ? 'bg-green-900/30 text-green-400 border border-green-800/30' : 'bg-green-50 text-green-600 border border-green-100'}`}>
+                      {totalCount} RECORDS
+                   </span>
+                </div>
               </div>
-            ) : filteredSettlements.length > 0 ? (
-              <>
-                <div className="overflow-x-auto">
-                  <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                    <thead className={`${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-                      <tr>
-                      <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[70px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Date
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[85px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Client
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[110px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Bank
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[125px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Account
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[75px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Amount
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[70px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Type
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[85px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Settlement Amt
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[85px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Letter Amount
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[90px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Source
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[100px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Status
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[100px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Created By
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Remarks
-                        </th>
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[110px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Success Fee
-                        </th>
-                       
-                        <th className={`px-1.5 py-1.5 text-left text-[10px] font-medium uppercase tracking-wider w-[65px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className={`${isDarkMode ? 'bg-gray-800 divide-y divide-gray-700' : 'bg-white divide-y divide-gray-200'}`}>
-                      {filteredSettlements.map((settlement) => (
-                        <tr key={settlement.id} className={`${isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
-                            <div className="truncate max-w-[65px]" title={settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}>
-                              {settlement.createdAt?.toDate ? 
-                                settlement.createdAt.toDate().toLocaleDateString() : 
-                                'N/A'
-                              }
-                            </div>
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
-                            <div className="truncate max-w-[80px]" title={settlement.clientName}>
-                              {settlement.clientName}
-                            </div>
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-[105px]" title={settlement.bankName}>
-                              {settlement.bankName}
-                            </div>
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-[120px]" title={settlement.accountNumber}>
-                              {settlement.accountNumber}
-                            </div>
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-[70px]" title={`₹${formatLoanAmount(settlement.loanAmount)}`}>
-                              ₹{formatLoanAmount(settlement.loanAmount)}
-                            </div>
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-[65px]" title={settlement.loanType}>
-                              {settlement.loanType}
-                            </div>
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                             <SettlementAmountInput 
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isDarkMode ? 'border-white' : 'border-gray-900'}`}></div>
+                  <p className={`mt-4 text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Synchronizing data...</p>
+                </div>
+              ) : filteredSettlements.length > 0 ? (
+                <>
+                  {/* Desktop View */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                      <thead className={`${isDarkMode ? 'bg-gray-900/40' : 'bg-gray-50/50'}`}>
+                        <tr>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Date</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Client</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Bank</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Account</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Amount</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Settlement Amt</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Letter Bal</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Source</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Owner</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Remarks</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Success Fee</th>
+                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/50 hover:bg-gray-700/10' : 'divide-gray-100'}`}>
+                        {filteredSettlements.map((settlement) => (
+                          <tr key={settlement.id} className={`${isDarkMode ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50/50'} transition-colors`}>
+                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                               {settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                               {settlement.clientName}
+                            </td>
+                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                               {settlement.bankName}
+                            </td>
+                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                               {settlement.accountNumber}
+                            </td>
+                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                               ₹{formatLoanAmount(settlement.loanAmount)}
+                            </td>
+                            <td className={`px-4 py-3 whitespace-nowrap text-[10px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                               {settlement.loanType}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                               <SettlementAmountInput 
+                                  settlementId={settlement.id}
+                                  initialValue={settlement.settlementAmount || ''}
+                                  isDarkMode={isDarkMode}
+                                  onSave={handleSettlementAmountSave}
+                               />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                               <SettlementAmountInput 
+                                  settlementId={settlement.id}
+                                  initialValue={settlement.letterAmount || ''}
+                                  isDarkMode={isDarkMode}
+                                  onSave={handleLetterAmountSave}
+                                  buttonColor="bg-blue-600 hover:bg-blue-500"
+                               />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <Select value={settlement.source || ''} onValueChange={(value) => handleSourceUpdate(settlement.id, value)}>
+                                <SelectTrigger className={`w-32 h-8 text-[11px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                  {sourceOptions.map((opt) => (
+                                     <SelectItem key={opt} value={opt} className="text-[11px] font-bold uppercase">{opt}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <Select value={settlement.status} onValueChange={(value) => handleStatusUpdate(settlement.id, value)}>
+                                <SelectTrigger className={`w-36 h-8 text-[11px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                  {statusOptions.map((status) => (
+                                    <SelectItem key={status} value={status} className="text-[11px] font-bold uppercase py-2">
+                                      <span className={`px-2 py-0.5 rounded-full ${getStatusColor(status)}`}>
+                                        {getStatusDisplay(status)}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className={`px-4 py-3 whitespace-nowrap text-[10px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                               {settlement.createdBy}
+                            </td>
+                            <td className="px-4 py-3 min-w-[250px]">
+                              <RemarkInput
                                 settlementId={settlement.id}
-                                initialValue={settlement.settlementAmount || ''}
+                                initialValue={settlementRemarks[settlement.id] || ""}
                                 isDarkMode={isDarkMode}
-                                onSave={handleSettlementAmountSave}
-                             />
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                             <SettlementAmountInput 
-                                settlementId={settlement.id}
-                                initialValue={settlement.letterAmount || ''}
-                                isDarkMode={isDarkMode}
-                                onSave={handleLetterAmountSave}
-                                buttonColor="bg-blue-600 hover:bg-blue-500"
-                             />
-                          </td>
-                           <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <Select value={settlement.source || ''} onValueChange={(value) => handleSourceUpdate(settlement.id, value)}>
-                              <SelectTrigger className={`w-[85px] h-6 text-[10px] ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white text-gray-900 border-gray-200'}`}>
-                                <SelectValue placeholder="Source" />
-                              </SelectTrigger>
-                              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : ''}`}>
-                                {sourceOptions.map((opt) => (
-                                   <SelectItem key={opt} value={opt} className={`text-[10px] ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
-                                    {opt}
-                                   </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="px-1.5 py-1.5 whitespace-nowrap">
-                            <Select value={settlement.status} onValueChange={(value) => handleStatusUpdate(settlement.id, value)}>
-                              <SelectTrigger className={`w-[95px] h-6 text-[10px] ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white text-gray-900 border-gray-200'}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : ''}`}>
-                                {statusOptions.map((status) => (
-                                  <SelectItem key={status} value={status} className={`text-[10px] ${isDarkMode ? 'focus:bg-gray-700 focus:text-white' : ''}`}>
-                                    <span className={`inline-flex px-1 py-0 px-0.5 text-[9px] font-semibold rounded-full ${getStatusColor(status)}`}>
-                                      {getStatusDisplay(status)}
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="truncate max-w-[95px]" title={settlement.createdBy}>
-                              {settlement.createdBy}
-                            </div>
-                          </td>
-                          <td className={`px-1.5 py-1.5 text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <RemarkInput
-                              settlementId={settlement.id}
-                              initialValue={settlementRemarks[settlement.id] || ""}
-                              isDarkMode={isDarkMode}
-                              onSave={handleSaveRemark}
-                              onHistory={handleViewHistory}
-                            />
-                          </td>
-                          <td className="px-1.5 py-1.5 whitespace-nowrap">
-                            <div className="flex flex-col gap-0.5">
+                                onSave={handleSaveRemark}
+                                onHistory={handleViewHistory}
+                              />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <Select 
                                 value={settlement.successFeeStatus || 'Not Paid'} 
                                 onValueChange={(value) => handleSuccessFeeStatusChange(settlement.id, value)}
                               >
-                                <SelectTrigger className={`w-[95px] h-6 text-[10px] border ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
-                                  <SelectValue placeholder="Status" />
+                                <SelectTrigger className={`w-32 h-8 text-[11px] font-bold uppercase rounded-lg border-0 shadow-inner ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
+                                  <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className={`${isDarkMode ? 'bg-gray-800 text-white border-gray-700' : ''}`}>
-                                  <SelectItem value="Paid" className="text-[10px]">Paid</SelectItem>
-                                  <SelectItem value="Not Paid" className="text-[10px]">Not Paid</SelectItem>
-                                  <SelectItem value="Partially Paid" className="text-[10px]">Partial</SelectItem>
-                                  <SelectItem value="Not Required" className="text-[10px]">None</SelectItem>
+                                <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                  <SelectItem value="Paid">Paid</SelectItem>
+                                  <SelectItem value="Not Paid">Not Paid</SelectItem>
+                                  <SelectItem value="Partially Paid">Partial</SelectItem>
+                                  <SelectItem value="Not Required">None</SelectItem>
                                 </SelectContent>
                               </Select>
                               {settlement.successFeeStatus === 'Partially Paid' && settlement.successFeeAmount && (
-                                <span className={`text-[9px] px-0.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                <p className={`mt-1 text-[10px] font-bold px-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                   ₹{formatLoanAmount(settlement.successFeeAmount)}
-                                </span>
+                                </p>
                               )}
-                            </div>
-                          </td>
-                          
-                          <td className={`px-1.5 py-1.5 whitespace-nowrap text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <div className="flex flex-col gap-1">
-                              <button
-                                onClick={() => handleEditClick(settlement)}
-                                className="px-1 py-0.5 text-[10px] rounded transition-colors duration-200 bg-blue-600 hover:bg-blue-500 text-white w-full"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSettlement(settlement)}
-                                className="px-1 py-0.5 text-[10px] rounded transition-colors duration-200 bg-red-600 hover:bg-red-500 text-white w-full"
-                              >
-                                Del
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Loading indicator for infinite scroll */}
-                <div ref={observerTarget} className="py-4 text-center">
-                  {isLoadingMore && (
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Loading more settlements...
-                    </span>
-                  )}
-                  {!hasMore && settlements.length > 0 && (
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                      No more settlements to load
-                    </span>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {searchTerm ? (
-                  <div>
-                    <p>No settlements found matching "{searchTerm}".</p>
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="text-green-600 hover:text-green-700 underline mt-2"
-                    >
-                      Clear search
-                    </button>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleEditClick(settlement)}
+                                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSettlement(settlement)}
+                                  className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-900/20"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2.5M3 7h18"/></svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ) : (
-                  <p>No settlement records found. Click "Add New Settlement" to get started.</p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                  {/* Mobile View */}
+                  <div className="lg:hidden p-4 space-y-4">
+                    {filteredSettlements.map((settlement) => (
+                      <SettlementMobileCard 
+                        key={settlement.id}
+                        settlement={settlement}
+                        isDarkMode={isDarkMode}
+                        getStatusColor={getStatusColor}
+                        getSuccessFeeColor={getSuccessFeeColor}
+                        getStatusDisplay={getStatusDisplay}
+                        formatLoanAmount={formatLoanAmount}
+                        onStatusUpdate={handleStatusUpdate}
+                        onSuccessFeeStatusChange={handleSuccessFeeStatusChange}
+                        onSourceUpdate={handleSourceUpdate}
+                        onSettlementAmountSave={handleSettlementAmountSave}
+                        onLetterAmountSave={handleLetterAmountSave}
+                        onSaveRemark={handleSaveRemark}
+                        onViewHistory={handleViewHistory}
+                        onEditClick={handleEditClick}
+                        onDeleteClick={handleDeleteSettlement}
+                        statusOptions={statusOptions}
+                        sourceOptions={sourceOptions}
+                        settlementRemarks={settlementRemarks}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Infinite Scroll & Loader */}
+                  <div ref={observerTarget} className="py-8 text-center flex flex-col items-center justify-center">
+                    {isLoadingMore && (
+                      <div className="flex items-center gap-3">
+                        <div className={`animate-spin h-4 w-4 border-2 border-b-transparent rounded-full ${isDarkMode ? 'border-green-400' : 'border-green-600'}`}></div>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Loading older records...</span>
+                      </div>
+                    )}
+                    {!hasMore && settlements.length > 0 && (
+                      <div className="flex flex-col items-center opacity-40">
+                         <div className={`w-12 h-0.5 rounded-full mb-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+                         <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>End of database</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className={`text-center py-20 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                   <div className="mb-4 flex justify-center opacity-20">
+                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                   </div>
+                  {searchTerm ? (
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-tight mb-2">No matching records found</p>
+                      <button
+                        onClick={() => setSearchTerm('')}
+                        className="text-green-500 hover:text-green-400 text-xs font-bold uppercase tracking-widest underline underline-offset-4 decoration-2"
+                      >
+                        Clear Active Search
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                        <p className="text-sm font-bold uppercase tracking-tight mb-2">Your tracker is empty</p>
+                        <p className="text-xs">Start tracking your negotiations today</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
 
         {/* Add Settlement Dialog */}

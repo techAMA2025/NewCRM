@@ -200,11 +200,11 @@ export default function ClientViewModal({
     <>
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
         <div
-          className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700"
+          className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700"
           style={{ animation: "slideUp 0.3s ease-out forwards" }}
         >
           {/* Client Header/Hero Section */}
-          <div className="relative bg-gradient-to-r from-purple-900 via-indigo-800 to-purple-900 p-8">
+          <div className="relative bg-gradient-to-r from-purple-900 via-indigo-800 to-purple-900 p-6 md:p-8">
             <div className="absolute top-4 right-4">
               <button
                 onClick={onClose}
@@ -245,7 +245,7 @@ export default function ClientViewModal({
                     {client.adv_status || "Inactive"}
                   </span>
                 </div>
-                <h2 className="text-3xl font-bold text-white tracking-tight mb-1">{client.name}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-1">{client.name}</h2>
                 <div className="text-sm mb-2">
                   <span
                     className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -333,7 +333,7 @@ export default function ClientViewModal({
           </div>
 
           {/* Client Content */}
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-160px)] md:max-h-[calc(90vh-180px)]">
             {/* Financial Overview */}
             <div className="mb-8 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg border border-gray-700 overflow-hidden">
               <div className="text-sm text-gray-400 font-medium px-4 py-2 bg-black/20">Financial Overview</div>

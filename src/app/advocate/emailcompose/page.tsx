@@ -1013,14 +1013,14 @@ Below is a draft email you can send to your bank or financial institution to ini
        userRole === 'assistant' ? <AssistantSidebar /> :
        <OverlordSidebar />}
 
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 lg:p-8 w-full overflow-x-hidden">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
-            <FaEnvelope className="mr-3 text-purple-400" />
-            Compose Email (From: legal@amalegalsolutions.com)
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 flex items-center">
+            <FaEnvelope className="mr-3 text-purple-400 shrink-0" />
+            <span className="truncate">Compose Email</span>
           </h1>
-          <p className="text-gray-400 mb-8">
-            Create and send professional emails to clients and banks
+          <p className="text-gray-400 mb-6 lg:mb-8 text-sm sm:text-base">
+            From: legal@amalegalsolutions.com
           </p>
           
 
@@ -1028,89 +1028,89 @@ Below is a draft email you can send to your bank or financial institution to ini
             onSubmit={handleSubmit}
             className="bg-gray-800/50 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-xl"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Template Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Email Template
-                </label>
-                <select
-                  value={selectedDraft}
-                  onChange={handleDraftChange}
-                  className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="">Select a template</option>
-                  {draftTemplates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-6 mb-6">
+                {/* Template Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Email Template
+                  </label>
+                  <select
+                    value={selectedDraft}
+                    onChange={handleDraftChange}
+                    className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                  >
+                    <option value="">Select a template</option>
+                    {draftTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Subject Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Subject
-                </label>
+                {/* Subject Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Subject
+                  </label>
 
-                {!editingSubject ? (
-                  <div className="flex items-center">
-                    <select
-                      value={selectedSubject}
-                      onChange={handleSubjectChange}
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      disabled={editingSubject}
-                    >
-                      <option value="">Select a subject</option>
-                      {subjectTemplates.slice(0, -1).map((subject) => (
-                        <option key={subject.id} value={subject.id}>
-                          {subject.text}
-                        </option>
-                      ))}
-                      <option value="custom">Custom Subject...</option>
-                    </select>
+                  {!editingSubject ? (
+                    <div className="flex items-center">
+                      <select
+                        value={selectedSubject}
+                        onChange={handleSubjectChange}
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                        disabled={editingSubject}
+                      >
+                        <option value="">Select a subject</option>
+                        {subjectTemplates.slice(0, -1).map((subject) => (
+                          <option key={subject.id} value={subject.id}>
+                            {subject.text}
+                          </option>
+                        ))}
+                        <option value="custom">Custom Subject...</option>
+                      </select>
 
-                    {(selectedSubject || isCustomSubject) && (
+                      {(selectedSubject || isCustomSubject) && (
+                        <button
+                          type="button"
+                          onClick={toggleSubjectEdit}
+                          className="ml-2 p-2.5 bg-indigo-700 hover:bg-indigo-600 text-white rounded-md transition-colors shrink-0"
+                          title="Edit subject"
+                        >
+                          <FaPen size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <input
+                        type="text"
+                        value={customSubject}
+                        onChange={(e) => setCustomSubject(e.target.value)}
+                        placeholder="Enter custom subject"
+                        className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                      />
                       <button
                         type="button"
-                        onClick={toggleSubjectEdit}
-                        className="ml-2 p-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-md transition-colors"
-                        title="Edit subject"
+                        onClick={saveEditedSubject}
+                        className="ml-2 p-2.5 bg-green-700 hover:bg-green-600 text-white rounded-md transition-colors shrink-0"
+                        title="Save subject"
                       >
-                        <FaPen size={14} />
+                        <FaCheck size={14} />
                       </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <input
-                      type="text"
-                      value={customSubject}
-                      onChange={(e) => setCustomSubject(e.target.value)}
-                      placeholder="Enter custom subject"
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                    <button
-                      type="button"
-                      onClick={saveEditedSubject}
-                      className="ml-2 p-2 bg-green-700 hover:bg-green-600 text-white rounded-md transition-colors"
-                      title="Save subject"
-                    >
-                      <FaCheck size={14} />
-                    </button>
-                  </div>
-                )}
+                    </div>
+                  )}
 
-                {isCustomSubject && !editingSubject && customSubject && (
-                  <div className="mt-2 px-3 py-2 bg-indigo-900/30 border border-indigo-800/50 rounded-md">
-                    <p className="text-sm text-white break-words">
-                      {customSubject}
-                    </p>
-                  </div>
-                )}
+                  {isCustomSubject && !editingSubject && customSubject && (
+                    <div className="mt-2 px-3 py-2 bg-indigo-900/30 border border-indigo-800/50 rounded-md">
+                      <p className="text-sm text-white break-words">
+                        {customSubject}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
             {/* Recipients Section */}
             <div className="mb-6">
@@ -1170,24 +1170,24 @@ Below is a draft email you can send to your bank or financial institution to ini
                       )}
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                       <button
                         type="button"
                         onClick={handleAddBankRecipient}
-                        className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        className="px-3 py-2.5 bg-blue-700/80 hover:bg-blue-600 text-white rounded-lg transition-all active:scale-95 flex items-center justify-center text-sm font-bold shadow-md"
                         disabled={!selectedBank || isLoadingBanks}
                       >
-                        <FaPlus size={12} className="mr-1" />
-                        Add as Recipient
+                        <FaPlus size={10} className="mr-2" />
+                        Recipient
                       </button>
                       <button
                         type="button"
                         onClick={handleAddBankCcRecipient}
-                        className="flex-1 px-3 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        className="px-3 py-2.5 bg-amber-700/80 hover:bg-amber-600 text-white rounded-lg transition-all active:scale-95 flex items-center justify-center text-sm font-bold shadow-md"
                         disabled={!selectedBank || isLoadingBanks}
                       >
-                        <FaPlus size={12} className="mr-1" />
-                        Add as CC
+                        <FaPlus size={10} className="mr-2" />
+                        CC
                       </button>
                     </div>
                   </div>
@@ -1257,24 +1257,24 @@ Below is a draft email you can send to your bank or financial institution to ini
                       )}
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                       <button
                         type="button"
                         onClick={handleAddClientRecipient}
-                        className="flex-1 px-3 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        className="px-3 py-2.5 bg-blue-700/80 hover:bg-blue-600 text-white rounded-lg transition-all active:scale-95 flex items-center justify-center text-sm font-bold shadow-md"
                         disabled={!tempClientId || loadingClients}
                       >
-                        <FaPlus size={12} className="mr-1" />
-                        Add as Recipient
+                        <FaPlus size={10} className="mr-2" />
+                        Recipient
                       </button>
                       <button
                         type="button"
                         onClick={handleAddClientCcRecipient}
-                        className="flex-1 px-3 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-md transition-colors flex items-center justify-center"
+                        className="px-3 py-2.5 bg-amber-700/80 hover:bg-amber-600 text-white rounded-lg transition-all active:scale-95 flex items-center justify-center text-sm font-bold shadow-md"
                         disabled={!tempClientId || loadingClients}
                       >
-                        <FaPlus size={12} className="mr-1" />
-                        Add as CC
+                        <FaPlus size={10} className="mr-2" />
+                        CC
                       </button>
                     </div>
                   </div>
@@ -1291,30 +1291,30 @@ Below is a draft email you can send to your bank or financial institution to ini
                 <h3 className="text-sm font-medium text-gray-300 mb-2">
                   Add Manual Recipient
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="md:col-span-1">
+                <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-1">
                     <input
                       type="text"
                       value={manualRecipientName}
                       onChange={(e) => setManualRecipientName(e.target.value)}
                       placeholder="Name (optional)"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
                     />
                   </div>
-                  <div className="md:col-span-1">
+                  <div className="sm:col-span-1">
                     <input
                       type="email"
                       value={manualRecipientEmail}
                       onChange={(e) => setManualRecipientEmail(e.target.value)}
                       placeholder="Email address"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
                     />
                   </div>
                   <div>
                     <button
                       type="button"
                       onClick={handleAddManualRecipient}
-                      className="w-full px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors flex items-center justify-center"
+                      className="w-full px-3 py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors flex items-center justify-center font-medium active:scale-95"
                     >
                       <FaEnvelopeOpen size={14} className="mr-2" />
                       Add Recipient
@@ -1330,24 +1330,24 @@ Below is a draft email you can send to your bank or financial institution to ini
                     {recipients.length} Recipient
                     {recipients.length !== 1 ? "s" : ""}
                   </h3>
-                  <ul className="space-y-2 max-h-60 overflow-y-auto">
+                  <ul className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                     {recipients.map((recipient) => (
                       <li
                         key={recipient.id}
-                        className={`rounded-md border ${
+                        className={`rounded-xl border shadow-sm ${
                           recipient.editing
                             ? "bg-gray-700 border-indigo-600"
                             : recipient.type === "client"
-                            ? "bg-blue-900/20 border-blue-800/30"
+                            ? "bg-blue-900/10 border-blue-800/20"
                             : recipient.type === "bank"
-                            ? "bg-green-900/20 border-green-800/30"
-                            : "bg-purple-900/20 border-purple-800/30"
-                        } p-2 flex items-center justify-between`}
+                            ? "bg-green-900/10 border-green-800/20"
+                            : "bg-purple-900/10 border-purple-800/20"
+                        } p-3 sm:p-4`}
                       >
                         {recipient.editing ? (
                           // Edit mode
-                          <div className="flex-1 flex items-center">
-                            <div className="flex-1 grid grid-cols-2 gap-2">
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <input
                                 type="text"
                                 value={recipient.name}
@@ -1358,7 +1358,7 @@ Below is a draft email you can send to your bank or financial institution to ini
                                     e.target.value
                                   )
                                 }
-                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                className="px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                                 placeholder="Name"
                               />
                               <input
@@ -1371,76 +1371,79 @@ Below is a draft email you can send to your bank or financial institution to ini
                                     e.target.value
                                   )
                                 }
-                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                className="px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                                 placeholder="Email"
                               />
                             </div>
-                            <div className="flex">
+                            <div className="flex justify-end gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
                                   saveEditedRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-green-700 hover:bg-green-600 text-white rounded-md transition-colors ml-2"
-                                title="Save"
+                                className="px-4 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-md transition-all active:scale-95 text-xs font-bold uppercase tracking-wider"
                               >
-                                <FaCheck size={12} />
+                                Save
                               </button>
                               <button
                                 type="button"
                                 onClick={() =>
                                   toggleEditRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-colors ml-1"
-                                title="Cancel"
+                                className="px-4 py-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-all active:scale-95 text-xs font-bold uppercase tracking-wider"
                               >
-                                <FaTimes size={12} />
+                                Cancel
                               </button>
                             </div>
                           </div>
                         ) : (
                           // View mode
-                          <>
-                            <div className="flex items-center">
-                              {recipient.type === "client" ? (
-                                <FaUser className="text-blue-400 mr-2" />
-                              ) : recipient.type === "bank" ? (
-                                <FaEnvelope className="text-green-400 mr-2" />
-                              ) : (
-                                <FaEnvelopeOpen className="text-purple-400 mr-2" />
-                              )}
-                              <div>
-                                <p className="text-white text-sm font-medium">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center min-w-0">
+                              <div className={`p-2 rounded-lg mr-3 shrink-0 ${
+                                recipient.type === "client" ? "bg-blue-900/40 text-blue-400" :
+                                recipient.type === "bank" ? "bg-green-900/40 text-green-400" : "bg-purple-900/40 text-purple-400"
+                              }`}>
+                                {recipient.type === "client" ? (
+                                  <FaUser size={14} />
+                                ) : recipient.type === "bank" ? (
+                                  <FaEnvelope size={14} />
+                                ) : (
+                                  <FaEnvelopeOpen size={14} />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-white text-sm font-bold truncate">
                                   {recipient.name}
                                 </p>
-                                <p className="text-gray-400 text-xs">
+                                <p className="text-gray-400 text-xs truncate">
                                   {recipient.email}
                                 </p>
                               </div>
                             </div>
-                            <div>
+                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                               <button
                                 type="button"
                                 onClick={() =>
                                   toggleEditRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors ml-1"
+                                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all active:scale-95"
                                 title="Edit"
                               >
-                                <FaEdit size={12} />
+                                <FaEdit size={14} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() =>
                                   handleRemoveRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-red-900/70 hover:bg-red-700 text-white rounded-md transition-colors ml-1"
+                                className="p-2 bg-red-900/40 hover:bg-red-700 text-red-400 hover:text-white rounded-lg transition-all active:scale-95"
                                 title="Remove"
                               >
-                                <FaTimes size={12} />
+                                <FaTimes size={14} />
                               </button>
                             </div>
-                          </>
+                          </div>
                         )}
                       </li>
                     ))}
@@ -1460,30 +1463,30 @@ Below is a draft email you can send to your bank or financial institution to ini
                 <h3 className="text-sm font-medium text-gray-300 mb-2">
                   Add CC Recipient
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="md:col-span-1">
+                <div className="flex flex-col sm:grid sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-1">
                     <input
                       type="text"
                       value={manualCcRecipientName}
                       onChange={(e) => setManualCcRecipientName(e.target.value)}
                       placeholder="Name (optional)"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
                     />
                   </div>
-                  <div className="md:col-span-1">
+                  <div className="sm:col-span-1">
                     <input
                       type="email"
                       value={manualCcRecipientEmail}
                       onChange={(e) => setManualCcRecipientEmail(e.target.value)}
                       placeholder="CC Email address"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
                     />
                   </div>
                   <div>
                     <button
                       type="button"
                       onClick={handleAddManualCcRecipient}
-                      className="w-full px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors flex items-center justify-center"
+                      className="w-full px-3 py-2.5 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors flex items-center justify-center font-medium active:scale-95"
                     >
                       <FaEnvelopeOpen size={14} className="mr-2" />
                       Add CC
@@ -1499,16 +1502,16 @@ Below is a draft email you can send to your bank or financial institution to ini
                     {ccRecipients.length} CC Recipient
                     {ccRecipients.length !== 1 ? "s" : ""}
                   </h3>
-                  <ul className="space-y-2 max-h-60 overflow-y-auto">
+                  <ul className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                     {ccRecipients.map((recipient) => (
                       <li
                         key={recipient.id}
-                        className={`rounded-md border bg-amber-900/20 border-amber-800/30 p-2 flex items-center justify-between`}
+                        className={`rounded-xl border shadow-sm bg-amber-900/10 border-amber-800/20 p-3 sm:p-4`}
                       >
                         {recipient.editing ? (
                           // Edit mode for CC recipient
-                          <div className="flex-1 flex items-center">
-                            <div className="flex-1 grid grid-cols-2 gap-2">
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <input
                                 type="text"
                                 value={recipient.name}
@@ -1519,7 +1522,7 @@ Below is a draft email you can send to your bank or financial institution to ini
                                     e.target.value
                                   )
                                 }
-                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                className="px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:ring-2 focus:ring-amber-500 outline-none"
                                 placeholder="Name"
                               />
                               <input
@@ -1532,70 +1535,70 @@ Below is a draft email you can send to your bank or financial institution to ini
                                     e.target.value
                                   )
                                 }
-                                className="px-2 py-1 bg-gray-600 border border-gray-500 rounded-md text-white text-sm"
+                                className="px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:ring-2 focus:ring-amber-500 outline-none"
                                 placeholder="Email"
                               />
                             </div>
-                            <div className="flex">
+                            <div className="flex justify-end gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
                                   saveEditedCcRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-green-700 hover:bg-green-600 text-white rounded-md transition-colors ml-2"
-                                title="Save"
+                                className="px-4 py-1.5 bg-green-700 hover:bg-green-600 text-white rounded-md transition-all active:scale-95 text-xs font-bold uppercase tracking-wider"
                               >
-                                <FaCheck size={12} />
+                                Save
                               </button>
                               <button
                                 type="button"
                                 onClick={() =>
                                   toggleEditCcRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-colors ml-1"
-                                title="Cancel"
+                                className="px-4 py-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-all active:scale-95 text-xs font-bold uppercase tracking-wider"
                               >
-                                <FaTimes size={12} />
+                                Cancel
                               </button>
                             </div>
                           </div>
                         ) : (
                           // View mode for CC recipient
-                          <>
-                            <div className="flex items-center">
-                              <FaEnvelopeOpen className="text-amber-400 mr-2" />
-                              <div>
-                                <p className="text-white text-sm font-medium">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center min-w-0">
+                              <div className="p-2 rounded-lg bg-amber-900/40 text-amber-400 mr-3 shrink-0">
+                                <FaEnvelopeOpen size={14} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-white text-sm font-bold truncate">
                                   {recipient.name} (CC)
                                 </p>
-                                <p className="text-gray-400 text-xs">
+                                <p className="text-gray-400 text-xs truncate">
                                   {recipient.email}
                                 </p>
                               </div>
                             </div>
-                            <div>
+                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                               <button
                                 type="button"
                                 onClick={() =>
                                   toggleEditCcRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors ml-1"
+                                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all active:scale-95"
                                 title="Edit"
                               >
-                                <FaEdit size={12} />
+                                <FaEdit size={14} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() =>
                                   handleRemoveCcRecipient(recipient.id)
                                 }
-                                className="p-1.5 bg-red-900/70 hover:bg-red-700 text-white rounded-md transition-colors ml-1"
+                                className="p-2 bg-red-900/40 hover:bg-red-700 text-red-400 hover:text-white rounded-lg transition-all active:scale-95"
                                 title="Remove"
                               >
-                                <FaTimes size={12} />
+                                <FaTimes size={14} />
                               </button>
                             </div>
-                          </>
+                          </div>
                         )}
                       </li>
                     ))}
@@ -1628,11 +1631,11 @@ Below is a draft email you can send to your bank or financial institution to ini
                     </label>
                   </div>
 
-                  <div className="flex items-center">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 flex items-center"
+                      className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 flex items-center justify-center font-medium"
                     >
                       <FaPaperclip className="mr-2" />
                       Attach Files
@@ -1644,10 +1647,10 @@ Below is a draft email you can send to your bank or financial institution to ini
                       multiple
                       className="hidden"
                     />
+                    <span className="text-gray-400 text-xs sm:text-sm italic">
+                      Max 10MB per file
+                    </span>
                   </div>
-                  <span className="ml-3 text-gray-400 text-sm">
-                    Max 10MB per file
-                  </span>
 
                   {/* Display attached files */}
                   {attachments.length > 0 && (
@@ -1733,29 +1736,54 @@ Below is a draft email you can send to your bank or financial institution to ini
               </div>
             </div>
           </form>
-          <button
-            type="button"
-            className="w-full px-3 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-md transition-colors flex items-center justify-center mt-10"
-          >
-            <FaHistory size={14} className="mr-2" />
+          <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <a
               href="/advocate/emailcompose/emailhistory"
-              className="text-white"
+              className="flex-1 w-full px-4 py-3 bg-indigo-700/40 hover:bg-indigo-600/60 text-white rounded-xl transition-all duration-300 flex items-center justify-center border border-indigo-500/30 group"
             >
-              Email History
+              <FaHistory size={16} className="mr-2 text-indigo-400 group-hover:text-white transition-colors" />
+              <span className="font-bold tracking-wide uppercase text-sm">View Email History</span>
             </a>
-          </button>
-          <div className="mt-8 p-4 rounded-lg bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-800/30">
-            <h3 className="text-sm font-medium text-indigo-300 mb-2">
+            
+            <button
+               type="button"
+               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+               className="sm:hidden w-full px-4 py-3 bg-gray-700/40 text-white rounded-xl border border-gray-600/30 font-bold uppercase text-xs tracking-widest"
+            >
+              Back to Top
+            </button>
+          </div>
+
+          <div className="mt-8 p-5 lg:p-6 rounded-2xl bg-gradient-to-br from-purple-900/20 to-indigo-900/20 border border-purple-500/10 backdrop-blur-sm">
+            <h3 className="text-sm lg:text-base font-bold text-indigo-300 mb-4 flex items-center uppercase tracking-wider">
+              <span className="w-8 h-px bg-indigo-500/50 mr-3"></span>
               Email Composition Tips
             </h3>
-            <ul className="text-gray-300 text-sm space-y-1 ml-5 list-disc">
-              <li>Keep your message clear and concise</li>
-              <li>Personalize your emails by using the client's name</li>
-              <li>Include specific action items or next steps</li>
-              <li>Proofread before sending</li>
-              <li>Ensure all recipient emails are correct before sending</li>
-              <li>Verify attachments are relevant and properly named</li>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-400 text-xs sm:text-sm">
+              <li className="flex items-start">
+                <span className="text-purple-500 mr-2">•</span>
+                Keep your message clear and concise
+              </li>
+              <li className="flex items-start">
+                <span className="text-purple-500 mr-2">•</span>
+                Personalize your emails with client names
+              </li>
+              <li className="flex items-start">
+                <span className="text-purple-500 mr-2">•</span>
+                Include specific action items or next steps
+              </li>
+              <li className="flex items-start">
+                <span className="text-purple-500 mr-2">•</span>
+                Proofread thoroughly before sending
+              </li>
+              <li className="flex items-start">
+                <span className="text-purple-500 mr-2">•</span>
+                Verify all recipient emails are correct
+              </li>
+              <li className="flex items-start">
+                <span className="text-purple-500 mr-2">•</span>
+                Ensure attachments are relevant
+              </li>
             </ul>
           </div>
         </div>

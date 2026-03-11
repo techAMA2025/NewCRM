@@ -268,7 +268,7 @@ export default function ClientEditModal({
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
       <div 
-        className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700"
+        className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-hidden shadow-2xl border border-gray-700"
         style={{ animation: 'slideUp 0.3s ease-out forwards' }}
       >
         <div className="relative bg-gradient-to-r from-purple-900 via-indigo-800 to-purple-900 p-6">
@@ -288,7 +288,7 @@ export default function ClientEditModal({
           <p className="text-gray-300 mt-1">Update client information</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-180px)] md:max-h-[calc(90vh-200px)]">
           {error && (
             <div className="mb-6 bg-red-900/40 text-red-200 p-3 rounded-lg border border-red-800">
               {error}

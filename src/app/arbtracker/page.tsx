@@ -30,6 +30,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ThemeToggle } from '@/components/ThemeToggle'
+import ArbMobileCard from './components/ArbMobileCard'
 
 // Column Definitions
 const DEFAULT_COLUMNS = [
@@ -634,68 +635,81 @@ export default function ArbitrationTracker() {
   return renderSidebar(
     <div className="w-full">
       <Toaster position="top-right" />
-      <div className="mb-8 flex justify-between items-start">
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Arbitration Tracker</h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-2 text-base">Monitor and manage all your arbitration cases in real-time.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Arbitration Tracker</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 sm:mt-2 text-sm sm:base">Monitor and manage all your arbitration cases in real-time.</p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-3">
+           <ThemeToggle />
+        </div>
       </div>
       
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={handleOpenModal}
-            className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl flex items-center hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md text-sm font-semibold whitespace-nowrap"
+            className="flex-1 sm:flex-none px-5 py-2.5 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md text-sm font-semibold whitespace-nowrap active:scale-95"
           >
             <FaPlus className="mr-2 text-xs" /> New Case
           </button>
-          <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
-          <select 
-            className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-all"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">All Statuses</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="in progress">In Progress</option>
-            <option value="pending decision">Pending Decision</option>
-            <option value="completed">Completed</option>
-          </select>
-          <select 
-            className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-all"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-          >
-            <option value="">All Dates</option>
-            <option value="7days">Next 7 Days</option>
-            <option value="2weeks">Next 2 Weeks</option>
-            <option value="30days">Next 30 Days</option>
-            <option value="custom">Custom Range</option>
-          </select>
+          
+          <div className="hidden sm:block h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
+          
+          <div className="flex gap-2 w-full sm:w-auto">
+            <select 
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-all"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="in progress">In Progress</option>
+              <option value="pending decision">Pending Decision</option>
+              <option value="completed">Completed</option>
+            </select>
+            
+            <select 
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-all"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+            >
+              <option value="">All Dates</option>
+              <option value="7days">Next 7 Days</option>
+              <option value="2weeks">Next 2 Weeks</option>
+              <option value="30days">Next 30 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+
           {dateFilter === 'custom' && (
-            <div className="flex items-center gap-2">
-              <CustomDateInput 
-                value={fromDate} 
-                onChange={setFromDate}
-                placeholder="From Date"
-                max={toDate || undefined}
-              />
-              <CustomDateInput 
-                value={toDate} 
-                onChange={setToDate}
-                placeholder="To Date"
-                min={fromDate || undefined}
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex-1 sm:flex-none">
+                <CustomDateInput 
+                  value={fromDate} 
+                  onChange={setFromDate}
+                  placeholder="From Date"
+                  max={toDate || undefined}
+                />
+              </div>
+              <div className="flex-1 sm:flex-none">
+                <CustomDateInput 
+                  value={toDate} 
+                  onChange={setToDate}
+                  placeholder="To Date"
+                  min={fromDate || undefined}
+                />
+              </div>
             </div>
           )}
         </div>
-        <div className="relative">
+        
+        <div className="relative w-full lg:w-80">
           <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm" />
           <input 
             type="text" 
             placeholder="Search clients, banks, or IDs..." 
-            className="pl-11 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl w-64 lg:w-80 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none shadow-sm transition-all" 
+            className="pl-11 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl w-full text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none shadow-sm transition-all" 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
           />
@@ -717,13 +731,14 @@ export default function ArbitrationTracker() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+      <div className="rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col justify-center items-center h-64 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
             <div className="animate-spin rounded-full h-12 w-12 border-[4px] border-indigo-50 border-t-indigo-600"></div>
+            <p className="mt-4 text-xs font-bold uppercase tracking-widest text-gray-400">Loading cases...</p>
           </div>
         ) : filteredCases.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-20 text-center">
+          <div className="flex flex-col items-center justify-center p-20 text-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
             <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
               <FaSearch className="text-gray-200 dark:text-gray-600 text-3xl" />
             </div>
@@ -731,13 +746,16 @@ export default function ArbitrationTracker() {
             <p className="text-gray-400 dark:text-gray-500 text-sm">Try adjusting your filters or search term</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-             <DndContext 
-              sensors={sensors} 
-              collisionDetection={closestCenter} 
-              onDragEnd={handleDragEnd}
-            >
-              <table className="w-full divide-y divide-gray-200 dark:divide-gray-800">
+          <>
+            {/* Desktop View */}
+            <div className="hidden lg:block bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <DndContext 
+                  sensors={sensors} 
+                  collisionDetection={closestCenter} 
+                  onDragEnd={handleDragEnd}
+                >
+                  <table className="w-full divide-y divide-gray-200 dark:divide-gray-800">
                     <thead className="bg-gray-50/50 dark:bg-gray-800/50">
                       <tr>
                         <SortableContext 
@@ -768,9 +786,28 @@ export default function ArbitrationTracker() {
                         />
                       ))}
                     </tbody>
-              </table>
-             </DndContext>
-          </div>
+                  </table>
+                </DndContext>
+              </div>
+            </div>
+
+            {/* Mobile View */}
+            <div className="lg:hidden space-y-4">
+              {filteredCases.map((c) => (
+                <ArbMobileCard 
+                  key={c.id}
+                  c={c}
+                  formatDate={formatDate}
+                  formatTime={formatTime}
+                  StatusBadge={StatusBadge}
+                  BooleanIndicator={BooleanIndicator}
+                  handleOpenEditModal={handleOpenEditModal}
+                  handleDeleteCase={handleDeleteCase}
+                  handleHistory={handleHistory}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
