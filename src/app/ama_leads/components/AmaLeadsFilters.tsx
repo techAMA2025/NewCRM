@@ -97,6 +97,7 @@ const AmaLeadsFilters = ({
   // Enhanced search implementation
   const [searchInput, setSearchInput] = useState(searchQuery)
   const [searchResultsCount, setSearchResultsCount] = useState(0)
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   // Normalize phone number for search
   const normalizePhoneNumber = (phone: string | number): string => {
@@ -506,9 +507,17 @@ const AmaLeadsFilters = ({
 
       {/* Filters section with improved layout */}
       <div className="bg-[#ffffff] border border-[#5A4C33]/10 rounded-lg p-2 shadow-sm">
-        <div className="flex items-center mb-3">
+        <div className="flex items-center mb-0 md:mb-3">
           <FaFilter className="text-[#5A4C33]/70 mr-2" />
           <span className="text-sm font-medium text-[#5A4C33]">Filters</span>
+
+          {/* Mobile filter toggle */}
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="md:hidden ml-2 px-2 py-1 text-xs text-[#D2A02A] border border-[#D2A02A]/30 rounded-md hover:bg-[#D2A02A]/5 transition-colors"
+          >
+            {showMobileFilters ? '▲ Hide' : '▼ Show'}
+          </button>
 
           {/* Results counter moved to the right */}
           <div className="ml-auto flex items-center gap-4">
@@ -567,7 +576,8 @@ const AmaLeadsFilters = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block mt-3 md:mt-0`}>
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-2 md:gap-4">
           {/* Source Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Source</label>
@@ -648,8 +658,8 @@ const AmaLeadsFilters = ({
           </div>
 
           {/* Date Range Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-            <div className="flex space-x-6">
+          <div className="col-span-2 md:col-span-1 grid grid-cols-1 md:grid-cols-1 gap-2 md:gap-4">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 md:space-x-6">
               <div className="flex-1 min-w-[180px] space-y-1">
                 <CustomDateInput
                   value={fromDate}
@@ -831,6 +841,7 @@ const AmaLeadsFilters = ({
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

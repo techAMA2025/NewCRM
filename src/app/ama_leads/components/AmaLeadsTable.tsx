@@ -2,6 +2,7 @@
 
 import { FaSort } from "react-icons/fa"
 import AmaLeadRow from "./AmaLeadRow"
+import MobileLeadCard from "./MobileLeadCard"
 import { useState, useEffect, useMemo, useRef } from "react"
 import { toast } from "react-toastify"
 import { collection, getDocs, query, where } from "firebase/firestore"
@@ -628,9 +629,9 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
         </div>
       )}
       
-      {/* Hidden Columns Control Panel */}
+      {/* Hidden Columns Control Panel - desktop only */}
       {Object.values(columnVisibility).some((visible) => !visible) && (
-        <div className="bg-[#F8F5EC] px-4 py-2 border-b border-[#5A4C33]/10">
+        <div className="hidden md:block bg-[#F8F5EC] px-4 py-2 border-b border-[#5A4C33]/10">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-[#5A4C33]">Hidden columns:</span>
             {!columnVisibility.checkbox && (
@@ -776,9 +777,9 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
         </div>
       )}
 
-      {/* No Selection Message */}
+      {/* No Selection Message - desktop only */}
       {selectedLeads.length === 0 && columnVisibility.checkbox && (
-        <div className="bg-blue-50 border border-blue-200 px-4 py-3 border-b border-blue-200">
+        <div className="hidden md:block bg-blue-50 border border-blue-200 px-4 py-3 border-b border-blue-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="text-blue-800 text-sm">
@@ -789,51 +790,88 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
         </div>
       )}
 
-      {/* Bulk Assignment Controls */}
+      {/* Bulk Assignment Controls - responsive */}
       {selectedLeads.length > 0 && canModifyAssignment() && (
-        <div className="bg-[#F8F5EC] px-4 py-3 border-b border-[#5A4C33]/10 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-sm text-[#5A4C33]">
+        <div className="bg-[#F8F5EC] px-3 md:px-4 py-2 md:py-3 border-b border-[#5A4C33]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div className="flex items-center flex-wrap gap-2">
+            <span className="text-xs md:text-sm text-[#5A4C33]">
               {selectedLeads.length} lead{selectedLeads.length > 1 ? "s" : ""} selected
             </span>
             <button
               onClick={handleBulkAssign}
-              className="px-3 py-1.5 bg-[#D2A02A] hover:bg-[#B8911E] text-[#ffffff] text-sm rounded-md transition-colors duration-200"
+              className="px-2 md:px-3 py-1 md:py-1.5 bg-[#D2A02A] hover:bg-[#B8911E] text-[#ffffff] text-xs md:text-sm rounded-md transition-colors duration-200"
             >
-              Bulk Assign
+              Assign
             </button>
             <button
               onClick={handleBulkUnassign}
-              className="px-3 py-1.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] text-sm rounded-md transition-colors duration-200"
+              className="px-2 md:px-3 py-1 md:py-1.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] text-xs md:text-sm rounded-md transition-colors duration-200"
             >
-              Bulk Unassign
+              Unassign
             </button>
             <button
               onClick={handleBulkWhatsApp}
-              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors duration-200"
+              className="px-2 md:px-3 py-1 md:py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm rounded-md transition-colors duration-200"
             >
-              Bulk WhatsApp
+              WhatsApp
             </button>
           </div>
           <button
             onClick={() => (handleSelectLead ? selectedLeads.forEach((id) => handleSelectLead(id)) : undefined)}
-            className="text-sm text-[#5A4C33]/70 hover:text-[#5A4C33]"
+            className="text-xs md:text-sm text-[#5A4C33]/70 hover:text-[#5A4C33]"
           >
-            Clear Selection
+            Clear
           </button>
         </div>
       )}
 
-      <table className="w-full divide-y divide-[#5A4C33]/10" role="table" aria-label="Leads table">
-        {renderTableHeader()}
-        <tbody className="bg-[#ffffff] divide-y divide-[#5A4C33]/5">{renderTableBody()}</tbody>
-      </table>
+      {/* Desktop Table - hidden on mobile */}
+      <div className="hidden md:block">
+        <table className="w-full divide-y divide-[#5A4C33]/10" role="table" aria-label="Leads table">
+          {renderTableHeader()}
+          <tbody className="bg-[#ffffff] divide-y divide-[#5A4C33]/5">{renderTableBody()}</tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card List - shown only on mobile */}
+      <div className="md:hidden p-2 space-y-3">
+        {uniqueLeads.length === 0 ? (
+          <div className="text-center py-8 text-sm text-[#5A4C33]/70">No leads found matching the current filters.</div>
+        ) : (
+          uniqueLeads.map((lead) => (
+            <MobileLeadCard
+              key={lead.id}
+              lead={lead}
+              editingLeads={editingLeads}
+              setEditingLeads={setEditingLeads}
+              updateLead={updateLead}
+              fetchNotesHistory={fetchNotesHistory}
+              statusOptions={statusOptions}
+              userRole={userRole}
+              salesTeamMembers={salesTeamMembers}
+              assignLeadToSalesperson={assignLeadToSalesperson}
+              unassignLead={unassignLead}
+              updateLeadsState={updateLeadsState}
+              user={user}
+              activeTab={activeTab}
+              onStatusChangeToCallback={onStatusChangeToCallback}
+              onStatusChangeToLanguageBarrier={onStatusChangeToLanguageBarrier}
+              onStatusChangeToConverted={onStatusChangeToConverted}
+              onEditCallback={onEditCallback}
+              onStatusChangeConfirmation={onStatusChangeConfirmation}
+              selectedLeads={selectedLeads}
+              handleSelectLead={handleSelectLead}
+            />
+          ))
+        )}
+      </div>
+
       {renderLoadMoreButton()}
 
       {/* Bulk Assignment Modal */}
       {showBulkAssignment && (
-        <div className="fixed inset-0 bg-[#5A4C33]/50 flex items-center justify-center z-50">
-          <div className="bg-[#ffffff] rounded-xl p-6 w-full max-w-md border border-[#5A4C33]/20 shadow-2xl">
+        <div className="fixed inset-0 bg-[#5A4C33]/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#ffffff] rounded-xl p-4 md:p-6 w-full max-w-md border border-[#5A4C33]/20 shadow-2xl">
             <h3 className="text-xl font-semibold text-[#5A4C33] mb-4">Bulk Assign Leads</h3>
             <div className="mb-4">
               <p className="text-[#5A4C33]/70 mb-2">

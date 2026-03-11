@@ -9,9 +9,9 @@ interface AmaLeadsTabsProps {
 
 const AmaLeadsTabs = ({ activeTab, onTabChange, callbackCount, allLeadsCount }: AmaLeadsTabsProps) => {
   return (
-    <div className="mb-6">
+    <div className="mb-3 md:mb-6">
       <div className="border-b border-[#5A4C33]/20 bg-[#ffffff] rounded-t-lg shadow-sm">
-        <nav className="-mb-px flex space-x-8 px-6">
+        <nav className="-mb-px flex space-x-4 md:space-x-8 px-3 md:px-6">
           {/* All Leads Tab */}
           <button
             onClick={() => onTabChange("all")}

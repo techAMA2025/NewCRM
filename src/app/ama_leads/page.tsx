@@ -120,6 +120,7 @@ const AmaLeadsPage = () => {
   // --- Local UI State ---
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [editingLeads, setEditingLeads] = useState<{ [key: string]: any }>({})
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   
   // Modal States
   const [showHistoryModal, setShowHistoryModal] = useState(false)
@@ -758,10 +759,24 @@ const AmaLeadsPage = () => {
 
   return (
     <div className="flex h-screen bg-[#F8F5EC] overflow-hidden font-sans text-[#5A4C33]">
-      <Sidebar />
+      {/* Mobile sidebar overlay backdrop */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+      {/* Sidebar - slides in on mobile, static on desktop */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
+        md:relative md:z-auto md:translate-x-0 md:transform-none
+        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <Sidebar />
+      </div>
       <div 
         ref={scrollContainerRef}
-        className="flex-1 flex flex-col min-w-0 overflow-y-auto"
+        className="flex-1 flex flex-col min-w-0 overflow-y-auto w-full"
       >
         <LeadsHeader
           userRole={userRole}
@@ -770,9 +785,10 @@ const AmaLeadsPage = () => {
           exportToCSV={exportToCSV}
           loadAllLeads={handleLoadAllLeads}
           isLoadAllLoading={isLoadAllLoading}
+          onMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
 
-        <div className="flex-1 flex flex-col min-h-0 p-4 gap-4">
+        <div className="flex-1 flex flex-col min-h-0 p-2 md:p-4 gap-2 md:gap-4">
           <AmaLeadsTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
