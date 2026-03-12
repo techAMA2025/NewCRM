@@ -31,6 +31,24 @@ import SearchableDropdown from '@/components/SearchableDropdown'
 import { useRouter } from 'next/navigation'
 import SettlementMobileCard from './components/SettlementMobileCard'
 import { RemarkInput, SettlementAmountInput } from './components/SettlementInputs'
+import { FaGripVertical } from 'react-icons/fa'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Interface for settlement data
 interface Settlement {
@@ -75,7 +93,98 @@ interface Client {
   source_database?: string
 }
 
-// Reusable components are now imported from components/SettlementInputs.tsx
+const DEFAULT_COLUMNS = [
+  { id: 'date', label: 'Date', width: 100 },
+  { id: 'client', label: 'Client', width: 150 },
+  { id: 'bank', label: 'Bank', width: 150 },
+  { id: 'account', label: 'Account', width: 120 },
+  { id: 'amount', label: 'Amount', width: 100 },
+  { id: 'type', label: 'Type', width: 100 },
+  { id: 'settlementAmt', label: 'Settlement Amt', width: 130 },
+  { id: 'letterBal', label: 'Letter Bal', width: 130 },
+  { id: 'source', label: 'Source', width: 100 },
+  { id: 'status', label: 'Status', width: 140 },
+  { id: 'owner', label: 'Owner', width: 100 },
+  { id: 'remarks', label: 'Remarks', width: 300 },
+  { id: 'successFee', label: 'Success Fee', width: 130 },
+  { id: 'actions', label: 'Actions', width: 100 },
+];
+
+function SortableHeader({ 
+  id, 
+  children, 
+  isDarkMode,
+  width,
+  onResize
+}: { 
+  id: string; 
+  children: React.ReactNode; 
+  isDarkMode: boolean;
+  width?: number;
+  onResize: (id: string, newWidth: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+    width: width ? `${width}px` : 'auto',
+    minWidth: width ? `${width}px` : 'auto',
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent drag from starting
+    const startX = e.pageX;
+    const startWidth = width || 150;
+
+    const handleMouseMove = (mouseEvent: MouseEvent) => {
+      const newWidth = Math.max(50, startWidth + (mouseEvent.pageX - startX));
+      onResize(id, newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <th
+      ref={setNodeRef}
+      style={style}
+      className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider select-none group relative whitespace-nowrap border-r ${
+        isDarkMode ? 'text-gray-400 bg-gray-900/40 border-gray-700/50' : 'text-gray-500 bg-gray-50/50 border-gray-100'
+      }`}
+      {...attributes}
+    >
+      <div className="flex items-center gap-1 overflow-hidden">
+        <div {...listeners} className="cursor-move p-1 -ml-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0">
+          <FaGripVertical className="opacity-0 group-hover:opacity-100 text-gray-400 transition-opacity" />
+        </div>
+        <span className="truncate flex-1">{children}</span>
+      </div>
+      
+      {/* Resize Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-10"
+      />
+    </th>
+  );
+}
 
 const SettlementTracker = () => {
   const { user, userRole, userName, loading: authLoading, logout } = useAuth()
@@ -141,6 +250,19 @@ const SettlementTracker = () => {
   const [isPartialPaymentModalOpen, setIsPartialPaymentModalOpen] = useState(false)
   const [partialPaymentAmount, setPartialPaymentAmount] = useState('')
   const [selectedSettlementForFee, setSelectedSettlementForFee] = useState<string | null>(null)
+
+  // Column State
+  const [columns, setColumns] = useState(DEFAULT_COLUMNS)
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Drag Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Pagination state
   const [lastVisible, setLastVisible] = useState<any>(null)
@@ -378,6 +500,7 @@ const SettlementTracker = () => {
   }
 
   useEffect(() => {
+    setIsMounted(true)
     const loadData = async () => {
       // Initial load
       await Promise.all([
@@ -389,7 +512,55 @@ const SettlementTracker = () => {
     }
     
     loadData()
+
+    // Load columns from localStorage
+    const savedColumns = localStorage.getItem('settlement-tracker-columns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        if (parsed.length === DEFAULT_COLUMNS.length) {
+            setColumns(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to parse saved columns", e);
+      }
+    }
+
+    // Load column widths
+    const savedWidths = localStorage.getItem('settlement-tracker-widths');
+    if (savedWidths) {
+      try {
+        setColumnWidths(JSON.parse(savedWidths));
+      } catch (e) {
+        console.error("Failed to parse saved widths", e);
+      }
+    }
   }, [])
+
+  const handleColumnResize = (id: string, newWidth: number) => {
+    setColumnWidths(prev => {
+      const updated = { ...prev, [id]: newWidth };
+      localStorage.setItem('settlement-tracker-widths', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setColumns((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over?.id);
+        const newColumns = arrayMove(items, oldIndex, newIndex);
+        
+        // Save to localStorage
+        localStorage.setItem('settlement-tracker-columns', JSON.stringify(newColumns));
+        
+        return newColumns;
+      });
+    }
+  };
 
   // Refetch when any filter changes
   useEffect(() => {
@@ -1225,144 +1396,205 @@ const SettlementTracker = () => {
                 <>
                   {/* Desktop View */}
                   <div className="hidden lg:block overflow-x-auto">
-                    <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                      <thead className={`${isDarkMode ? 'bg-gray-900/40' : 'bg-gray-50/50'}`}>
-                        <tr>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Date</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Client</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Bank</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Account</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Amount</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider min-w-[120px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Settlement Amt</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider min-w-[120px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Letter Bal</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Source</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Owner</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Remarks</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Success Fee</th>
-                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/50 hover:bg-gray-700/10' : 'divide-gray-100'}`}>
-                        {filteredSettlements.map((settlement) => (
-                          <tr key={settlement.id} className={`${isDarkMode ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50/50'} transition-colors`}>
-                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                               {settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                               {settlement.clientName}
-                            </td>
-                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                               {settlement.bankName}
-                            </td>
-                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                               {settlement.accountNumber}
-                            </td>
-                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                               ₹{formatLoanAmount(settlement.loanAmount)}
-                            </td>
-                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                               {settlement.loanType}
-                            </td>
-                            <td className="px-1.5 py-2 whitespace-nowrap min-w-[120px]">
-                               <SettlementAmountInput 
-                                  settlementId={settlement.id}
-                                  initialValue={settlement.settlementAmount || ''}
+                    <DndContext 
+                      sensors={sensors} 
+                      collisionDetection={closestCenter} 
+                      onDragEnd={handleDragEnd}
+                    >
+                      <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                        <thead className={`${isDarkMode ? 'bg-gray-900/40' : 'bg-gray-50/50'}`}>
+                          <tr>
+                            <SortableContext 
+                              items={columns} 
+                              strategy={horizontalListSortingStrategy}
+                            >
+                            {columns.map((column) => (
+                                <SortableHeader 
+                                  key={column.id} 
+                                  id={column.id} 
                                   isDarkMode={isDarkMode}
-                                  onSave={handleSettlementAmountSave}
-                               />
-                            </td>
-                            <td className="px-1.5 py-2 whitespace-nowrap min-w-[120px]">
-                               <SettlementAmountInput 
-                                  settlementId={settlement.id}
-                                  initialValue={settlement.letterAmount || ''}
-                                  isDarkMode={isDarkMode}
-                                  onSave={handleLetterAmountSave}
-                                  buttonColor="bg-blue-600 hover:bg-blue-500"
-                               />
-                            </td>
-                            <td className="px-1.5 py-2 whitespace-nowrap">
-                              <Select value={settlement.source || ''} onValueChange={(value) => handleSourceUpdate(settlement.id, value)}>
-                                <SelectTrigger className={`w-20 h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                  {sourceOptions.map((opt) => (
-                                     <SelectItem key={opt} value={opt} className="text-[9px] font-bold uppercase">{opt}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </td>
-                            <td className="px-1.5 py-2 whitespace-nowrap">
-                              <Select value={settlement.status} onValueChange={(value) => handleStatusUpdate(settlement.id, value)}>
-                                <SelectTrigger className={`w-28 h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                  {statusOptions.map((status) => (
-                                    <SelectItem key={status} value={status} className="text-[9px] font-bold uppercase py-1">
-                                      <span className={`px-1.5 py-0.5 rounded-full ${getStatusColor(status)}`}>
-                                        {getStatusDisplay(status)}
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </td>
-                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                               {settlement.createdBy}
-                            </td>
-                            <td className="px-1.5 py-2 min-w-[150px]">
-                              <RemarkInput
-                                settlementId={settlement.id}
-                                initialValue={settlementRemarks[settlement.id] || ""}
-                                isDarkMode={isDarkMode}
-                                onSave={handleSaveRemark}
-                                onHistory={handleViewHistory}
-                              />
-                            </td>
-                            <td className="px-1.5 py-2 whitespace-nowrap">
-                              <Select 
-                                value={settlement.successFeeStatus || 'Not Paid'} 
-                                onValueChange={(value) => handleSuccessFeeStatusChange(settlement.id, value)}
-                              >
-                                <SelectTrigger className={`w-24 h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                  <SelectItem value="Paid" className="text-[9px]">Paid</SelectItem>
-                                  <SelectItem value="Not Paid" className="text-[9px]">Not Paid</SelectItem>
-                                  <SelectItem value="Partially Paid" className="text-[9px]">Partial</SelectItem>
-                                  <SelectItem value="Not Required" className="text-[9px]">None</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              {settlement.successFeeStatus === 'Partially Paid' && settlement.successFeeAmount && (
-                                <p className={`mt-0.5 text-[9px] font-bold px-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                  ₹{formatLoanAmount(settlement.successFeeAmount)}
-                                </p>
-                              )}
-                            </td>
-                            <td className="px-1.5 py-2 whitespace-nowrap">
-                              <div className="flex gap-1.5">
-                                <button
-                                  onClick={() => handleEditClick(settlement)}
-                                  className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
+                                  width={columnWidths[column.id] || column.width}
+                                  onResize={handleColumnResize}
                                 >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteSettlement(settlement)}
-                                  className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-900/20"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2.5M3 7h18"/></svg>
-                                </button>
-                              </div>
-                            </td>
+                                  {column.label}
+                                </SortableHeader>
+                              ))}
+                            </SortableContext>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/50 hover:bg-gray-700/10' : 'divide-gray-100'}`}>
+                          {filteredSettlements.map((settlement) => (
+                            <tr key={settlement.id} className={`${isDarkMode ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50/50'} transition-colors group`}>
+                              {columns.map((col) => {
+                                const cellStyle = {
+                                  width: (columnWidths[col.id] || col.width) ? `${columnWidths[col.id] || col.width}px` : 'auto',
+                                  minWidth: (columnWidths[col.id] || col.width) ? `${columnWidths[col.id] || col.width}px` : 'auto',
+                                  maxWidth: (columnWidths[col.id] || col.width) ? `${columnWidths[col.id] || col.width}px` : 'auto',
+                                };
+                                switch (col.id) {
+                                  case 'date':
+                                    return (
+                                      <td key="date" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium border-r overflow-hidden ${isDarkMode ? 'text-gray-300 border-gray-700/50' : 'text-gray-600 border-gray-100'}`}>
+                                        {settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                                      </td>
+                                    );
+                                  case 'client':
+                                    return (
+                                      <td key="client" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold uppercase tracking-tight border-r overflow-hidden ${isDarkMode ? 'text-white border-gray-700/50' : 'text-gray-900 border-gray-100'}`}>
+                                        {settlement.clientName}
+                                      </td>
+                                    );
+                                  case 'bank':
+                                    return (
+                                      <td key="bank" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium border-r overflow-hidden ${isDarkMode ? 'text-gray-400 border-gray-700/50' : 'text-gray-600 border-gray-100'}`}>
+                                        {settlement.bankName}
+                                      </td>
+                                    );
+                                  case 'account':
+                                    return (
+                                      <td key="account" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-mono border-r overflow-hidden ${isDarkMode ? 'text-gray-500 border-gray-700/50' : 'text-gray-400 border-gray-100'}`}>
+                                        {settlement.accountNumber}
+                                      </td>
+                                    );
+                                  case 'amount':
+                                    return (
+                                      <td key="amount" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold border-r overflow-hidden ${isDarkMode ? 'text-gray-300 border-gray-700/50' : 'text-gray-700 border-gray-100'}`}>
+                                        ₹{formatLoanAmount(settlement.loanAmount)}
+                                      </td>
+                                    );
+                                  case 'type':
+                                    return (
+                                      <td key="type" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase border-r overflow-hidden ${isDarkMode ? 'text-gray-500 border-gray-700/50' : 'text-gray-400 border-gray-100'}`}>
+                                        {settlement.loanType}
+                                      </td>
+                                    );
+                                  case 'settlementAmt':
+                                    return (
+                                      <td key="settlementAmt" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                        <SettlementAmountInput 
+                                          settlementId={settlement.id}
+                                          initialValue={settlement.settlementAmount || ''}
+                                          isDarkMode={isDarkMode}
+                                          onSave={handleSettlementAmountSave}
+                                        />
+                                      </td>
+                                    );
+                                  case 'letterBal':
+                                    return (
+                                      <td key="letterBal" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                        <SettlementAmountInput 
+                                          settlementId={settlement.id}
+                                          initialValue={settlement.letterAmount || ''}
+                                          isDarkMode={isDarkMode}
+                                          onSave={handleLetterAmountSave}
+                                          buttonColor="bg-blue-600 hover:bg-blue-500"
+                                        />
+                                      </td>
+                                    );
+                                  case 'source':
+                                    return (
+                                      <td key="source" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                        <Select value={settlement.source || ''} onValueChange={(value) => handleSourceUpdate(settlement.id, value)}>
+                                          <SelectTrigger className={`w-full h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                            {sourceOptions.map((opt) => (
+                                              <SelectItem key={opt} value={opt} className="text-[9px] font-bold uppercase">{opt}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </td>
+                                    );
+                                  case 'status':
+                                    return (
+                                      <td key="status" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                        <Select value={settlement.status} onValueChange={(value) => handleStatusUpdate(settlement.id, value)}>
+                                          <SelectTrigger className={`w-full h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                            {statusOptions.map((status) => (
+                                              <SelectItem key={status} value={status} className="text-[9px] font-bold uppercase py-1">
+                                                <span className={`px-1.5 py-0.5 rounded-full ${getStatusColor(status)}`}>
+                                                  {getStatusDisplay(status)}
+                                                </span>
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </td>
+                                    );
+                                  case 'owner':
+                                    return (
+                                      <td key="owner" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase border-r overflow-hidden ${isDarkMode ? 'text-gray-500 border-gray-700/50' : 'text-gray-400 border-gray-100'}`}>
+                                        {settlement.createdBy}
+                                      </td>
+                                    );
+                                  case 'remarks':
+                                    return (
+                                      <td key="remarks" style={cellStyle} className="px-1.5 py-2 border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                        <RemarkInput
+                                          settlementId={settlement.id}
+                                          initialValue={settlementRemarks[settlement.id] || ""}
+                                          isDarkMode={isDarkMode}
+                                          onSave={handleSaveRemark}
+                                          onHistory={handleViewHistory}
+                                        />
+                                      </td>
+                                    );
+                                  case 'successFee':
+                                    return (
+                                      <td key="successFee" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                        <Select 
+                                          value={settlement.successFeeStatus || 'Not Paid'} 
+                                          onValueChange={(value) => handleSuccessFeeStatusChange(settlement.id, value)}
+                                        >
+                                          <SelectTrigger className={`w-full h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="rounded-xl border-0 shadow-2xl">
+                                            <SelectItem value="Paid" className="text-[9px]">Paid</SelectItem>
+                                            <SelectItem value="Not Paid" className="text-[9px]">Not Paid</SelectItem>
+                                            <SelectItem value="Partially Paid" className="text-[9px]">Partial</SelectItem>
+                                            <SelectItem value="Not Required" className="text-[9px]">None</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {settlement.successFeeStatus === 'Partially Paid' && settlement.successFeeAmount && (
+                                          <p className={`mt-0.5 text-[9px] font-bold px-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            ₹{formatLoanAmount(settlement.successFeeAmount)}
+                                          </p>
+                                        )}
+                                      </td>
+                                    );
+                                  case 'actions':
+                                    return (
+                                      <td key="actions" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap overflow-hidden">
+                                        <div className="flex gap-1.5">
+                                          <button
+                                            onClick={() => handleEditClick(settlement)}
+                                            className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
+                                          >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteSettlement(settlement)}
+                                            className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-900/20"
+                                          >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2.5M3 7h18"/></svg>
+                                          </button>
+                                        </div>
+                                      </td>
+                                    );
+                                  default:
+                                    return null;
+                                }
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </DndContext>
                   </div>
 
                   {/* Mobile View */}
@@ -2036,7 +2268,7 @@ const SettlementTracker = () => {
   )
 
   // Show loading state
-  if (authLoading) {
+  if (authLoading || !isMounted) {
     return (
       <div className="p-6">
         <div className="text-center">Loading settlement data...</div>
