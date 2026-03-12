@@ -139,6 +139,7 @@ function SortableHeader({
     zIndex: isDragging ? 50 : 'auto',
     width: width ? `${width}px` : 'auto',
     minWidth: width ? `${width}px` : 'auto',
+    cursor: 'move',
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -165,13 +166,14 @@ function SortableHeader({
     <th
       ref={setNodeRef}
       style={style}
-      className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider select-none group relative whitespace-nowrap border-r ${
-        isDarkMode ? 'text-gray-400 bg-gray-900/40 border-gray-700/50' : 'text-gray-500 bg-gray-50/50 border-gray-100'
+      className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider select-none group relative whitespace-nowrap ${
+        isDarkMode ? 'text-gray-400 bg-gray-900/40' : 'text-gray-500 bg-gray-50/50'
       }`}
       {...attributes}
+      {...listeners}
     >
-      <div className="flex items-center gap-1 overflow-hidden">
-        <div {...listeners} className="cursor-move p-1 -ml-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0">
+      <div className="flex items-center gap-1 overflow-hidden pointer-events-none">
+        <div className="p-1 -ml-1 flex-shrink-0">
           <FaGripVertical className="opacity-0 group-hover:opacity-100 text-gray-400 transition-opacity" />
         </div>
         <span className="truncate flex-1">{children}</span>
@@ -180,7 +182,7 @@ function SortableHeader({
       {/* Resize Handle */}
       <div
         onMouseDown={handleMouseDown}
-        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-10"
+        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-indigo-500/50 active:bg-indigo-500 transition-colors z-20 pointer-events-auto"
       />
     </th>
   );
@@ -1432,45 +1434,45 @@ const SettlementTracker = () => {
                                   maxWidth: (columnWidths[col.id] || col.width) ? `${columnWidths[col.id] || col.width}px` : 'auto',
                                 };
                                 switch (col.id) {
-                                  case 'date':
+                                case 'date':
                                     return (
-                                      <td key="date" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium border-r overflow-hidden ${isDarkMode ? 'text-gray-300 border-gray-700/50' : 'text-gray-600 border-gray-100'}`}>
+                                      <td key="date" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium overflow-hidden ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                         {settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}
                                       </td>
                                     );
                                   case 'client':
                                     return (
-                                      <td key="client" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold uppercase tracking-tight border-r overflow-hidden ${isDarkMode ? 'text-white border-gray-700/50' : 'text-gray-900 border-gray-100'}`}>
+                                      <td key="client" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold uppercase tracking-tight overflow-hidden ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                         {settlement.clientName}
                                       </td>
                                     );
                                   case 'bank':
                                     return (
-                                      <td key="bank" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium border-r overflow-hidden ${isDarkMode ? 'text-gray-400 border-gray-700/50' : 'text-gray-600 border-gray-100'}`}>
+                                      <td key="bank" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium overflow-hidden ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                         {settlement.bankName}
                                       </td>
                                     );
                                   case 'account':
                                     return (
-                                      <td key="account" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-mono border-r overflow-hidden ${isDarkMode ? 'text-gray-500 border-gray-700/50' : 'text-gray-400 border-gray-100'}`}>
+                                      <td key="account" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-mono overflow-hidden ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                                         {settlement.accountNumber}
                                       </td>
                                     );
                                   case 'amount':
                                     return (
-                                      <td key="amount" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold border-r overflow-hidden ${isDarkMode ? 'text-gray-300 border-gray-700/50' : 'text-gray-700 border-gray-100'}`}>
+                                      <td key="amount" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold overflow-hidden ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                                         ₹{formatLoanAmount(settlement.loanAmount)}
                                       </td>
                                     );
                                   case 'type':
                                     return (
-                                      <td key="type" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase border-r overflow-hidden ${isDarkMode ? 'text-gray-500 border-gray-700/50' : 'text-gray-400 border-gray-100'}`}>
+                                      <td key="type" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase overflow-hidden ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                                         {settlement.loanType}
                                       </td>
                                     );
                                   case 'settlementAmt':
                                     return (
-                                      <td key="settlementAmt" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                      <td key="settlementAmt" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] overflow-hidden">
                                         <SettlementAmountInput 
                                           settlementId={settlement.id}
                                           initialValue={settlement.settlementAmount || ''}
@@ -1481,7 +1483,7 @@ const SettlementTracker = () => {
                                     );
                                   case 'letterBal':
                                     return (
-                                      <td key="letterBal" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                      <td key="letterBal" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] overflow-hidden">
                                         <SettlementAmountInput 
                                           settlementId={settlement.id}
                                           initialValue={settlement.letterAmount || ''}
@@ -1493,7 +1495,7 @@ const SettlementTracker = () => {
                                     );
                                   case 'source':
                                     return (
-                                      <td key="source" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                      <td key="source" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap overflow-hidden">
                                         <Select value={settlement.source || ''} onValueChange={(value) => handleSourceUpdate(settlement.id, value)}>
                                           <SelectTrigger className={`w-full h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
                                             <SelectValue />
@@ -1508,7 +1510,7 @@ const SettlementTracker = () => {
                                     );
                                   case 'status':
                                     return (
-                                      <td key="status" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                      <td key="status" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap overflow-hidden">
                                         <Select value={settlement.status} onValueChange={(value) => handleStatusUpdate(settlement.id, value)}>
                                           <SelectTrigger className={`w-full h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
                                             <SelectValue />
@@ -1527,13 +1529,13 @@ const SettlementTracker = () => {
                                     );
                                   case 'owner':
                                     return (
-                                      <td key="owner" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase border-r overflow-hidden ${isDarkMode ? 'text-gray-500 border-gray-700/50' : 'text-gray-400 border-gray-100'}`}>
+                                      <td key="owner" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase overflow-hidden ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                                         {settlement.createdBy}
                                       </td>
                                     );
                                   case 'remarks':
                                     return (
-                                      <td key="remarks" style={cellStyle} className="px-1.5 py-2 border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                      <td key="remarks" style={cellStyle} className="px-1.5 py-2 overflow-hidden">
                                         <RemarkInput
                                           settlementId={settlement.id}
                                           initialValue={settlementRemarks[settlement.id] || ""}
@@ -1545,7 +1547,7 @@ const SettlementTracker = () => {
                                     );
                                   case 'successFee':
                                     return (
-                                      <td key="successFee" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap border-r overflow-hidden dark:border-gray-700/50 border-gray-100">
+                                      <td key="successFee" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap overflow-hidden">
                                         <Select 
                                           value={settlement.successFeeStatus || 'Not Paid'} 
                                           onValueChange={(value) => handleSuccessFeeStatusChange(settlement.id, value)}
