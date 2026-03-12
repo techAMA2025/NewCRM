@@ -228,7 +228,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex transition-all duration-300 overflow-hidden relative">
+    <div className="h-screen flex transition-all duration-300 overflow-hidden relative">
       {/* Sidebar Overlay (Mobile) */}
       {isMobileOpen && (
         <div 
@@ -239,7 +239,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
 
       {/* Sidebar */}
       <div 
-        className={`fixed md:relative inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col bg-gray-900 shadow-xl overflow-hidden flex-shrink-0`}
+        className={`fixed md:relative inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col bg-gray-900 shadow-xl overflow-hidden flex-shrink-0 h-full`}
         style={{
           width: isExpanded ? '250px' : '64px'
         }}
@@ -248,7 +248,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
           <div className="flex items-center justify-between px-2 py-5">
             {isExpanded ? (
               <div className="flex items-center">
-                <div className="p-2 mr-2 bg-indigo-600 rounded-lg">
+                <div className="p-2 mr-2 bg-indigo-600 rounded-lg shadow-inner">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" />
                     <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -256,12 +256,12 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
                   </svg>
                 </div>
                 <div className="flex flex-col">
-                  <h1 className="text-xl font-bold text-white">Welcome,</h1>
-                  {username && <span className="text-sm text-gray-300">Overlord {username}</span>}
+                  <h1 className="text-xl font-bold text-white tracking-tight">Welcome,</h1>
+                  {username && <span className="text-sm text-gray-400 font-medium tracking-wide">Overlord {username}</span>}
                 </div>
               </div>
             ) : (
-              <div className="p-2 mx-auto bg-indigo-600 rounded-lg">
+              <div className="p-2 mx-auto bg-indigo-600 rounded-lg shadow-inner">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" />
                   <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -271,7 +271,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
             )}
             <button 
               onClick={toggleSidebar} 
-              className="p-1 text-gray-400 rounded-full hover:bg-gray-800 hover:text-white"
+              className="p-1.5 text-gray-400 rounded-full hover:bg-gray-800 hover:text-white transition-colors duration-200"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 {isExpanded ? (
@@ -285,7 +285,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
           <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
         </div>
         
-        <div className="flex-1 overflow-y-auto px-2 py-4">
+        <div className="flex-1 overflow-y-auto px-2 py-4 custom-scrollbar">
           <nav>
             {navigationGroups.map((group, index) => {
               if (group.type === 'single' && group.item) {
@@ -315,31 +315,33 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
           </nav>
         </div>
         
-        <div className="sticky bottom-0 w-full px-3 py-4 bg-gray-900 mt-auto">
+        <div className="w-full px-3 py-4 bg-gray-900 border-t border-gray-800/50 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)]">
           <div className="h-px mb-4 bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-4 py-3 text-gray-300 transition-all duration-200 rounded-lg hover:bg-red-700 hover:text-white"
+            className="flex items-center w-full px-4 py-3 text-gray-400 transition-all duration-200 rounded-lg hover:bg-red-700/80 hover:text-white group"
           >
-            <FiLogOut className="mr-3 text-md" />
-            {isExpanded && <span className="font-medium">Logout</span>}
+            <FiLogOut className="mr-3 text-lg group-hover:scale-110 transition-transform duration-200" />
+            {isExpanded && <span className="font-semibold tracking-wide">Logout</span>}
           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 min-h-screen overflow-y-auto bg-gray-100 relative">
-        {/* Mobile Header Toggle (Only if sidebar is hidden or it's mobile) */}
-        {!isMobileOpen && (
-          <button
-            onClick={() => setIsMobileOpen(true)}
-            className="md:hidden fixed top-4 left-4 z-30 p-2 bg-gray-900 text-white rounded-lg shadow-lg hover:bg-gray-800 transition-all opacity-80"
-          >
-            <FiChevronRight className="w-5 h-5" />
-          </button>
-        )}
-        {children}
-      </div>
+      {/* Main Content Area - Only render if children are provided */}
+      {children && (
+        <div className="flex-1 h-screen overflow-y-auto bg-gray-100 relative">
+          {/* Mobile Header Toggle (Only if sidebar is hidden or it's mobile) */}
+          {!isMobileOpen && (
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              className="md:hidden fixed top-4 left-4 z-30 p-2 bg-gray-900 text-white rounded-lg shadow-xl hover:bg-gray-800 transition-all opacity-90 backdrop-blur-sm"
+            >
+              <FiChevronRight className="w-5 h-5" />
+            </button>
+          )}
+          {children}
+        </div>
+      )}
     </div>
   );
 };
