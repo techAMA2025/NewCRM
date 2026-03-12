@@ -1228,44 +1228,44 @@ const SettlementTracker = () => {
                     <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
                       <thead className={`${isDarkMode ? 'bg-gray-900/40' : 'bg-gray-50/50'}`}>
                         <tr>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Date</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Client</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Bank</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Account</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Amount</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Settlement Amt</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Letter Bal</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Source</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Owner</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Remarks</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Success Fee</th>
-                          <th className={`px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Date</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Client</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Bank</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Account</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Amount</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider min-w-[120px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Settlement Amt</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider min-w-[120px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Letter Bal</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Source</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Owner</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Remarks</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Success Fee</th>
+                          <th className={`px-1.5 py-2 text-left text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
                         </tr>
                       </thead>
                       <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/50 hover:bg-gray-700/10' : 'divide-gray-100'}`}>
                         {filteredSettlements.map((settlement) => (
                           <tr key={settlement.id} className={`${isDarkMode ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50/50'} transition-colors`}>
-                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                {settlement.createdAt?.toDate ? settlement.createdAt.toDate().toLocaleDateString() : 'N/A'}
                             </td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-bold uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                {settlement.clientName}
                             </td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                {settlement.bankName}
                             </td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                                {settlement.accountNumber}
                             </td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-[11px] font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                                ₹{formatLoanAmount(settlement.loanAmount)}
                             </td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-[10px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                                {settlement.loanType}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-1.5 py-2 whitespace-nowrap min-w-[120px]">
                                <SettlementAmountInput 
                                   settlementId={settlement.id}
                                   initialValue={settlement.settlementAmount || ''}
@@ -1273,7 +1273,7 @@ const SettlementTracker = () => {
                                   onSave={handleSettlementAmountSave}
                                />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-1.5 py-2 whitespace-nowrap min-w-[120px]">
                                <SettlementAmountInput 
                                   settlementId={settlement.id}
                                   initialValue={settlement.letterAmount || ''}
@@ -1282,27 +1282,27 @@ const SettlementTracker = () => {
                                   buttonColor="bg-blue-600 hover:bg-blue-500"
                                />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-1.5 py-2 whitespace-nowrap">
                               <Select value={settlement.source || ''} onValueChange={(value) => handleSourceUpdate(settlement.id, value)}>
-                                <SelectTrigger className={`w-32 h-8 text-[11px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
+                                <SelectTrigger className={`w-20 h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-0 shadow-2xl">
                                   {sourceOptions.map((opt) => (
-                                     <SelectItem key={opt} value={opt} className="text-[11px] font-bold uppercase">{opt}</SelectItem>
+                                     <SelectItem key={opt} value={opt} className="text-[9px] font-bold uppercase">{opt}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-1.5 py-2 whitespace-nowrap">
                               <Select value={settlement.status} onValueChange={(value) => handleStatusUpdate(settlement.id, value)}>
-                                <SelectTrigger className={`w-36 h-8 text-[11px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
+                                <SelectTrigger className={`w-28 h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-50 text-gray-900'}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-0 shadow-2xl">
                                   {statusOptions.map((status) => (
-                                    <SelectItem key={status} value={status} className="text-[11px] font-bold uppercase py-2">
-                                      <span className={`px-2 py-0.5 rounded-full ${getStatusColor(status)}`}>
+                                    <SelectItem key={status} value={status} className="text-[9px] font-bold uppercase py-1">
+                                      <span className={`px-1.5 py-0.5 rounded-full ${getStatusColor(status)}`}>
                                         {getStatusDisplay(status)}
                                       </span>
                                     </SelectItem>
@@ -1310,10 +1310,10 @@ const SettlementTracker = () => {
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-[10px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <td className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                                {settlement.createdBy}
                             </td>
-                            <td className="px-4 py-3 min-w-[250px]">
+                            <td className="px-1.5 py-2 min-w-[150px]">
                               <RemarkInput
                                 settlementId={settlement.id}
                                 initialValue={settlementRemarks[settlement.id] || ""}
@@ -1322,40 +1322,40 @@ const SettlementTracker = () => {
                                 onHistory={handleViewHistory}
                               />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-1.5 py-2 whitespace-nowrap">
                               <Select 
                                 value={settlement.successFeeStatus || 'Not Paid'} 
                                 onValueChange={(value) => handleSuccessFeeStatusChange(settlement.id, value)}
                               >
-                                <SelectTrigger className={`w-32 h-8 text-[11px] font-bold uppercase rounded-lg border-0 shadow-inner ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
+                                <SelectTrigger className={`w-24 h-7 text-[9px] font-bold uppercase rounded-lg border-0 shadow-inner ${getSuccessFeeColor(settlement.successFeeStatus || 'Not Paid')}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-0 shadow-2xl">
-                                  <SelectItem value="Paid">Paid</SelectItem>
-                                  <SelectItem value="Not Paid">Not Paid</SelectItem>
-                                  <SelectItem value="Partially Paid">Partial</SelectItem>
-                                  <SelectItem value="Not Required">None</SelectItem>
+                                  <SelectItem value="Paid" className="text-[9px]">Paid</SelectItem>
+                                  <SelectItem value="Not Paid" className="text-[9px]">Not Paid</SelectItem>
+                                  <SelectItem value="Partially Paid" className="text-[9px]">Partial</SelectItem>
+                                  <SelectItem value="Not Required" className="text-[9px]">None</SelectItem>
                                 </SelectContent>
                               </Select>
                               {settlement.successFeeStatus === 'Partially Paid' && settlement.successFeeAmount && (
-                                <p className={`mt-1 text-[10px] font-bold px-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <p className={`mt-0.5 text-[9px] font-bold px-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                   ₹{formatLoanAmount(settlement.successFeeAmount)}
                                 </p>
                               )}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex gap-2">
+                            <td className="px-1.5 py-2 whitespace-nowrap">
+                              <div className="flex gap-1.5">
                                 <button
                                   onClick={() => handleEditClick(settlement)}
-                                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
+                                  className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
                                 >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                 </button>
                                 <button
                                   onClick={() => handleDeleteSettlement(settlement)}
-                                  className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-900/20"
+                                  className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-900/20"
                                 >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2.5M3 7h18"/></svg>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2.5M3 7h18"/></svg>
                                 </button>
                               </div>
                             </td>

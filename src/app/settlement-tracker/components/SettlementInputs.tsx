@@ -28,7 +28,7 @@ export const RemarkInput = ({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Add remark..."
-        className={`w-full px-3 py-2 border rounded-xl text-xs h-20 resize-none transition-all focus:ring-1 focus:ring-green-500 outline-none ${
+        className={`w-full px-2 py-1 border rounded-lg text-[10px] min-h-[60px] h-auto resize-y transition-all focus:ring-1 focus:ring-green-500 outline-none ${
           isDarkMode 
             ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-500' 
             : 'bg-gray-100/50 border-gray-200 text-gray-800'
@@ -38,13 +38,13 @@ export const RemarkInput = ({
       <div className="flex gap-2">
         <button
           onClick={() => onSave(settlementId, value)}
-          className="flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all active:scale-95 bg-green-600 hover:bg-green-700 text-white shadow-lg"
+          className="flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all active:scale-95 bg-green-600 hover:bg-green-700 text-white shadow-lg"
         >
-          SAVE REMARK
+          SAVE
         </button>
         <button
           onClick={() => onHistory(settlementId)}
-          className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all active:scale-95 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-800/50"
+          className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all active:scale-95 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-800/50"
         >
           LOG
         </button>
@@ -107,15 +107,15 @@ export const SettlementAmountInput = ({
         value={value}
         onChange={handleChange}
         placeholder="0"
-        className={`w-full px-2 py-1.5 border rounded-lg text-[10px] h-8 focus:ring-1 focus:ring-green-500 outline-none transition-all ${
+         className={`w-full px-1.5 py-1 border rounded-lg text-[9px] h-7 focus:ring-1 focus:ring-green-500 outline-none transition-all ${
           isDarkMode 
             ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-500' 
             : 'bg-white border-gray-200 text-gray-800'
         }`}
       />
-      <button
+       <button
         onClick={() => onSave(settlementId, value.replace(/,/g, ''))}
-        className={`shrink-0 w-8 h-8 rounded-lg transition-all active:scale-90 flex items-center justify-center text-white shadow-lg ${buttonColor}`}
+        className={`shrink-0 w-7 h-7 rounded-lg transition-all active:scale-90 flex items-center justify-center text-white shadow-lg ${buttonColor}`}
         title="Save Amount"
       >
         <span className="text-xs">✓</span>
