@@ -31,7 +31,7 @@ const AdminSidebar = () => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 to-gray-950 text-white w-64 min-h-screen flex-shrink-0 py-6 shadow-xl">
+    <div className="bg-gradient-to-b from-gray-900 to-gray-950 text-white w-64 h-screen overflow-y-auto flex-shrink-0 py-6 shadow-xl">
       <div className="px-6 mb-8 border-b border-gray-800 pb-6">
         <div className="flex items-center justify-center mb-4">
         </div>

@@ -63,7 +63,7 @@ const AdvocateSidebar = () => {
         />
       )}
 
-      <div className={`fixed md:relative inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out bg-gradient-to-b from-gray-900 to-black text-gray-100 w-64 min-h-screen flex-shrink-0 py-6 border-r border-gray-800 shadow-xl flex flex-col`}>
+      <div className={`fixed md:relative ${isMobileOpen ? 'inset-y-0 left-0' : ''} z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out bg-gradient-to-b from-gray-900 to-black text-gray-100 w-64 h-screen overflow-y-auto flex-shrink-0 py-6 border-r border-gray-800 shadow-xl flex flex-col`}>
         <div className="px-6 mb-8 flex justify-between items-center">
           <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">{userName}'s Portal</h2>
         </div>
