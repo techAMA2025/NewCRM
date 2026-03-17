@@ -1076,6 +1076,17 @@ const BillcutLeadsTableOptimized = React.memo(
 
         {/* Mobile Card View */}
         <div className="md:hidden space-y-4">
+          {leads.length > 0 && (
+            <div className="bg-gray-800/30 p-3 rounded-xl border border-gray-700/50 flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-300">Select All Leads</span>
+              <input
+                type="checkbox"
+                checked={selectedLeads.length === leads.length && leads.length > 0}
+                onChange={onSelectAll}
+                className="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </div>
+          )}
           {leads.length > 0 ? (
             leads.map((lead) => (
               <BillcutMobileLeadCard

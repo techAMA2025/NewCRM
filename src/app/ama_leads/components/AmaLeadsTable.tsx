@@ -835,6 +835,17 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
       {/* Mobile Card List - shown only on mobile */}
       <div className="md:hidden p-2 space-y-3">
+        {uniqueLeads.length > 0 && (
+          <div className="bg-[#ffffff] p-3 rounded-lg border border-[#5A4C33]/10 flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-[#5A4C33]">Select All Leads</span>
+            <input
+              type="checkbox"
+              checked={selectedLeads.length === uniqueLeads.length && uniqueLeads.length > 0}
+              onChange={handleSelectAll}
+              className="w-5 h-5 text-[#D2A02A] bg-[#ffffff] border-[#5A4C33]/30 rounded focus:ring-[#D2A02A] focus:ring-2"
+            />
+          </div>
+        )}
         {uniqueLeads.length === 0 ? (
           <div className="text-center py-8 text-sm text-[#5A4C33]/70">No leads found matching the current filters.</div>
         ) : (
