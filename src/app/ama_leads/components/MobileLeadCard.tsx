@@ -1,10 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { BsCheckCircleFill } from "react-icons/bs"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
-import { db } from "@/firebase/firebase"
+import { db, functions } from "@/firebase/firebase"
 import { toast } from "react-toastify"
+import { httpsCallable } from "firebase/functions"
+import { FaEllipsisV, FaWhatsapp } from "react-icons/fa"
+import { useWhatsAppTemplates } from "@/hooks/useWhatsAppTemplates"
 
 const canUserEditLead = (lead: any) => {
   const currentUserRole = typeof window !== "undefined" ? localStorage.getItem("userRole") : ""
@@ -110,6 +113,29 @@ const MobileLeadCard = ({
 }: MobileLeadCardProps) => {
   const [isSaving, setSaving] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false)
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Use the custom hook to fetch sales templates
+  const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates("sales")
+
+  // Handle clicking outside the menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowWhatsAppMenu(false)
+      }
+    }
+
+    if (showWhatsAppMenu) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showWhatsAppMenu])
   const canEdit = canUserEditLead(lead)
 
   const name = lead.name || "Unknown"
@@ -181,6 +207,74 @@ const MobileLeadCard = ({
       const [salesPersonId, salesPersonName] = e.target.value.split("|")
       assignLeadToSalesperson(lead.id, salesPersonName, salesPersonId)
     } else { unassignLead?.(lead.id) }
+  }
+
+  // Send WhatsApp message function
+  const sendWhatsAppMessage = async (templateName: string) => {
+    const phoneNumber = lead.phone || lead.mobile || lead.number
+    
+    if (!phoneNumber) {
+      toast.error("No phone number available for this lead")
+      return
+    }
+
+    setIsSendingWhatsApp(true)
+    setShowWhatsAppMenu(false)
+
+    try {
+      const sendWhatsappMessageFn = httpsCallable(functions, "sendWhatsappMessage")
+
+      // Format phone number to ensure it's in the correct format
+      let formattedPhone = String(phoneNumber).replace(/\s+/g, "").replace(/[()-]/g, "")
+      if (formattedPhone.startsWith("+91")) {
+        formattedPhone = formattedPhone.substring(3)
+      }
+      if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
+        formattedPhone = "91" + formattedPhone
+      }
+
+      const messageData = {
+        phoneNumber: formattedPhone,
+        templateName: templateName,
+        leadId: lead.id,
+        userId: localStorage.getItem("userName") || "Unknown",
+        userName: localStorage.getItem("userName") || "Unknown",
+        message: `Template message: ${templateName}`,
+        customParams: [
+          { name: "name", value: lead.name || "Customer" },
+          { name: "Channel", value: "AMA Legal Solutions" },
+          { name: "agent_name", value: localStorage.getItem("userName") || "Agent" },
+          { name: "customer_mobile", value: formattedPhone },
+        ],
+        channelNumber: "919289622596",
+        broadcastName: `${templateName}_${Date.now()}`,
+      }
+
+      const result = await sendWhatsappMessageFn(messageData)
+
+      if (result.data && (result.data as any).success) {
+        const templateDisplayName = whatsappTemplates.find((t) => t.templateName === templateName)?.name || templateName
+        toast.success(
+          <div>
+            <p className="font-medium">WhatsApp Message Sent!</p>
+            <p className="text-sm">
+              "{templateDisplayName}" template sent to {lead.name}
+            </p>
+          </div>,
+          {
+            position: "top-right",
+            autoClose: 4000,
+          },
+        )
+      } else {
+        toast.error("Failed to send WhatsApp message")
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || error.details || "Unknown error"
+      toast.error(`Failed to send WhatsApp message: ${errorMessage}`)
+    } finally {
+      setIsSendingWhatsApp(false)
+    }
   }
 
   const getAssignmentOptions = () => {
@@ -288,7 +382,56 @@ const MobileLeadCard = ({
               {isSaving ? "Saving..." : "Save"}
             </button>
             <button onClick={() => fetchNotesHistory(lead.id)} className="px-3 py-1.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white rounded-lg text-xs font-medium">History</button>
-            <a href={`https://wa.me/91${String(phone).replace(/[^0-9]/g, "").slice(-10)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium">WhatsApp</a>
+            <div className="relative" ref={menuRef}>
+              <button 
+                onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)} 
+                disabled={!canEdit || isSendingWhatsApp || templatesLoading}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  !canEdit || isSendingWhatsApp || templatesLoading
+                  ? "bg-[#5A4C33]/20 text-[#5A4C33]/30 cursor-not-allowed"
+                  : showWhatsAppMenu
+                    ? "bg-green-600 text-white"
+                    : "bg-green-500 hover:bg-green-600 text-white"
+                }`}
+              >
+                {isSendingWhatsApp || templatesLoading ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-t border-b border-white"></div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <FaWhatsapp className="text-sm" />
+                    <span>WhatsApp</span>
+                  </div>
+                )}
+              </button>
+
+              {/* WhatsApp Menu Dropdown */}
+              {showWhatsAppMenu && !templatesLoading && (
+                <div className="absolute right-0 bottom-full mb-2 w-64 bg-white border border-[#5A4C33]/20 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="px-4 py-3 bg-[#F8F5EC] border-b border-[#5A4C33]/10 flex items-center gap-2">
+                    <FaWhatsapp className="text-green-500 text-sm" />
+                    <span className="text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider">Templates</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {whatsappTemplates.length > 0 ? (
+                      whatsappTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => sendWhatsAppMessage(template.templateName)}
+                          className="w-full px-4 py-3 text-left hover:bg-[#F8F5EC] transition-colors border-b border-[#5A4C33]/5 last:border-0"
+                        >
+                          <p className="text-xs font-bold text-[#5A4C33] mb-0.5">{template.name}</p>
+                          <p className="text-[10px] text-[#5A4C33]/60 line-clamp-1">{template.description}</p>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-6 text-center text-[10px] text-[#5A4C33]/50 uppercase font-bold">
+                        No templates found
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
