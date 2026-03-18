@@ -17,23 +17,60 @@ export const RemarkInput = ({
   onHistory: (id: string) => void
 }) => {
   const [value, setValue] = useState(initialValue)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+  const [height, setHeight] = useState<string | number>("auto")
 
   useEffect(() => {
     setValue(initialValue)
   }, [initialValue])
 
+  // Load saved height from local storage
+  useEffect(() => {
+    const savedHeights = localStorage.getItem("settlement-tracker-row-heights")
+    if (savedHeights) {
+      try {
+        const heightsMap = JSON.parse(savedHeights)
+        if (heightsMap[settlementId]) {
+          setHeight(`${heightsMap[settlementId]}px`)
+        } else {
+          setHeight("auto")
+        }
+      } catch (e) {
+        console.error("Failed to parse saved heights", e)
+      }
+    }
+  }, [settlementId])
+
+  const handleMouseUp = () => {
+    if (textareaRef.current) {
+      const newHeight = textareaRef.current.offsetHeight
+      setHeight(`${newHeight}px`)
+      
+      try {
+        const savedHeightsMap = JSON.parse(localStorage.getItem("settlement-tracker-row-heights") || "{}")
+        savedHeightsMap[settlementId] = newHeight
+        localStorage.setItem("settlement-tracker-row-heights", JSON.stringify(savedHeightsMap))
+      } catch (e) {
+        console.error("Failed to save height", e)
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col space-y-2 w-full">
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onMouseUp={handleMouseUp}
         placeholder="Add remark..."
-        className={`w-full px-2 py-1 border rounded-lg text-[10px] min-h-[60px] h-auto resize-y transition-all focus:ring-1 focus:ring-green-500 outline-none ${
+        className={`w-full px-2 py-1 border rounded-lg text-[10px] min-h-[60px] resize-y transition-all focus:ring-1 focus:ring-green-500 outline-none ${
           isDarkMode 
             ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-500' 
             : 'bg-gray-100/50 border-gray-200 text-gray-800'
         }`}
         rows={2}
+        style={{ height }}
       />
       <div className="flex gap-2">
         <button
