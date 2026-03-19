@@ -41,6 +41,7 @@ import SalesSidebar from "@/components/navigation/SalesSidebar"
 import OverlordSidebar from "@/components/navigation/OverlordSidebar"
 import BillcutSidebar from "@/components/navigation/BillcutSidebar"
 import BulkWhatsAppModal from "./components/BulkWhatsAppModal"
+import BillcutSalespersonCards from "./components/BillcutSalespersonCards"
 import { resolveLeadState } from "./utils/location"
 
 // Import types
@@ -2550,6 +2551,16 @@ const BillCutLeadsPage = () => {
             isLoadAllLoading={isLoadAllLoading}
             onMenuToggle={() => setIsMobileSidebarOpen(true)}
           />
+
+          {/* Salesperson Performance Cards */}
+          {(userRole === "admin" || userRole === "overlord") && (
+            <BillcutSalespersonCards
+              onSalespersonClick={(name) => {
+                setSalesPersonFilter((prev) => prev === name ? "all" : name)
+              }}
+              activeSalesperson={salesPersonFilter !== "all" ? salesPersonFilter : undefined}
+            />
+          )}
 
           <BillcutLeadsTabs
             activeTab={activeTab}

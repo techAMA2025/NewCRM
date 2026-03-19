@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminDb } from "@/firebase/firebase-admin"
 import { verifyAuth } from "@/lib/auth"
-import { Timestamp } from "firebase-admin/firestore"
 
 export const dynamic = "force-dynamic"
 
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
         // 1. Fetch all active salespersons
         const usersRef = adminDb.collection("users")
         const usersSnapshot = await usersRef
-            .where("role", "in", ["salesperson", "sales"])
+            .where("role", "in", ["salesperson", "sales", "billcut"])
             .get()
 
         const salespersons = usersSnapshot.docs
@@ -43,22 +42,21 @@ export async function GET(request: NextRequest) {
 
         // 2. Calculate the start of the current month (IST)
         const now = new Date()
-        // Get IST offset: UTC+5:30
         const istOffset = 5.5 * 60 * 60 * 1000
         const istNow = new Date(now.getTime() + istOffset)
         const monthStart = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), 1, 0, 0, 0, 0))
         // Adjust back to UTC from IST
         monthStart.setTime(monthStart.getTime() - istOffset)
+        const monthStartMs = monthStart.getTime()
 
-        const leadsRef = adminDb.collection("ama_leads")
+        const leadsRef = adminDb.collection("billcutLeads")
 
-        // 3. For each salesperson, run count() queries for overall and this month in parallel
+        // 3. For each salesperson, run count() queries for overall and this month
         const countPromises = salespersons.map(async (sp) => {
-            // Query using assigned_to field (which stores salesperson name)
             const overallQuery = leadsRef.where("assigned_to", "==", sp.name)
             const monthQuery = leadsRef
                 .where("assigned_to", "==", sp.name)
-                .where("synced_at", ">=", Timestamp.fromDate(monthStart))
+                .where("date", ">=", monthStartMs)
 
             const [overallSnap, monthSnap] = await Promise.all([
                 overallQuery.count().get(),
@@ -88,7 +86,7 @@ export async function GET(request: NextRequest) {
             }
         })
     } catch (error) {
-        console.error("Error fetching salesperson counts:", error)
+        console.error("Error fetching billcut salesperson counts:", error)
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
