@@ -11,6 +11,7 @@ import LeadsHeader from "./components/AmaLeadsHeader"
 import LeadsFilters from "./components/AmaLeadsFilters"
 import AmaLeadsTable from "./components/AmaLeadsTable"
 import AmaLeadsTabs from "./components/AmaLeadsTabs"
+import SalespersonCards from "./components/SalespersonCards"
 import AdminSidebar from "@/components/navigation/AdminSidebar"
 import SalesSidebar from "@/components/navigation/SalesSidebar"
 import OverlordSidebar from "@/components/navigation/OverlordSidebar"
@@ -788,7 +789,16 @@ const AmaLeadsPage = () => {
           onMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
 
-        <div className="flex-1 flex flex-col min-h-0 p-2 md:p-4 gap-2 md:gap-4">
+        <div className="flex-1 flex flex-col min-h-xl p-2 md:p-10 gap-2 md:gap-4">
+          {/* Salesperson Performance Cards */}
+          {(userRole === "admin" || userRole === "overlord") && (
+            <SalespersonCards
+              onSalespersonClick={(name) => {
+                setSalesPersonFilter((prev) => prev === name ? "all" : name)
+              }}
+              activeSalesperson={salesPersonFilter !== "all" ? salesPersonFilter : undefined}
+            />
+          )}
           <AmaLeadsTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
