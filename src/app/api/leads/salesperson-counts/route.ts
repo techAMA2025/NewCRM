@@ -41,24 +41,45 @@ export async function GET(request: NextRequest) {
                 return true
             })
 
-        // 2. Calculate the start of the current month (IST)
-        const now = new Date()
-        // Get IST offset: UTC+5:30
-        const istOffset = 5.5 * 60 * 60 * 1000
-        const istNow = new Date(now.getTime() + istOffset)
-        const monthStart = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), 1, 0, 0, 0, 0))
-        // Adjust back to UTC from IST
-        monthStart.setTime(monthStart.getTime() - istOffset)
+        // 2. Determine date range for "this month/filtered" count
+        const { searchParams } = new URL(request.url)
+        const startDateParam = searchParams.get("startDate")
+        const endDateParam = searchParams.get("endDate")
+
+        let rangeStart: Date
+        let rangeEnd: Date | null = null
+
+        if (startDateParam) {
+            rangeStart = new Date(`${startDateParam}T00:00:00.000Z`)
+            // IST Adjustment (matching page.tsx logic approximately)
+            rangeStart.setTime(rangeStart.getTime() - (330 * 60 * 1000))
+            
+            if (endDateParam) {
+                rangeEnd = new Date(`${endDateParam}T23:59:59.999Z`)
+                rangeEnd.setTime(rangeEnd.getTime() - (330 * 60 * 1000))
+            }
+        } else {
+            // Default to start of current month (IST)
+            const now = new Date()
+            const istOffset = 5.5 * 60 * 60 * 1000
+            const istNow = new Date(now.getTime() + istOffset)
+            rangeStart = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), 1, 0, 0, 0, 0))
+            rangeStart.setTime(rangeStart.getTime() - istOffset)
+        }
 
         const leadsRef = adminDb.collection("ama_leads")
 
-        // 3. For each salesperson, run count() queries for overall and this month in parallel
+        // 3. For each salesperson, run count() queries for overall and the specified range in parallel
         const countPromises = salespersons.map(async (sp) => {
             // Query using assigned_to field (which stores salesperson name)
             const overallQuery = leadsRef.where("assigned_to", "==", sp.name)
-            const monthQuery = leadsRef
+            let monthQuery = leadsRef
                 .where("assigned_to", "==", sp.name)
-                .where("synced_at", ">=", Timestamp.fromDate(monthStart))
+                .where("synced_at", ">=", Timestamp.fromDate(rangeStart))
+            
+            if (rangeEnd) {
+                monthQuery = monthQuery.where("synced_at", "<=", Timestamp.fromDate(rangeEnd))
+            }
 
             const [overallSnap, monthSnap] = await Promise.all([
                 overallQuery.count().get(),

@@ -789,7 +789,7 @@ const AmaLeadsPage = () => {
           onMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
 
-        <div className="flex-1 flex flex-col min-h-xl p-2 md:p-10 gap-2 md:gap-4">
+        <div className="flex-1 flex flex-col min-h-xl p-0 md:p-5 gap-2 md:gap-4">
           {/* Salesperson Performance Cards */}
           {(userRole === "admin" || userRole === "overlord") && (
             <SalespersonCards
@@ -797,6 +797,8 @@ const AmaLeadsPage = () => {
                 setSalesPersonFilter((prev) => prev === name ? "all" : name)
               }}
               activeSalesperson={salesPersonFilter !== "all" ? salesPersonFilter : undefined}
+              fromDate={fromDate}
+              toDate={toDate}
             />
           )}
           <AmaLeadsTabs
@@ -806,7 +808,7 @@ const AmaLeadsPage = () => {
             callbackCount={stats.callback}
           />
 
-          <div className="bg-[#ffffff] rounded-lg shadow-sm border border-[#5A4C33]/10 flex flex-col min-h-0">
+          <div className="flex flex-col min-h-0 w-full">
             <LeadsFilters
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}

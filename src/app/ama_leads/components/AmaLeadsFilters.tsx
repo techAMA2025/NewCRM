@@ -506,7 +506,7 @@ const AmaLeadsFilters = ({
       </div>
 
       {/* Filters section with improved layout */}
-      <div className="bg-[#ffffff] border border-[#5A4C33]/10 rounded-lg p-2 shadow-sm">
+      <div className="p-0">
         <div className="flex items-center mb-0 md:mb-3">
           <FaFilter className="text-[#5A4C33]/70 mr-2" />
           <span className="text-sm font-medium text-[#5A4C33]">Filters</span>

@@ -27,11 +27,11 @@ const LeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV, loadAllLea
               <FiMenu className="w-6 h-6" />
             </button>
           )}
-          <h1 className="text-lg md:text-2xl font-semibold text-[#5A4C33] bg-gradient-to-r from-[#D2A02A] to-[#5A4C33] bg-clip-text text-transparent">
+          <h1 className="text-lg md:text-2xl font-semibold text-[#5A4C33] bg-gradient-to-r from-[#D2A02A] to-[#5A4C33] bg-clip-text text-transparent p-5">
             AMA Leads<span className="hidden sm:inline"> Management</span>
           </h1>
         </div>
-        <div className="flex gap-2 md:gap-4">
+        <div className="flex gap-2 md:gap-4 p-5">
           {(userRole === 'overlord' || userRole === 'admin') && (
             <button
               onClick={loadAllLeads}
@@ -54,7 +54,7 @@ const LeadsHeader = ({ isLoading, userRole, currentUser, exportToCSV, loadAllLea
           )}
         </div>
       </div>
-      <p className="text-[#5A4C33]/70 mt-1 md:mt-2 text-xs md:text-base truncate">
+      <p className="text-[#5A4C33]/70 mt-1 md:mt-2 text-xs md:text-base truncate pl-5">
         {currentUser?.email ? `Logged in as: ${currentUser.email}` : 'Not logged in'}
       </p>
     </div>

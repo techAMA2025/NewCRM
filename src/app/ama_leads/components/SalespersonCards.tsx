@@ -13,9 +13,16 @@ interface SalespersonCount {
 interface SalespersonCardsProps {
   onSalespersonClick?: (salespersonName: string) => void
   activeSalesperson?: string
+  fromDate?: string
+  toDate?: string
 }
 
-export default function SalespersonCards({ onSalespersonClick, activeSalesperson }: SalespersonCardsProps) {
+export default function SalespersonCards({ 
+  onSalespersonClick, 
+  activeSalesperson,
+  fromDate,
+  toDate
+}: SalespersonCardsProps) {
   const { user } = useAuth()
   const [counts, setCounts] = useState<SalespersonCount[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -25,7 +32,16 @@ export default function SalespersonCards({ onSalespersonClick, activeSalesperson
     setIsLoading(true)
     try {
       const token = await user.getIdToken()
-      const res = await fetch("/api/leads/salesperson-counts", {
+      let url = "/api/leads/salesperson-counts"
+      const params = new URLSearchParams()
+      if (fromDate) params.append("startDate", fromDate)
+      if (toDate) params.append("endDate", toDate)
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`
+      }
+
+      const res = await fetch(url, {
         cache: "no-store",
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -36,7 +52,7 @@ export default function SalespersonCards({ onSalespersonClick, activeSalesperson
     } finally {
       setIsLoading(false)
     }
-  }, [user])
+  }, [user, fromDate, toDate])
 
   useEffect(() => { fetchCounts() }, [fetchCounts])
 
@@ -56,6 +72,8 @@ export default function SalespersonCards({ onSalespersonClick, activeSalesperson
     <div className="flex gap-3 overflow-x-auto pb-1">
       {counts.map((sp) => {
         const isActive = activeSalesperson === sp.name
+        const hasDateFilter = !!(fromDate || toDate)
+        
         return (
           <div
             key={sp.id}
@@ -69,7 +87,9 @@ export default function SalespersonCards({ onSalespersonClick, activeSalesperson
             </p>
             <div className="flex justify-between gap-4">
               <div>
-                <p className={`text-[11px] ${isActive ? "text-white/70" : "text-[#5A4C33]/50"}`}>Month</p>
+                <p className={`text-[11px] ${isActive ? "text-white/70" : "text-[#5A4C33]/50"}`}>
+                  {hasDateFilter ? "filtered" : "this month"}
+                </p>
                 <p className={`text-lg font-bold leading-tight ${isActive ? "text-white" : "text-[#5A4C33]"}`}>
                   {sp.thisMonthCount}
                 </p>

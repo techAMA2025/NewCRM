@@ -618,7 +618,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
   const assignmentOptions = getAssignmentOptions()
 
   return (
-    <div className="bg-[#ffffff] shadow-2xl rounded-xl overflow-visible border border-[#5A4C33]/10 relative">
+    <div className="overflow-visible relative">
       {/* Loading Overlay */}
       {isLoading && !isLoadingMore && (
         <div className="absolute inset-0 bg-white/50 z-50 flex items-center justify-center rounded-xl backdrop-blur-[1px]">
