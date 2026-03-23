@@ -82,12 +82,9 @@ export async function POST(request: NextRequest) {
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
             });
         } else {
-            console.log('[bulk-demand-pdf] Using @sparticuz/chromium (serverless)');
-            // Standard Vercel Puppeteer Configuration
-            const chromium = (await import('@sparticuz/chromium')).default;
-            
-            // Optional: Font support if you use special characters or Hindi
-            // await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
+            console.log('[bulk-demand-pdf] Using @sparticuz/chromium-min (serverless)');
+            // Fix for Vercel production: Switch to -min package
+            const chromium = (await import('@sparticuz/chromium-min')).default;
             
             browser = await puppeteer.launch({
                 args: [
@@ -97,12 +94,13 @@ export async function POST(request: NextRequest) {
                     '--disable-dev-shm-usage',
                     '--disable-gpu',
                     '--no-zygote',
-                    '--single-process', // This is key for serverless
+                    '--single-process',
                 ],
-                defaultViewport: chromium.defaultViewport,
-                executablePath: await chromium.executablePath(),
-                headless: chromium.headless === 'shell' ? 'shell' : true,
-                ignoreHTTPSErrors: true,
+                defaultViewport: (chromium as any).defaultViewport || { width: 800, height: 600 },
+                executablePath: await chromium.executablePath(
+                    'https://github.com/SPARTICUZ/chromium/releases/download/v134.0.0/chromium-v134.0.0-pack.tar'
+                ),
+                headless: true, // v23+ supports true/false and 'shell'
             } as any);
         }
 
