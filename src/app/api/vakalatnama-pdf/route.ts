@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
                 ],
                 defaultViewport: (chromium as any).defaultViewport || { width: 800, height: 600 },
                 executablePath: await chromium.executablePath(
-                    'https://github.com/SPARTICUZ/chromium/releases/download/v134.0.0/chromium-v134.0.0-pack.tar'
+                    'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
                 ),
                 headless: true,
             } as any);
