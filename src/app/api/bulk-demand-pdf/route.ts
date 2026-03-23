@@ -96,11 +96,14 @@ export async function POST(request: NextRequest) {
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--disable-gpu',
+                    '--no-zygote',
+                    '--single-process', // This is key for serverless
                 ],
                 defaultViewport: chromium.defaultViewport,
                 executablePath: await chromium.executablePath(),
-                headless: chromium.headless,
-            });
+                headless: chromium.headless === 'shell' ? 'shell' : true,
+                ignoreHTTPSErrors: true,
+            } as any);
         }
 
         // Create ZIP for all PDFs
