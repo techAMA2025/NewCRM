@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import mammoth from 'mammoth';
@@ -70,14 +70,24 @@ export async function generatePDF(data: any, templateName: string): Promise<Buff
 
         // 3. Convert HTML to PDF using puppeteer/chromium
         const browser = await puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
-        });
+            args: [
+                ...chromium.args,
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-zygote',
+                '--single-process',
+            ],
+            defaultViewport: (chromium as any).defaultViewport || { width: 800, height: 600 },
+            executablePath: await chromium.executablePath(
+                'https://github.com/SPARTICUZ/chromium/releases/download/v134.0.0/chromium-v134.0.0-pack.tar'
+            ),
+            headless: true,
+        } as any);
 
         const page = await browser.newPage();
-
+        
         // Add basic styles to make the PDF look professional
         const fullHtml = `
             <!DOCTYPE html>
@@ -109,7 +119,7 @@ export async function generatePDF(data: any, templateName: string): Promise<Buff
             </html>
         `;
 
-        await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
+        await page.setContent(fullHtml, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
         const pdf = await page.pdf({
             format: 'A4',
