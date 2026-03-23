@@ -97,91 +97,110 @@ export async function POST(request: NextRequest) {
         let generatedCount = 0;
         let skippedCount = 0;
 
-        for (const notice of notices) {
-            const { clientId, name2, bankName, bankAddress, bankEmail, lawyerEmail, reference, referenceNumber, email, date } = notice;
-
-            // Skip invalid entries
+        // Separate valid and invalid notices
+        const validNotices = notices.filter(notice => {
+            const { name2, bankName, bankAddress, bankEmail, reference, email, date } = notice;
             if (!name2 || !bankName || !bankAddress || !bankEmail || !reference || !email || !date) {
                 skippedCount++;
-                continue;
+                return false;
             }
+            return true;
+        });
 
-            // Prepare data for the template (same logic as single demand-pdf route)
-            const requestData = {
-                name2,
-                bankName,
-                bankAddress: bankAddress.replace(/\.\s+(?=Mr\.|Ms\.|Mrs\.|Smt\.|Shri\b|The\b)/gi, '.\n').trim(),
-                bankEmail: bankEmail.split(',').map((e: string) => e.trim()).join('\n'),
-                reference,
-                referenceNumber: referenceNumber || '',
-                email,
-                date: formatDateToDDMMYYYY(date)
-            };
+        // Process PDFs in parallel batches of 10
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < validNotices.length; i += BATCH_SIZE) {
+            const batch = validNotices.slice(i, i + BATCH_SIZE);
 
-            // Generate filled HTML from template
-            const fullHtml = fillDemandNoticeTemplate(requestData);
+            // Parallel PDF creation for the batch
+            const generationResults = await Promise.all(batch.map(async (notice) => {
+                const { name2, bankAddress, bankEmail, reference, referenceNumber, email, date } = notice;
 
-            // Create a new page for each PDF
-            const page = await browser.newPage();
-            await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
+                const requestData = {
+                    name2,
+                    bankName: notice.bankName,
+                    bankAddress: bankAddress.replace(/\.\s+(?=Mr\.|Ms\.|Mrs\.|Smt\.|Shri\b|The\b)/gi, '.\n').trim(),
+                    bankEmail: bankEmail.split(',').map((e: string) => e.trim()).join('\n'),
+                    reference,
+                    referenceNumber: referenceNumber || '',
+                    email,
+                    date: formatDateToDDMMYYYY(date)
+                };
 
-            // Generate PDF
-            const pdf = await page.pdf({
-                format: 'A4',
-                margin: {
-                    top: '10px',
-                    right: '0px',
-                    bottom: '10px',
-                    left: '0px'
-                },
-                printBackground: true,
-            });
+                const fullHtml = fillDemandNoticeTemplate(requestData);
 
-            await page.close();
-
-            // Add to ZIP
-            const safeName = name2.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const safeBank = bankName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const fileName = `${safeName}_${safeBank}_demandNotice.pdf`;
-
-            bulkZip.file(fileName, pdf);
-            generatedCount++;
-
-            // Save PDF to Firebase Storage and track in Firestore
-            if (storage && db) {
+                let page = null;
                 try {
-                    const safeClientId = clientId || 'unknown_client';
-                    const timestamp = Date.now();
-                    const storagePath = `demand_notices/${safeClientId}/${timestamp}_${fileName}`;
+                    page = await browser!.newPage();
+                    await page.setContent(fullHtml, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
-                    const bucket = storage.bucket();
-                    const file = bucket.file(storagePath);
-                    await file.save(pdf, {
-                        metadata: {
-                            contentType: 'application/pdf',
-                        },
+                    const pdf = await page.pdf({
+                        format: 'A4',
+                        margin: { top: '10px', right: '0px', bottom: '10px', left: '0px' },
+                        printBackground: true,
                     });
 
-                    // Save metadata to Firestore
-                    await db.collection('generated_outbox').add({
-                        clientId: safeClientId,
-                        clientName: name2,
-                        clientEmail: email,
-                        bankName: bankName,
-                        bankEmail: bankEmail,
-                        lawyerEmail: lawyerEmail || '',
-                        reference: reference,
-                        referenceNumber: referenceNumber || '',
-                        storagePath: storagePath,
-                        fileName: fileName,
-                        status: 'pending_dispatch',
-                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                        generatedAt: new Date().toISOString()
-                    });
-                } catch (e) {
-                    console.error("Failed to upload/save metadata for", name2, e);
+                    return { pdf, notice, success: true };
+                } catch (err) {
+                    console.error(`Failed to generate PDF for ${name2}:`, err);
+                    return { pdf: null, notice, success: false };
+                } finally {
+                    if (page) await page.close();
                 }
-            }
+            }));
+
+            // Parallel Firebase processing for the batch
+            await Promise.all(generationResults.map(async (result) => {
+                if (!result.success || !result.pdf) {
+                    skippedCount++;
+                    return;
+                }
+
+                const { pdf, notice } = result;
+                const { clientId, name2, bankName, bankEmail, lawyerEmail, reference, referenceNumber, email } = notice;
+
+                const safeName = name2.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const safeBank = bankName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const fileName = `${safeName}_${safeBank}_demandNotice.pdf`;
+
+                bulkZip.file(fileName, pdf);
+                generatedCount++;
+
+                if (storage && db) {
+                    try {
+                        const safeClientId = clientId || 'unknown_client';
+                        const timestamp = Date.now();
+                        const storagePath = `demand_notices/${safeClientId}/${timestamp}_${fileName}`;
+
+                        const bucket = storage.bucket();
+                        const file = bucket.file(storagePath);
+                        
+                        // Run storage save and db add in parallel for this notice
+                        await Promise.all([
+                            file.save(pdf, { metadata: { contentType: 'application/pdf' } }),
+                            db.collection('generated_outbox').add({
+                                clientId: safeClientId,
+                                clientName: name2,
+                                clientEmail: email,
+                                bankName: bankName,
+                                bankEmail: bankEmail,
+                                lawyerEmail: lawyerEmail || '',
+                                reference: reference,
+                                referenceNumber: referenceNumber || '',
+                                storagePath: storagePath,
+                                fileName: fileName,
+                                status: 'pending_dispatch',
+                                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                                generatedAt: new Date().toISOString()
+                            })
+                        ]);
+                    } catch (e) {
+                        console.error("Failed to upload/save metadata for", name2, e);
+                    }
+                }
+            }));
+
+            console.log(`[bulk-demand-pdf] Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(validNotices.length / BATCH_SIZE)} done`);
         }
 
         await browser.close();
