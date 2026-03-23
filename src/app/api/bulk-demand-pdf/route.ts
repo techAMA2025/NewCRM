@@ -100,7 +100,6 @@ export async function POST(request: NextRequest) {
                 defaultViewport: chromium.defaultViewport,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
-                ignoreHTTPSErrors: true,
             });
         }
 
