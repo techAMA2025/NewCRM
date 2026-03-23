@@ -83,12 +83,24 @@ export async function POST(request: NextRequest) {
             });
         } else {
             console.log('[bulk-demand-pdf] Using @sparticuz/chromium (serverless)');
+            // Standard Vercel Puppeteer Configuration
             const chromium = (await import('@sparticuz/chromium')).default;
+            
+            // Optional: Font support if you use special characters or Hindi
+            // await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
+            
             browser = await puppeteer.launch({
-                args: chromium.args,
+                args: [
+                    ...chromium.args,
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                ],
                 defaultViewport: chromium.defaultViewport,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
+                ignoreHTTPSErrors: true,
             });
         }
 
