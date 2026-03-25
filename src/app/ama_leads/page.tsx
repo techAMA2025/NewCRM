@@ -523,6 +523,12 @@ const AmaLeadsPage = () => {
         toast.error("Failed to update lead")
         return false
       }
+
+      // Fire WATI notification if assignment changed (non-blocking)
+      if ("assignedTo" in data && data.assignedTo && data.assignedTo !== "-" && data.assignedToId) {
+          sendAssignmentNotification([id], data.assignedToId)
+      }
+
       return true
     } catch (error) {
       return false

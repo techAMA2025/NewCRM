@@ -1324,6 +1324,38 @@ const BillCutLeadsPage = () => {
   }, [searchQuery, statusFilter, leads, searchResults])
 
   // Update lead with optimistic updates
+  // Sends the pre_call_message_utlity WATI template after assignment (fire-and-forget)
+  const sendAssignmentNotification = async (leadIds: string[], salespersonId: string) => {
+    try {
+      const token = await currentUser?.getIdToken()
+      if (!token) return
+
+      fetch("/api/leads/send-assignment-notification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          leadIds, 
+          salespersonId, 
+          collectionName: "billcutLeads" 
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.attempted > 0) {
+            console.log(`[WATI] Assignment notification sent to ${data.attempted} Bill Cut lead(s)`)
+          } else if (data.success === false) {
+             console.warn(`[WATI] Assignment notification issue: ${data.message || "Unknown"}`)
+          }
+        })
+        .catch((err) => console.error("[WATI] Assignment notification error:", err))
+    } catch (err) {
+      console.error("[WATI] Failed to initiate assignment notification:", err)
+    }
+  }
+
   const updateLead = async (id: string, data: any) => {
     // Look for the lead in both states to ensure we have the most recent data (especially for history)
     // IMPORTANT: Check the main 'leads' state first as it's the primary source of truth for onSnapshot updates
@@ -1370,6 +1402,11 @@ const BillCutLeadsPage = () => {
       }
 
       await updateDoc(leadRef, updateData)
+      
+      // Fire WATI notification if assignment changed (non-blocking)
+      if ("assignedTo" in data && data.assignedTo && data.assignedTo !== "-" && data.assignedToId) {
+          sendAssignmentNotification([id], data.assignedToId)
+      }
       
       // If changing from "Converted" to another status, decrement the targets count
       if (isChangingFromConverted) {
@@ -1538,6 +1575,9 @@ const BillCutLeadsPage = () => {
       })
 
       await Promise.all(updatePromises)
+
+      // Fire WATI pre_call_message_utlity notifications in parallel (non-blocking)
+      sendAssignmentNotification(leadsToAssign, salesPersonId)
 
       setSelectedLeads([])
       setShowBulkAssignment(false)

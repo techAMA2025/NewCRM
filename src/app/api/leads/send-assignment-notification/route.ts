@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic"
  * immediately after they have been assigned to a salesperson.
  *
  * Body:
- *   leadIds          string[]   - IDs of the ama_leads documents that were just assigned
+ *   leadIds          string[]   - IDs of the lead documents that were just assigned
  *   salespersonId    string     - The Firestore document ID (or UID) of the salesperson in the users collection
+ *   collectionName   string     - The Firestore collection (optional, defaults to "ama_leads")
  *
  * Template: pre_call_message_utlity
  *   {{1}}      → lead's name    (client name)
@@ -43,7 +44,11 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json()
-        const { leadIds, salespersonId } = body as { leadIds: string[]; salespersonId: string }
+        const { leadIds, salespersonId, collectionName = "ama_leads" } = body as { 
+            leadIds: string[]; 
+            salespersonId: string;
+            collectionName?: string;
+        }
 
         if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
             return NextResponse.json({ error: "No lead IDs provided" }, { status: 400 })
@@ -51,6 +56,11 @@ export async function POST(request: NextRequest) {
 
         if (!salespersonId) {
             return NextResponse.json({ error: "No salespersonId provided" }, { status: 400 })
+        }
+
+        const validCollections = ["ama_leads", "billcutLeads"];
+        if (!validCollections.includes(collectionName)) {
+            return NextResponse.json({ error: `Invalid collection: ${collectionName}` }, { status: 400 })
         }
 
         const db = adminDb
@@ -90,9 +100,9 @@ export async function POST(request: NextRequest) {
             })
         }
 
-        // --- 2. Fetch lead details (name + phone) in parallel ---
+        // --- 2. Fetch lead details (name + phone) from the specified collection ---
         const leadSnaps = await Promise.all(
-            leadIds.map((id) => db.collection("ama_leads").doc(id).get())
+            leadIds.map((id) => db.collection(collectionName).doc(id).get())
         )
 
         interface Receiver {
