@@ -8,7 +8,7 @@ interface BulkWhatsAppModalProps {
   isOpen: boolean
   onClose: () => void
   selectedLeads: any[]
-  onSendBulkWhatsApp: (templateName: string, leadIds: string[]) => Promise<void>
+  onSendBulkWhatsApp: (templateName: string, leadIds: string[], leadData?: any[]) => Promise<void>
 }
 
 const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
@@ -44,9 +44,25 @@ const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
       return
     }
 
+    // Instead of just sending IDs, send subsets of lead data to ensure correct phone/name mapping
+    const leadData = validLeads.map(lead => {
+      let phone = (lead.phone || "").toString().replace(/\D/g, "")
+      
+      // Auto-append 91 if it's a 10-digit number
+      if (phone.length === 10) {
+        phone = "91" + phone
+      }
+
+      return {
+        id: lead.id,
+        name: lead.name || "Customer",
+        phone: phone,
+      }
+    })
+
     setIsSending(true)
     try {
-      await onSendBulkWhatsApp(selectedTemplate, validLeads.map(lead => lead.id))
+      await onSendBulkWhatsApp(selectedTemplate, leadData.map(lead => lead.id), leadData)
       onClose()
     } catch (error) {
       console.error("Error sending bulk WhatsApp:", error)
@@ -147,4 +163,4 @@ const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
   )
 }
 
-export default BulkWhatsAppModal 
+export default BulkWhatsAppModal
