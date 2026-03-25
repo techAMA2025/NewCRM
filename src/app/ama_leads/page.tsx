@@ -529,6 +529,34 @@ const AmaLeadsPage = () => {
     }
   }
 
+  // Sends the pre_call_message_utlity WATI template after assignment (fire-and-forget)
+  const sendAssignmentNotification = async (leadIds: string[], salespersonId: string) => {
+    try {
+      const token = await currentUser?.getIdToken()
+      if (!token) return
+
+      fetch("/api/leads/send-assignment-notification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ leadIds, salespersonId }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.attempted > 0) {
+            console.log(`[WATI] Assignment notification sent to ${data.attempted} lead(s)`)
+          } else if (!data.success) {
+            console.warn(`[WATI] Assignment notification issue: ${data.message || "Unknown"}`)
+          }
+        })
+        .catch((err) => console.error("[WATI] Assignment notification error:", err))
+    } catch (err) {
+      console.error("[WATI] Failed to initiate assignment notification:", err)
+    }
+  }
+
   const assignLeadToSalesperson = async (leadId: string, salesPersonName: string, salesPersonId: string) => {
     const success = await performAction("assign", [leadId], {
       assignedTo: salesPersonName,
@@ -543,6 +571,8 @@ const AmaLeadsPage = () => {
           lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId } : lead
         )
       )
+      // Fire WATI pre_call_message_utlity notification (non-blocking)
+      sendAssignmentNotification([leadId], salesPersonId)
     }
   }
 
@@ -584,8 +614,11 @@ const AmaLeadsPage = () => {
         toast.error("Invalid salesperson selection")
         return
     }
+
+    // Capture the selected leads before clearing state
+    const leadsBeingAssigned = [...selectedLeads]
     
-    const success = await performAction("assign", selectedLeads, {
+    const success = await performAction("assign", leadsBeingAssigned, {
         assignedToId: targetId,
         assignedTo: targetName
     })
@@ -595,7 +628,9 @@ const AmaLeadsPage = () => {
         setShowBulkAssignment(false)
         setSelectedLeads([])
         // Refetch to get updated data
-        refreshCurrentView() 
+        refreshCurrentView()
+        // Fire WATI pre_call_message_utlity notifications in parallel (non-blocking)
+        sendAssignmentNotification(leadsBeingAssigned, targetId)
     }
   }
 
