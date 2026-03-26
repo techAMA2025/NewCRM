@@ -272,12 +272,12 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
   }, [duplicateToastShown])
 
   const renderTableHeader = () => (
-    <thead className="bg-[#F8F5EC] text-xs uppercase font-medium sticky top-0 z-10">
+    <thead className="bg-[#F8F5EC] text-[10px] uppercase font-medium sticky top-0 z-10">
       <tr>
         {/* Select All Checkbox Column */}
         {columnVisibility.checkbox && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[0.5%] cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-10 cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -306,7 +306,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.date && (
           <th
-            className="py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[1%] cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
+            className="py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
             onClick={() => requestSort("synced_at")}
             scope="col"
           >
@@ -337,7 +337,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.name && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -361,7 +361,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.location && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
             onClick={() => requestSort("source_database")}
             scope="col"
           >
@@ -392,7 +392,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.source && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-20 border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -416,7 +416,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.debt && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-20 border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -440,7 +440,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.status && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-28 border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -464,7 +464,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.assignedTo && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -490,7 +490,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.customerQuery && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-40 border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -514,7 +514,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.salesNotes && (
           <th
-            className="px-1 py-1 text-left text-xs font-semibold text-[#5A4C33] uppercase tracking-wider w-[2%] border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-48 border border-[#5A4C33] bg-[#ffffff]/50"
             scope="col"
           >
             <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
@@ -548,7 +548,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
       return (
         <tr>
-          <td colSpan={visibleColumnsCount} className="px-4 py-4 text-center text-sm text-[#5A4C33]/70">
+          <td colSpan={visibleColumnsCount} className="px-4 py-4 text-center text-xs text-[#5A4C33]/70">
             No leads found matching the current filters.
           </td>
         </tr>
@@ -618,7 +618,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
   const assignmentOptions = getAssignmentOptions()
 
   return (
-    <div className="overflow-visible relative">
+    <div className="overflow-x-auto relative">
       {/* Loading Overlay */}
       {isLoading && !isLoadingMore && (
         <div className="absolute inset-0 bg-white/50 z-50 flex items-center justify-center rounded-xl backdrop-blur-[1px]">
