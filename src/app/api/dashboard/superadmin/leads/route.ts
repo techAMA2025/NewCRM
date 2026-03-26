@@ -44,25 +44,52 @@ export async function GET(request: NextRequest) {
             const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
-            // Base filters
-            const applyBaseFilters = (query: FirebaseFirestore.Query, type: 'ama' | 'billcut') => {
+            // Base filters helper
+            const applyDetailedFilters = (query: FirebaseFirestore.Query, type: 'ama' | 'billcut', forceMonthDefault: boolean = false) => {
                 let q = query;
+                
+                // 1. Date Filtering
                 if (isFilterApplied && (startDateParam || endDateParam)) {
+                    // Use explicit date filter
                     if (startDateParam) {
                         const start = new Date(startDateParam);
-                        q = q.where(type === 'ama' ? "synced_at" : "synced_date", ">=", Timestamp.fromDate(start));
+                        if (type === 'ama') {
+                            q = q.where("synced_at", ">=", Timestamp.fromDate(start));
+                        } else {
+                            q = q.where("date", ">=", start.getTime());
+                        }
                     }
                     if (endDateParam) {
-                        const end = new Date(`${endDateParam}T23:59:59`);
-                        q = q.where(type === 'ama' ? "synced_at" : "synced_date", "<=", Timestamp.fromDate(end));
+                        const end = new Date(endDateParam);
+                        end.setHours(23, 59, 59, 999);
+                        if (type === 'ama') {
+                            q = q.where("synced_at", "<=", Timestamp.fromDate(end));
+                        } else {
+                            q = q.where("date", "<=", end.getTime());
+                        }
+                    }
+                } else if (forceMonthDefault || !isFilterApplied) {
+                    // Default to current month when no filter is applied (or forced)
+                    if (type === 'ama') {
+                        q = q.where("synced_at", ">=", Timestamp.fromDate(currentMonthStart));
+                        q = q.where("synced_at", "<=", Timestamp.fromDate(currentMonthEnd));
+                    } else {
+                        q = q.where("date", ">=", currentMonthStart.getTime());
+                        q = q.where("date", "<=", currentMonthEnd.getTime());
                     }
                 }
 
+                // 2. Salesperson Filtering (only applied if not 'all' and not forced for all-user stats)
                 if (selectedLeadsSalesperson && selectedLeadsSalesperson !== "all") {
                     q = q.where("assigned_to", "==", selectedLeadsSalesperson);
                 }
+                
                 return q;
             };
+
+            // Use the improved filter function consistently
+            const applyBaseFilters = (q: FirebaseFirestore.Query, t: 'ama' | 'billcut') => applyDetailedFilters(q, t, false);
+            const applyMonthFilters = (q: FirebaseFirestore.Query, t: 'ama' | 'billcut') => applyDetailedFilters(q, t, true);
 
             const sources = ['settleloans', 'credsettlee', 'ama', 'billcut'];
             const statuses = [
@@ -117,28 +144,6 @@ export async function GET(request: NextRequest) {
                 Promise.all(sourceTotalPromises),
                 Promise.all(matrixPromises)
             ]);
-
-            // 3. Fetch Salesperson Stats (Interested/Converted)
-            // Always filter by current month for salesperson stats, even when no explicit date filter is applied
-            const applyMonthFilters = (query: FirebaseFirestore.Query, type: 'ama' | 'billcut') => {
-                let q = query;
-                if (isFilterApplied && (startDateParam || endDateParam)) {
-                    // Use the explicit date filter when applied
-                    if (startDateParam) {
-                        const start = new Date(startDateParam);
-                        q = q.where(type === 'ama' ? "synced_at" : "synced_date", ">=", Timestamp.fromDate(start));
-                    }
-                    if (endDateParam) {
-                        const end = new Date(`${endDateParam}T23:59:59`);
-                        q = q.where(type === 'ama' ? "synced_at" : "synced_date", "<=", Timestamp.fromDate(end));
-                    }
-                } else {
-                    // Default to current month when no filter is applied
-                    q = q.where(type === 'ama' ? "synced_at" : "synced_date", ">=", Timestamp.fromDate(currentMonthStart));
-                    q = q.where(type === 'ama' ? "synced_at" : "synced_date", "<=", Timestamp.fromDate(currentMonthEnd));
-                }
-                return q;
-            };
 
             const usersRef = adminDb.collection("users");
             const salesUsersSnapshot = await usersRef.where("role", "==", "sales").get();

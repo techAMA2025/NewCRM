@@ -476,25 +476,9 @@ const SuperAdminDashboard = React.memo(() => {
           <h1 className="text-xl font-bold">Super Admin Dashboard</h1>
           
           {/* Cache management controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mr-10">
               <ThemeToggle />
-              <button
-              onClick={clearAllCache}
-              className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-md transition-colors"
-              title="Clear cache"
-            >
-              🗑️ Clear Cache
-            </button>
-            <button
-              onClick={refreshAllData}
-              className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded-md transition-colors"
-              title="Refresh all data"
-            >
-              🔄 Refresh
-            </button>
-            <div className="text-xs text-gray-400">
-              Cache: {analyticsCache.size()} items
-            </div>
+             
           </div>
         </div>
 
@@ -580,11 +564,11 @@ const SuperAdminDashboard = React.memo(() => {
                       <CardTitle className="text-gray-900 dark:text-white text-base">Sales Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-[300px] w-full">
+                      <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart
                             data={historyData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis 
@@ -630,11 +614,11 @@ const SuperAdminDashboard = React.memo(() => {
                       <CardTitle className="text-gray-900 dark:text-white text-base">Ops Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-[300px] w-full">
+                      <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart
                             data={opsHistoryData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis 
@@ -672,11 +656,11 @@ const SuperAdminDashboard = React.memo(() => {
                       <CardTitle className="text-gray-900 dark:text-white text-base">Total Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-[300px] w-full">
+                      <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart
                             data={combinedHistoryData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis 
@@ -868,7 +852,7 @@ const SuperAdminDashboard = React.memo(() => {
                                 <ResponsiveContainer width="100%" height="100%">
                                   <LineChart
                                     data={billcutHistory}
-                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                                   >
                                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
                                     <XAxis 
