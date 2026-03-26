@@ -132,7 +132,7 @@ export default function ClientsTable({
         </Button>
       </div>
 
-      <div className={`rounded-md border overflow-visible text-[10px] ${
+      <div className={`rounded-md border overflow-x-auto text-[10px] ${
         isDark 
           ? 'border-gray-700 bg-gray-900 text-gray-200' 
           : 'border-gray-300 bg-white text-gray-800'

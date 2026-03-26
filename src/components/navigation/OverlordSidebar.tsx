@@ -25,10 +25,10 @@ const NavItem: React.FC<NavItemProps> = ({ href, icon, label, isActive }) => {
         fontSize: '12px',
       }}
     >
-      <div className={`mr-3 text-md transition-all duration-200 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
+      <div className={`flex-shrink-0 mr-3 text-md transition-all duration-200 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
         {icon}
       </div>
-      <span className="font-medium">{label}</span>
+      <span className="font-medium truncate">{label}</span>
       {isActive && <div className="absolute left-0 w-1 h-8 bg-indigo-400 rounded-r-full" />}
     </Link>
   );
@@ -63,14 +63,14 @@ const DropdownNavItem: React.FC<DropdownNavItemProps> = ({ icon, label, children
           fontSize: '12px',
         }}
       >
-        <div className="flex items-center">
-          <div className={`mr-3 text-md transition-all duration-200 ${hasActiveChild ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
+        <div className="flex items-center min-w-0">
+          <div className={`flex-shrink-0 mr-3 text-md transition-all duration-200 ${hasActiveChild ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
             {icon}
           </div>
-          {isExpanded && <span className="font-medium">{label}</span>}
+          {isExpanded && <span className="font-medium truncate">{label}</span>}
         </div>
         {isExpanded && (
-          <div className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+          <div className={`flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
             <FiChevronDown className="text-sm" />
           </div>
         )}
@@ -228,7 +228,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
   };
 
   return (
-    <div className="h-screen flex transition-all duration-300 overflow-hidden relative">
+    <div className="h-screen flex transition-all duration-300 relative">
       {/* Sidebar Overlay (Mobile) */}
       {isMobileOpen && (
         <div 

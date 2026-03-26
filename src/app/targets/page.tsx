@@ -282,12 +282,14 @@ export default function TargetsPage() {
   };
 
   const handleInputChange = (userId: string, field: 'convertedLeads' | 'amountCollected', value: string) => {
-    const numValue = parseInt(value) || 0;
+    // Only allow digits
+    const numericValue = value.replace(/[^0-9]/g, '');
+    const numValue = parseInt(numericValue) || 0;
     setTargets(prev => ({
       ...prev,
       [userId]: {
         ...prev[userId],
-        [field]: numValue
+        [field]: numericValue === '' ? 0 : numValue
       }
     }));
   };
@@ -474,45 +476,51 @@ export default function TargetsPage() {
           
           {/* Current Targets Table */}
           <div className="mb-7">
+            {/* Condition rendering: Show table when not in form mode, show form heading when in form mode */}
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center">
                 <h2 className="text-lg font-semibold text-white">
-                  Current Targets - {selectedMonth} {selectedYear}
+                  {showForm ? 'Update Targets' : `Current Targets - ${selectedMonth} ${selectedYear}`}
                 </h2>
-                <div className="ml-3 flex rounded-md shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setViewMetric('convertedLeads')}
-                    className={`relative inline-flex items-center px-3 py-1 rounded-l-md border ${
-                      viewMetric === 'convertedLeads' 
-                        ? 'bg-blue-600 text-white border-blue-700' 
-                        : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
-                    } text-xs font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                  >
-                    Converted Leads
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMetric('amountCollected')}
-                    className={`relative inline-flex items-center px-3 py-1 rounded-r-md border ${
-                      viewMetric === 'amountCollected' 
-                        ? 'bg-blue-600 text-white border-blue-700' 
-                        : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
-                    } text-xs font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                  >
-                    Amount Collected
-                  </button>
-                </div>
+                {!showForm && (
+                  <div className="ml-3 flex rounded-md shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setViewMetric('convertedLeads')}
+                      className={`relative inline-flex items-center px-3 py-1 rounded-l-md border ${
+                        viewMetric === 'convertedLeads' 
+                          ? 'bg-blue-600 text-white border-blue-700' 
+                          : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+                      } text-xs font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                    >
+                      Converted Leads
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMetric('amountCollected')}
+                      className={`relative inline-flex items-center px-3 py-1 rounded-r-md border ${
+                        viewMetric === 'amountCollected' 
+                          ? 'bg-blue-600 text-white border-blue-700' 
+                          : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+                      } text-xs font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                    >
+                      Amount Collected
+                    </button>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => setShowForm(!showForm)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded shadow focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                {showForm ? 'Hide Form' : 'Update Targets'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowForm(!showForm)}
+                  className={`${showForm ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-1 px-3 rounded shadow focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
+                >
+                  {showForm ? 'Cancel' : 'Update Targets'}
+                </button>
+              </div>
             </div>
             
-            <div className="bg-gray-800 shadow-md rounded-lg overflow-hidden">
+            {!showForm ? (
+              <div className="bg-gray-800 shadow-md rounded-lg overflow-hidden">
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-700">
                   <tr>
@@ -600,13 +608,8 @@ export default function TargetsPage() {
                   )}
                 </tbody>
               </table>
-            </div>
-          </div>
-          
-          {/* Target Update Form - Only show when showForm is true */}
-          {showForm && (
-            <div className="mb-7">
-              <h2 className="text-lg font-semibold text-white mb-3">Update Targets</h2>
+              </div>
+            ) : (
               <form onSubmit={handleSubmit}>
                 <div className="bg-gray-800 shadow-md rounded-lg overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-700">
@@ -639,20 +642,22 @@ export default function TargetsPage() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <input
-                              type="number"
-                              min="0"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={targets[salesUser.id]?.convertedLeads || ''}
                               onChange={(e) => handleInputChange(salesUser.id, 'convertedLeads', e.target.value)}
-                              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 w-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 w-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <input
-                              type="number"
-                              min="0"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={targets[salesUser.id]?.amountCollected || ''}
                               onChange={(e) => handleInputChange(salesUser.id, 'amountCollected', e.target.value)}
-                              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 w-24 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="bg-gray-700 border border-gray-600 text-white rounded-md px-2 py-1 w-24 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                           </td>
                         </tr>
@@ -663,14 +668,15 @@ export default function TargetsPage() {
                 <div className="mt-4 flex justify-end">
                   <button
                     type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={submitting}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-medium py-2 px-4 rounded shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    Update Targets
+                    {submitting ? 'Updating...' : 'Save Targets'}
                   </button>
                 </div>
               </form>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
