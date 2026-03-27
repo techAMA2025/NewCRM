@@ -63,7 +63,6 @@ interface Client {
   adv_status?: string;
   source_database?: string;
   request_letter?: boolean;
-  sentAgreement?: boolean;
   convertedFromLead?: boolean;
   leadId?: string;
   dob?: string;
@@ -151,7 +150,6 @@ export default function ClientsList() {
     latestRemarks,
     updateClientStatus,
     updateRequestLetterStatus,
-    updateAgreementStatus,
     saveRemark,
     saveAppStatus,
     deleteAppStatus,
@@ -451,7 +449,6 @@ export default function ClientsList() {
             latestRemarks={latestRemarks}
             onStatusChange={updateClientStatus}
             onRequestLetterChange={updateRequestLetterStatus}
-            onAgreementToggle={updateAgreementStatus}
             onRemarkSave={saveRemark}
             onAppStatusSave={saveAppStatus}
             onViewHistory={handleViewHistory}

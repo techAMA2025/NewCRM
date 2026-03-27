@@ -532,9 +532,7 @@ export default function ClientViewModal({
                         Request Letter Enabled
                       </span>
                     )}
-                    {client.sentAgreement && (
-                      <span className="px-2 py-1 bg-blue-800/30 text-blue-300 rounded text-xs">Agreement Sent</span>
-                    )}
+
                   </div>
                 </h3>
                 <div className="bg-gray-900/50 rounded-lg p-4">

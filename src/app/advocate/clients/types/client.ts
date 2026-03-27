@@ -43,7 +43,6 @@ export interface Bank {
     documentUploadedAt?: any
     source_database?: string
     request_letter?: boolean
-    sentAgreement?: boolean
     convertedFromLead?: boolean
     leadId?: string
     dob?: string

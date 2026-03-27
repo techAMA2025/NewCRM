@@ -80,7 +80,6 @@ interface ClientsTableProps {
   onViewDetails: (client: Client) => void
   onEditClient: (client: Client) => void
   onTemplateSelect: (templateName: string, client: Client) => void
-  onAgreementToggle: (clientId: string, checked: boolean) => void
   openDocumentViewer: (url?: string, name?: string) => void
   isSendingWhatsApp: boolean
 }
@@ -97,7 +96,6 @@ export default function ClientsTable({
   onViewDetails,
   onEditClient,
   onTemplateSelect,
-  onAgreementToggle,
   openDocumentViewer,
   isSendingWhatsApp,
 }: ClientsTableProps) {
@@ -131,9 +129,7 @@ export default function ClientsTable({
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">
               Request Letter
             </th>
-            <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">
-              Agreement
-            </th>
+
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">Remarks</th>
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">App Status</th>
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">Actions</th>
@@ -155,7 +151,6 @@ export default function ClientsTable({
               onViewDetails={onViewDetails}
               onEditClient={onEditClient}
               onTemplateSelect={onTemplateSelect}
-              onAgreementToggle={onAgreementToggle}
               openDocumentViewer={openDocumentViewer}
               isSendingWhatsApp={isSendingWhatsApp}
             />
