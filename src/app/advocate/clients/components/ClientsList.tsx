@@ -151,13 +151,14 @@ export default function ClientsList() {
     latestRemarks,
     updateClientStatus,
     updateRequestLetterStatus,
+    updateAgreementStatus,
     saveRemark,
     saveAppStatus,
     deleteAppStatus,
     fetchClientHistory,
     setClients,
     facets,
-  } = useClients(advocateName) // Removed filters arg
+  } = useClients(advocateName)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -450,6 +451,7 @@ export default function ClientsList() {
             latestRemarks={latestRemarks}
             onStatusChange={updateClientStatus}
             onRequestLetterChange={updateRequestLetterStatus}
+            onAgreementToggle={updateAgreementStatus}
             onRemarkSave={saveRemark}
             onAppStatusSave={saveAppStatus}
             onViewHistory={handleViewHistory}
@@ -457,6 +459,7 @@ export default function ClientsList() {
             onViewDetails={handleViewDetails}
             onEditClient={handleEditClient}
             onTemplateSelect={handleTemplateSelect}
+            openDocumentViewer={openDocumentViewer}
             isSendingWhatsApp={isSendingWhatsApp}
           />
         </div>

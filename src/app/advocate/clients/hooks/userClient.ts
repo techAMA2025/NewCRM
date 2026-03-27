@@ -279,6 +279,17 @@ export function useClients(advocateName: string) {
     }
   }
 
+  const updateAgreementStatus = async (clientId: string, checked: boolean) => {
+    try {
+      const clientRef = doc(db, "clients", clientId)
+      await updateDoc(clientRef, { sentAgreement: checked })
+      toast.success(`Agreement status ${checked ? "marked as sent" : "marked as not sent"}`)
+    } catch (error) {
+      console.error("Error updating agreement status:", error)
+      toast.error("Failed to update agreement status")
+    }
+  }
+
   const saveRemark = async (clientId: string, remarkText: string) => {
     try {
       const advocateName = localStorage.getItem("userName") || "Unknown Advocate"
@@ -379,6 +390,7 @@ export function useClients(advocateName: string) {
     latestRemarks,
     updateClientStatus,
     updateRequestLetterStatus,
+    updateAgreementStatus,
     saveRemark,
     saveAppStatus,
     deleteAppStatus,

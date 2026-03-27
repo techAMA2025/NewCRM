@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { FaEllipsisV, FaWhatsapp } from "react-icons/fa"
+import { FaEllipsisV, FaWhatsapp, FaFileAlt } from "react-icons/fa"
 import {
   formatIndianDate,
   formatIndianPhoneNumber,
@@ -92,6 +92,8 @@ interface ClientTableRowProps {
   onViewDetails: (client: Client) => void
   onEditClient: (client: Client) => void
   onTemplateSelect: (templateName: string, client: Client) => void
+  onAgreementToggle: (clientId: string, checked: boolean) => void
+  openDocumentViewer: (url?: string, name?: string) => void
   isSendingWhatsApp: boolean
 }
 
@@ -108,6 +110,8 @@ export default function ClientTableRow({
   onViewDetails,
   onEditClient,
   onTemplateSelect,
+  onAgreementToggle,
+  openDocumentViewer,
   isSendingWhatsApp,
 }: ClientTableRowProps) {
   const [remarkText, setRemarkText] = useState(latestRemark || "")
@@ -293,6 +297,17 @@ export default function ClientTableRow({
         </div>
       </td>
 
+      <td className="px-3 py-2 whitespace-nowrap text-center">
+        <div className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            checked={Boolean(client.sentAgreement)}
+            onChange={(e) => onAgreementToggle(client.id, e.target.checked)}
+            className="w-4 h-4 rounded-sm text-blue-600 border-gray-600 bg-gray-700 focus:ring-blue-500 focus:ring-opacity-25"
+          />
+        </div>
+      </td>
+
       <td className="px-3 py-2">
         <div className="flex flex-col space-y-1.5">
           <textarea
@@ -412,12 +427,25 @@ export default function ClientTableRow({
           <button
             onClick={() => onViewDetails(client)}
             className="px-2 py-0.5 bg-purple-700 hover:bg-purple-600 text-white text-xs rounded transition-colors duration-200"
+            title="View Details"
           >
             View
           </button>
+          
+          {client.documentUrl && (
+            <button
+              onClick={() => openDocumentViewer(client.documentUrl, client.documentName || "Client Agreement")}
+              className="px-2 py-0.5 bg-green-700 hover:bg-green-600 text-white text-xs rounded transition-colors duration-200 flex items-center justify-center"
+              title="View Agreement"
+            >
+              <FaFileAlt className="w-3 h-3" />
+            </button>
+          )}
+
           <button
             onClick={() => onEditClient(client)}
             className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded transition-colors duration-200"
+            title="Edit Client"
           >
             Edit
           </button>

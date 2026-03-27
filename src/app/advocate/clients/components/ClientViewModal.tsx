@@ -205,7 +205,23 @@ export default function ClientViewModal({
         >
           {/* Client Header/Hero Section */}
           <div className="relative bg-gradient-to-r from-purple-900 via-indigo-800 to-purple-900 p-6 md:p-8">
-            <div className="absolute top-4 right-4">
+            <div className="absolute top-4 right-4 flex items-center gap-3">
+              {client.documentUrl && (
+                <button
+                  onClick={() => openDocumentViewer(client.documentUrl, client.documentName || "Client Agreement")}
+                  className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-all duration-200 flex items-center shadow-lg hover:scale-105 active:scale-95"
+                >
+                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                    />
+                  </svg>
+                  View Agreement
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="text-gray-300 hover:text-white bg-black/20 hover:bg-black/30 rounded-full p-2 transition-all duration-200"
