@@ -147,6 +147,7 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       children: [
         { href: '/ama_leads', icon: <FiBarChart2 />, label: 'Sales & Leads', isActive: false },
         { href: '/billcutleads', icon: <FiBarChart2 />, label: 'Billcut Leads', isActive: false },
+        { href: '/iprkaro-leads', icon: <FaBalanceScale />, label: 'IPRKaro Leads', isActive: false },
         { href: '/appDisputes', icon: <FiClipboard />, label: 'App Leads', isActive: false },
         { href: '/targets', icon: <FiClipboard />, label: 'Targets', isActive: false },
       ]
