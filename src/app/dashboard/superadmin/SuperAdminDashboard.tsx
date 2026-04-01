@@ -850,44 +850,61 @@ const SuperAdminDashboard = React.memo(() => {
                                 </div>
                               ) : (
                                 <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart
-                                    data={billcutHistory}
-                                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                                  >
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                                    <XAxis 
-                                      dataKey="fullLabel" 
-                                      stroke="#9CA3AF" 
-                                      tick={{ fill: '#9CA3AF', fontSize: 10 }} 
-                                    />
-                                    <YAxis 
-                                      stroke="#9CA3AF" 
-                                      tick={{ fill: '#9CA3AF', fontSize: 10 }}
-                                      tickFormatter={formatIndianCurrency}
-                                    />
-                                    <Tooltip 
-                                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
-                                      itemStyle={{ fontSize: '12px' }}
-                                      formatter={(value: number) => [formatFullCurrency(value), '']}
-                                    />
-                                    <Legend wrapperStyle={{ fontSize: '12px' }} />
-                                    <Line 
-                                      type="monotone" 
-                                      dataKey="earned" 
-                                      name="Amount Got (Revenue)" 
-                                      stroke="#818cf8" 
-                                      strokeWidth={2}
-                                      activeDot={{ r: 6 }} 
-                                    />
-                                    <Line 
-                                      type="monotone" 
-                                      dataKey="paid" 
-                                      name="Amount Paid (Payout)" 
-                                      stroke="#10b981" 
-                                      strokeWidth={2}
-                                      activeDot={{ r: 6 }} 
-                                    />
-                                  </LineChart>
+                                    <LineChart
+                                      data={billcutHistory}
+                                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                    >
+                                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                                      <XAxis 
+                                        dataKey="fullLabel" 
+                                        stroke="#9CA3AF" 
+                                        tick={{ fill: '#9CA3AF', fontSize: 10 }} 
+                                      />
+                                      <YAxis 
+                                        stroke="#9CA3AF" 
+                                        tick={{ fill: '#9CA3AF', fontSize: 10 }}
+                                        tickFormatter={formatIndianCurrency}
+                                      />
+                                      <Tooltip 
+                                        contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
+                                        itemStyle={{ fontSize: '11px' }}
+                                        formatter={(value: number) => [formatFullCurrency(value), '']}
+                                      />
+                                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                                      <Line 
+                                        type="monotone" 
+                                        dataKey="signupFees" 
+                                        name="Signup Fees" 
+                                        stroke="#f59e0b" 
+                                        strokeWidth={1.5}
+                                        dot={{ r: 3 }}
+                                      />
+                                      <Line 
+                                        type="monotone" 
+                                        dataKey="successFees" 
+                                        name="Success Fees" 
+                                        stroke="#10b981" 
+                                        strokeWidth={1.5}
+                                        dot={{ r: 3 }}
+                                      />
+                                      <Line 
+                                        type="monotone" 
+                                        dataKey="earned" 
+                                        name="Total Fees (Revenue)" 
+                                        stroke="#818cf8" 
+                                        strokeWidth={2.5}
+                                        activeDot={{ r: 6 }} 
+                                      />
+                                      <Line 
+                                        type="monotone" 
+                                        dataKey="paid" 
+                                        name="Amount Paid (Payout)" 
+                                        stroke="#ef4444" 
+                                        strokeWidth={2}
+                                        strokeDasharray="5 5"
+                                        dot={{ r: 2 }}
+                                      />
+                                    </LineChart>
                                 </ResponsiveContainer>
                               )}
                             </div>

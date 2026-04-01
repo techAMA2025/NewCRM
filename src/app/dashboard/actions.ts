@@ -786,6 +786,8 @@ export interface BillcutHistoryData {
     fullLabel: string;
     paid: number;
     earned: number;
+    signupFees: number;
+    successFees: number;
 }
 
 export async function getBillcutHistoryData(): Promise<BillcutHistoryData[]> {
@@ -811,7 +813,9 @@ export async function getBillcutHistoryData(): Promise<BillcutHistoryData[]> {
                         year: parseInt(year),
                         fullLabel: `${monthName} ${year}`,
                         paid: 0,
-                        earned: 0
+                        earned: 0,
+                        signupFees: 0,
+                        successFees: 0
                     };
                 }
                 billcutHistory[key].paid += data.amount || 0;
@@ -854,25 +858,28 @@ export async function getBillcutHistoryData(): Promise<BillcutHistoryData[]> {
                             year: year,
                             fullLabel: `${monthName} ${year}`,
                             paid: 0,
-                            earned: 0
+                            earned: 0,
+                            signupFees: 0,
+                            successFees: 0
                         };
                     }
+                    billcutHistory[key].signupFees += amount;
                     billcutHistory[key].earned += amount;
                 }
             }
         });
 
-        // 3. Fetch approved OPS payments with source "billcut" and type "Success Fees" (Earned)
+        // 3. Fetch approved OPS payments with source "billcut" (Success Fees + Pending fees)
         const opsPaymentsSnap = await db.collection('ops_payments')
             .where('status', '==', 'approved')
             .where('source', '==', 'billcut')
-            .where('type', '==', 'Success Fees')
+            .where('type', 'in', ['Success Fees', 'Pending fees'])
             .get();
 
         opsPaymentsSnap.forEach(doc => {
             const data = doc.data();
             // Double check strict equality just in case, though query should handle it
-            if (data.source === 'billcut' && data.type === 'Success Fees') {
+            if (data.source === 'billcut' && (data.type === 'Success Fees' || data.type === 'Pending fees')) {
                 const amount = parseFloat(data.amount) || 0;
 
                 let date: Date;
@@ -900,8 +907,15 @@ export async function getBillcutHistoryData(): Promise<BillcutHistoryData[]> {
                             year: year,
                             fullLabel: `${monthName} ${year}`,
                             paid: 0,
-                            earned: 0
+                            earned: 0,
+                            signupFees: 0,
+                            successFees: 0
                         };
+                    }
+                    if (data.type === 'Success Fees') {
+                        billcutHistory[key].successFees += amount;
+                    } else if (data.type === 'Pending fees') {
+                        billcutHistory[key].signupFees += amount;
                     }
                     billcutHistory[key].earned += amount;
                 }
