@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
 
                     return { pdf, notice, success: true };
                 } catch (err) {
-                    console.error(`Failed to generate PDF for ${name2}:`, err);
+                    console.error("Failed to generate PDF for:", name2, err);
                     return { pdf: null, notice, success: false };
                 } finally {
                     if (page) await page.close();

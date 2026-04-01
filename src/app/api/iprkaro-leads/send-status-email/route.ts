@@ -82,8 +82,17 @@ export async function POST(request: NextRequest) {
             },
         })
 
-        const clientName = leadName || "Dear Sir/Ma'am"
-        const tmName = trademarkName ? `"${trademarkName}"` : "your brand"
+        const escapeHtml = (text: string) => {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;")
+        }
+
+        const clientName = leadName ? escapeHtml(leadName) : "Dear Sir/Ma'am"
+        const tmName = trademarkName ? `"${escapeHtml(trademarkName)}"` : "your brand"
 
         // Determine the service context from interest field
         let serviceContext = "intellectual property protection"
@@ -93,6 +102,7 @@ export async function POST(request: NextRequest) {
             else if (lower.includes("patent")) serviceContext = "patent filing"
             else if (lower.includes("copyright")) serviceContext = "copyright protection"
         }
+        serviceContext = escapeHtml(serviceContext)
 
         // --- Email Templates ---
         let subject: string

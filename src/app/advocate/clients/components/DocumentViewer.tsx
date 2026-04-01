@@ -25,9 +25,18 @@ export default function DocumentViewer({
       setIsLoading(true)
       setHasError(false)
 
-      // Always use Google Docs viewer for better compatibility (same as in src/app/clients/page.tsx)
-      const googleDocsUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(documentUrl)}&embedded=true`
-      setViewerUrl(googleDocsUrl)
+      // Check for safe URLs (must be http, https or starting with /)
+      const isSafeUrl = documentUrl.startsWith("http://") || documentUrl.startsWith("https://") || documentUrl.startsWith("/")
+      if (isSafeUrl) {
+        // Always use Google Docs viewer for better compatibility (same as in src/app/clients/page.tsx)
+        const googleDocsUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(documentUrl)}&embedded=true`
+        setViewerUrl(googleDocsUrl)
+      } else {
+        console.warn("Attempted to view unsafe URL:", documentUrl)
+        setViewerUrl("")
+        setHasError(true)
+        setIsLoading(false)
+      }
     }
   }, [isOpen, documentUrl])
 
@@ -41,6 +50,13 @@ export default function DocumentViewer({
   }
 
   const handleDownload = () => {
+    // Only allow http, https strings to prevent javascript: or other potentially dangerous URLs
+    const isSafeUrl = documentUrl.startsWith("http://") || documentUrl.startsWith("https://") || documentUrl.startsWith("/")
+    if (!isSafeUrl) {
+      console.warn("Attempted to download unsafe URL:", documentUrl)
+      return
+    }
+
     // Create a temporary link to download the document
     const link = document.createElement("a")
     link.href = documentUrl
