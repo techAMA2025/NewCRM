@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "No salespersonId provided" }, { status: 400 })
         }
 
-        const validCollections = ["ama_leads", "billcutLeads"];
+        const validCollections = ["ama_leads", "billcutLeads", "ipr_karo_leads"];
         if (!validCollections.includes(collectionName)) {
             return NextResponse.json({ error: `Invalid collection: ${collectionName}` }, { status: 400 })
         }
