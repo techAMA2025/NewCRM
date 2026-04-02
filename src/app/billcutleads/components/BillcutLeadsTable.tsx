@@ -353,7 +353,7 @@ const BillcutLeadsTableOptimized = React.memo(
                   className: "bg-gradient-to-r from-orange-600 via-amber-500 to-yellow-600 border-2 border-orange-400 shadow-xl",
                 }
               );
-            }
+            } 
             
             const dbData = { status: value }
             updateLead(id, dbData)
