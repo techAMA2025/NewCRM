@@ -75,8 +75,13 @@ export default function AnswerModal({ question, onClose }: AnswerModalProps) {
         </div>
         
         <div className="p-6 space-y-4">
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm text-gray-600 italic">
-                "{question.content}"
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col gap-2">
+                <div className="text-sm text-gray-700 italic leading-relaxed">"{question.content}"</div>
+                <div className="flex items-center gap-2 text-xs text-[#D2A02A] font-medium pt-2 border-t border-gray-100">
+                    <span>Asker: {question.userName}</span>
+                    <span className="opacity-50">•</span>
+                    <span className="font-mono">{question.phone}</span>
+                </div>
             </div>
 
             <div>

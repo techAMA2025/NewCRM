@@ -38,7 +38,12 @@ export default function QuestionCard({ question, onViewComments, onAnswer, onDel
              </div>
              <div>
                 <div className="text-sm font-medium text-gray-900">{question.userName}</div>
-                <div className="text-xs text-gray-500 capitalize">{question.userRole}</div>
+                <div className="flex flex-col">
+                    <div className="text-xs text-gray-500 capitalize">{question.userRole}</div>
+                    {question.phone && (
+                        <div className="text-xs text-blue-600 font-medium">{question.phone}</div>
+                    )}
+                </div>
              </div>
           </div>
           <span className="text-xs text-gray-400">

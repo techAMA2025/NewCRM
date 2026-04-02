@@ -71,6 +71,12 @@ export default function CommentsModal({ question, onClose }: CommentsModalProps)
                         <p className="text-gray-900 font-medium">{question.content}</p>
                         <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                              <span>{question.userName}</span>
+                             {question.phone && (
+                                <>
+                                    <span>•</span>
+                                    <span className="text-blue-600 font-medium">{question.phone}</span>
+                                </>
+                             )}
                              <span>•</span>
                              <span>{formatDate(question.timestamp)}</span>
                         </div>
@@ -102,10 +108,15 @@ export default function CommentsModal({ question, onClose }: CommentsModalProps)
                               </div>
                           )}
                           <div className="bg-white p-3 rounded-lg rounded-tl-none border border-gray-100 shadow-sm flex-1">
-                              <div className="flex justify-between items-start mb-1">
-                                  <span className={`text-xs font-semibold ${comment.userRole === 'admin' ? 'text-blue-600' : 'text-gray-900'}`}>
-                                      {comment.commentedBy}
-                                  </span>
+                               <div className="flex justify-between items-start mb-1">
+                                  <div className="flex flex-col">
+                                      <span className={`text-xs font-semibold ${comment.userRole === 'admin' ? 'text-blue-600' : 'text-gray-900'}`}>
+                                          {comment.commentedBy}
+                                      </span>
+                                      {comment.phone && (
+                                          <span className="text-[10px] text-blue-500 font-mono leading-none mt-0.5">{comment.phone}</span>
+                                      )}
+                                  </div>
                                   <span className="text-[10px] text-gray-400">{formatDate(comment.timestamp)}</span>
                               </div>
                               <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
