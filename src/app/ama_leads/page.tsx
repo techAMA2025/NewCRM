@@ -55,6 +55,7 @@ const AmaLeadsPage = () => {
   const [sourceFilter, setSourceFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [salesPersonFilter, setSalesPersonFilter] = useState("all")
+  const [serviceRequiredFilter, setServiceRequiredFilter] = useState("all")
   const [convertedFilter, setConvertedFilter] = useState<boolean | null>(null) // Kept for UI compatibility
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
@@ -208,6 +209,7 @@ const AmaLeadsPage = () => {
       lastModifiedStartDate: lastModifiedFromDate,
       lastModifiedEndDate: lastModifiedToDate,
       debtRangeSort: debtRangeSort, // Pass debtRangeSort directly to API if needed, or handle via sort/order
+      serviceRequired: serviceRequiredFilter,
     }
     
     // Explicitly set sort key if debtRangeSort is active
@@ -238,6 +240,7 @@ const AmaLeadsPage = () => {
     lastModifiedFromDate,
     lastModifiedToDate,
     debtRangeSort,
+    serviceRequiredFilter,
     fetchLeads,
     fetchStats,
     fetchSalespersons
@@ -263,6 +266,7 @@ const AmaLeadsPage = () => {
       lastModifiedStartDate: lastModifiedFromDate,
       lastModifiedEndDate: lastModifiedToDate,
       debtRangeSort: debtRangeSort,
+      serviceRequired: serviceRequiredFilter,
     })
   }
 
@@ -285,6 +289,7 @@ const AmaLeadsPage = () => {
         lastModifiedStartDate: lastModifiedFromDate,
         lastModifiedEndDate: lastModifiedToDate,
         debtRangeSort: debtRangeSort,
+        serviceRequired: serviceRequiredFilter,
       }, true) // Pass true for append
     }
   }
@@ -313,7 +318,7 @@ const AmaLeadsPage = () => {
         container.removeEventListener("scroll", handleScroll)
       }
     }
-  }, [meta.page, meta.totalPages, isLoading, searchQuery, statusFilter, sourceFilter, salesPersonFilter, activeTab, sortConfig, fromDate, toDate, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
+  }, [meta.page, meta.totalPages, isLoading, searchQuery, statusFilter, sourceFilter, salesPersonFilter, activeTab, sortConfig, fromDate, toDate, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate, serviceRequiredFilter])
 
   // Real-time Listeners
   const listenersRef = useRef<{ [key: string]: () => void }>({})
@@ -357,6 +362,14 @@ const AmaLeadsPage = () => {
                   q = query(q, where("assigned_to", "in", ["–", "-", "", null]));
               } else {
                   q = query(q, where("assigned_to", "==", salesPersonFilter));
+              }
+          }
+
+          if (serviceRequiredFilter && serviceRequiredFilter !== "all") {
+              if (serviceRequiredFilter === "Other Services") {
+                  q = query(q, where("serviceRequired", "!=", "Loan Settlement"));
+              } else {
+                  q = query(q, where("serviceRequired", "==", serviceRequiredFilter));
               }
           }
           
@@ -426,7 +439,7 @@ const AmaLeadsPage = () => {
       return () => {
           if (collectionUnsubscribe) collectionUnsubscribe();
       }
-  }, [searchQuery, statusFilter, sourceFilter, salesPersonFilter, activeTab, sortConfig, fromDate, toDate, meta.page, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
+  }, [searchQuery, statusFilter, sourceFilter, salesPersonFilter, activeTab, sortConfig, fromDate, toDate, meta.page, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate, serviceRequiredFilter])
 
   // 2. Individual Document Listeners (for leads already in state)
   useEffect(() => {
@@ -789,6 +802,7 @@ const AmaLeadsPage = () => {
         lastModifiedStartDate: lastModifiedFromDate,
         lastModifiedEndDate: lastModifiedToDate,
         debtRangeSort: debtRangeSort,
+        serviceRequired: serviceRequiredFilter,
       })
       toast.success("All leads loaded")
     } catch (error) {
@@ -886,6 +900,8 @@ const AmaLeadsPage = () => {
               setLastModifiedToDate={setLastModifiedToDate}
               debtRangeSort={debtRangeSort}
               setDebtRangeSort={setDebtRangeSort}
+              serviceRequiredFilter={serviceRequiredFilter}
+              setServiceRequiredFilter={setServiceRequiredFilter}
             />
 
             <AmaLeadsTable

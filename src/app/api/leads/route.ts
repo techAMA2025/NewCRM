@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
             const sortDir = searchParams.get("order") === "asc" ? "asc" : "desc"
             const tab = searchParams.get("tab") || "all"
             const debtRangeSort = searchParams.get("debtRangeSort") || "none"
+            const serviceRequired = searchParams.get("serviceRequired")
 
             // Handle debtRangeSort
             let finalSortKey = sortKey
@@ -98,6 +99,14 @@ export async function GET(request: NextRequest) {
                     queryRef = queryRef.where("assigned_to", "in", ["–", "-", "", null])
                 } else {
                     queryRef = queryRef.where("assigned_to", "==", salespersonId)
+                }
+            }
+
+            if (serviceRequired && serviceRequired !== "all") {
+                if (serviceRequired === "Other Services") {
+                    queryRef = queryRef.where("serviceRequired", "!=", "Loan Settlement")
+                } else {
+                    queryRef = queryRef.where("serviceRequired", "==", serviceRequired)
                 }
             }
 
@@ -190,6 +199,7 @@ export async function GET(request: NextRequest) {
                     if (status && status !== "all") q = q.where("status", "==", status)
                     if (source && source !== "all") q = q.where("source", "==", source)
                     if (salespersonId && salespersonId !== "all") q = q.where("assigned_to", "==", salespersonId)
+                    if (serviceRequired && serviceRequired !== "all") q = q.where("serviceRequired", "==", serviceRequired)
 
                     if (startDateParam) {
                         const start = new Date(startDateParam)

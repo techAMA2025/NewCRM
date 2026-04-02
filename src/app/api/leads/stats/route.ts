@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
             const source = searchParams.get("source")
             const salespersonId = searchParams.get("salespersonId")
             const tab = searchParams.get("tab") || "all"
+            const serviceRequired = searchParams.get("serviceRequired")
 
             // Base collection reference
             const baseRef = adminDb.collection("ama_leads")
@@ -49,6 +50,13 @@ export async function GET(request: NextRequest) {
                         query = query.where("assigned_to", "in", ["–", "-", "", null])
                     } else {
                         query = query.where("assigned_to", "==", salespersonId)
+                    }
+                }
+                if (serviceRequired && serviceRequired !== "all") {
+                    if (serviceRequired === "Other Services") {
+                        query = query.where("serviceRequired", "!=", "Loan Settlement")
+                    } else {
+                        query = query.where("serviceRequired", "==", serviceRequired)
                     }
                 }
                 return query

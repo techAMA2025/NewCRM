@@ -37,6 +37,7 @@ interface FetchParams {
     lastModifiedStartDate?: string
     lastModifiedEndDate?: string
     debtRangeSort?: string
+    serviceRequired?: string
 }
 
 interface LeadsMeta {
@@ -85,6 +86,7 @@ export const useLeads = () => {
             if (params.lastModifiedStartDate) queryParams.set("lastModifiedStartDate", params.lastModifiedStartDate)
             if (params.lastModifiedEndDate) queryParams.set("lastModifiedEndDate", params.lastModifiedEndDate)
             if (params.debtRangeSort) queryParams.set("debtRangeSort", params.debtRangeSort)
+            if (params.serviceRequired && params.serviceRequired !== "all") queryParams.set("serviceRequired", params.serviceRequired)
 
             const response = await fetch(`/api/leads?${queryParams.toString()}`, {
                 cache: 'no-store',
@@ -138,6 +140,7 @@ export const useLeads = () => {
             if (params.source && params.source !== "all") queryParams.set("source", params.source)
             if (params.salespersonId && params.salespersonId !== "all") queryParams.set("salespersonId", params.salespersonId)
             if (params.tab) queryParams.set("tab", params.tab || "all")
+            if (params.serviceRequired && params.serviceRequired !== "all") queryParams.set("serviceRequired", params.serviceRequired)
 
             const response = await fetch(`/api/leads/stats?${queryParams.toString()}`, {
                 cache: 'no-store',

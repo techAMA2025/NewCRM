@@ -19,9 +19,15 @@ import LeadStatusHistoryModal from "@/components/modals/LeadStatusHistoryModal"
 const canUserEditLead = (lead: any) => {
   const currentUserRole = typeof window !== "undefined" ? localStorage.getItem("userRole") : ""
   const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") : ""
+  const noAnswerWorkModeEnabled = typeof window !== "undefined" ? localStorage.getItem("noAnswerWorkModeEnabled") === "true" : false
 
   // Admin and overlord can do anything
   if (currentUserRole === "admin" || currentUserRole === "overlord") {
+    return true
+  }
+
+  // Work Mode Unlock: If enabled, salesperson can edit ANY lead they can see
+  if (noAnswerWorkModeEnabled) {
     return true
   }
 

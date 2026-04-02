@@ -5,7 +5,7 @@ import type React from "react"
 import { FaFilter, FaUserTie } from "react-icons/fa"
 import { toast } from "react-toastify"
 import { useEffect, useState, useCallback, useMemo } from "react"
-import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"
+import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc } from "firebase/firestore"
 import { db as crmDb } from "@/firebase/firebase"
 import { debounce } from "lodash"
 import CustomDateInput from "./CustomDateInput"
@@ -49,6 +49,8 @@ type LeadsFiltersProps = {
   setLastModifiedToDate?: (date: string) => void
   debtRangeSort: "none" | "low-to-high" | "high-to-low"
   setDebtRangeSort: (sort: "none" | "low-to-high" | "high-to-low") => void
+  serviceRequiredFilter: string
+  setServiceRequiredFilter: (service: string) => void
 }
 
 const AmaLeadsFilters = ({
@@ -90,8 +92,10 @@ const AmaLeadsFilters = ({
   setLastModifiedToDate,
   debtRangeSort,
   setDebtRangeSort,
+  serviceRequiredFilter,
+  setServiceRequiredFilter,
 }: LeadsFiltersProps) => {
-  const [salesUsers, setSalesUsers] = useState<{ id: string; name: string }[]>([])
+  const [salesUsers, setSalesUsers] = useState<{ id: string; name: string; noAnswerWorkModeEnabled: boolean; status?: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Enhanced search implementation
@@ -378,10 +382,10 @@ const AmaLeadsFilters = ({
     setToDate("")
     if (setConvertedFromDate) setConvertedFromDate("")
     if (setConvertedToDate) setConvertedToDate("")
-    if (setLastModifiedFromDate) setLastModifiedFromDate("")
     if (setLastModifiedToDate) setLastModifiedToDate("")
     setDebtRangeSort("none")
-  }, [clearSearch, setSourceFilter, setStatusFilter, setSalesPersonFilter, setConvertedFilter, setFromDate, setToDate, setConvertedFromDate, setConvertedToDate, setLastModifiedFromDate, setLastModifiedToDate, setDebtRangeSort])
+    setServiceRequiredFilter("all")
+  }, [clearSearch, setSourceFilter, setStatusFilter, setSalesPersonFilter, setConvertedFilter, setFromDate, setToDate, setConvertedFromDate, setConvertedToDate, setLastModifiedFromDate, setLastModifiedToDate, setDebtRangeSort, setServiceRequiredFilter])
 
   // Check if any filters are active - memoized
   const hasActiveFilters = useMemo(() => {
@@ -397,9 +401,10 @@ const AmaLeadsFilters = ({
       convertedFromDate ||
       convertedToDate ||
       lastModifiedFromDate ||
-      lastModifiedToDate
+      lastModifiedToDate ||
+      serviceRequiredFilter !== "all"
     )
-  }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, debtRangeSort, convertedFilter, fromDate, toDate, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
+  }, [searchQuery, sourceFilter, statusFilter, salesPersonFilter, debtRangeSort, convertedFilter, fromDate, toDate, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate, serviceRequiredFilter])
 
   // Fetch sales users
   useEffect(() => {
@@ -414,7 +419,8 @@ const AmaLeadsFilters = ({
           return {
             id: doc.id,
             name: data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : data.firstName || data.lastName || "Unknown",
-            status: data.status
+            status: data.status,
+            noAnswerWorkModeEnabled: data.noAnswerWorkModeEnabled || false
           }
         }).filter(user => user.status?.toLowerCase() === 'active')
 
@@ -428,6 +434,35 @@ const AmaLeadsFilters = ({
 
     fetchSalesUsers()
   }, [])
+
+  // Handle Work Mode Toggle
+  const handleWorkModeToggle = async () => {
+    if (userRole !== 'admin' && userRole !== 'overlord') return
+
+    const selectedUser = salesUsers.find(u => u.name === salesPersonFilter)
+    if (!selectedUser) {
+        toast.error("Please select a specific salesperson first")
+        return
+    }
+
+    const newMode = !selectedUser.noAnswerWorkModeEnabled
+    
+    try {
+        const userRef = doc(crmDb, "users", selectedUser.id)
+        await updateDoc(userRef, {
+            noAnswerWorkModeEnabled: newMode
+        })
+        
+        // Update local state
+        setSalesUsers(prev => prev.map(u => 
+            u.id === selectedUser.id ? { ...u, noAnswerWorkModeEnabled: newMode } : u
+        ))
+        
+        toast.success(`Full Work Mode ${newMode ? 'ENABLED' : 'DISABLED'} for ${selectedUser.name}`)
+    } catch (error) {
+        toast.error("Failed to update Work Mode")
+    }
+  }
 
   // Format date for input max attribute
   const today = useMemo(() => {
@@ -576,8 +611,55 @@ const AmaLeadsFilters = ({
           </div>
         </div>
 
+        {/* Prominent Work Mode Toggle for Admins/Overlords */}
+        {(userRole === "admin" || userRole === "overlord") && 
+         salesPersonFilter !== "all" && salesPersonFilter !== "unassigned" && (
+          <div className="mb-4 p-4 bg-[#F8F5EC] border-2 border-[#D2A02A]/30 rounded-2xl flex items-center justify-between shadow-lg ring-1 ring-[#D2A02A]/10 animate-in fade-in zoom-in duration-500">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-[#D2A02A] to-[#B8911E] rounded-xl text-white shadow-md">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <p className="text-base font-bold text-[#5A4C33] leading-tight">Full Edit Access Enabled</p>
+                <p className="text-[11px] text-[#5A4C33]/60 mt-1 uppercase font-semibold tracking-wider">
+                  Special Work Mode for <span className="text-[#D2A02A]">{salesPersonFilter}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end">
+                <button
+                  onClick={handleWorkModeToggle}
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#D2A02A] focus:ring-offset-2 ${
+                    salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled
+                      ? "bg-[#D2A02A]"
+                      : "bg-gray-300"
+                  }`}
+                  type="button"
+                  role="switch"
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-xl transition-transform duration-300 ${
+                      salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled
+                        ? "translate-x-7"
+                        : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className={`text-[10px] font-black mt-1 ${
+                    salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled ? 'text-[#D2A02A]' : 'text-gray-400'
+                  }`}>
+                  {salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled ? 'ACTIVE' : 'OFF'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block mt-3 md:mt-0`}>
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-7 gap-2 md:gap-4">
           {/* Source Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Source</label>
@@ -628,6 +710,22 @@ const AmaLeadsFilters = ({
             </select>
           </div>
 
+          {/* Service Required Filter (Admin/Overlord only) */}
+          {(userRole === "admin" || userRole === "overlord") && (
+            <div className="space-y-1">
+              <label className="block text-xs text-[#5A4C33]/70">Service Required</label>
+              <select
+                value={serviceRequiredFilter}
+                onChange={(e) => setServiceRequiredFilter(e.target.value)}
+                className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-[#ffffff] text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
+              >
+                <option value="all">All Services</option>
+                <option value="Loan Settlement">Loan Settlement</option>
+                <option value="Other Services">Other Services</option>
+              </select>
+            </div>
+          )}
+
           {/* Salesperson Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Salesperson</label>
@@ -658,7 +756,7 @@ const AmaLeadsFilters = ({
           </div>
 
           {/* Date Range Filters */}
-          <div className="col-span-2 md:col-span-1 grid grid-cols-1 md:grid-cols-1 gap-2 md:gap-4">
+          <div className="col-span-2 md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-1 gap-2 md:gap-4">
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 md:space-x-6">
               <div className="flex-1 min-w-[180px] space-y-1">
                 <CustomDateInput
@@ -763,6 +861,8 @@ const AmaLeadsFilters = ({
             </div>
           </div>
         </div>
+
+
 
         {/* Advanced Filters section for Admin/Overlord */}
         {(userRole === "admin" || userRole === "overlord") && 

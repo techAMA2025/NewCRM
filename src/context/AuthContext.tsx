@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { auth, db } from '@/firebase/firebase'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs, onSnapshot, doc } from 'firebase/firestore'
 import { useRouter, usePathname } from 'next/navigation'
 
 // Define user context type
@@ -93,32 +93,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('sessionDuration', 'existing')
         }
 
-        // Get role from localStorage for quick access
+        // Setup real-time listener for user document whenever logged in
+        const q = query(collection(db, 'users'), where('uid', '==', currentUser.uid))
+        const unsubscribeUser = onSnapshot(q, (querySnapshot) => {
+          if (!querySnapshot.empty) {
+            const userData = querySnapshot.docs[0].data()
+            const role = userData.role
+            const name = `${userData.firstName} ${userData.lastName}`
+            const workMode = userData.noAnswerWorkModeEnabled || false
+            
+            setUserRole(role)
+            setUserName(name)
+            
+            // Store for future use
+            localStorage.setItem('userRole', role)
+            localStorage.setItem('userName', name)
+            localStorage.setItem('noAnswerWorkModeEnabled', workMode.toString())
+          }
+        }, (err) => {
+          console.error("Error listening to user data:", err)
+        })
+
+        // Also set initial state from localStorage if available for speed
         const storedRole = localStorage.getItem('userRole')
         const storedName = localStorage.getItem('userName')
-        
         if (storedRole) {
           setUserRole(storedRole)
           setUserName(storedName)
-        } else {
-          // If not in localStorage, fetch from Firestore
-          try {
-            const q = query(collection(db, 'users'), where('uid', '==', currentUser.uid))
-            const querySnapshot = await getDocs(q)
-            
-            if (!querySnapshot.empty) {
-              const userData = querySnapshot.docs[0].data()
-              setUserRole(userData.role)
-              setUserName(`${userData.firstName} ${userData.lastName}`)
-              
-              // Store for future use
-              localStorage.setItem('userRole', userData.role)
-              localStorage.setItem('userName', `${userData.firstName} ${userData.lastName}`)
-            }
-          } catch (err) {
-            // Error fetching user data
-          }
         }
+
+        return () => unsubscribeUser()
       } else {
         // No user is signed in
         setUserRole(null)
