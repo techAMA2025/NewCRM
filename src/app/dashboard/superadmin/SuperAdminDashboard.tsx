@@ -173,6 +173,10 @@ const SuperAdminDashboard = React.memo(() => {
   const [billcutPayoutAmount, setBillcutPayoutAmount] = useState<number>(0);
   const [billcutHistory, setBillcutHistory] = useState<BillcutHistoryData[]>([]);
   const [billcutHistoryLoading, setBillcutHistoryLoading] = useState(false);
+  const [hoveredBillcutMetric, setHoveredBillcutMetric] = useState<string | null>(null);
+  const [hoveredCrmMetric, setHoveredCrmMetric] = useState<string | null>(null);
+  const [hoveredOpsMetric, setHoveredOpsMetric] = useState<string | null>(null);
+  const [hoveredTotalMetric, setHoveredTotalMetric] = useState<string | null>(null);
 
   // Fetch weekly data when toggle is enabled
   useEffect(() => {
@@ -569,6 +573,7 @@ const SuperAdminDashboard = React.memo(() => {
                           <LineChart
                             data={historyData}
                             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            onMouseLeave={() => setHoveredCrmMetric(null)}
                           >
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis 
@@ -585,6 +590,7 @@ const SuperAdminDashboard = React.memo(() => {
                               contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
                               itemStyle={{ color: '#F3F4F6' }}
                               formatter={(value: number) => [value.toLocaleString('en-IN', { maximumFractionDigits: 0, style: 'currency', currency: 'INR' }), '']}
+                              itemSorter={(item) => (item.dataKey === hoveredCrmMetric ? -1 : 1)}
                             />
                             <Legend />
                             <Line 
@@ -594,6 +600,7 @@ const SuperAdminDashboard = React.memo(() => {
                               stroke="#818cf8" 
                               activeDot={{ r: 8 }} 
                               strokeWidth={2} 
+                              onMouseEnter={() => setHoveredCrmMetric('target')}
                             />
                             <Line 
                               type="monotone" 
@@ -601,6 +608,7 @@ const SuperAdminDashboard = React.memo(() => {
                               name="Collected Amount" 
                               stroke="#34d399" 
                               strokeWidth={2} 
+                              onMouseEnter={() => setHoveredCrmMetric('collected')}
                             />
                           </LineChart>
                         </ResponsiveContainer>
@@ -619,6 +627,7 @@ const SuperAdminDashboard = React.memo(() => {
                           <LineChart
                             data={opsHistoryData}
                             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            onMouseLeave={() => setHoveredOpsMetric(null)}
                           >
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis 
@@ -635,6 +644,7 @@ const SuperAdminDashboard = React.memo(() => {
                               contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
                               itemStyle={{ color: '#F3F4F6' }}
                               formatter={(value: number) => [value.toLocaleString('en-IN', { maximumFractionDigits: 0, style: 'currency', currency: 'INR' }), '']}
+                              itemSorter={(item) => (item.dataKey === hoveredOpsMetric ? -1 : 1)}
                             />
                             <Legend />
                             <Line 
@@ -643,6 +653,7 @@ const SuperAdminDashboard = React.memo(() => {
                               name="Ops Revenue" 
                               stroke="#f59e0b" 
                               strokeWidth={2} 
+                              onMouseEnter={() => setHoveredOpsMetric('collected')}
                             />
                           </LineChart>
                         </ResponsiveContainer>
@@ -661,6 +672,7 @@ const SuperAdminDashboard = React.memo(() => {
                           <LineChart
                             data={combinedHistoryData}
                             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            onMouseLeave={() => setHoveredTotalMetric(null)}
                           >
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis 
@@ -677,6 +689,7 @@ const SuperAdminDashboard = React.memo(() => {
                               contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
                               itemStyle={{ color: '#F3F4F6' }}
                               formatter={(value: number) => [value.toLocaleString('en-IN', { maximumFractionDigits: 0, style: 'currency', currency: 'INR' }), '']}
+                              itemSorter={(item) => (item.dataKey === hoveredTotalMetric ? -1 : 1)}
                             />
                             <Legend />
                             <Line 
@@ -686,6 +699,7 @@ const SuperAdminDashboard = React.memo(() => {
                               stroke="#ec4899" 
                               strokeWidth={3} 
                               activeDot={{ r: 8 }} 
+                              onMouseEnter={() => setHoveredTotalMetric('totalRevenue')}
                             />
                           </LineChart>
                         </ResponsiveContainer>
@@ -797,40 +811,8 @@ const SuperAdminDashboard = React.memo(() => {
                 {/* Source Analytics Section */}
                 <div className="mt-4">
                   <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
-                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-gray-900 dark:text-white text-base">Source Performance Analytics</CardTitle>
-                      
-                      {/* Source Analytics Filters */}
-                      <div className="flex items-center gap-2">
-                        <select
-                          className="bg-gray-700 border border-gray-600 text-white px-2 py-1 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={sourceMonth}
-                          onChange={(e) => setSourceMonth(parseInt(e.target.value))}
-                        >
-                          <option value="0">January</option>
-                          <option value="1">February</option>
-                          <option value="2">March</option>
-                          <option value="3">April</option>
-                          <option value="4">May</option>
-                          <option value="5">June</option>
-                          <option value="6">July</option>
-                          <option value="7">August</option>
-                          <option value="8">September</option>
-                          <option value="9">October</option>
-                          <option value="10">November</option>
-                          <option value="11">December</option>
-                        </select>
-                        
-                        <select
-                          className="bg-gray-700 border border-gray-600 text-white px-2 py-1 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={sourceYear}
-                          onChange={(e) => setSourceYear(parseInt(e.target.value))}
-                        >
-                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                            <option key={year} value={year}>{year}</option>
-                          ))}
-                        </select>
-                      </div>
                     </CardHeader>
                     <CardContent>
                       {sourceLoading ? (
@@ -853,6 +835,7 @@ const SuperAdminDashboard = React.memo(() => {
                                     <LineChart
                                       data={billcutHistory}
                                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                      onMouseLeave={() => setHoveredBillcutMetric(null)}
                                     >
                                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
                                       <XAxis 
@@ -869,6 +852,7 @@ const SuperAdminDashboard = React.memo(() => {
                                         contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
                                         itemStyle={{ fontSize: '11px' }}
                                         formatter={(value: number) => [formatFullCurrency(value), '']}
+                                        itemSorter={(item) => (item.dataKey === hoveredBillcutMetric ? -1 : 1)}
                                       />
                                       <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                                       <Line 
@@ -878,6 +862,7 @@ const SuperAdminDashboard = React.memo(() => {
                                         stroke="#f59e0b" 
                                         strokeWidth={1.5}
                                         dot={{ r: 3 }}
+                                        onMouseEnter={() => setHoveredBillcutMetric('signupFees')}
                                       />
                                       <Line 
                                         type="monotone" 
@@ -886,6 +871,7 @@ const SuperAdminDashboard = React.memo(() => {
                                         stroke="#10b981" 
                                         strokeWidth={1.5}
                                         dot={{ r: 3 }}
+                                        onMouseEnter={() => setHoveredBillcutMetric('successFees')}
                                       />
                                       <Line 
                                         type="monotone" 
@@ -894,6 +880,7 @@ const SuperAdminDashboard = React.memo(() => {
                                         stroke="#818cf8" 
                                         strokeWidth={2.5}
                                         activeDot={{ r: 6 }} 
+                                        onMouseEnter={() => setHoveredBillcutMetric('earned')}
                                       />
                                       <Line 
                                         type="monotone" 
@@ -903,6 +890,7 @@ const SuperAdminDashboard = React.memo(() => {
                                         strokeWidth={2}
                                         strokeDasharray="5 5"
                                         dot={{ r: 2 }}
+                                        onMouseEnter={() => setHoveredBillcutMetric('paid')}
                                       />
                                     </LineChart>
                                 </ResponsiveContainer>
@@ -910,6 +898,43 @@ const SuperAdminDashboard = React.memo(() => {
                             </div>
                           </CardContent>
                         </Card>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-between mb-4 px-1">
+                          <h4 className="text-sm font-semibold text-[#5A4C33] dark:text-gray-300 mb-2 sm:mb-0">Monthly Source Breakdown</h4>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Filter by Period:</span>
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[#D2A02A] transition-all"
+                                value={sourceMonth}
+                                onChange={(e) => setSourceMonth(parseInt(e.target.value))}
+                              >
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
+                                <option value="3">April</option>
+                                <option value="4">May</option>
+                                <option value="5">June</option>
+                                <option value="6">July</option>
+                                <option value="7">August</option>
+                                <option value="8">September</option>
+                                <option value="9">October</option>
+                                <option value="10">November</option>
+                                <option value="11">December</option>
+                              </select>
+                              
+                              <select
+                                className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[#D2A02A] transition-all"
+                                value={sourceYear}
+                                onChange={(e) => setSourceYear(parseInt(e.target.value))}
+                              >
+                                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                                  <option key={year} value={year}>{year}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
 
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">

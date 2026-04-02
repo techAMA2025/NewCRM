@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react'
 import { auth, db } from '@/firebase/firebase'
 import { onAuthStateChanged, signOut, User } from 'firebase/auth'
 import { collection, query, where, getDocs, onSnapshot, doc } from 'firebase/firestore'
@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const userUnsubscribeRef = useRef<(() => void) | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -61,6 +62,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Handle logout
   const logout = async (reason?: string) => {
     try {
+      // Clear user listener if exists
+      if (userUnsubscribeRef.current) {
+        userUnsubscribeRef.current()
+        userUnsubscribeRef.current = null
+      }
       await signOut(auth)
       localStorage.removeItem('userRole')
       localStorage.removeItem('userEmail')
@@ -84,6 +90,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser)
 
+      // Clear existing listener if login changes
+      if (userUnsubscribeRef.current) {
+        userUnsubscribeRef.current()
+        userUnsubscribeRef.current = null
+      }
+
       if (currentUser) {
         // Handle existing users who don't have loginTimestamp
         const existingTimestamp = localStorage.getItem('loginTimestamp')
@@ -95,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         // Setup real-time listener for user document whenever logged in
         const q = query(collection(db, 'users'), where('uid', '==', currentUser.uid))
-        const unsubscribeUser = onSnapshot(q, (querySnapshot) => {
+        userUnsubscribeRef.current = onSnapshot(q, (querySnapshot) => {
           if (!querySnapshot.empty) {
             const userData = querySnapshot.docs[0].data()
             const role = userData.role
@@ -121,8 +133,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserRole(storedRole)
           setUserName(storedName)
         }
-
-        return () => unsubscribeUser()
       } else {
         // No user is signed in
         setUserRole(null)
@@ -137,7 +147,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false)
     })
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      if (userUnsubscribeRef.current) {
+        userUnsubscribeRef.current()
+        userUnsubscribeRef.current = null
+      }
+    }
   }, [router, pathname])
 
   // Set up session expiry check interval
