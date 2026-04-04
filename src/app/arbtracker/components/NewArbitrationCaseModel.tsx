@@ -34,6 +34,7 @@ interface Client {
   name: string
   banks: any[]
   alloc_adv?: string
+  phone?: string
 }
 
 // Format time for HTML5 time input - ensures it's always in HH:mm format
@@ -111,7 +112,8 @@ export default function NewArbitrationCaseModal({
           id: doc.id,
           name: doc.data().name,
           banks: doc.data().banks || [],
-          alloc_adv: doc.data().alloc_adv || ''
+          alloc_adv: doc.data().alloc_adv || '',
+          phone: doc.data().phone || ''
         }))
         setClients(clientsData)
 
@@ -290,7 +292,7 @@ export default function NewArbitrationCaseModal({
                         className="px-3 py-2 cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-600 text-black dark:text-white text-sm"
                         onClick={() => handleClientSelect(client)}
                       >
-                        {client.name}
+                        {client.name} {client.phone ? `(${client.phone})` : ''}
                       </div>
                     ))
                   ) : (
