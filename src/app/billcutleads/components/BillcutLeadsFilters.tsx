@@ -90,7 +90,7 @@ const BillcutLeadsFiltersOptimized = ({
   setLastModifiedToDate = () => {},
   actualSearchResultsCount = 0,
 }: BillcutLeadsFiltersProps) => {
-  const [salesUsers, setSalesUsers] = useState<{ id: string; name: string }[]>([])
+  const [salesUsers, setSalesUsers] = useState<{ id: string; name: string; noAnswerWorkModeEnabled: boolean }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchInput, setSearchInput] = useState(searchQuery)
   const [searchResultsCount, setSearchResultsCount] = useState(0)
@@ -309,7 +309,8 @@ const BillcutLeadsFiltersOptimized = ({
         return {
           id: doc.id,
           name: fullName,
-          status: data.status
+          status: data.status,
+          noAnswerWorkModeEnabled: data.noAnswerWorkModeEnabled || false
         }
       }).filter(user => user.status?.toLowerCase() === 'active')
       setSalesUsers(users)
@@ -319,6 +320,36 @@ const BillcutLeadsFiltersOptimized = ({
       setIsLoading(false)
     }
   }, [])
+
+  // Handle Work Mode Toggle
+  const handleWorkModeToggle = async () => {
+    if (userRole !== 'admin' && userRole !== 'overlord') return
+
+    const selectedUser = salesUsers.find(u => u.name === salesPersonFilter)
+    if (!selectedUser) {
+        import("react-toastify").then(({ toast }) => toast.error("Please select a specific salesperson first"))
+        return
+    }
+
+    const newMode = !selectedUser.noAnswerWorkModeEnabled
+    
+    try {
+        const { doc, updateDoc } = await import("firebase/firestore")
+        const userRef = doc(crmDb, "users", selectedUser.id)
+        await updateDoc(userRef, {
+            noAnswerWorkModeEnabled: newMode
+        })
+        
+        // Update local state
+        setSalesUsers(prev => prev.map(u => 
+            u.id === selectedUser.id ? { ...u, noAnswerWorkModeEnabled: newMode } : u
+        ))
+        
+        import("react-toastify").then(({ toast }) => toast.success(`Work Mode ${newMode ? 'ENABLED' : 'DISABLED'} for ${selectedUser.name}`))
+    } catch (error) {
+        import("react-toastify").then(({ toast }) => toast.error("Failed to update Work Mode"))
+    }
+  }
 
   useEffect(() => {
     fetchSalesUsers()
@@ -522,6 +553,53 @@ const BillcutLeadsFiltersOptimized = ({
             )}
           </div>
         </div>
+
+        {/* Prominent Work Mode Toggle for Admins/Overlords */}
+        {(userRole === "admin" || userRole === "overlord") && 
+         salesPersonFilter !== "all" && salesPersonFilter !== "-" && (
+          <div className="mb-4 p-4 bg-gray-800/50 border-2 border-blue-500/30 rounded-2xl flex items-center justify-between shadow-lg ring-1 ring-blue-500/10 animate-in fade-in zoom-in duration-500 backdrop-blur-md">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl text-white shadow-md">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <p className="text-base font-bold text-gray-100 leading-tight">Full Edit Access Enabled</p>
+                <p className="text-[11px] text-gray-400 mt-1 uppercase font-semibold tracking-wider">
+                  Special Work Mode for <span className="text-blue-400">{salesPersonFilter}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end">
+                <button
+                  onClick={handleWorkModeToggle}
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled
+                      ? "bg-blue-600"
+                      : "bg-gray-600"
+                  }`}
+                  type="button"
+                  role="switch"
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-xl transition-transform duration-300 ${
+                      salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled
+                        ? "translate-x-7"
+                        : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className={`text-[10px] font-black mt-1 ${
+                    salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled ? 'text-blue-400' : 'text-gray-500'
+                  }`}>
+                  {salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled ? 'ACTIVE' : 'OFF'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block transition-all duration-300`}>
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-3 md:gap-4">

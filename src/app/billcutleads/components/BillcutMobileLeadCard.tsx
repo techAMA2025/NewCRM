@@ -12,9 +12,13 @@ import { useWhatsAppTemplates } from "@/hooks/useWhatsAppTemplates"
 const canUserEditLead = (lead: any) => {
   const currentUserRole = typeof window !== "undefined" ? localStorage.getItem("userRole") : ""
   const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") : ""
-  
+  const noAnswerWorkModeEnabled = typeof window !== "undefined" ? localStorage.getItem("noAnswerWorkModeEnabled") === "true" : false
+
   if (currentUserRole === "admin" || currentUserRole === "overlord" || currentUserRole === "billcut") return true
   
+  // Work Mode Unlock: If enabled, salesperson can edit ANY lead they can see
+  if (noAnswerWorkModeEnabled) return true
+
   const isLeadAssigned = lead.assignedTo && 
                         lead.assignedTo !== "" && 
                         lead.assignedTo !== "-" && 
@@ -193,6 +197,8 @@ const BillcutMobileLeadCard = ({
   const handleAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (e.target.value) {
       const [salesPersonId, salesPersonName] = e.target.value.split("|")
+      // Only proceed if it's a real change or we have a valid ID
+      if (!salesPersonId && salesPersonName === lead.assignedTo) return;
       assignLeadToSalesperson(lead.id, salesPersonName, salesPersonId)
     } else { unassignLead?.(lead.id) }
   }
@@ -342,22 +348,47 @@ const BillcutMobileLeadCard = ({
         <div className="space-y-1.5">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-tighter">Assigned Person</label>
           {!isUnassigned ? (
-            <div className="flex items-center gap-2 py-1.5">
-              <div className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-[10px] font-bold shadow-lg">
-                {(lead.assignedTo || "").split(" ").map((p: string) => p[0] || "").join("").substring(0, 2).toUpperCase()}
+            <div className="flex items-center gap-2 py-1.5 flex-1 min-w-0">
+              <div className="flex items-center flex-1 min-w-0">
+                <div className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-[10px] font-bold shadow-lg flex-shrink-0">
+                  {(lead.assignedTo || "").split(" ").map((p: string) => p[0] || "").join("").substring(0, 2).toUpperCase()}
+                </div>
+                <span className="ml-2 text-xs text-gray-200 font-medium truncate">{lead.assignedTo}</span>
               </div>
-              <span className="text-xs text-gray-200 font-medium truncate">{lead.assignedTo}</span>
+              {(currentUserRole === "admin" || currentUserRole === "overlord" || lead.assignedTo === currentUserName) && (
+                <button
+                  onClick={() => unassignLead?.(lead.id)}
+                  className="flex items-center justify-center h-6 w-6 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150 flex-shrink-0"
+                  title="Unassign lead"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
           ) : (
             <div className="text-xs text-gray-600 py-1.5 font-medium italic">Not Assigned</div>
           )}
           {(currentUserRole === "admin" || currentUserRole === "overlord" || currentUserRole === "billcut") && (
             <select 
-              value={isUnassigned ? "" : (() => { const a = salesTeamMembers.find(m => m.name === lead.assignedTo); return a ? `${a.id || a.uid || ""}|${a.name}` : "" })()} 
+              value={isUnassigned ? "" : (() => { const a = salesTeamMembers.find(m => m.name === lead.assignedTo); return a ? `${a.id || a.uid || ""}|${a.name}` : `|${lead.assignedTo}` })()} 
               onChange={handleAssignmentChange} 
               className="w-full px-2 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-200 font-medium focus:border-blue-500"
             >
-              <option value="">Unassigned</option>
+              {isUnassigned && <option value="">Unassigned</option>}
+              {!isUnassigned && !getAssignmentOptions().find(m => m.name === lead.assignedTo) && (
+                <option value={`|${lead.assignedTo}`}>{lead.assignedTo}</option>
+              )}
               {getAssignmentOptions().map(p => <option key={p.id || p.uid || p.name} value={`${p.id || p.uid || ""}|${p.name || "Unknown"}`}>{p.name}{p.name === currentUserName ? " (Me)" : ""}</option>)}
             </select>
           )}

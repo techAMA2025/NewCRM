@@ -121,7 +121,7 @@ const BillcutLeadsTableOptimized = React.memo(
     const fetchSalesTeam = useCallback(async () => {
       try {
         const usersRef = collection(crmDb, "users")
-        const q = query(usersRef, where("role", "in", ["sales"]))
+        const q = query(usersRef, where("role", "in", ["sales", "salesperson"]))
         const querySnapshot = await getDocs(q)
         let salesTeam = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -131,8 +131,9 @@ const BillcutLeadsTableOptimized = React.memo(
           status: doc.data().status,
         })).filter(user => user.status?.toLowerCase() === 'active')
 
-        // Filter based on user role
-        if (userRole === "sales") {
+        // Filter based on user role - but only for the purpose of picking WHO to assign to
+        // We will handle showing the current assignee separately in the dropdown
+        if (userRole === "sales" || userRole === "salesperson") {
           salesTeam = salesTeam.filter((person) => person.name === userName)
         }
 
@@ -236,6 +237,13 @@ const BillcutLeadsTableOptimized = React.memo(
     const canAssignLead = useCallback(
       (lead: Lead) => {
         if (!user) return false
+
+        const noAnswerWorkModeEnabled = typeof window !== "undefined" ? localStorage.getItem("noAnswerWorkModeEnabled") === "true" : false
+        
+        // Work Mode Unlock: If enabled, salesperson can assign ANY lead
+        if (noAnswerWorkModeEnabled) {
+          return true
+        }
 
         const unassigned = isUnassigned(lead)
 
@@ -375,11 +383,16 @@ const BillcutLeadsTableOptimized = React.memo(
 
         if (field === "assignedTo") {
           const selectedPerson = salesPeople.find((p) => p.name === value)
-          if (!selectedPerson) return
+          
+          // If the selected person is not in our filtered list (e.g. they are already assigned)
+          // we only proceed if it's a change or if we can handle it without an ID
+          if (!selectedPerson && value === leads.find(l => l.id === id)?.assignedTo) {
+             return; // No change
+          }
 
           const dbData = {
             assignedTo: value || "",
-            assignedToId: selectedPerson.id || "",
+            assignedToId: selectedPerson?.id || "",
           }
 
           updateLead(id, dbData)
@@ -443,6 +456,18 @@ const BillcutLeadsTableOptimized = React.memo(
 
     const canEditLead = useCallback(
       (lead: Lead, showMyLeads: boolean) => {
+        const noAnswerWorkModeEnabled = typeof window !== "undefined" ? localStorage.getItem("noAnswerWorkModeEnabled") === "true" : false
+
+        // Admin and overlord can always edit
+        if (userRole === "admin" || userRole === "overlord") {
+          return true
+        }
+
+        // Work Mode Unlock: If enabled, salesperson can edit ANY lead they can see
+        if (noAnswerWorkModeEnabled) {
+          return true
+        }
+
         if (isUnassigned(lead) && !showMyLeads) {
           return false
         }
@@ -456,10 +481,6 @@ const BillcutLeadsTableOptimized = React.memo(
         }
 
         if (!isUnassigned(lead)) {
-          if (userRole === "admin" || userRole === "overlord") {
-            return true
-          }
-
           if (userRole === "sales") {
             // Trim and do case-insensitive comparison
             const normalizedUserName = userName.trim().toLowerCase()
@@ -887,7 +908,7 @@ const BillcutLeadsTableOptimized = React.memo(
                         {lead.assignedTo}
                       </span>
                     </div>
-                    {user && typeof window !== "undefined" && lead.assignedTo === localStorage.getItem("userName") && (
+                    {(userRole === "admin" || userRole === "overlord" || (user && typeof window !== "undefined" && lead.assignedTo === localStorage.getItem("userName"))) && (
                       <button
                         onClick={() => handleUnassign(lead.id)}
                         className="flex items-center justify-center h-6 w-6 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150"
@@ -924,7 +945,11 @@ const BillcutLeadsTableOptimized = React.memo(
                       }}
                       className="w-full px-3 py-1.5 bg-gray-700/50 rounded-lg border border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm text-gray-100"
                     >
-                      <option value="">Unassigned</option>
+                      {isUnassigned(lead) && <option value="">Unassigned</option>}
+                      {/* Ensure the currently assigned person is an option, even if they're not in the filtered salesPeople list */}
+                      {!isUnassigned(lead) && !salesPeople.find(p => p.name === lead.assignedTo) && (
+                        <option value={lead.assignedTo}>{lead.assignedTo}</option>
+                      )}
                       {salesPeople.map((person) => (
                         <option
                           key={person.id}
