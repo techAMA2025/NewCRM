@@ -386,6 +386,17 @@ function ClientsPageWithParams() {
     }>
   >([])
 
+  // Status Change history states
+  const [isStatusHistoryModalOpen, setIsStatusHistoryModalOpen] = useState(false)
+  const [selectedStatusHistory, setSelectedStatusHistory] = useState<
+    Array<{
+      previousStatus: string
+      newStatus: string
+      changedAt: number
+      changedBy: string
+    }>
+  >([])
+
 
   // Add URL parameter handling
   const searchParams = useSearchParams()
@@ -1120,10 +1131,28 @@ function ClientsPageWithParams() {
 
       // Check if status changed to something that requires an app status update
       const originalClient = clients.find(c => c.id === editingClient.id)
-      const oldStatus = originalClient?.adv_status
-      const newStatus = clientDataToSave.adv_status
+      const oldStatus = originalClient?.adv_status || "Inactive"
+      const newStatus = clientDataToSave.adv_status || "Inactive"
 
       if (newStatus !== oldStatus) {
+        const advocateName = localStorage.getItem("userName") || "System Admin"
+        const newStatusHistoryEntry = {
+          previousStatus: oldStatus,
+          newStatus: newStatus,
+          changedBy: advocateName,
+          changedAt: Math.floor(Date.now() / 1000)
+        }
+
+        const currentStatusHistory = originalClient?.status_change_history || []
+        let updatedStatusHistory = [...currentStatusHistory, newStatusHistoryEntry]
+        
+        if (updatedStatusHistory.length > 10) {
+          updatedStatusHistory = updatedStatusHistory.slice(-10)
+        }
+
+        updatedData.status_change_history = updatedStatusHistory
+        finalClientData.status_change_history = updatedStatusHistory
+
         let appStatusRemark = ""
         if (newStatus === "Not Responding") {
           appStatusRemark = "Awaiting Client Response"
@@ -1302,10 +1331,29 @@ function ClientsPageWithParams() {
   const handleAdvocateStatusChange = async (clientId: string, newStatus: string) => {
     setIsSaving(true)
     try {
+      const client = clients.find(c => c.id === clientId)
+      const oldStatus = client?.adv_status || "Inactive"
+      const advocateName = localStorage.getItem("userName") || "System Admin"
+
+      const newStatusHistoryEntry = {
+        previousStatus: oldStatus,
+        newStatus: newStatus,
+        changedBy: advocateName,
+        changedAt: Math.floor(Date.now() / 1000)
+      }
+
+      const currentStatusHistory = client?.status_change_history || []
+      let updatedStatusHistory = [...currentStatusHistory, newStatusHistoryEntry]
+      
+      if (updatedStatusHistory.length > 10) {
+        updatedStatusHistory = updatedStatusHistory.slice(-10)
+      }
+
       const clientRef = doc(db, "clients", clientId)
       let updateData: any = {
         adv_status: newStatus,
         lastModified: new Date(),
+        status_change_history: updatedStatusHistory
       }
 
       // Automatically add app status for specific statuses
@@ -1325,7 +1373,6 @@ function ClientsPageWithParams() {
           return
         }
 
-        const client = clients.find(c => c.id === clientId)
         const currentAppStatus = client?.client_app_status || []
         const advocateName = localStorage.getItem("userName") || "System Admin"
         
@@ -1345,7 +1392,12 @@ function ClientsPageWithParams() {
       setClients((prevClients) =>
         prevClients.map((client) => {
           if (client.id === clientId) {
-            const updatedClient = { ...client, adv_status: newStatus, lastModified: new Date() }
+            const updatedClient = { 
+              ...client, 
+              adv_status: newStatus, 
+              lastModified: new Date(),
+              status_change_history: updatedStatusHistory 
+            }
             if (appStatusRemark) {
               const newStatusObj = {
                 index: (client.client_app_status?.length || 0).toString(),
@@ -2278,6 +2330,11 @@ function ClientsPageWithParams() {
     setIsAppStatusHistoryModalOpen(true)
   }
 
+  const handleViewStatusHistory = (client: Client) => {
+    setSelectedStatusHistory(client.status_change_history || [])
+    setIsStatusHistoryModalOpen(true)
+  }
+
   const handleDeleteAppStatus = async (statusItem: any) => {
     if (!selectedClientId) return
 
@@ -2692,6 +2749,7 @@ function ClientsPageWithParams() {
               onAppStatusChange={handleAppStatusChange}
               onSaveAppStatus={handleSaveAppStatus}
               onViewAppStatusHistory={handleViewAppStatusHistory}
+              onViewStatusHistory={handleViewStatusHistory}
             />
             <div ref={loadMoreRef} className="flex h-8 items-center justify-center">
               {isFetchingMore ? (
@@ -2962,6 +3020,52 @@ function ClientsPageWithParams() {
                 {selectedClientHistory.length === 0 && (
                   <div className={`text-center py-8 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}>
                     No remarks history available
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Advocate Status History Modal */}
+        {isStatusHistoryModalOpen && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+            <div
+              className={`${theme === "dark" ? "bg-gray-900" : "bg-white"} rounded-lg border ${theme === "dark" ? "border-gray-700" : "border-gray-300"} p-4 w-full max-w-2xl animate-fade-in shadow-xl`}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className={`text-lg font-bold ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>
+                  Advocate Status History
+                </h2>
+                <button
+                  onClick={() => setIsStatusHistoryModalOpen(false)}
+                  className={`rounded-full h-8 w-8 flex items-center justify-center ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-800"} transition-colors`}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                {[...selectedStatusHistory].reverse().map((history, index) => (
+                  <div
+                    key={index}
+                    className={`${theme === "dark" ? "bg-gray-800" : "bg-gray-50"} rounded p-3 relative group`}
+                  >
+                    <div className="flex justify-between items-start mb-1 pr-8">
+                      <span className={`font-medium text-xs ${theme === "dark" ? "text-blue-400" : "text-blue-600"}`}>
+                        {history.changedBy}
+                      </span>
+                      <span className={`text-[10px] ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}>
+                        {new Date(history.changedAt * 1000).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <p className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                      Changed from <span className="font-bold underline">{history.previousStatus}</span> to <span className="font-bold underline">{history.newStatus}</span>
+                    </p>
+                  </div>
+                ))}
+                {selectedStatusHistory.length === 0 && (
+                  <div className={`text-center py-8 ${theme === "dark" ? "text-gray-500" : "text-gray-400"}`}>
+                    No status history available
                   </div>
                 )}
               </div>

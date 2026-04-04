@@ -85,6 +85,12 @@ interface Client {
     createdAt: number;
     createdBy: string;
   }[];
+  status_change_history?: {
+    previousStatus: string;
+    newStatus: string;
+    changedBy: string;
+    changedAt: number;
+  }[];
 }
 
 export function useClients(advocateName: string) {
@@ -227,8 +233,28 @@ export function useClients(advocateName: string) {
   const updateClientStatus = async (clientId: string, newStatus: string) => {
     try {
       const clientRef = doc(db, "clients", clientId)
+      const client = clients.find(c => c.id === clientId)
+      const oldStatus = client?.adv_status || "Inactive"
+      const advocateName = localStorage.getItem("userName") || "System"
+      
+      const newStatusHistoryEntry = {
+        previousStatus: oldStatus,
+        newStatus: newStatus,
+        changedBy: advocateName,
+        changedAt: Math.floor(Date.now() / 1000)
+      }
 
-      let updateData: any = { adv_status: newStatus === "Inactive" ? null : newStatus }
+      const currentStatusHistory = client?.status_change_history || []
+      let updatedStatusHistory = [...currentStatusHistory, newStatusHistoryEntry]
+      
+      if (updatedStatusHistory.length > 10) {
+        updatedStatusHistory = updatedStatusHistory.slice(-10)
+      }
+
+      let updateData: any = {
+        status_change_history: updatedStatusHistory,
+        adv_status: newStatus === "Inactive" ? null : newStatus
+      }
 
       // Custom app status messages based on the new status
       let appStatusRemark = ""
@@ -244,10 +270,8 @@ export function useClients(advocateName: string) {
         const confirmed = window.confirm(`Changing status to "${newStatus}" will also update the client's App Status to: "${appStatusRemark}". Proceed?`)
         if (!confirmed) return
 
-        const client = clients.find(c => c.id === clientId)
         const currentAppStatus = client?.client_app_status || []
-        const advocateName = localStorage.getItem("userName") || "System"
-
+        
         const newAppStatus = {
           index: currentAppStatus.length.toString(),
           remarks: appStatusRemark,

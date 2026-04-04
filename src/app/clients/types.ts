@@ -67,4 +67,12 @@ export interface Client {
   searchKeywords?: string[];
   feePercentage?: string;
   shouldGenerateAgreement?: boolean;
+  status_change_history?: StatusChangeEntry[];
+}
+
+export interface StatusChangeEntry {
+  previousStatus: string;
+  newStatus: string;
+  changedBy: string;
+  changedAt: number; // Unix timestamp in seconds
 } 

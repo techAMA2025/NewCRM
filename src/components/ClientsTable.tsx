@@ -54,6 +54,7 @@ interface ClientsTableProps {
   onAppStatusChange: (clientId: string, value: string) => void
   onSaveAppStatus: (clientId: string) => void
   onViewAppStatusHistory: (client: Client) => void
+  onViewStatusHistory: (client: Client) => void
 }
 
 export default function ClientsTable({
@@ -78,7 +79,8 @@ export default function ClientsTable({
   appStatuses,
   onAppStatusChange,
   onSaveAppStatus,
-  onViewAppStatusHistory
+  onViewAppStatusHistory,
+  onViewStatusHistory
 }: ClientsTableProps) {
   const isDark = theme === 'dark'
   const overallCount = totalCount ?? clients.length
@@ -249,6 +251,18 @@ export default function ClientsTable({
                       <SelectItem value="Inactive" className={isDark ? 'text-gray-400' : 'text-gray-600'}>Inactive</SelectItem>
                     </SelectContent>
                   </Select>
+                  {userRole !== 'billcut' && (
+                    <button
+                      onClick={() => onViewStatusHistory(client)}
+                      className={`mt-1 w-full py-0.5 text-[8px] font-bold rounded transition-colors duration-200 ${
+                        isDark 
+                          ? 'bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700' 
+                          : 'bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300'
+                      }`}
+                    >
+                      HISTORY
+                    </button>
+                  )}
                 </TableCell>
                 <TableCell className="p-1">
                   <div className="flex items-center">
