@@ -65,8 +65,15 @@ export async function GET(
                 const day = String(dateObj.getDate()).padStart(2, '0')
                 const month = String(dateObj.getMonth() + 1).padStart(2, '0')
                 const year = dateObj.getFullYear()
-                // Format exactly as requested: dd/mm/yyyy
-                displayDate = `${day}/${month}/${year}`
+                
+                const hours = dateObj.getHours()
+                const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+                const ampm = hours >= 12 ? 'PM' : 'AM'
+                const formattedHours = hours % 12 || 12
+                const timeString = `${formattedHours}:${minutes} ${ampm}`
+                
+                // Format: dd/mm/yyyy hh:mm AM/PM
+                displayDate = `${day}/${month}/${year} ${timeString}`
             }
 
             return {

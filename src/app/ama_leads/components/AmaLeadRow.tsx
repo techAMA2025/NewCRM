@@ -417,11 +417,17 @@ const AmaLeadRow = ({
         "Unknown User"
 
       // Create the note object for history
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = now.getFullYear();
-      
+      const now = new Date()
+      const day = String(now.getDate()).padStart(2, "0")
+      const month = String(now.getMonth() + 1).padStart(2, "0")
+      const year = now.getFullYear()
+
+      const hours = now.getHours()
+      const minutes = String(now.getMinutes()).padStart(2, "0")
+      const ampm = hours >= 12 ? "PM" : "AM"
+      const formattedHours = hours % 12 || 12
+      const timeString = `${formattedHours}:${minutes} ${ampm}`
+
       const noteData = {
         leadId: lead.id,
         content: value,
@@ -429,7 +435,7 @@ const AmaLeadRow = ({
         createdById: loggedInUser?.uid || "",
         createdAt: serverTimestamp(),
         timestamp: serverTimestamp(), // Also add timestamp field for compatibility
-        displayDate: `${day}/${month}/${year}`,
+        displayDate: `${day}/${month}/${year} ${timeString}`,
       }
 
       // Add to history subcollection within ama_leads
