@@ -90,7 +90,7 @@ export default function AnswerModal({ question, onClose }: AnswerModalProps) {
                     value={answerContent}
                     onChange={(e) => setAnswerContent(e.target.value)}
                     rows={6}
-                    className="text-white w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D2A02A] focus:border-transparent outline-none text-sm"
+                    className="text-black bg-white w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D2A02A] focus:border-transparent outline-none text-sm"
                     placeholder="Type your answer here..."
                 />
             </div>
