@@ -301,7 +301,15 @@ export async function GET(request: NextRequest) {
                 console.log(`[API DEBUG] Merged ${mergedDocs.size} docs from parallel queries`)
 
                 // Retrieve paginated subset
-                const allDocs = Array.from(mergedDocs.values())
+                let allDocs = Array.from(mergedDocs.values())
+                
+                // Sort by synced_at descending
+                allDocs.sort((a, b) => {
+                    const dateA = a.data()?.synced_at?.toDate()?.getTime() || 0
+                    const dateB = b.data()?.synced_at?.toDate()?.getTime() || 0
+                    return dateB - dateA
+                })
+
                 const total = allDocs.length
 
                 // Slice for pagination

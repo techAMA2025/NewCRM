@@ -48,39 +48,10 @@ export async function GET(
         const history = snapshot.docs.map((doc) => {
             const data = doc.data()
 
-            let displayDate = data.displayDate
-            let dateObj: Date | null = null
-
-            // Prioritize the actual timestamp if available
-            if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-                dateObj = data.createdAt.toDate()
-            } else if (displayDate) {
-                const parsed = new Date(displayDate)
-                if (!isNaN(parsed.getTime())) {
-                    dateObj = parsed
-                }
-            }
-
-            if (dateObj) {
-                const day = String(dateObj.getDate()).padStart(2, '0')
-                const month = String(dateObj.getMonth() + 1).padStart(2, '0')
-                const year = dateObj.getFullYear()
-                
-                const hours = dateObj.getHours()
-                const minutes = String(dateObj.getMinutes()).padStart(2, '0')
-                const ampm = hours >= 12 ? 'PM' : 'AM'
-                const formattedHours = hours % 12 || 12
-                const timeString = `${formattedHours}:${minutes} ${ampm}`
-                
-                // Format: dd/mm/yyyy hh:mm AM/PM
-                displayDate = `${day}/${month}/${year} ${timeString}`
-            }
-
             return {
                 id: doc.id,
                 ...data,
-                createdAt: data.createdAt?.toDate().toISOString() || null,
-                displayDate: displayDate || "Unknown Date"
+                displayDate: data.displayDate || "Unknown Date"
             }
         })
 
