@@ -657,7 +657,7 @@ const BillcutLeadsTableOptimized = React.memo(
 
         return (
           <tr key={lead.id} className={`transition-colors duration-150 ease-in-out ${rowColors.rowBg}`}>
-            <td className="px-4 py-4 whitespace-nowrap">
+            <td className="px-4 py-4 whitespace-nowrap border-r border-gray-700/50">
               <input
                 type="checkbox"
                 checked={selectedLeads.includes(lead.id)}
@@ -666,7 +666,7 @@ const BillcutLeadsTableOptimized = React.memo(
               />
             </td>
 
-            <td className="px-4 py-4 whitespace-nowrap">
+            <td className="px-4 py-4 whitespace-nowrap border-r border-gray-700/50">
               <div className="flex flex-col gap-1">
                 <div className={`text-sm ${rowColors.textColor || "text-blue-300"}`}>
                   {new Date(lead.date).toLocaleString("en-US", {
@@ -685,7 +685,7 @@ const BillcutLeadsTableOptimized = React.memo(
               </div>
             </td>
 
-            <td className="px-6 py-4">
+            <td className="px-6 py-4 border-r border-gray-700/50">
               <div className="flex flex-col gap-1">
                 <div 
                   className={`text-sm font-medium ${rowColors.textColor || "text-gray-100"}`}
@@ -700,11 +700,11 @@ const BillcutLeadsTableOptimized = React.memo(
               </div>
             </td>
 
-            <td className="px-6 py-4">
+            <td className="px-6 py-4 border-r border-gray-700/50">
               <div className={`text-sm ${rowColors.textColor ? "text-white/90" : "text-purple-300"}`}>{lead.city}</div>
             </td>
 
-            <td className="px-6 py-4">
+            <td className="px-6 py-4 border-r border-gray-700/50">
               <div className="flex flex-col gap-1">
                 <div className={`text-sm ${rowColors.textColor ? "text-white/90" : "text-green-300"}`}>
                   Income: ₹{lead.monthlyIncome}
@@ -720,7 +720,7 @@ const BillcutLeadsTableOptimized = React.memo(
               </div>
             </td>
 
-            <td className="px-6 py-4">
+            <td className="px-6 py-4 border-r border-gray-700/50">
               <div className="flex flex-col space-y-2">
                 <span
                   className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(lead.status || "Select Status")}`}
@@ -800,7 +800,7 @@ const BillcutLeadsTableOptimized = React.memo(
               </div>
             </td>
 
-            <td className="px-6 py-4">
+            <td className="px-6 py-4 border-r border-gray-700/50">
               <div className="flex flex-col space-y-2">
                 {!isUnassigned(lead) ? (
                   <div className="flex items-center gap-2">
@@ -883,7 +883,7 @@ const BillcutLeadsTableOptimized = React.memo(
             </td>
 
             {activeTab === "callback" && (
-              <td className="px-6 py-4">
+              <td className="px-6 py-4 border-r border-gray-700/50">
                 {lead.callbackInfo ? (
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center space-x-2">
@@ -971,7 +971,7 @@ const BillcutLeadsTableOptimized = React.memo(
           <table className="min-w-full divide-y divide-gray-700/50">
             <thead className="bg-gray-800/50">
               <tr>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-16">
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-16 border-r border-gray-700/50">
                   <input
                     type="checkbox"
                     checked={selectedLeads.length === leads.length && leads.length > 0}
@@ -979,26 +979,26 @@ const BillcutLeadsTableOptimized = React.memo(
                     className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
                   />
                 </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-32">
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-32 border-r border-gray-700/50">
                   Date
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
                   Contact Info
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
                   Location
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
                   Financials
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
                   Status
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
                   Assigned To
                 </th>
                 {activeTab === "callback" && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
                     Callback Details
                   </th>
                 )}
