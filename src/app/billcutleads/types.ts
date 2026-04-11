@@ -30,6 +30,7 @@ export type Lead = {
   lastModified: Date;
   date: number;
   debtRange: string;
+  maxDpd: number;
   language_barrier?: string;
   convertedAt?: any;
   callbackInfo?: {

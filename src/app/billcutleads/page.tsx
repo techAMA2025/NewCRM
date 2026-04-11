@@ -1,1882 +1,106 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  addDoc,
-  serverTimestamp,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  or,
-  getCountFromServer,
-  onSnapshot,
-  type DocumentSnapshot,
-  getDoc,
-  setDoc,
-  deleteField,
-} from "firebase/firestore"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { toast } from "react-toastify"
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"
-import { db as crmDb, auth } from "@/firebase/firebase"
-import { getFunctions, httpsCallable } from "firebase/functions"
-import { app } from "@/firebase/firebase"
 
 // Import Components
 import BillcutLeadsHeader from "./components/BillcutLeadsHeader"
 import BillcutLeadsFilters from "./components/BillcutLeadsFilters"
 import BillcutLeadsTable from "./components/BillcutLeadsTable"
 import BillcutLeadsTabs from "./components/BillcutLeadsTabs"
-import BillcutHistoryModal from "./components/BillcutHistoryModal"
-import BillcutLanguageBarrierModal from "./components/BillcutLanguageBarrierModal"
-import BillcutConversionConfirmationModal from "./components/BillcutConversionConfirmationModal"
+import BillcutSalespersonCards from "./components/BillcutSalespersonCards"
+import BillcutModalsContainer from "./components/BillcutModalsContainer"
 import AdminSidebar from "@/components/navigation/AdminSidebar"
 import SalesSidebar from "@/components/navigation/SalesSidebar"
 import OverlordSidebar from "@/components/navigation/OverlordSidebar"
 import BillcutSidebar from "@/components/navigation/BillcutSidebar"
-import BulkWhatsAppModal from "./components/BulkWhatsAppModal"
-import BillcutSalespersonCards from "./components/BillcutSalespersonCards"
-import { resolveLeadState } from "./utils/location"
 
-// Import types
-import type { Lead, User, EditingLeadsState, HistoryItem } from "./types"
-
-// Constants
-const LEADS_PER_PAGE = 50
-const SEARCH_LEADS_LIMIT = 100 // Higher limit for search results
-
-const statusOptions = [
-  "No Status",
-  "Interested",
-  "Not Interested",
-  "Not Answering",
-  "Callback",
-  "Future Potential",
-  "Converted",
-  "Loan Required",
-  "Short Loan",
-  "Cibil Issue",
-  "Language Barrier",
-  "Retargeting",
-  "Closed Lead",
-]
-
-const formatDateForInput = (date: Date): string => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
-
-const getDefaultFromDate = () => {
-  const now = new Date()
-  const fourDaysAgo = new Date(now)
-  fourDaysAgo.setDate(now.getDate() - 4)
-  return formatDateForInput(fourDaysAgo)
-}
-
-const getDefaultToDate = () => {
-  const now = new Date()
-  return formatDateForInput(now)
-}
-
-// Normalize phone number for search
-const normalizePhoneNumber = (phone: string): string => {
-  return phone.replace(/[\s\-$$$$\+]/g, "")
-}
-
-// Normalize user name for comparison
-const normalizeUserName = (name: string): string => {
-  return (name || "").trim().toLowerCase()
-}
-
-// Create search terms for name (for prefix matching)
-const createSearchTerms = (text: string): string[] => {
-  if (!text) return []
-  const normalized = text.toLowerCase().trim()
-  const words = normalized.split(/\s+/)
-  const terms = [normalized] // Full text
-  
-  // Add individual words
-  words.forEach(word => {
-    if (word.length > 1) {
-      terms.push(word)
-    }
-  })
-  
-  return [...new Set(terms)] // Remove duplicates
-}
-
-// Helper function to get callback priority for sorting
-const getCallbackPriority = (lead: Lead): number => {
-  if (!lead.callbackInfo || !lead.callbackInfo.scheduled_dt) {
-    return 4 // Blank/no callback info - lowest priority
-  }
-
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-  const dayAfterTomorrow = new Date(today)
-  dayAfterTomorrow.setDate(today.getDate() + 2)
-
-  const scheduledDate = new Date(lead.callbackInfo.scheduled_dt)
-  const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate())
-  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
-  const dayAfterTomorrowOnly = new Date(
-    dayAfterTomorrow.getFullYear(),
-    dayAfterTomorrow.getMonth(),
-    dayAfterTomorrow.getDate(),
-  )
-
-  let priority = 4
-  if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
-    priority = 1 // Red strap - today (highest priority)
-  } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
-    priority = 2 // Yellow strap - tomorrow
-  } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
-    priority = 3 // Green strap - day after tomorrow or later
-  } else {
-    priority = 4 // Gray/other dates - lowest priority
-  }
-
-  // Debug logging for first few leads
-  if (Math.random() < 0.1) { // Log 10% of leads to avoid spam
-    console.log(`Lead ${lead.name}: scheduled for ${scheduledDate.toLocaleDateString()}, priority: ${priority}`)
-  }
-
-  return priority
-}
+// Import hooks & utils
+import { useBillcutAuthTeam } from "./hooks/useBillcutAuthTeam"
+import { useBillcutLeads } from "./hooks/useBillcutLeads"
+import { useBillcutLeadActions } from "./hooks/useBillcutLeadActions"
+import { statusOptions, normalizeUserName } from "./utils/billcutUtils"
+import { Lead } from "./types"
 
 const BillCutLeadsPage = () => {
-  // State Management
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
-  const [isLoadAllLoading, setIsLoadAllLoading] = useState(false)
-  const [leads, setLeads] = useState<Lead[]>([])
-  const [searchResults, setSearchResults] = useState<Lead[]>([])
-  const [hasMoreLeads, setHasMoreLeads] = useState(true)
-  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null)
-  const [page, setPage] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
+  // 1. Auth & Team State
+  const { currentUser, userRole, teamMembers, salesTeamMembers } = useBillcutAuthTeam()
 
-  // Filter states
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [salesPersonFilter, setSalesPersonFilter] = useState("all")
-  const [showMyLeads, setShowMyLeads] = useState(false)
-  const [fromDate, setFromDate] = useState("")
-  const [toDate, setToDate] = useState("")
-  const [activeTab, setActiveTab] = useState<"all" | "callback">("all")
-  const [debtRangeSort, setDebtRangeSort] = useState<"none" | "low-to-high" | "high-to-low">("none")
-  
-  // Admin/Overlord only filter states
-  const [convertedFromDate, setConvertedFromDate] = useState("")
-  const [convertedToDate, setConvertedToDate] = useState("")
-  const [lastModifiedFromDate, setLastModifiedFromDate] = useState("")
-  const [lastModifiedToDate, setLastModifiedToDate] = useState("")
+  // 2. Leads & Filter State
+  const leadsState = useBillcutLeads(userRole)
+  const {
+    leads, setLeads,
+    searchResults, setSearchResults,
+    isLoading, isLoadingMore, isSearching, isLoadAllLoading,
+    hasMoreLeads, totalFilteredCount, setTotalFilteredCount,
+    statusFilter, setStatusFilter,
+    salesPersonFilter, setSalesPersonFilter,
+    showMyLeads, setShowMyLeads,
+    fromDate, setFromDate,
+    toDate, setToDate,
+    activeTab, setActiveTab,
+    debtRangeSort, setDebtRangeSort,
+    convertedFromDate, setConvertedFromDate,
+    convertedToDate, setConvertedToDate,
+    lastModifiedFromDate, setLastModifiedFromDate,
+    lastModifiedToDate, setLastModifiedToDate,
+    searchQuery, setSearchQuery,
+    fetchBillcutLeads, loadAllLeads
+  } = leadsState
 
-  // User and team states
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null)
-  const [userRole, setUserRole] = useState("")
-  const [teamMembers, setTeamMembers] = useState<User[]>([])
-  const [salesTeamMembers, setSalesTeamMembers] = useState<User[]>([])
-
-  // Modal states
-  const [editingLead, setEditingLead] = useState<Lead | null>(null)
-  const [editingLeads, setEditingLeads] = useState<EditingLeadsState>({})
+  // 3. Modals State
   const [showHistoryModal, setShowHistoryModal] = useState(false)
-  const [currentHistory, setCurrentHistory] = useState<HistoryItem[]>([])
+  const [selectedHistoryLeadId, setSelectedHistoryLeadId] = useState<string | null>(null)
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
-  const [showBulkAssignment, setShowBulkAssignment] = useState(false)
-  const [bulkAssignTarget, setBulkAssignTarget] = useState("")
+  
   const [showLanguageBarrierModal, setShowLanguageBarrierModal] = useState(false)
   const [languageBarrierLeadId, setLanguageBarrierLeadId] = useState("")
   const [languageBarrierLeadName, setLanguageBarrierLeadName] = useState("")
   const [isEditingLanguageBarrier, setIsEditingLanguageBarrier] = useState(false)
-  const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState<string>("")
+  const [editingLanguageBarrierInfo, setEditingLanguageBarrierInfo] = useState("")
+  
   const [showConversionModal, setShowConversionModal] = useState(false)
   const [conversionLeadId, setConversionLeadId] = useState("")
   const [conversionLeadName, setConversionLeadName] = useState("")
   const [isConvertingLead, setIsConvertingLead] = useState(false)
-  const [totalFilteredCount, setTotalFilteredCount] = useState(0)
-
-  // Refs for infinite scroll
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const loadMoreRef = useRef<HTMLDivElement | null>(null)
-
-  // Add new state for bulk WhatsApp
-  const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false)
   
-  // Mobile UI States
+  const [showBulkAssignment, setShowBulkAssignment] = useState(false)
+  const [bulkAssignTarget, setBulkAssignTarget] = useState("")
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false)
+  
+  const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
-  // Real-time Listeners
-  const listenersRef = useRef<{ [key: string]: () => void }>({})
-  const historyListenerRef = useRef<(() => void) | null>(null)
-  const stickyLeadsRef = useRef<Set<string>>(new Set()) // Track leads that should stay visible even if they don't match filters
+  // 4. Refs & Real-time Listeners (minimal)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const stickyLeadsRef = useRef<Set<string>>(new Set())
 
-  // Handle URL parameters on component mount
-  useEffect(() => {
-    if (typeof window === "undefined") return
+  // 5. Actions Hook
+  const {
+    updateLead,
+    deleteLead,
+    bulkAssignLeads,
+    sendBulkWhatsApp,
+    updateLeadOptimistic
+  } = useBillcutLeadActions(
+    leads, setLeads,
+    searchResults, setSearchResults,
+    statusFilter, setTotalFilteredCount,
+    currentUser, stickyLeadsRef
+  )
 
-    const urlParams = new URLSearchParams(window.location.search)
-    const statusParam = urlParams.get("status")
-    const salesPersonParam = urlParams.get("salesPerson")
-    const fromDateParam = urlParams.get("fromDate")
-    const toDateParam = urlParams.get("toDate")
-    const tabParam = urlParams.get("tab")
+  // --- Handlers ---
 
-    if (tabParam === "callback") {
-      setActiveTab("callback")
-    }
-
-    if (statusParam) {
-      setStatusFilter(statusParam)
-    }
-
-    if (salesPersonParam) {
-      setSalesPersonFilter(salesPersonParam)
-    }
-
-    if (fromDateParam !== null) {
-      setFromDate(fromDateParam)
-    }
-
-    if (toDateParam !== null) {
-      setToDate(toDateParam)
-    }
-  }, [])
-
-  // Authentication effect
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user)
-        const localStorageRole = localStorage.getItem("userRole")
-        if (localStorageRole) {
-          setUserRole(localStorageRole)
-        }
-      } else {
-        setCurrentUser(null)
-        setUserRole("")
-      }
-    })
-
-    return () => unsubscribe()
-  }, [])
-
-  // Fetch callback information
-  const fetchCallbackInfo = async (leadId: string) => {
-    try {
-      const callbackInfoRef = collection(crmDb, "billcutLeads", leadId, "callback_info")
-      const callbackSnapshot = await getDocs(callbackInfoRef)
-
-      if (!callbackSnapshot.empty) {
-        const callbackData = callbackSnapshot.docs[0].data()
-        return {
-          id: callbackData.id || "attempt_1",
-          scheduled_dt: callbackData.scheduled_dt?.toDate
-            ? callbackData.scheduled_dt.toDate()
-            : new Date(callbackData.scheduled_dt),
-          scheduled_by: callbackData.scheduled_by || "",
-          created_at: callbackData.created_at,
-        }
-      }
-
-      return null
-    } catch (error) {
-      return null
-    }
-  }
-
-  // Enhanced search function that queries the database
-  const performDatabaseSearch = useCallback(async (searchTerm: string, respectMyLeadsFilter: boolean = false): Promise<Lead[]> => {
-    if (!searchTerm.trim()) return []
-
-    setIsSearching(true)
-    const searchResults: Lead[] = []
-    const seenIds = new Set<string>()
-
-    try {
-      const baseQuery = collection(crmDb, "billcutLeads")
-      const normalizedSearch = searchTerm.toLowerCase().trim()
-      const normalizedPhone = normalizePhoneNumber(searchTerm)
-
-      // Search queries for different fields
-      const searchQueries = []
-
-      // 1. Exact phone number match (normalized)
-      if (/^\d+$/.test(normalizedPhone) && normalizedPhone.length >= 10) {
-        searchQueries.push(
-          query(baseQuery, where("mobile", "==", searchTerm)),
-          query(baseQuery, where("mobile", "==", normalizedPhone)),
-          query(baseQuery, where("mobile", "==", `+91${normalizedPhone}`)),
-          query(baseQuery, where("mobile", "==", `91${normalizedPhone}`))
-        )
-      }
-
-      // 2. Email exact match
-      if (searchTerm.includes("@")) {
-        searchQueries.push(
-          query(baseQuery, where("email", "==", searchTerm.toLowerCase()))
-        )
-      }
-
-      // 3. Name prefix search (case-insensitive)
-      if (normalizedSearch.length >= 2) {
-        // For name search, we'll use prefix matching
-        const namePrefix = normalizedSearch
-        const namePrefixEnd = namePrefix.slice(0, -1) + String.fromCharCode(namePrefix.charCodeAt(namePrefix.length - 1) + 1)
-        
-        searchQueries.push(
-          query(
-            baseQuery,
-            where("name_lowercase", ">=", namePrefix),
-            where("name_lowercase", "<", namePrefixEnd),
-            limit(SEARCH_LEADS_LIMIT)
-          )
-        )
-      }
-
-      // 4. Search in search_terms array (if you have tokenized search)
-      const searchTerms = createSearchTerms(searchTerm)
-      if (searchTerms.length > 0) {
-        searchQueries.push(
-          query(
-            baseQuery,
-            where("search_terms", "array-contains-any", searchTerms.slice(0, 10)), // Firestore limit
-            limit(SEARCH_LEADS_LIMIT)
-          )
-        )
-      }
-
-      // Execute all search queries
-      const queryPromises = searchQueries.map(async (searchQuery) => {
-        try {
-          const querySnapshot = await getDocs(searchQuery)
-          return querySnapshot.docs
-        } catch (error) {
-          console.warn("Search query failed:", error)
-          return []
-        }
-      })
-
-      const queryResults = await Promise.all(queryPromises)
-
-      // Combine and deduplicate results
-      for (const docs of queryResults) {
-        for (const docSnapshot of docs) {
-          if (!seenIds.has(docSnapshot.id)) {
-            seenIds.add(docSnapshot.id)
-            
-            const data = docSnapshot.data()
-            const state = resolveLeadState(data)
-
-            const lead: Lead = {
-              id: docSnapshot.id,
-              name: data.name || "",
-              email: data.email || "",
-              phone: data.mobile || "",
-              city: state,
-              status: data.category || "No Status",
-              source_database: "Bill Cut",
-              assignedTo: data.assigned_to || "",
-              monthlyIncome: data.income || "",
-              salesNotes: data.sales_notes || "",
-              lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : new Date(),
-              date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
-              callbackInfo: null,
-              debtRange: data.debt_range || 0,
-              convertedAt: data.convertedAt || null,
-            }
-
-            // Fetch callback info for callback leads
-            if (lead.status === "Callback") {
-              const callbackInfo = await fetchCallbackInfo(lead.id)
-              lead.callbackInfo = callbackInfo
-            }
-
-            // Include status history
-            lead.statusHistory = data.statusHistory || [];
-
-            searchResults.push(lead)
-          }
-        }
-      }
-
-      // Sort by relevance (exact matches first, then by date)
-      searchResults.sort((a, b) => {
-        // Exact phone match gets highest priority
-        const aPhoneMatch = a.phone === searchTerm || normalizePhoneNumber(a.phone) === normalizedPhone
-        const bPhoneMatch = b.phone === searchTerm || normalizePhoneNumber(b.phone) === normalizedPhone
-        
-        if (aPhoneMatch && !bPhoneMatch) return -1
-        if (!aPhoneMatch && bPhoneMatch) return 1
-
-        // Exact email match
-        const aEmailMatch = a.email.toLowerCase() === normalizedSearch
-        const bEmailMatch = b.email.toLowerCase() === normalizedSearch
-        
-        if (aEmailMatch && !bEmailMatch) return -1
-        if (!aEmailMatch && bEmailMatch) return 1
-
-        // Name starts with search term
-        const aNameMatch = a.name.toLowerCase().startsWith(normalizedSearch)
-        const bNameMatch = b.name.toLowerCase().startsWith(normalizedSearch)
-        
-        if (aNameMatch && !bNameMatch) return -1
-        if (!aNameMatch && bNameMatch) return 1
-
-        // Sort by date (newest first)
-        return b.date - a.date
-      })
-
-      // Apply "My Leads" filter if respectMyLeadsFilter is true
-      let filteredResults = searchResults
-      if (respectMyLeadsFilter && typeof window !== "undefined") {
-        const currentUserName = localStorage.getItem("userName")
-        if (currentUserName) {
-          // Use helper function for consistent normalization
-          const normalizedCurrentUser = normalizeUserName(currentUserName)
-          filteredResults = searchResults.filter(lead => {
-            const normalizedAssignedTo = normalizeUserName(lead.assignedTo)
-            
-            // Debug logging to identify the issue
-            if (searchResults.length > 0 && searchResults.length <= 5) {
-              console.log(`Comparing assignedTo: "${lead.assignedTo}" (normalized: "${normalizedAssignedTo}") with userName: "${currentUserName}" (normalized: "${normalizedCurrentUser}")`)
-            }
-            
-            return normalizedAssignedTo === normalizedCurrentUser
-          })
-        }
-      }
-
-      return filteredResults.slice(0, SEARCH_LEADS_LIMIT)
-
-    } catch (error) {
-      console.error("Error performing database search:", error)
-      toast.error("Search failed. Please try again.")
-      return []
-    } finally {
-      setIsSearching(false)
-    }
-  }, [])
-
-  // Handle search results from BillcutLeadsFilters component
-  const handleSearchResults = useCallback((results: Lead[]) => {
+  const handleSearchResults = (results: Lead[]) => {
     setSearchResults(results)
-    setIsSearching(false)
-  }, [])
-
-  // Build Firestore query based on filters (excluding search)
-  const buildQuery = useCallback(
-    (isLoadMore = false, lastDocument: DocumentSnapshot | null = null) => {
-      const baseQuery = collection(crmDb, "billcutLeads")
-      const constraints: any[] = []
-
-      // Date filters - using 'date' field instead of 'synced_date'
-      const hasDateFilter = !!(fromDate || toDate)
-      
-      if (fromDate) {
-        // Explicitly construct UTC date to avoid local timezone interference
-        const start = new Date(`${fromDate}T00:00:00.000Z`)
-        // Adjust for IST (UTC+5:30) -> Subtract 5.5 hours
-        start.setTime(start.getTime() - (330 * 60 * 1000))
-        constraints.push(where("date", ">=", start.getTime()))
-      }
-
-      if (toDate) {
-        // Explicitly construct UTC date
-        const end = new Date(`${toDate}T23:59:59.999Z`)
-        // Adjust for IST (UTC+5:30) -> Subtract 5.5 hours
-        end.setTime(end.getTime() - (330 * 60 * 1000))
-        constraints.push(where("date", "<=", end.getTime()))
-      }
-
-      // Check if Advanced Date Filters are active
-      const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
-        (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
-
-      // Admin/Overlord only filters
-      if (userRole === "admin" || userRole === "overlord") {
-        // Converted date filters
-        if (convertedFromDate) {
-          const convertedFromStart = new Date(convertedFromDate)
-          convertedFromStart.setHours(0, 0, 0, 0)
-          constraints.push(where("convertedAt", ">=", convertedFromStart))
-        }
-
-        if (convertedToDate) {
-          const convertedToEnd = new Date(convertedToDate)
-          convertedToEnd.setHours(23, 59, 59, 999)
-          constraints.push(where("convertedAt", "<=", convertedToEnd))
-        }
-
-        // Last modified date filters
-        if (lastModifiedFromDate) {
-          const lastModifiedFromStart = new Date(lastModifiedFromDate)
-          lastModifiedFromStart.setHours(0, 0, 0, 0)
-          constraints.push(where("lastModified", ">=", lastModifiedFromStart))
-        }
-
-        if (lastModifiedToDate) {
-          const lastModifiedToEnd = new Date(lastModifiedToDate)
-          lastModifiedToEnd.setHours(23, 59, 59, 999)
-          constraints.push(where("lastModified", "<=", lastModifiedToEnd))
-        }
-      }
-
-      // Status filter
-      if (statusFilter !== "all") {
-        if (statusFilter === "No Status") {
-          constraints.push(where("category", "in", ["", "-", "No Status"]))
-        } else {
-          constraints.push(where("category", "==", statusFilter))
-        }
-      }
-
-      // Salesperson filter - Only apply if My Leads is NOT active
-      if (!showMyLeads && salesPersonFilter !== "all") {
-        if (salesPersonFilter === "-") {
-          constraints.push(where("assigned_to", "in", ["", "-"]))
-        } else {
-          constraints.push(where("assigned_to", "==", salesPersonFilter))
-        }
-      }
-
-      // My Leads filter - Takes precedence over Salesperson filter
-      if (showMyLeads && typeof window !== "undefined") {
-        const currentUserName = localStorage.getItem("userName")
-        if (currentUserName) {
-          constraints.push(where("assigned_to", "==", currentUserName))
-        }
-      }
-
-      // Tab-based filtering - Callback tab
-      if (activeTab === "callback") {
-        constraints.push(where("category", "==", "Callback"))
-      }
-
-      // Determine Sort Order
-      // We can only use Debt Range sort if there are NO inequality filters (Range filters) active.
-      const hasInequalityFilters = hasDateFilter || hasAdvancedDateFilters
-
-      if (debtRangeSort !== "none" && !hasInequalityFilters) {
-        // Apply Server-Side Debt Sort
-        if (debtRangeSort === "low-to-high") {
-          constraints.push(orderBy("debt_range", "asc"))
-        } else {
-          constraints.push(orderBy("debt_range", "desc"))
-        }
-        // Secondary sort by date for consistency
-        constraints.push(orderBy("date", "desc"))
-      } else {
-        // Default Sorting
-        
-        // Add ordering based on whether Advanced Date Filters are active
-        if (hasAdvancedDateFilters) {
-          // When Advanced Date Filters are active, sort by lastModified and convertedAt
-          if (convertedFromDate || convertedToDate) {
-            // If converted date filters are active, sort by convertedAt first, then lastModified
-            constraints.push(orderBy("convertedAt", "desc"))
-            constraints.push(orderBy("lastModified", "desc"))
-          } else {
-            // If only lastModified filters are active, sort by lastModified
-            constraints.push(orderBy("lastModified", "desc"))
-          }
-        } else {
-          // Default sorting - use 'date' field for consistency
-          constraints.push(orderBy("date", "desc"))
-        }
-      }
-
-      // Add pagination
-      constraints.push(limit(LEADS_PER_PAGE))
-
-      if (isLoadMore && lastDocument) {
-        constraints.push(startAfter(lastDocument))
-      }
-
-      return query(baseQuery, ...constraints)
-    },
-    [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate, debtRangeSort],
-  )
-
-  // Build count query to get total filtered results
-  const buildCountQuery = useCallback(() => {
-    const baseQuery = collection(crmDb, "billcutLeads")
-    const constraints: any[] = []
-
-    // Date filters - using 'date' field instead of 'synced_date'
-    if (fromDate) {
-      // Explicitly construct UTC date to avoid local timezone interference
-      const start = new Date(`${fromDate}T00:00:00.000Z`)
-      // Adjust for IST (UTC+5:30) -> Subtract 5.5 hours
-      start.setTime(start.getTime() - (330 * 60 * 1000))
-      constraints.push(where("date", ">=", start.getTime()))
-    }
-
-    if (toDate) {
-      // Explicitly construct UTC date
-      const end = new Date(`${toDate}T23:59:59.999Z`)
-      // Adjust for IST (UTC+5:30) -> Subtract 5.5 hours
-      end.setTime(end.getTime() - (330 * 60 * 1000))
-      constraints.push(where("date", "<=", end.getTime()))
-    }
-
-    // Admin/Overlord only filters
-    if (userRole === "admin" || userRole === "overlord") {
-      // Converted date filters
-      if (convertedFromDate) {
-        const convertedFromStart = new Date(convertedFromDate)
-        convertedFromStart.setHours(0, 0, 0, 0)
-        constraints.push(where("convertedAt", ">=", convertedFromStart))
-      }
-
-      if (convertedToDate) {
-        const convertedToEnd = new Date(convertedToDate)
-        convertedToEnd.setHours(23, 59, 59, 999)
-        constraints.push(where("convertedAt", "<=", convertedToEnd))
-      }
-
-      // Last modified date filters
-      if (lastModifiedFromDate) {
-        const lastModifiedFromStart = new Date(lastModifiedFromDate)
-        lastModifiedFromStart.setHours(0, 0, 0, 0)
-        constraints.push(where("lastModified", ">=", lastModifiedFromStart))
-      }
-
-      if (lastModifiedToDate) {
-        const lastModifiedToEnd = new Date(lastModifiedToDate)
-        lastModifiedToEnd.setHours(23, 59, 59, 999)
-        constraints.push(where("lastModified", "<=", lastModifiedToEnd))
-      }
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      if (statusFilter === "No Status") {
-        constraints.push(where("category", "in", ["", "-", "No Status"]))
-      } else {
-        constraints.push(where("category", "==", statusFilter))
-      }
-    }
-
-    // Salesperson filter - Only apply if My Leads is NOT active
-    if (!showMyLeads && salesPersonFilter !== "all") {
-      if (salesPersonFilter === "-") {
-        constraints.push(where("assigned_to", "in", ["", "-"]))
-      } else {
-        constraints.push(where("assigned_to", "==", salesPersonFilter))
-      }
-    }
-
-    // My Leads filter - Takes precedence over Salesperson filter
-    if (showMyLeads && typeof window !== "undefined") {
-      const currentUserName = localStorage.getItem("userName")
-      if (currentUserName) {
-        constraints.push(where("assigned_to", "==", currentUserName))
-      }
-    }
-
-    // Tab-based filtering - Callback tab
-    if (activeTab === "callback") {
-      constraints.push(where("category", "==", "Callback"))
-    }
-
-    return query(baseQuery, ...constraints)
-  }, [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
-
-  // Fetch total count of filtered results
-  const fetchTotalCount = useCallback(async () => {
-    try {
-      const countQuery = buildCountQuery()
-      const countSnapshot = await getCountFromServer(countQuery)
-      const totalCount = countSnapshot.data().count
-      console.log(`[DEBUG] fetchTotalCount (Optimized): Read ~${Math.ceil(totalCount / 1000)} documents worth of reads (Total: ${totalCount})`)
-      setTotalFilteredCount(totalCount)
-    } catch (error: any) {
-      console.error("Error fetching total count:", error)
-      
-      // Check for missing index error
-      if (error.code === 'failed-precondition' && error.message.includes('index')) {
-        toast.error(
-          <div>
-            <p>Missing Index Error</p>
-            <p className="text-xs mt-1">This filter combination requires a new index.</p>
-            <p className="text-xs mt-1">Please check the console for the index creation link.</p>
-          </div>,
-          { autoClose: 10000 }
-        )
-      }
-      
-      setTotalFilteredCount(0)
-    }
-  }, [buildCountQuery])
-  
-  // Helper to fetch the latest sales note from subcollection
-  const fetchLatestSalesNote = useCallback(async (leadId: string, fallbackNote: string) => {
-    try {
-      const leadDocRef = doc(crmDb, 'billcutLeads', leadId);
-      const salesNotesRef = collection(leadDocRef, 'salesNotes');
-      const q = query(salesNotesRef, orderBy('createdAt', 'desc'), limit(1));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        return querySnapshot.docs[0].data().content || fallbackNote;
-      }
-      return fallbackNote;
-    } catch (error) {
-      console.error(`Error fetching latest note for lead ${leadId}:`, error);
-      return fallbackNote;
-    }
-  }, [])
-
-  // Helper to sort leads based on current filters and sorting options
-  const getSortedLeads = useCallback((leadsToSort: Lead[]) => {
-    const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
-      (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
-
-    let sorted = [...leadsToSort]
-
-    // 1. Debt Range Sort (if not advanced date filters)
-    if (debtRangeSort !== "none" && !hasAdvancedDateFilters) {
-      sorted.sort((a, b) => {
-        const debtA = Number.parseFloat(a.debtRange?.toString() || "0")
-        const debtB = Number.parseFloat(b.debtRange?.toString() || "0")
-        if (debtRangeSort === "low-to-high") return debtA - debtB
-        if (debtRangeSort === "high-to-low") return debtB - debtA
-        return 0
-      })
-    } 
-    // 2. Callback Sort (if activeTab is callback and not advanced date filters)
-    else if (activeTab === "callback" && !hasAdvancedDateFilters) {
-      sorted.sort((a, b) => {
-        const priorityA = getCallbackPriority(a)
-        const priorityB = getCallbackPriority(b)
-        
-        // If priorities are the same, sort by scheduled time (earliest first)
-        if (priorityA === priorityB && a.callbackInfo && b.callbackInfo && 
-            a.callbackInfo.scheduled_dt && b.callbackInfo.scheduled_dt) {
-          const timeA = new Date(a.callbackInfo.scheduled_dt).getTime()
-          const timeB = new Date(b.callbackInfo.scheduled_dt).getTime()
-          return timeA - timeB
-        }
-        
-        return priorityA - priorityB
-      })
-    }
-    // 3. Default Date Sort (or Advanced Date Sort)
-    else {
-      if (hasAdvancedDateFilters) {
-        if (convertedFromDate || convertedToDate) {
-          sorted.sort((a, b) => {
-            const dateA = a.convertedAt?.seconds ? a.convertedAt.seconds * 1000 : (a.convertedAt instanceof Date ? a.convertedAt.getTime() : 0)
-            const dateB = b.convertedAt?.seconds ? b.convertedAt.seconds * 1000 : (b.convertedAt instanceof Date ? b.convertedAt.getTime() : 0)
-            if (dateA !== dateB) return dateB - dateA
-            return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
-          })
-        } else {
-          sorted.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
-        }
-      } else {
-        sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      }
-    }
-
-    return sorted
-  }, [userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate, debtRangeSort, activeTab])
-
-  // Fetch leads with server-side filtering and pagination (no client-side search logic)
-  const fetchBillcutLeads = useCallback(
-    async (isLoadMore = false) => {
-      if (isLoadMore) {
-        setIsLoadingMore(true)
-      } else {
-        setIsLoading(true)
-        setLeads([])
-        setLastDoc(null)
-        setPage(1)
-        setHasMoreLeads(true)
-      }
-
-      try {
-        // Fetch total count for display purposes
-        if (!isLoadMore) {
-          await fetchTotalCount()
-        }
-
-        const leadsQuery = buildQuery(isLoadMore, lastDoc)
-        const querySnapshot = await getDocs(leadsQuery)
-        console.log(`[DEBUG] fetchBillcutLeads: Read ${querySnapshot.size} documents from DB (isLoadMore: ${isLoadMore})`)
-
-        if (querySnapshot.empty) {
-          setHasMoreLeads(false)
-          if (!isLoadMore) {
-            setLeads([])
-          }
-          return
-        }
-
-        const fetchedLeads = await Promise.all(
-          querySnapshot.docs.map(async (docSnapshot) => {
-            const data = docSnapshot.data()
-            const state = resolveLeadState(data)
-
-            // Fetch latest sales note from subcollection
-            const latestNote = await fetchLatestSalesNote(docSnapshot.id, data.sales_notes || "")
-
-            const lead: Lead = {
-              id: docSnapshot.id,
-              name: data.name || "",
-              email: data.email || "",
-              phone: data.mobile || "",
-              city: state,
-              status: data.category || "No Status",
-              source_database: "Bill Cut",
-              assignedTo: data.assigned_to || "",
-              monthlyIncome: data.income || "",
-              salesNotes: latestNote,
-              lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : new Date(),
-              date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
-              callbackInfo: null,
-              debtRange: data.debt_range || 0,
-              convertedAt: data.convertedAt || null,
-              statusHistory: data.statusHistory || [],
-            }
-
-            // Fetch callback info for callback leads
-            if (lead.status === "Callback") {
-              const callbackInfo = await fetchCallbackInfo(lead.id)
-              lead.callbackInfo = callbackInfo
-            }
-
-            return lead
-          }),
-        )
-
-        // Check if Advanced Date Filters are active
-        const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
-          (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
-
-        // Apply debt range sorting (client-side) - only if Advanced Date Filters are not active
-        let filteredLeads = fetchedLeads
-        if (debtRangeSort !== "none" && !hasAdvancedDateFilters) {
-          filteredLeads = [...filteredLeads].sort((a, b) => {
-            const debtA = Number.parseFloat(a.debtRange?.toString() || "0")
-            const debtB = Number.parseFloat(b.debtRange?.toString() || "0")
-            if (debtRangeSort === "low-to-high") {
-              return debtA - debtB
-            } else if (debtRangeSort === "high-to-low") {
-              return debtB - debtA
-            }
-            return 0
-          })
-        }
-
-        // Set the leads and apply callback sorting if needed
-        setLeads((prevLeads) => {
-          // Combine with previous leads if loading more
-          let combinedLeads: Lead[]
-          if (isLoadMore) {
-            combinedLeads = [...prevLeads, ...fetchedLeads]
-          } else {
-            // Preserve sticky leads that are not in the new batch
-            const stickyLeads = prevLeads.filter(l => stickyLeadsRef.current.has(l.id) && !fetchedLeads.find(fl => fl.id === l.id))
-            combinedLeads = [...stickyLeads, ...fetchedLeads]
-          }
-
-          return getSortedLeads(combinedLeads)
-        })
-
-        // Update pagination state
-        const lastDocument = querySnapshot.docs[querySnapshot.docs.length - 1]
-        setLastDoc(lastDocument)
-        setHasMoreLeads(querySnapshot.docs.length === LEADS_PER_PAGE)
-        
-        // Update page state
-        if (isLoadMore) {
-          setPage(prev => prev + 1)
-        } else {
-          setPage(1)
-        }
-
-        // Initialize editing state
-        const initialEditingState: EditingLeadsState = {}
-        filteredLeads.forEach((lead) => {
-          initialEditingState[lead.id] = {
-            ...lead,
-            salesNotes: lead.salesNotes || "",
-          }
-        })
-
-        if (!isLoadMore) {
-          setEditingLeads(initialEditingState)
-        } else {
-          setEditingLeads((prev) => ({ ...prev, ...initialEditingState }))
-        }
-      } catch (error: any) {
-        console.error("Error fetching billcut leads: ", error)
-        
-        // Check for missing index error
-        if (error.code === 'failed-precondition' && error.message.includes('index')) {
-          toast.error(
-            <div>
-              <p>Missing Index Error</p>
-              <p className="text-xs mt-1">This filter combination requires a new index.</p>
-              <p className="text-xs mt-1">Please check the console for the index creation link.</p>
-            </div>,
-            { autoClose: 10000 }
-          )
-        } else {
-          toast.error("Failed to load billcut leads")
-        }
-      } finally {
-        setIsLoading(false)
-        setIsLoadingMore(false)
-      }
-    },
-    [buildQuery, lastDoc, debtRangeSort, fetchTotalCount, userRole, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate],
-  )
-
-  // Setup infinite scroll
-  useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect()
-    }
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        const target = entries[0]
-        if (target.isIntersecting && hasMoreLeads && !isLoadingMore && !isLoading && !searchQuery.trim() && !isLoadAllLoading) {
-          fetchBillcutLeads(true)
-        }
-      },
-      { threshold: 0.1 },
-    )
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current)
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-      }
-    }
-  }, [hasMoreLeads, isLoadingMore, isLoading, fetchBillcutLeads, searchQuery, isLoadAllLoading])
-
-  // Fetch leads when filters change
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      // Reset pagination state when filters change
-      setLastDoc(null)
-      setHasMoreLeads(true)
-      stickyLeadsRef.current.clear() // Clear sticky leads when filters change
-      fetchBillcutLeads(false)
-    }, 300) // Debounce filter changes
-
-    return () => clearTimeout(timeoutId)
-  }, [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, debtRangeSort, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate])
-
-  // Handle search with debouncing - now triggers database search
-  useEffect(() => {
-    const timeoutId = setTimeout(async () => {
-      if (searchQuery.trim()) {
-        setIsSearching(true)
-        const results = await performDatabaseSearch(searchQuery, showMyLeads)
-        handleSearchResults(results)
-      } else {
-        setSearchResults([])
-        setIsSearching(false)
-      }
-    }, 500) // Slightly longer debounce for search
-
-    return () => clearTimeout(timeoutId)
-  }, [searchQuery, showMyLeads, performDatabaseSearch, handleSearchResults])
-
-  // 1. Collection Listener for New Leads (only when no search query and on first page)
-  useEffect(() => {
-    let collectionUnsubscribe: (() => void) | null = null;
-    
-    if (!searchQuery && page === 1) {
-        let q = query(collection(crmDb, "billcutLeads"));
-        
-        // Apply Filters (matching buildQuery logic)
-        if (activeTab === "callback") {
-            q = query(q, where("category", "==", "Callback"));
-        }
-        
-        if (statusFilter && statusFilter !== "all") {
-            if (statusFilter === "No Status") {
-                q = query(q, where("category", "in", ["", "-", "No Status"]));
-            } else {
-                q = query(q, where("category", "==", statusFilter));
-            }
-        }
-        
-        if (salesPersonFilter && salesPersonFilter !== "all") {
-            if (salesPersonFilter === "-") {
-                q = query(q, where("assigned_to", "in", ["", "-"]));
-            } else {
-                q = query(q, where("assigned_to", "==", salesPersonFilter));
-            }
-        }
-
-        if (showMyLeads && typeof window !== "undefined") {
-            const currentUserName = localStorage.getItem("userName")
-            if (currentUserName) {
-                q = query(q, where("assigned_to", "==", currentUserName))
-            }
-        }
-        
-        if (fromDate) {
-            const start = new Date(`${fromDate}T00:00:00.000Z`);
-            start.setTime(start.getTime() - (330 * 60 * 1000)); // IST Adjust
-            q = query(q, where("date", ">=", start.getTime()));
-        }
-        
-        if (toDate) {
-            const end = new Date(`${toDate}T23:59:59.999Z`);
-            end.setTime(end.getTime() - (330 * 60 * 1000)); // IST Adjust
-            q = query(q, where("date", "<=", end.getTime()));
-        }
-
-        // Advanced Date Filters
-        if (userRole === "admin" || userRole === "overlord") {
-            if (convertedFromDate) {
-                const start = new Date(convertedFromDate);
-                start.setHours(0, 0, 0, 0);
-                q = query(q, where("convertedAt", ">=", start));
-            }
-            if (convertedToDate) {
-                const end = new Date(convertedToDate);
-                end.setHours(23, 59, 59, 999);
-                q = query(q, where("convertedAt", "<=", end));
-            }
-            if (lastModifiedFromDate) {
-                const start = new Date(lastModifiedFromDate);
-                start.setHours(0, 0, 0, 0);
-                q = query(q, where("lastModified", ">=", start));
-            }
-            if (lastModifiedToDate) {
-                const end = new Date(lastModifiedToDate);
-                end.setHours(23, 59, 59, 999);
-                q = query(q, where("lastModified", "<=", end));
-            }
-        }
-        
-        // Sorting & Limit (only for Page 1 real-time updates)
-        const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
-            (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
-
-        const hasDateFilter = !!(fromDate || toDate)
-        const hasInequalityFilters = hasDateFilter || hasAdvancedDateFilters
-
-        if (debtRangeSort !== "none" && !hasInequalityFilters) {
-          // Apply Server-Side Debt Sort
-          if (debtRangeSort === "low-to-high") {
-            q = query(q, orderBy("debt_range", "asc"))
-          } else {
-            q = query(q, orderBy("debt_range", "desc"))
-          }
-          // Secondary sort by date for consistency
-          q = query(q, orderBy("date", "desc"))
-        } else {
-          if (hasAdvancedDateFilters) {
-            if (convertedFromDate || convertedToDate) {
-                q = query(q, orderBy("convertedAt", "desc"), orderBy("lastModified", "desc"));
-            } else {
-                q = query(q, orderBy("lastModified", "desc"));
-            }
-          } else {
-            q = query(q, orderBy("date", "desc"));
-          }
-        }
-
-        q = query(q, limit(LEADS_PER_PAGE));
-        
-        collectionUnsubscribe = onSnapshot(q, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                const data = change.doc.data();
-                const id = change.doc.id;
-                const state = resolveLeadState(data);
-
-                const leadData: Lead = {
-                    id,
-                    name: data.name || "",
-                    email: data.email || "",
-                    phone: data.mobile || "",
-                    city: state,
-                    status: data.category || "No Status",
-                    source_database: "Bill Cut",
-                    assignedTo: data.assigned_to || "",
-                    monthlyIncome: data.income || "",
-                    salesNotes: data.sales_notes || "",
-                    lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : new Date(),
-                    date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
-                    callbackInfo: null,
-                    debtRange: data.debt_range || 0,
-                    convertedAt: data.convertedAt || null,
-                    statusHistory: data.statusHistory || [],
-                };
-
-                if (change.type === "added") {
-                    // Fetch latest sales note for the new lead
-                    fetchLatestSalesNote(id, data.sales_notes || "").then(latestNote => {
-                        const updatedLeadData = { ...leadData, salesNotes: latestNote };
-                        setLeads(prev => {
-                            if (prev.find(l => l.id === id)) return prev;
-                            const combined = [...prev, updatedLeadData]
-                            const sorted = getSortedLeads(combined)
-                            // Slice to LEADS_PER_PAGE but preserve sticky leads
-                            const stickyIds = stickyLeadsRef.current;
-                            return sorted.filter((l, index) => index < LEADS_PER_PAGE || stickyIds.has(l.id));
-                        });
-                    });
-                    
-                    if (leadData.status === "Callback") {
-                        refreshLeadCallbackInfo(id);
-                    }
-                } else if (change.type === "modified") {
-                    fetchLatestSalesNote(id, data.sales_notes || "").then(latestNote => {
-                        const updater = (prev: Lead[]) => prev.map(l => {
-                            if (l.id === id) {
-                                // Only update if relevant fields changed to avoid unnecessary re-renders
-                                if (l.status !== leadData.status || 
-                                    l.assignedTo !== leadData.assignedTo || 
-                                    l.salesNotes !== latestNote ||
-                                    JSON.stringify(l.statusHistory) !== JSON.stringify(leadData.statusHistory)) {
-                                    return { ...l, ...leadData, salesNotes: latestNote, callbackInfo: l.callbackInfo };
-                                }
-                            }
-                            return l;
-                        });
-                        setLeads(updater);
-                        setSearchResults(updater);
-                    });
-                    if (leadData.status === "Callback") {
-                        refreshLeadCallbackInfo(id);
-                    }
-                } else if (change.type === "removed") {
-                    // Only remove if it's not a sticky lead
-                    if (!stickyLeadsRef.current.has(id)) {
-                      setLeads(prev => prev.filter(l => l.id !== id));
-                    }
-                }
-            });
-        });
-    }
-
-    return () => {
-        if (collectionUnsubscribe) collectionUnsubscribe();
-    }
-  }, [searchQuery, statusFilter, salesPersonFilter, showMyLeads, activeTab, fromDate, toDate, page, debtRangeSort, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate, getSortedLeads, userRole])
-
-  // 2. Individual Document Listeners (for leads already in state)
-  useEffect(() => {
-    const currentIds = leads.map(l => l.id)
-    const activeIds = Object.keys(listenersRef.current)
-
-    // Unsubscribe from leads that are no longer in the list
-    activeIds.forEach(id => {
-        if (!currentIds.includes(id)) {
-            if (listenersRef.current[id]) {
-                listenersRef.current[id]()
-                delete listenersRef.current[id]
-            }
-        }
-    })
-
-    // Subscribe to new leads in the list
-    currentIds.forEach(id => {
-        if (!listenersRef.current[id]) {
-            listenersRef.current[id] = onSnapshot(doc(crmDb, "billcutLeads", id), (docSnapshot) => {
-                if (docSnapshot.exists()) {
-                    const data = docSnapshot.data()
-                    fetchLatestSalesNote(id, data.sales_notes || "").then(latestNote => {
-                        const updater = (prevLeads: Lead[]) => prevLeads.map(l => {
-                            if (l.id === id) {
-                                const newStatus = data.category || "No Status"
-                                const newAssignedTo = data.assigned_to || ""
-                                const newSalesNotes = latestNote
-
-                                if (l.status !== newStatus || 
-                                    l.assignedTo !== newAssignedTo || 
-                                    l.salesNotes !== newSalesNotes ||
-                                    JSON.stringify(l.statusHistory) !== JSON.stringify(data.statusHistory || [])) {
-                                    
-                                    return {
-                                        ...l,
-                                        status: newStatus,
-                                        assignedTo: newAssignedTo,
-                                        salesNotes: newSalesNotes,
-                                        statusHistory: data.statusHistory || [],
-                                    }
-                                }
-                            }
-                            return l
-                        });
-                        setLeads(updater);
-                        setSearchResults(updater);
-                    })
-                }
-            })
-        }
-    })
-
-    return () => {
-        // Cleanup individual listeners on unmount or when leads change
-        // We don't want to cleanup EVERYTHING here because it would resubscribe to everything on every lead change.
-        // The logic above already handles granular cleanup.
-    }
-  }, [leads])
-
-  // Fetch team members
-
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
-      try {
-        const usersCollectionRef = collection(crmDb, "users")
-        const userSnapshot = await getDocs(usersCollectionRef)
-
-        const usersData = userSnapshot.docs
-          .map((doc) => {
-            const data = doc.data()
-            return {
-              id: doc.id,
-              firstName: data.firstName || "",
-              lastName: data.lastName || "",
-              email: data.email || "",
-              role: data.role || "",
-              status: data.status || "",
-              name: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
-            } as User
-          })
-          .filter((user) => (user.role === "sales" || user.role === "admin" || user.role === "overlord") && user.status?.toLowerCase() === "active")
-
-        setTeamMembers(usersData)
-
-        const salesPersonnel = usersData.filter((user) => user.role === "sales")
-        setSalesTeamMembers(salesPersonnel)
-      } catch (error) {
-        console.error("Error fetching team members: ", error)
-        toast.error("Failed to load team members")
-      }
-    }
-
-    fetchTeamMembers()
-  }, [])
-
-
-
-  // Optimistic update function
-  const updateLeadOptimistic = useCallback((id: string, updates: Partial<Lead>) => {
-    // Mark lead as sticky if we're updating it
-    stickyLeadsRef.current.add(id)
-
-    // Handle count updates optimistically - OUTSIDE setLeads to avoid double execution
-    // Check both states to find the lead
-    const lead = leads.find(l => l.id === id) || searchResults.find(l => l.id === id)
-    
-    if (lead) {
-      if (updates.status && updates.status !== lead.status) {
-        // Check if the old status matched the current filter
-        const oldStatusMatches = statusFilter === "all" || lead.status === statusFilter
-        // Check if the new status matches the current filter
-        const newStatusMatches = statusFilter === "all" || updates.status === statusFilter
-
-        // If it matched before but doesn't match now, decrement count
-        if (oldStatusMatches && !newStatusMatches) {
-          setTotalFilteredCount(prev => Math.max(0, prev - 1))
-        }
-        // If it didn't match before but matches now, increment count
-        else if (!oldStatusMatches && newStatusMatches) {
-          setTotalFilteredCount(prev => prev + 1)
-        }
-      }
-    }
-
-    const updateFunction = (prev: Lead[]) => 
-      prev.map((lead) => {
-        if (lead.id === id) {
-          const updatedLead = { ...lead, ...updates, lastModified: new Date() }
-          // If changing from "Converted" to another status, set convertedAt to null
-          if (lead.status === 'Converted' && updates.status && updates.status !== 'Converted') {
-            updatedLead.convertedAt = null
-          }
-          return updatedLead
-        }
-        return lead
-      })
-    
-    // Always update both leads and searchResults state if they contain the lead
-    setLeads(updateFunction)
-    setSearchResults(updateFunction)
-  }, [searchQuery, statusFilter, leads, searchResults])
-
-  // Update lead with optimistic updates
-  // Sends the pre_call_message_utlity WATI template after assignment (fire-and-forget)
-  const sendAssignmentNotification = async (leadIds: string[], salespersonId: string) => {
-    try {
-      const token = await currentUser?.getIdToken()
-      if (!token) return
-
-      fetch("/api/leads/send-assignment-notification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          leadIds, 
-          salespersonId, 
-          collectionName: "billcutLeads" 
-        }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.attempted > 0) {
-            console.log(`[WATI] Assignment notification sent to ${data.attempted} Bill Cut lead(s)`)
-          } else if (data.success === false) {
-             console.warn(`[WATI] Assignment notification issue: ${data.message || "Unknown"}`)
-          }
-        })
-        .catch((err) => console.error("[WATI] Assignment notification error:", err))
-    } catch (err) {
-      console.error("[WATI] Failed to initiate assignment notification:", err)
-    }
   }
 
-  const updateLead = async (id: string, data: any) => {
-    // Look for the lead in both states to ensure we have the most recent data (especially for history)
-    // IMPORTANT: Check the main 'leads' state first as it's the primary source of truth for onSnapshot updates
-    const currentLead = leads.find(lead => lead.id === id) || searchResults.find(lead => lead.id === id);
-    
-    // Debug log to trace history issues
-    console.log(`[updateLead] Updating lead ${id}. Current history length: ${currentLead?.statusHistory?.length || 0}`);
-    // Check if we're changing from "Converted" to another status
-    const isChangingFromConverted = currentLead?.status === 'Converted' && data.status && data.status !== 'Converted';
-    
-    // Prepare updates for optimistic UI
-    const leadUpdates = { ...data };
-
-    // statusHistory is now automatically managed by the Firestore trigger
-    // (onBillcutLeadStatusChange in Cloud Functions). We just set lastStatusUpdatedBy
-    // so the trigger knows who made the change.
-
-    // Apply optimistic update immediately
-    updateLeadOptimistic(id, leadUpdates)
-
-    try {
-      const leadRef = doc(crmDb, "billcutLeads", id)
-      const updateData: any = {
-        ...data,
-        lastModified: serverTimestamp(),
-      }
-
-      if ("status" in data) {
-        updateData.category = data.status
-        updateData.lastStatusUpdatedBy = currentUser?.email || currentUser?.displayName || "Unknown User"
-      }
-
-      if ("assignedTo" in data) {
-        updateData.assigned_to = data.assignedTo
-      }
-
-      if ("sales_notes" in data) {
-        updateData.sales_notes = data.sales_notes
-      }
-
-      // If changing from "Converted" to another status, set convertedAt to null
-      if (isChangingFromConverted) {
-        updateData.convertedAt = null;
-      }
-
-      await updateDoc(leadRef, updateData)
-      
-      // Fire WATI notification if assignment changed (non-blocking)
-      if ("assignedTo" in data && data.assignedTo && data.assignedTo !== "-" && data.assignedToId) {
-          sendAssignmentNotification([id], data.assignedToId)
-      }
-      
-      // If changing from "Converted" to another status, decrement the targets count
-      if (isChangingFromConverted) {
-        await decrementTargetsCount();
-      }
-
-      if (editingLead && editingLead.id === id) {
-        setEditingLead(null)
-      }
-
-      return true
-    } catch (error) {
-      console.error("Error updating lead: ", error)
-      // Revert optimistic update on error
-      const originalLead = leads.find((lead) => lead.id === id)
-      if (originalLead) {
-        updateLeadOptimistic(id, originalLead)
-      }
-      toast.error("Failed to update lead", {
-        position: "top-right",
-        autoClose: 3000,
-      })
-      return false
-    }
-  }
-
-  // Calculate counts for tabs
-  const callbackCount = useMemo(() => {
-    if (typeof window === "undefined") return 0
-    const currentUserName = localStorage.getItem("userName")
-    const currentUserRole = localStorage.getItem("userRole")
-
-    // For callback count, we need to count from all leads, not filtered leads
-    // This should be a separate query or calculation
-    return leads.filter((lead) => {
-      if (lead.status === "Callback") {
-        if (currentUserRole === "admin" || currentUserRole === "overlord") {
-          return true
-        } else {
-          // Use helper function for consistent normalization
-          return normalizeUserName(lead.assignedTo) === normalizeUserName(currentUserName || "")
-        }
-      }
-      return false
-    }).length
-  }, [leads])
-
-  const allLeadsCount = useMemo(() => {
-    return totalFilteredCount
-  }, [totalFilteredCount])
-
-  // Handle tab change
-  const handleTabChange = (tab: "all" | "callback") => {
-    setActiveTab(tab)
-    // Reset other filters when switching to callback tab
-    if (tab === "callback") {
-      setStatusFilter("all")
-      setSearchQuery("")
-    }
-  }
-
-  // Bulk assignment function
-  const bulkAssignLeads = async (leadIds: string[], salesPersonName: string, salesPersonId: string) => {
-    try {
-      // Get current user name for validation
-      const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") || "" : ""
-      
-      // Validate that leads are not already assigned to other salespeople
-      const alreadyAssignedLeads: string[] = []
-      const unassignedLeads: string[] = []
-      const currentUserLeads: string[] = []
-      
-      leadIds.forEach((leadId) => {
-        const lead = leads.find((l) => l.id === leadId)
-        if (lead) {
-          const assignedTo = lead.assignedTo || ""
-          if (assignedTo && assignedTo !== "" && assignedTo !== "-") {
-            // Lead is assigned to someone
-            if (assignedTo === currentUserName) {
-              // Lead is already assigned to current user
-              currentUserLeads.push(leadId)
-            } else {
-              // Lead is assigned to someone else
-              alreadyAssignedLeads.push(leadId)
-            }
-          } else {
-            // Lead is unassigned
-            unassignedLeads.push(leadId)
-          }
-        }
-      })
-
-      // Show warning if trying to assign leads that are already assigned to others
-      // Only restrict this for sales users - non-sales users can reassign any leads
-      if (alreadyAssignedLeads.length > 0 && userRole === "sales") {
-        const assignedLeadNames = alreadyAssignedLeads.map(leadId => {
-          const lead = leads.find(l => l.id === leadId)
-          return lead?.name || "Unknown"
-        }).join(", ")
-        
-        toast.error(
-          <div>
-            <p className="font-medium">Cannot Assign These Leads</p>
-            <p className="text-sm">
-              {alreadyAssignedLeads.length} lead{alreadyAssignedLeads.length > 1 ? "s are" : " is"} already assigned to other salespeople
-            </p>
-            <p className="text-xs text-gray-300 mt-1">
-              Leads: {assignedLeadNames}
-            </p>
-            <p className="text-xs text-gray-300 mt-1">
-              Please ask the assigned salesperson to unassign them first
-            </p>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 6000,
-          },
-        )
-        return
-      }
-
-      // Filter out leads that are already assigned to current user (no need to reassign)
-      // For non-sales users, include all leads (unassigned, current user's, and others')
-      const leadsToAssign = userRole === "sales" 
-        ? [...unassignedLeads, ...currentUserLeads]
-        : [...unassignedLeads, ...currentUserLeads, ...alreadyAssignedLeads]
-      
-      if (leadsToAssign.length === 0) {
-        toast.info("No leads need to be assigned", {
-          position: "top-right",
-          autoClose: 3000,
-        })
-        return
-      }
-
-      // Apply optimistic updates only to leads that need assignment
-      leadsToAssign.forEach((leadId) => {
-        updateLeadOptimistic(leadId, {
-          assignedTo: salesPersonName,
-          assignedToId: salesPersonId,
-        })
-      })
-
-      const updatePromises = leadsToAssign.map(async (leadId) => {
-        const leadRef = doc(crmDb, "billcutLeads", leadId)
-
-        // Add history entry
-        const historyRef = collection(crmDb, "billcutLeads", leadId, "history")
-        await addDoc(historyRef, {
-          assignmentChange: true,
-          previousAssignee: leads.find((l) => l.id === leadId)?.assignedTo || "Unassigned",
-          newAssignee: salesPersonName,
-          timestamp: serverTimestamp(),
-          assignedById: currentUserName,
-          editor: {
-            id: currentUser?.uid || "unknown",
-          },
-        })
-
-        // Update lead
-        await updateDoc(leadRef, {
-          assigned_to: salesPersonName,
-          assignedToId: salesPersonId,
-          lastModified: serverTimestamp(),
-        })
-      })
-
-      await Promise.all(updatePromises)
-
-      // Fire WATI pre_call_message_utlity notifications in parallel (non-blocking)
-      sendAssignmentNotification(leadsToAssign, salesPersonId)
-
-      setSelectedLeads([])
-      setShowBulkAssignment(false)
-      setBulkAssignTarget("")
-
-      // Show success message with details
-      let successMessage = ""
-      if (userRole === "sales") {
-        // Sales users can only assign unassigned leads and reassign their own leads
-        if (unassignedLeads.length > 0 && currentUserLeads.length > 0) {
-          successMessage = `${unassignedLeads.length} unassigned leads and ${currentUserLeads.length} of your existing leads assigned to ${salesPersonName}`
-        } else if (unassignedLeads.length > 0) {
-          successMessage = `${unassignedLeads.length} unassigned leads assigned to ${salesPersonName}`
-        } else if (currentUserLeads.length > 0) {
-          successMessage = `${currentUserLeads.length} of your leads reassigned to ${salesPersonName}`
-        }
-      } else {
-        // Non-sales users can reassign any leads
-        if (unassignedLeads.length > 0 && currentUserLeads.length > 0 && alreadyAssignedLeads.length > 0) {
-          successMessage = `${unassignedLeads.length} unassigned leads, ${currentUserLeads.length} of your leads, and ${alreadyAssignedLeads.length} leads from others assigned to ${salesPersonName}`
-        } else if (unassignedLeads.length > 0 && alreadyAssignedLeads.length > 0) {
-          successMessage = `${unassignedLeads.length} unassigned leads and ${alreadyAssignedLeads.length} leads from others assigned to ${salesPersonName}`
-        } else if (currentUserLeads.length > 0 && alreadyAssignedLeads.length > 0) {
-          successMessage = `${currentUserLeads.length} of your leads and ${alreadyAssignedLeads.length} leads from others reassigned to ${salesPersonName}`
-        } else if (unassignedLeads.length > 0 && currentUserLeads.length > 0) {
-          successMessage = `${unassignedLeads.length} unassigned leads and ${currentUserLeads.length} of your existing leads assigned to ${salesPersonName}`
-        } else if (unassignedLeads.length > 0) {
-          successMessage = `${unassignedLeads.length} unassigned leads assigned to ${salesPersonName}`
-        } else if (currentUserLeads.length > 0) {
-          successMessage = `${currentUserLeads.length} of your leads reassigned to ${salesPersonName}`
-        } else if (alreadyAssignedLeads.length > 0) {
-          successMessage = `${alreadyAssignedLeads.length} leads from others reassigned to ${salesPersonName}`
-        }
-      }
-
-      toast.success(
-        <div>
-          <p className="font-medium">Bulk Assignment Complete</p>
-          <p className="text-sm">{successMessage}</p>
-        </div>,
-        {
-          position: "top-right",
-          autoClose: 3000,
-        },
-      )
-    } catch (error) {
-      console.error("Error bulk assigning leads: ", error)
-      // Revert optimistic updates on error
-      leadIds.forEach((leadId) => {
-        const originalLead = leads.find((l) => l.id === leadId)
-        if (originalLead) {
-          updateLeadOptimistic(leadId, {
-            assignedTo: originalLead.assignedTo,
-            assignedToId: originalLead.assignedToId,
-          })
-        }
-      })
-
-      toast.error("Failed to assign leads", {
-        position: "top-right",
-        autoClose: 3000,
-      })
-    }
-  }
-
-  // Selection handlers
-  const handleSelectLead = (leadId: string) => {
-    setSelectedLeads((prev) => (prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]))
-  }
-
-  const handleSelectAll = () => {
-    if (selectedLeads.length === leads.length) {
-      setSelectedLeads([])
-    } else {
-      setSelectedLeads(leads.map((lead) => lead.id))
-    }
-  }
-
-  const handleBulkAssign = () => {
-    if (selectedLeads.length === 0) {
-      toast.error("Please select leads to assign")
-      return
-    }
-
-    const canBulkAssign = userRole === "admin" || userRole === "overlord" || userRole === "sales" || userRole === "billcut" || userRole === "assistant" || userRole === "advocate"
-
-    if (!canBulkAssign) {
-      toast.error("You don't have permission to bulk assign leads")
-      return
-    }
-
-    // Check for leads already assigned to other salespeople
-    const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") || "" : ""
-    const alreadyAssignedToOthers: string[] = []
-    const unassignedLeads: string[] = []
-    const currentUserLeads: string[] = []
-    
-    selectedLeads.forEach((leadId) => {
-      const lead = leads.find((l) => l.id === leadId)
-      if (lead) {
-        const assignedTo = lead.assignedTo || ""
-        if (assignedTo && assignedTo !== "" && assignedTo !== "-") {
-          if (assignedTo === currentUserName) {
-            currentUserLeads.push(leadId)
-          } else {
-            alreadyAssignedToOthers.push(leadId)
-          }
-        } else {
-          unassignedLeads.push(leadId)
-        }
-      }
-    })
-
-    // Show warning if some leads are already assigned to others (only for sales users)
-    if (alreadyAssignedToOthers.length > 0 && userRole === "sales") {
-      const assignedLeadNames = alreadyAssignedToOthers.map(leadId => {
-        const lead = leads.find(l => l.id === leadId)
-        return lead?.name || "Unknown"
-      }).join(", ")
-      
-      toast.warning(
-        <div>
-          <p className="font-medium">Some Leads Cannot Be Assigned</p>
-          <p className="text-sm">
-            {alreadyAssignedToOthers.length} of {selectedLeads.length} selected leads are already assigned to other salespeople
-          </p>
-          <p className="text-xs text-gray-300 mt-1">
-            Leads: {assignedLeadNames}
-          </p>
-          <p className="text-xs text-gray-300 mt-1">
-            Only {unassignedLeads.length + currentUserLeads.length} leads can be assigned
-          </p>
-        </div>,
-        {
-          position: "top-right",
-          autoClose: 6000,
-        },
-      )
-    }
-
-    setShowBulkAssignment(true)
-  }
-
-  const executeBulkAssign = () => {
-    if (!bulkAssignTarget) {
-      toast.error("Please select a salesperson")
-      return
-    }
-
-    const selectedPerson = teamMembers.find((member) => member.name === bulkAssignTarget)
-
-    if (!selectedPerson) {
-      toast.error("Selected salesperson not found")
-      return
-    }
-
-    bulkAssignLeads(selectedLeads, bulkAssignTarget, selectedPerson.id)
-  }
-
-  // Delete lead function
-  const deleteLead = async (leadId: string) => {
-    try {
-      // Apply optimistic update
-      setLeads((prev) => prev.filter((lead) => lead.id !== leadId))
-
-      await deleteDoc(doc(crmDb, "billcutLeads", leadId))
-
-      toast.success("Lead deleted successfully", {
-        position: "top-right",
-        autoClose: 3000,
-      })
-    } catch (error) {
-      console.error("Error deleting lead:", error)
-      // Revert optimistic update on error
-      fetchBillcutLeads(false)
-      toast.error("Failed to delete lead: " + (error instanceof Error ? error.message : String(error)), {
-        position: "top-right",
-        autoClose: 3000,
-      })
-    }
-  }
-
-  // Export to CSV function
-  const exportToCSV = () => {
-    try {
-      if (userRole !== "admin" && userRole !== "overlord" && userRole !== "billcut") {
-        toast.error("You don't have permission to export data")
-        return
-      }
-
-      const csvData = leads.map((lead) => ({
-        Name: lead.name || "",
-        Email: lead.email || "",
-        Phone: lead.phone || "",
-        City: lead.city || "",
-        Status: lead.status || "",
-        Source: lead.source_database || "",
-        "Assigned To": lead.assignedTo || "Unassigned",
-        "Monthly Income": lead.monthlyIncome || "",
-        "Sales Notes": lead.salesNotes || "",
-        "Last Modified": lead.lastModified?.toLocaleString() || "",
-      }))
-
-      const headers = Object.keys(csvData[0]).join(",")
-      const rows = csvData.map((obj) =>
-        Object.values(obj)
-          .map((value) => (typeof value === "string" ? `"${value.replace(/"/g, '""')}"` : value))
-          .join(","),
-      )
-
-      const csv = [headers, ...rows].join("\n")
-      const blob = new Blob([csv], { type: "text/csv" })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.setAttribute("hidden", "")
-      a.setAttribute("href", url)
-      a.setAttribute("download", `billcut-leads-export-${new Date().toISOString().split("T")[0]}.csv`)
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-
-      toast.success("Export completed successfully")
-    } catch (error) {
-      console.error("Error exporting data: ", error)
-      toast.error("Failed to export data")
-    }
-  }
-
-  // Fetch notes history function
   const fetchNotesHistory = async (leadId: string) => {
-    try {
-      // Cleanup previous listener if any
-      if (historyListenerRef.current) {
-        historyListenerRef.current();
-        historyListenerRef.current = null;
-      }
-
-      const leadDocRef = doc(crmDb, "billcutLeads", leadId)
-      const salesNotesRef = collection(leadDocRef, "salesNotes")
-      
-      const q = query(salesNotesRef, orderBy("createdAt", "desc"));
-
-      historyListenerRef.current = onSnapshot(q, (querySnapshot) => {
-        const historyData: HistoryItem[] = querySnapshot.docs.map((doc) => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            leadId: leadId,
-            content: data.content || "",
-            createdAt: data.createdAt,
-            createdBy: data.createdBy || "Unknown",
-            createdById: data.createdById || "",
-            displayDate: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString("en-GB", {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
-            }) : (data.displayDate || ""),
-            assignedById: "", // Not relevant for sales notes
-            assignmentChange: false,
-            previousAssignee: "",
-            newAssignee: "",
-            timestamp: data.createdAt, // Use createdAt as timestamp
-            editor: undefined,
-          }
-        })
-        
-        setCurrentHistory(historyData)
-      });
-
-      setShowHistoryModal(true)
-    } catch (error) {
-      console.error("Error fetching history: ", error)
-      toast.error("Failed to load history")
-    }
+    setSelectedHistoryLeadId(leadId)
+    setShowHistoryModal(true)
   }
 
-  // Cleanup history listener when modal closes
-  useEffect(() => {
-    if (!showHistoryModal && historyListenerRef.current) {
-      historyListenerRef.current();
-      historyListenerRef.current = null;
-    }
-  }, [showHistoryModal]);
-
-  // Refresh callback information for a specific lead
-  const refreshLeadCallbackInfo = async (leadId: string) => {
-    try {
-      const callbackInfo = await fetchCallbackInfo(leadId)
-      updateLeadOptimistic(leadId, { callbackInfo })
-    } catch (error) {
-      // Handle error silently
-    }
-  }
-
-  // Handle status change to language barrier
   const handleStatusChangeToLanguageBarrier = (leadId: string, leadName: string) => {
     setLanguageBarrierLeadId(leadId)
     setLanguageBarrierLeadName(leadName)
@@ -1885,96 +109,18 @@ const BillCutLeadsPage = () => {
     setShowLanguageBarrierModal(true)
   }
 
-  // Handle language barrier modal confirmation
   const handleLanguageBarrierConfirm = async (language: string) => {
-    if (isEditingLanguageBarrier) {
-      const success = await updateLead(languageBarrierLeadId, { language_barrier: language })
-      if (success) {
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-sm font-bold text-white">Language Updated</p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">{languageBarrierLeadName}</p>
-                <p className="mt-1 text-sm text-green-200">Preferred language updated to {language}</p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className:
-              "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          },
-        )
-      }
-    } else {
-      const dbData = {
-        status: "Language Barrier",
-        language_barrier: language,
-      }
-
-      const success = await updateLead(languageBarrierLeadId, dbData)
-      if (success) {
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">✅</span>
-                  <p className="text-sm font-bold text-white">Language Barrier Set</p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">{languageBarrierLeadName}</p>
-                <p className="mt-1 text-sm text-green-200">
-                  Lead status updated to "Language Barrier" with preferred language: {language}
-                </p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className:
-              "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          },
-        )
-      }
+    const success = await updateLead(languageBarrierLeadId, {
+      status: isEditingLanguageBarrier ? undefined : "Language Barrier",
+      language_barrier: language
+    })
+    
+    if (success) {
+      toast.success(isEditingLanguageBarrier ? "Language Updated" : "Language Barrier Set")
     }
-
     setShowLanguageBarrierModal(false)
-    setLanguageBarrierLeadId("")
-    setLanguageBarrierLeadName("")
-    setIsEditingLanguageBarrier(false)
-    setEditingLanguageBarrierInfo("")
   }
 
-  // Handle language barrier modal close
-  const handleLanguageBarrierClose = () => {
-    setShowLanguageBarrierModal(false)
-    setLanguageBarrierLeadId("")
-    setLanguageBarrierLeadName("")
-    setIsEditingLanguageBarrier(false)
-    setEditingLanguageBarrierInfo("")
-  }
-
-  // Handle editing language barrier details
   const handleEditLanguageBarrier = (lead: Lead) => {
     setLanguageBarrierLeadId(lead.id)
     setLanguageBarrierLeadName(lead.name || "Unknown Lead")
@@ -1983,606 +129,153 @@ const BillCutLeadsPage = () => {
     setShowLanguageBarrierModal(true)
   }
 
-  // Handle status change to converted
   const handleStatusChangeToConverted = (leadId: string, leadName: string) => {
     setConversionLeadId(leadId)
     setConversionLeadName(leadName)
     setShowConversionModal(true)
   }
 
-  // Handle conversion modal confirmation
   const handleConversionConfirm = async () => {
     setIsConvertingLead(true)
-    try {
-      const dbData = {
-        status: "Converted",
-        convertedAt: serverTimestamp(),
-      }
-
-      const success = await updateLead(conversionLeadId, dbData)
-      if (success) {
-        // Get the current user's information to update targets
-        const currentUserName = localStorage.getItem('userName');
-        const currentUserId = currentUser?.uid;
-        
-        if (currentUserName && currentUserId) {
-        // Get current month and year for targets collection
-        const now = new Date();
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const currentMonth = monthNames[now.getMonth()];
-        const currentYear = now.getFullYear();
-        const monthDocId = `${currentMonth}_${currentYear}`;
-          
-          try {
-            // First, check if the monthly document exists
-            const monthlyDocRef = doc(crmDb, 'targets', monthDocId);
-            const monthlyDocSnap = await getDoc(monthlyDocRef);
-            
-            if (monthlyDocSnap.exists()) {
-              // Monthly document exists, now find the user's target document by userName
-              const salesTargetsRef = collection(crmDb, 'targets', monthDocId, 'sales_targets');
-              const salesTargetsSnap = await getDocs(salesTargetsRef);
-              
-              let userTargetDoc = null;
-              let userTargetId = null;
-              
-              // Find the document where userName matches currentUserName
-              salesTargetsSnap.forEach(doc => {
-                const data = doc.data();
-                if (data.userName === currentUserName) {
-                  userTargetDoc = data;
-                  userTargetId = doc.id;
-                }
-              });
-              
-              if (userTargetDoc && userTargetId) {
-                // User's target document exists, increment the convertedLeads count
-                const targetRef = doc(crmDb, 'targets', monthDocId, 'sales_targets', userTargetId);
-                const currentConvertedLeads = (userTargetDoc as any).convertedLeads || 0;
-                
-                await updateDoc(targetRef, {
-                  convertedLeads: currentConvertedLeads + 1,
-                  updatedAt: serverTimestamp()
-                });
-              } else {
-                // User's target document doesn't exist, create it with convertedLeads = 1
-                const newTargetRef = doc(collection(crmDb, 'targets', monthDocId, 'sales_targets'));
-                await setDoc(newTargetRef, {
-                  userId: currentUserId,
-                  userName: currentUserName,
-                  convertedLeads: 1,
-                  convertedLeadsTarget: 0, // Default value
-                  amountCollected: 0, // Default value
-                  amountCollectedTarget: 0, // Default value
-                  createdAt: serverTimestamp(),
-                  updatedAt: serverTimestamp(),
-                  createdBy: currentUserId
-                });
-              }
-            } else {
-              // Monthly document doesn't exist, create it with user's target
-              const newTargetRef = doc(collection(crmDb, 'targets', monthDocId, 'sales_targets'));
-              await setDoc(newTargetRef, {
-                userId: currentUserId,
-                userName: currentUserName,
-                convertedLeads: 1,
-                convertedLeadsTarget: 0, // Default value
-                amountCollected: 0, // Default value
-                amountCollectedTarget: 0, // Default value
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                createdBy: currentUserId
-              });
-            }
-          } catch (targetError) {
-            console.error('Error updating targets collection:', targetError);
-            // Don't fail the entire conversion if targets update fails
-            // Just log the error and continue
-          }
-        }
-        
-        toast.success(
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">🎉</span>
-                  <p className="text-sm font-bold text-white">Lead Converted Successfully</p>
-                </div>
-                <p className="mt-2 text-sm text-green-100 font-medium">{conversionLeadName}</p>
-                <p className="mt-1 text-sm text-green-200">
-                  Lead status updated to "Converted" with conversion timestamp
-                </p>
-              </div>
-            </div>
-          </div>,
-          {
-            position: "top-right",
-            autoClose: 4000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            className:
-              "bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 border-2 border-green-400 shadow-xl",
-          },
-        )
-      }
-    } catch (error) {
-      console.error("Error converting lead:", error)
-      toast.error("Failed to convert lead. Please try again.")
-    } finally {
-      setIsConvertingLead(false)
-      setShowConversionModal(false)
-      setConversionLeadId("")
-      setConversionLeadName("")
-    }
-  }
-
-  // Handle conversion modal close
-  const handleConversionClose = () => {
-    setShowConversionModal(false)
-    setConversionLeadId("")
-    setConversionLeadName("")
+    const success = await updateLead(conversionLeadId, { status: "Converted" })
+    if (success) toast.success("Lead Converted Successfully")
     setIsConvertingLead(false)
+    setShowConversionModal(false)
   }
 
-  // Function to decrement convertedLeads count in targets
-  const decrementTargetsCount = async () => {
-    try {
-      const currentUserName = localStorage.getItem('userName');
-      const currentUserId = currentUser?.uid;
-      
-      if (currentUserName && currentUserId) {
-        // Get current month and year for targets collection
-        const now = new Date();
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const currentMonth = monthNames[now.getMonth()];
-        const currentYear = now.getFullYear();
-        const monthDocId = `${currentMonth}_${currentYear}`;
-        
-        // First, check if the monthly document exists
-        const monthlyDocRef = doc(crmDb, 'targets', monthDocId);
-        const monthlyDocSnap = await getDoc(monthlyDocRef);
-        
-        if (monthlyDocSnap.exists()) {
-          // Monthly document exists, now find the user's target document by userName
-          const salesTargetsRef = collection(crmDb, 'targets', monthDocId, 'sales_targets');
-          const salesTargetsSnap = await getDocs(salesTargetsRef);
-          
-          let userTargetDoc = null;
-          let userTargetId = null;
-          
-          // Find the document where userName matches currentUserName
-          salesTargetsSnap.forEach(doc => {
-            const data = doc.data();
-            if (data.userName === currentUserName) {
-              userTargetDoc = data;
-              userTargetId = doc.id;
-            }
-          });
-          
-          if (userTargetDoc && userTargetId) {
-            // User's target document exists, decrement the convertedLeads count
-            const targetRef = doc(crmDb, 'targets', monthDocId, 'sales_targets', userTargetId);
-            const currentConvertedLeads = (userTargetDoc as any).convertedLeads || 0;
-            
-            // Ensure we don't go below 0
-            const newCount = Math.max(0, currentConvertedLeads - 1);
-            
-            await updateDoc(targetRef, {
-              convertedLeads: newCount,
-              updatedAt: serverTimestamp()
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error decrementing targets count:', error);
-      // Don't fail the status update if targets update fails
-    }
-  };
-
-  // Load all leads function - bypasses pagination
-  const loadAllLeads = async () => {
-    if (searchQuery.trim()) {
-      toast.error("Cannot load all leads while searching. Please clear the search first.")
-      return
-    }
-
-    setIsLoadAllLoading(true)
-    setLeads([])
-    setLastDoc(null)
-    setHasMoreLeads(false) // Disable infinite scroll while loading all
-
-    try {
-      const baseQuery = collection(crmDb, "billcutLeads")
-      const constraints: any[] = []
-
-      // Date filters - using 'date' field instead of 'synced_date'
-      if (fromDate) {
-        const fromDateStart = new Date(fromDate)
-        fromDateStart.setHours(0, 0, 0, 0)
-        constraints.push(where("date", ">=", fromDateStart.getTime()))
-      }
-
-      if (toDate) {
-        const toDateEnd = new Date(toDate)
-        toDateEnd.setHours(23, 59, 59, 999)
-        constraints.push(where("date", "<=", toDateEnd.getTime()))
-      }
-
-      // Check if Advanced Date Filters are active
-      const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") && 
-        (convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate)
-
-      // Admin/Overlord only filters
-      if (userRole === "admin" || userRole === "overlord") {
-        // Converted date filters
-        if (convertedFromDate) {
-          const convertedFromStart = new Date(convertedFromDate)
-          convertedFromStart.setHours(0, 0, 0, 0)
-          constraints.push(where("convertedAt", ">=", convertedFromStart))
-        }
-
-        if (convertedToDate) {
-          const convertedToEnd = new Date(convertedToDate)
-          convertedToEnd.setHours(23, 59, 59, 999)
-          constraints.push(where("convertedAt", "<=", convertedToEnd))
-        }
-
-        // Last modified date filters
-        if (lastModifiedFromDate) {
-          const lastModifiedFromStart = new Date(lastModifiedFromDate)
-          lastModifiedFromStart.setHours(0, 0, 0, 0)
-          constraints.push(where("lastModified", ">=", lastModifiedFromStart))
-        }
-
-        if (lastModifiedToDate) {
-          const lastModifiedToEnd = new Date(lastModifiedToDate)
-          lastModifiedToEnd.setHours(23, 59, 59, 999)
-          constraints.push(where("lastModified", "<=", lastModifiedToEnd))
-        }
-      }
-
-      // Status filter
-      if (statusFilter !== "all") {
-        if (statusFilter === "No Status") {
-          constraints.push(where("category", "in", ["", "-", "No Status"]))
-        } else {
-          constraints.push(where("category", "==", statusFilter))
-        }
-      }
-
-      // Salesperson filter
-      if (salesPersonFilter !== "all") {
-        if (salesPersonFilter === "-") {
-          constraints.push(where("assigned_to", "in", ["", "-"]))
-        } else {
-          constraints.push(where("assigned_to", "==", salesPersonFilter))
-        }
-      }
-
-      // My Leads filter
-      if (showMyLeads && typeof window !== "undefined") {
-        const currentUserName = localStorage.getItem("userName")
-        if (currentUserName) {
-          constraints.push(where("assigned_to", "==", currentUserName))
-        }
-      }
-
-      // Tab-based filtering - Callback tab
-      if (activeTab === "callback") {
-        constraints.push(where("category", "==", "Callback"))
-      }
-
-      // Add ordering based on whether Advanced Date Filters are active
-      if (hasAdvancedDateFilters) {
-        // When Advanced Date Filters are active, sort by lastModified and convertedAt
-        if (convertedFromDate || convertedToDate) {
-          // If converted date filters are active, sort by convertedAt first, then lastModified
-          constraints.push(orderBy("convertedAt", "desc"))
-          constraints.push(orderBy("lastModified", "desc"))
-        } else {
-          // If only lastModified filters are active, sort by lastModified
-          constraints.push(orderBy("lastModified", "desc"))
-        }
-      } else {
-        // Default sorting - use 'date' field for consistency
-        constraints.push(orderBy("date", "desc"))
-      }
-
-      // Load all leads (no limit)
-      const allLeadsQuery = query(baseQuery, ...constraints)
-      const querySnapshot = await getDocs(allLeadsQuery)
-
-      if (querySnapshot.empty) {
-        setLeads([])
-        return
-      }
-
-      const fetchedLeads = await Promise.all(
-        querySnapshot.docs.map(async (docSnapshot) => {
-          const data = docSnapshot.data()
-          const state = resolveLeadState(data)
-
-          const lead: Lead = {
-            id: docSnapshot.id,
-            name: data.name || "",
-            email: data.email || "",
-            phone: data.mobile || "",
-            city: state,
-            status: data.category || "No Status",
-            source_database: "Bill Cut",
-            assignedTo: data.assigned_to || "",
-            monthlyIncome: data.income || "",
-            salesNotes: data.sales_notes || "",
-            lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : new Date(),
-            date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
-            callbackInfo: null,
-            debtRange: data.debt_range || 0,
-            convertedAt: data.convertedAt || null,
-            statusHistory: data.statusHistory || [],
-          }
-
-          // Fetch callback info for callback leads
-          if (lead.status === "Callback") {
-            const callbackInfo = await fetchCallbackInfo(lead.id)
-            lead.callbackInfo = callbackInfo
-          }
-
-          return lead
-        }),
-      )
-
-      // Apply debt range sorting (client-side) - only if Advanced Date Filters are not active
-      let filteredLeads = fetchedLeads
-      if (debtRangeSort !== "none" && !hasAdvancedDateFilters) {
-        filteredLeads = [...filteredLeads].sort((a, b) => {
-          const debtA = Number.parseFloat(a.debtRange?.toString() || "0")
-          const debtB = Number.parseFloat(b.debtRange?.toString() || "0")
-          if (debtRangeSort === "low-to-high") {
-            return debtA - debtB
-          } else if (debtRangeSort === "high-to-low") {
-            return debtB - debtA
-          }
-          return 0
-        })
-      }
-
-      // Apply callback sorting to the entire list when on callback tab - only if Advanced Date Filters are not active
-      if (activeTab === "callback" && !hasAdvancedDateFilters) {
-        filteredLeads = [...filteredLeads].sort((a, b) => {
-          const priorityA = getCallbackPriority(a)
-          const priorityB = getCallbackPriority(b)
-          
-          // If priorities are the same, sort by scheduled time (earliest first)
-          if (priorityA === priorityB && a.callbackInfo && b.callbackInfo && 
-              a.callbackInfo.scheduled_dt && b.callbackInfo.scheduled_dt) {
-            const timeA = new Date(a.callbackInfo.scheduled_dt).getTime()
-            const timeB = new Date(b.callbackInfo.scheduled_dt).getTime()
-            return timeA - timeB
-          }
-          
-          return priorityA - priorityB
-        })
-      }
-
-      setLeads(filteredLeads)
-      setTotalFilteredCount(filteredLeads.length)
-
-      // Initialize editing state
-      const initialEditingState: EditingLeadsState = {}
-      filteredLeads.forEach((lead) => {
-        initialEditingState[lead.id] = {
-          ...lead,
-          salesNotes: lead.salesNotes || "",
-        }
-      })
-      setEditingLeads(initialEditingState)
-
-      toast.success(`Loaded ${filteredLeads.length} leads`, {
-        position: "top-right",
-        autoClose: 3000,
-      })
-
-    } catch (error) {
-      console.error("Error loading all leads: ", error)
-      toast.error("Failed to load all leads")
-    } finally {
-      setIsLoadAllLoading(false)
-    }
-  }
-
-  // NEW: Bulk WhatsApp function
-  // NEW: Optimized Bulk WhatsApp function using sendBulkWhatsappMessages
-  const sendBulkWhatsApp = async (templateName: string, leadIds: string[], leadData?: any[]) => {
-    if (leadIds.length === 0) {
-      toast.error("No leads selected for WhatsApp messaging")
-      return
-    }
-
-    const functions = getFunctions(app)
-    const sendBulkWhatsappMessagesFn = httpsCallable(functions, "sendBulkWhatsappMessages")
-    
-    // Show initial toast
-    const toastId = toast.loading(`Initiating bulk WhatsApp for ${leadIds.length} leads...`, {
-      position: "top-right",
-    })
-
-    try {
-      const receivers = leadData || leadIds.map(id => {
-        const lead = leads.find(l => l.id === id)
-        return lead ? {
-          phoneNumber: lead.phone,
-          leadId: lead.id,
-          name: lead.name
-        } : null
-      }).filter(Boolean)
-
-      if (receivers.length === 0) {
-        toast.dismiss(toastId)
-        toast.error("Could not find lead details for selection")
-        return
-      }
-      
-      const payload = {
-        templateName: templateName,
-        broadcastName: `${templateName}_billcut_bulk_${Date.now()}`,
-        receivers: receivers.map((r: any) => ({
-          phoneNumber: r.phone || r.phoneNumber,
-          leadId: r.id || r.leadId,
-          name: r.name
-        })),
-        userId: currentUser?.uid || "Unknown",
-        userName: currentUser?.displayName || localStorage.getItem("userName") || "Unknown",
-        channelNumber: "919289622596"
-      }
-
-      const result = await sendBulkWhatsappMessagesFn(payload)
-      const resultData = result.data as any
-
-      if (resultData && resultData.success) {
-        toast.update(toastId, {
-          render: `Successfully initiated broadcast to ${receivers.length} leads.`,
-          type: "success",
-          isLoading: false,
-          autoClose: 5000
-        })
-        // Clear selection after successful send
-        setSelectedLeads([])
-      } else {
-        toast.update(toastId, {
-          render: "Failed to initiate bulk WhatsApp. Please check parameters.",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000
-        })
-      }
-    } catch (error: any) {
-      console.error("Error in bulk WhatsApp:", error)
-      toast.dismiss(toastId)
-      toast.error(`Failed to initiate bulk sending: ${error.message || "Server busy"}`)
-    }
-  }
-
-  // NEW: Handle bulk WhatsApp button click
-  const handleBulkWhatsApp = () => {
+  const handleBulkAssign = () => {
     if (selectedLeads.length === 0) {
-      toast.error("Please select leads to send WhatsApp messages")
+      toast.error("Please select leads to assign")
       return
     }
-
-    const canBulkWhatsApp = userRole === "admin" || userRole === "overlord" || userRole === "sales" || userRole === "billcut"
-
-    if (!canBulkWhatsApp) {
-      toast.error("You don't have permission to send bulk WhatsApp messages")
-      return
-    }
-
-    setShowBulkWhatsAppModal(true)
+    setShowBulkAssignment(true)
   }
 
-  // Render sidebar based on user role
-  const SidebarComponent = useMemo(() => {
-    if (userRole === "admin") {
-      return AdminSidebar
-    } else if (userRole === "overlord") {
-      return OverlordSidebar
-    } else if (userRole === "billcut") {
-      return BillcutSidebar
+  const executeBulkAssign = async () => {
+    if (!bulkAssignTarget) {
+      toast.error("Please select a salesperson")
+      return
     }
+    const person = teamMembers.find(m => m.name === bulkAssignTarget)
+    if (!person) return
+
+    setIsBulkAssigning(true)
+    const success = await bulkAssignLeads(selectedLeads, bulkAssignTarget, person.id)
+    if (success) {
+      setSelectedLeads([])
+      setShowBulkAssignment(false)
+      fetchBillcutLeads(false)
+    }
+    setIsBulkAssigning(false)
+  }
+
+  const handleExportToCSV = () => {
+    const csvData = leads.map((lead) => ({
+      Name: lead.name || "",
+      Email: lead.email || "",
+      Phone: lead.phone || "",
+      City: lead.city || "",
+      Status: lead.status || "",
+      Source: lead.source_database || "",
+      "Assigned To": lead.assignedTo || "Unassigned",
+      "Monthly Income": lead.monthlyIncome || "",
+      "Sales Notes": lead.salesNotes || "",
+      "Last Modified": lead.lastModified?.toLocaleString() || "",
+    }))
+
+    if (csvData.length === 0) return toast.info("No data to export")
+
+    const headers = Object.keys(csvData[0]).join(",")
+    const rows = csvData.map((obj) =>
+      Object.values(obj).map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")
+    )
+    const blob = new Blob([[headers, ...rows].join("\n")], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `billcut-leads-export-${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+  }
+
+  // --- Infinite Scroll Setup ---
+  useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect()
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreLeads && !isLoadingMore && !isLoading && !searchQuery.trim() && !isLoadAllLoading) {
+          fetchBillcutLeads(true)
+        }
+      },
+      { threshold: 0.1 }
+    )
+    if (loadMoreRef.current) observerRef.current.observe(loadMoreRef.current)
+    return () => observerRef.current?.disconnect()
+  }, [hasMoreLeads, isLoadingMore, isLoading, fetchBillcutLeads, searchQuery, isLoadAllLoading])
+
+  const callbackCount = useMemo(() => {
+    const curName = localStorage.getItem("userName")
+    return leads.filter(l => l.status === "Callback" && (
+      userRole === "admin" || userRole === "overlord" || normalizeUserName(l.assignedTo) === normalizeUserName(curName || "")
+    )).length
+  }, [leads, userRole])
+
+  const SidebarComponent = useMemo(() => {
+    if (userRole === "admin") return AdminSidebar
+    if (userRole === "overlord") return OverlordSidebar
+    if (userRole === "billcut") return BillcutSidebar
     return SalesSidebar
   }, [userRole])
 
   return (
     <div className="flex h-screen bg-[#0b1437] overflow-hidden">
-      {/* Sidebar - Desktop and Mobile Overlay */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
         {SidebarComponent && <SidebarComponent />}
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
       )}
 
-      {/* Main Content Area */}
       <div className="flex-1 overflow-auto bg-[#0b1437] relative custom-scrollbar">
-        <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
+        <div className="p-4 md:p-8 max-w-8xl mx-auto">
           <BillcutLeadsHeader
             isLoading={isLoading}
             userRole={userRole}
             currentUser={currentUser}
-            exportToCSV={exportToCSV}
+            exportToCSV={handleExportToCSV}
             loadAllLeads={loadAllLeads}
             isLoadAllLoading={isLoadAllLoading}
             onMenuToggle={() => setIsMobileSidebarOpen(true)}
           />
 
-          {/* Salesperson Performance Cards */}
           {(userRole === "admin" || userRole === "overlord") && (
             <BillcutSalespersonCards
-              onSalespersonClick={(name) => {
-                setSalesPersonFilter((prev) => prev === name ? "all" : name)
-              }}
+              onSalespersonClick={(name) => setSalesPersonFilter(prev => prev === name ? "all" : name)}
               activeSalesperson={salesPersonFilter !== "all" ? salesPersonFilter : undefined}
             />
           )}
 
           <BillcutLeadsTabs
             activeTab={activeTab}
-            onTabChange={handleTabChange}
+            onTabChange={setActiveTab}
             callbackCount={callbackCount}
-            allLeadsCount={allLeadsCount}
+            allLeadsCount={totalFilteredCount}
           />
 
           <BillcutLeadsFilters
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            statusOptions={statusOptions}
-            showMyLeads={showMyLeads}
-            setShowMyLeads={setShowMyLeads}
-            fromDate={fromDate}
-            setFromDate={setFromDate}
-            toDate={toDate}
-            setToDate={setToDate}
+            {...leadsState}
             filteredLeads={leads}
-            leads={leads}
+            allLeadsCount={totalFilteredCount}
+            statusOptions={statusOptions}
             userRole={userRole}
-            salesPersonFilter={salesPersonFilter}
-            setSalesPersonFilter={setSalesPersonFilter}
             salesTeamMembers={salesTeamMembers}
             selectedLeads={selectedLeads}
             onBulkAssign={handleBulkAssign}
-            onBulkWhatsApp={handleBulkWhatsApp}  // NEW: Add bulk WhatsApp handler
+            onBulkWhatsApp={() => setShowBulkWhatsAppModal(true)}
             onClearSelection={() => setSelectedLeads([])}
-            debtRangeSort={debtRangeSort}
-            setDebtRangeSort={setDebtRangeSort}
-            allLeadsCount={allLeadsCount}
             onSearchResults={handleSearchResults}
-            isSearching={isSearching}
-            setIsSearching={setIsSearching}
-            convertedFromDate={convertedFromDate}
-            setConvertedFromDate={setConvertedFromDate}
-            convertedToDate={convertedToDate}
-            setConvertedToDate={setConvertedToDate}
-            lastModifiedFromDate={lastModifiedFromDate}
-            setLastModifiedFromDate={setLastModifiedFromDate}
-            lastModifiedToDate={lastModifiedToDate}
-            setLastModifiedToDate={setLastModifiedToDate}
             actualSearchResultsCount={searchResults.length}
           />
-
-
 
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
@@ -2596,201 +289,64 @@ const BillCutLeadsPage = () => {
                 salesTeamMembers={salesTeamMembers}
                 updateLead={updateLead}
                 fetchNotesHistory={fetchNotesHistory}
-                crmDb={crmDb}
                 user={currentUser}
                 showMyLeads={showMyLeads}
                 selectedLeads={selectedLeads}
-                onSelectLead={handleSelectLead}
-                onSelectAll={handleSelectAll}
+                onSelectLead={(id) => setSelectedLeads(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
+                onSelectAll={() => setSelectedLeads(selectedLeads.length === leads.length ? [] : leads.map(l => l.id))}
                 activeTab={activeTab}
-                refreshLeadCallbackInfo={refreshLeadCallbackInfo}
+                refreshLeadCallbackInfo={async (id) => {
+                  const info = await leadsState.fetchCallbackInfo(id)
+                  updateLeadOptimistic(id, { callbackInfo: info })
+                }}
                 onStatusChangeToLanguageBarrier={handleStatusChangeToLanguageBarrier}
                 onStatusChangeToConverted={handleStatusChangeToConverted}
                 onEditLanguageBarrier={handleEditLanguageBarrier}
               />
 
-              {/* Infinite scroll trigger - only show when not searching and has more leads */}
               {hasMoreLeads && !searchQuery.trim() && (
                 <div ref={loadMoreRef} className="flex justify-center items-center py-8">
-                  {isLoadingMore ? (
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-400"></div>
-                  ) : (
-                    <div className="text-gray-400 text-sm">Scroll down to load more leads...</div>
-                  )}
+                  {isLoadingMore ? <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-400" /> : <div className="text-gray-400 text-sm">Scroll down to load more leads...</div>}
                 </div>
               )}
 
-              {/* Show message when all leads are loaded */}
               {!hasMoreLeads && !searchQuery.trim() && leads.length > 0 && (
-                <div className="flex justify-center items-center py-4">
-                  <div className="text-gray-400 text-sm">All leads loaded ({leads.length} total)</div>
-                </div>
+                <div className="flex justify-center items-center py-4 text-gray-400 text-sm">All leads loaded ({leads.length} total)</div>
               )}
-
-              {/* Bulk Assignment Modal */}
-              {showBulkAssignment && (
-                <div className="fixed inset-0 flex items-center justify-center z-50">
-                  <div className="bg-gray-800 rounded-xl p-6 w-full max-w-lg border border-gray-700">
-                    <h3 className="text-xl font-semibold text-gray-100 mb-4">Bulk Assign Leads</h3>
-                    <div className="mb-4">
-                      {/* Lead assignment status breakdown */}
-                      {(() => {
-                        const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") || "" : ""
-                        const alreadyAssignedToOthers: string[] = []
-                        const unassignedLeads: string[] = []
-                        const currentUserLeads: string[] = []
-                        
-                        selectedLeads.forEach((leadId) => {
-                          const lead = leads.find((l) => l.id === leadId)
-                          if (lead) {
-                            const assignedTo = lead.assignedTo || ""
-                            if (assignedTo && assignedTo !== "" && assignedTo !== "-") {
-                              if (assignedTo === currentUserName) {
-                                currentUserLeads.push(leadId)
-                              } else {
-                                alreadyAssignedToOthers.push(leadId)
-                              }
-                            } else {
-                              unassignedLeads.push(leadId)
-                            }
-                          }
-                        })
-
-                        return (
-                          <div className="mb-4 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
-                            <p className="text-gray-300 mb-2 font-medium">Assignment Summary:</p>
-                            <div className="space-y-1 text-sm">
-                              {unassignedLeads.length > 0 && (
-                                <p className="text-green-400">
-                                  ✓ {unassignedLeads.length} unassigned lead{unassignedLeads.length > 1 ? "s" : ""} can be assigned
-                                </p>
-                              )}
-                              {currentUserLeads.length > 0 && (
-                                <p className="text-blue-400">
-                                  ✓ {currentUserLeads.length} of your lead{currentUserLeads.length > 1 ? "s" : ""} can be reassigned
-                                </p>
-                              )}
-                              {alreadyAssignedToOthers.length > 0 && (
-                                <p className={userRole === "sales" ? "text-red-400" : "text-yellow-400"}>
-                                  {userRole === "sales" ? "✗" : "✓"} {alreadyAssignedToOthers.length} lead{alreadyAssignedToOthers.length > 1 ? "s are" : " is"} already assigned to others
-                                  {userRole !== "sales" && " (can be reassigned)"}
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-gray-400 text-xs mt-2">
-                              Total assignable: {userRole === "sales" 
-                                ? unassignedLeads.length + currentUserLeads.length 
-                                : unassignedLeads.length + currentUserLeads.length + alreadyAssignedToOthers.length
-                              } of {selectedLeads.length}
-                            </p>
-                          </div>
-                        )
-                      })()}
-                      
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Assign to:</label>
-                      <select
-                        value={bulkAssignTarget}
-                        onChange={(e) => setBulkAssignTarget(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
-                      >
-                        <option value="">Select Salesperson</option>
-                        {(userRole === "admin" || userRole === "overlord"
-                          ? teamMembers.filter((member) => member.role === "sales")
-                          : teamMembers.filter(
-                              (member) =>
-                                typeof window !== "undefined" &&
-                                member.name === localStorage.getItem("userName") &&
-                                member.role === "sales",
-                            )
-                        ).map((member) => (
-                          <option key={member.id} value={member.name}>
-                            {member.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={executeBulkAssign}
-                        disabled={!bulkAssignTarget}
-                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200"
-                      >
-                        Assign Leads
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowBulkAssignment(false)
-                          setBulkAssignTarget("")
-                        }}
-                        className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors duration-200"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!isLoading && (searchQuery ? searchResults.length === 0 : leads.length === 0) && (
-                <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-700/50">
-                  <div className="mx-auto h-24 w-24 text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1}
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-200">
-                    {searchQuery.trim() ? "No search results found" : "No leads found"}
-                  </h3>
-                  <p className="mt-2 text-sm text-gray-400">
-                    {searchQuery.trim() 
-                      ? `No leads match your search for "${searchQuery}". Try different keywords or check your spelling.`
-                      : "There are no bill cut leads matching your current filters."
-                    }
-                  </p>
-                </div>
-              )}
-
-              {/* History Modal */}
-              <BillcutHistoryModal
-                showHistoryModal={showHistoryModal}
-                setShowHistoryModal={setShowHistoryModal}
-                currentHistory={currentHistory}
-                leadName={leads.find(l => l.id === currentHistory[0]?.leadId)?.name}
-              />
-
-              {/* Language Barrier Modal */}
-              <BillcutLanguageBarrierModal
-                isOpen={showLanguageBarrierModal}
-                onClose={handleLanguageBarrierClose}
-                onConfirm={handleLanguageBarrierConfirm}
-                leadId={languageBarrierLeadId}
-                leadName={languageBarrierLeadName}
-                existingLanguage={editingLanguageBarrierInfo}
-              />
-
-              {/* Conversion Confirmation Modal */}
-              <BillcutConversionConfirmationModal
-                isOpen={showConversionModal}
-                onClose={handleConversionClose}
-                onConfirm={handleConversionConfirm}
-                leadName={conversionLeadName}
-                isLoading={isConvertingLead}
-              />
-
-              {/* Bulk WhatsApp Modal */}
-              <BulkWhatsAppModal
-                isOpen={showBulkWhatsAppModal}
-                onClose={() => setShowBulkWhatsAppModal(false)}
-                selectedLeads={leads.filter(lead => selectedLeads.includes(lead.id))}
-                onSendBulkWhatsApp={sendBulkWhatsApp}
-              />
             </>
           )}
+
+          <BillcutModalsContainer
+            showHistoryModal={showHistoryModal}
+            setShowHistoryModal={setShowHistoryModal}
+            selectedHistoryLeadId={selectedHistoryLeadId}
+            leads={leads}
+            searchResults={searchResults}
+            showLanguageBarrierModal={showLanguageBarrierModal}
+            languageBarrierLeadId={languageBarrierLeadId}
+            languageBarrierLeadName={languageBarrierLeadName}
+            editingLanguageBarrierInfo={editingLanguageBarrierInfo}
+            onLanguageBarrierClose={() => setShowLanguageBarrierModal(false)}
+            onLanguageBarrierConfirm={handleLanguageBarrierConfirm}
+            showConversionModal={showConversionModal}
+            conversionLeadName={conversionLeadName}
+            isConvertingLead={isConvertingLead}
+            onConversionClose={() => setShowConversionModal(false)}
+            onConversionConfirm={handleConversionConfirm}
+            showBulkWhatsAppModal={showBulkWhatsAppModal}
+            setShowBulkWhatsAppModal={setShowBulkWhatsAppModal}
+            selectedLeads={selectedLeads}
+            onSendBulkWhatsApp={async (template, ids, data) => {
+              await sendBulkWhatsApp(template, ids, data || [])
+            }}
+            showBulkAssignment={showBulkAssignment}
+            userRole={userRole}
+            teamMembers={teamMembers}
+            bulkAssignTarget={bulkAssignTarget}
+            setBulkAssignTarget={setBulkAssignTarget}
+            onBulkAssignExecute={executeBulkAssign}
+            onBulkAssignCancel={() => setShowBulkAssignment(false)}
+          />
         </div>
       </div>
     </div>

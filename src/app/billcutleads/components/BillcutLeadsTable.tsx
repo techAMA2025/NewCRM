@@ -1,10 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from "react"
-import { collection, getDocs, query, where } from "firebase/firestore"
-import { getFunctions, httpsCallable } from "firebase/functions"
-import { app } from "@/firebase/firebase"
 import Link from "next/link"
+import { authFetch } from "@/lib/authFetch"
 import BillcutLeadNotesCell from "./BillcutLeadNotesCell"
 import CallbackSchedulingModal from "./CallbackSchedulingModal"
 import StatusChangeConfirmationModal from "./StatusChangeConfirmationModal"
@@ -49,7 +47,6 @@ interface BillcutLeadsTableOptimizedProps {
   salesTeamMembers: User[]
   updateLead: (id: string, data: any) => Promise<boolean>
   fetchNotesHistory: (leadId: string) => Promise<void>
-  crmDb: any
   user: any
   showMyLeads: boolean
   selectedLeads: string[]
@@ -69,7 +66,6 @@ const BillcutLeadsTableOptimized = React.memo(
     salesTeamMembers,
     updateLead,
     fetchNotesHistory,
-    crmDb,
     user,
     showMyLeads,
     selectedLeads,
@@ -99,6 +95,7 @@ const BillcutLeadsTableOptimized = React.memo(
     const [showStatusHistoryModal, setShowStatusHistoryModal] = useState(false)
     const [historyLeadName, setHistoryLeadName] = useState("")
     const [historyData, setHistoryData] = useState<any[]>([])
+    const [isFetchingHistory, setIsFetchingHistory] = useState(false)
 
     // Get user info from localStorage
     const userRole = typeof window !== "undefined" ? localStorage.getItem("userRole") || "" : ""
@@ -117,24 +114,15 @@ const BillcutLeadsTableOptimized = React.memo(
       setSalesPersonColors(memoizedSalesPersonColors)
     }, [memoizedSalesPersonColors])
 
-    // Fetch sales team members - memoized
+    // Fetch sales team members via API
     const fetchSalesTeam = useCallback(async () => {
       try {
-        const usersRef = collection(crmDb, "users")
-        const q = query(usersRef, where("role", "in", ["sales", "salesperson"]))
-        const querySnapshot = await getDocs(q)
-        let salesTeam = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          name: doc.data().firstName + " " + doc.data().lastName,
-          email: doc.data().email,
-          role: doc.data().role,
-          status: doc.data().status,
-        })).filter(user => user.status?.toLowerCase() === 'active')
+        const response = await authFetch("/api/users/list?roles=sales,salesperson")
+        let salesTeam = await response.json()
 
         // Filter based on user role - but only for the purpose of picking WHO to assign to
-        // We will handle showing the current assignee separately in the dropdown
         if (userRole === "sales" || userRole === "salesperson") {
-          salesTeam = salesTeam.filter((person) => person.name === userName)
+          salesTeam = salesTeam.filter((person: User) => person.name === userName)
         }
 
         setSalesPeople(salesTeam)
@@ -142,6 +130,27 @@ const BillcutLeadsTableOptimized = React.memo(
         console.error("Error fetching sales team:", error)
       }
     }, [userRole, userName])
+
+    const fetchStatusHistory = useCallback(async (leadId: string, leadName: string) => {
+      setHistoryLeadName(leadName)
+      setIsFetchingHistory(true)
+      setHistoryData([]) // Clear previous data
+      setShowStatusHistoryModal(true)
+
+      try {
+        const response = await authFetch(`/api/bill-cut-leads/history-status?leadId=${leadId}`)
+        const data = await response.json()
+        
+        if (data.error) throw new Error(data.error)
+        setHistoryData(data.history || [])
+      } catch (error) {
+        console.error("Error fetching status history:", error)
+        toast.error("Failed to load status history")
+        setShowStatusHistoryModal(false)
+      } finally {
+        setIsFetchingHistory(false)
+      }
+    }, [])
 
     useEffect(() => {
       fetchSalesTeam()
@@ -594,114 +603,13 @@ const BillcutLeadsTableOptimized = React.memo(
             delete newData[statusConfirmLeadId]
             return newData
           })
-          
-          // Send email message after successful status update
-          try {
-            console.log("🔍 Starting email send process...", {
-              hasEmail: !!currentLead?.email,
-              email: currentLead?.email,
-              status: pendingStatusChange,
-              leadName: currentLead?.name,
-              fullLeadData: currentLead
-            });
-            
-            if (currentLead?.email && (pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering")) {
-              console.log("📧 Preparing to send email...");
-              const functions = getFunctions(app);
-              const sendStatusChangeMessage = httpsCallable(functions, 'sendStatusChangeMessage')
-              
-              console.log("📤 Calling cloud function...");
-              const emailResult = await sendStatusChangeMessage({
-                leadName: currentLead.name || 'Dear Sir/Ma\'am',
-                leadEmail: currentLead.email,
-                leadId: statusConfirmLeadId,
-                newStatus: pendingStatusChange,
-                leadSource: 'billcut'
-              })
-              
-              console.log("✅ Email function result:", emailResult);
-              
-              // Show success message with email confirmation
-              toast.success(
-                <div>
-                  <p className="font-medium">Status Updated & Message Sent!</p>
-                  <p className="text-sm">Status changed to "{pendingStatusChange}" and email sent to {currentLead.name}</p>
-                </div>,
-                {
-                  position: "top-right",
-                  autoClose: 4000,
-                }
-              )
-            } else {
-              console.log("❌ Email conditions not met:", {
-                hasEmail: !!currentLead?.email,
-                emailValue: currentLead?.email,
-                status: pendingStatusChange,
-                validStatus: pendingStatusChange === "Interested" || pendingStatusChange === "Not Answering",
-                emailLength: currentLead?.email?.length || 0
-              });
-              
-              // Show success message without email (if no email address)
-              toast.success(
-                `Status updated to "${pendingStatusChange}" successfully!`,
-                {
-                  position: "top-right",
-                  autoClose: 3000,
-                }
-              )
-              
-              if (!currentLead?.email) {
-                toast.warning(
-                  "No email address found for this lead. Message could not be sent.",
-                  {
-                    position: "top-right",
-                    autoClose: 3000,
-                  }
-                )
-              }
+          toast.success(
+            `Status updated to "${pendingStatusChange}" successfully!`,
+            {
+              position: "top-right",
+              autoClose: 3000,
             }
-          } catch (emailError) {
-            console.error("❌ Error sending status change email:", emailError);
-            console.error("❌ Error details:", {
-              name: emailError instanceof Error ? emailError.name : 'Unknown',
-              message: emailError instanceof Error ? emailError.message : String(emailError),
-              stack: emailError instanceof Error ? emailError.stack : 'No stack'
-            });
-            
-            // Extract more specific error information
-            let errorMessage = "Failed to send email. Please try again.";
-            
-            if (emailError instanceof Error) {
-              if (emailError.message.includes("unauthenticated")) {
-                errorMessage = "Authentication error. Please refresh the page and try again.";
-              } else if (emailError.message.includes("invalid-argument")) {
-                errorMessage = "Invalid email address or missing lead information.";
-              } else if (emailError.message.includes("failed-precondition")) {
-                errorMessage = "Email service not configured properly. Please contact support.";
-              } else if (emailError.message.includes("unavailable")) {
-                errorMessage = "Email service temporarily unavailable. Please try again later.";
-              } else {
-                errorMessage = `Email error: ${emailError.message}`;
-              }
-            }
-            
-            // Still show success for status update but warn about email failure
-            toast.success(
-              `Status updated to "${pendingStatusChange}" successfully!`,
-              {
-                position: "top-right",
-                autoClose: 3000,
-              }
-            )
-            
-            toast.error(
-              errorMessage,
-              {
-                position: "top-right",
-                autoClose: 5000,
-              }
-            )
-          }
+          )
         }
       } catch (error) {
         console.error("Error updating status:", error)
@@ -779,7 +687,12 @@ const BillcutLeadsTableOptimized = React.memo(
 
             <td className="px-6 py-4">
               <div className="flex flex-col gap-1">
-                <div className={`text-sm font-medium ${rowColors.textColor || "text-gray-100"}`}>{lead.name}</div>
+                <div 
+                  className={`text-sm font-medium ${rowColors.textColor || "text-gray-100"}`}
+                  title={lead.name}
+                >
+                  {lead.name.length > 15 ? `${lead.name.substring(0, 15)}...` : lead.name}
+                </div>
                 <div className={`text-sm ${rowColors.textColor ? "text-white/80" : "text-blue-300/80"}`}>
                   {lead.email}
                 </div>
@@ -799,6 +712,11 @@ const BillcutLeadsTableOptimized = React.memo(
                 <div className={`text-sm ${rowColors.textColor ? "text-white/90" : "text-orange-300"}`}>
                   Debt: ₹{lead.debtRange || 0}
                 </div>
+                {lead.maxDpd > 0 && (
+                  <div className={`text-[10px] ${rowColors.textColor ? "text-white/70" : "text-orange-300/70"}`}>
+                    Max DPD: {lead.maxDpd}
+                  </div>
+                )}
               </div>
             </td>
 
@@ -811,11 +729,7 @@ const BillcutLeadsTableOptimized = React.memo(
                 </span>
 
                 <button
-                  onClick={() => {
-                      setHistoryLeadName(lead.name);
-                      setHistoryData(lead.statusHistory || []);
-                      setShowStatusHistoryModal(true);
-                  }}
+                  onClick={() => fetchStatusHistory(lead.id, lead.name)}
                   className="mt-1 text-[10px] text-blue-600 hover:text-blue-800 underline block text-center w-full"
                   title="View Status History"
                 >
@@ -1021,7 +935,6 @@ const BillcutLeadsTableOptimized = React.memo(
                 phone: lead.phone || ''
               }}
               fetchNotesHistory={fetchNotesHistory}
-              crmDb={crmDb}
               updateLead={updateLead}
               disabled={!canEditLead(lead, showMyLeads)}
             />
@@ -1048,7 +961,6 @@ const BillcutLeadsTableOptimized = React.memo(
       salesPeople,
       handleEditCallback,
       fetchNotesHistory,
-      crmDb,
       updateLead,
     ])
 
@@ -1152,7 +1064,6 @@ const BillcutLeadsTableOptimized = React.memo(
           onConfirm={handleCallbackConfirm}
           leadId={callbackLeadId}
           leadName={callbackLeadName}
-          crmDb={crmDb}
           isEditing={isEditingCallback}
           existingCallbackInfo={editingCallbackInfo}
         />
@@ -1171,6 +1082,7 @@ const BillcutLeadsTableOptimized = React.memo(
             onClose={() => setShowStatusHistoryModal(false)}
             leadName={historyLeadName}
             history={historyData}
+            isLoading={isFetchingHistory}
         />
       </>
     )

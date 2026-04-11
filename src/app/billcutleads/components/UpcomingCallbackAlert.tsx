@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/firebase/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { searchCache } from '@/app/dashboard/superadmin/utils/cache';
+import { authFetch } from '@/lib/authFetch';
 
 interface UpcomingCallback {
   id: string;
@@ -14,19 +13,11 @@ interface UpcomingCallback {
   assignedTo: string;
 }
 
-interface UpcomingCallbackAlertProps {
-  leads: any[];
-  isVisible: boolean;
-  onViewCallbacks?: () => void;
-  onDismiss?: () => void;
-}
-
 const UpcomingCallbackAlert: React.FC = () => {
   const [upcomingCallbacks, setUpcomingCallbacks] = useState<UpcomingCallback[]>([]);
   const [isVisible, setIsVisible] = useState(false);
-  const { user, userRole, userName } = useAuth();
+  const { user, userName } = useAuth();
   
-  // Track user activity to optimize polling
   const [isActive, setIsActive] = useState(true);
   const lastActivityRef = useRef(Date.now());
 
@@ -60,7 +51,6 @@ const UpcomingCallbackAlert: React.FC = () => {
     if (!user || !userName || !isActive) return;
 
     try {
-      // Check cache first - 90 second cache for callbacks
       const cacheKey = `upcoming-callbacks-${userName}`;
       const cachedCallbacks = searchCache.get<UpcomingCallback[]>(cacheKey);
       if (cachedCallbacks) {
@@ -69,60 +59,17 @@ const UpcomingCallbackAlert: React.FC = () => {
         return;
       }
 
-      const now = new Date();
-      const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
-
-      const billcutLeadsRef = collection(db, 'billcutLeads');
+      const response = await authFetch("/api/bill-cut-leads/upcoming-callbacks")
+      const data = await response.json()
       
-      // Optimize query - filter by category and user assignment
-      let callbackQuery = query(
-        billcutLeadsRef,
-        where('category', '==', 'Callback'),
-        orderBy('scheduled_dt', 'asc'),
-        limit(20) // Limit results to reduce reads
-      );
-
-      // For sales users, add assignment filter
-      if (userRole === 'sales') {
-        callbackQuery = query(
-          billcutLeadsRef,
-          where('category', '==', 'Callback'),
-          where('assigned_to', '==', userName),
-          orderBy('scheduled_dt', 'asc'),
-          limit(10) // Fewer results for sales users
-        );
-      }
-
-      const querySnapshot = await getDocs(callbackQuery);
-      
-      const callbacks: UpcomingCallback[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.scheduled_dt) {
-          const scheduledTime = data.scheduled_dt.toDate();
-          
-          // Only include callbacks within 30 minutes
-          if (scheduledTime >= now && scheduledTime <= thirtyMinutesFromNow) {
-            // Filter by user role
-            const shouldInclude = userRole === 'admin' || data.assigned_to === userName;
-            
-            if (shouldInclude) {
-              callbacks.push({
-                id: doc.id,
-                name: data.name || 'Unknown',
-                phone: data.phone || '',
-                scheduledTime,
-                timeUntil: getTimeUntil(scheduledTime),
-                assignedTo: data.assigned_to || 'Unassigned'
-              });
-            }
-          }
-        }
-      });
+      const callbacks = (data.callbacks || []).map((cb: any) => ({
+        ...cb,
+        scheduledTime: new Date(cb.scheduledTime),
+        timeUntil: getTimeUntil(new Date(cb.scheduledTime))
+      }));
 
       // Sort by scheduled time
-      callbacks.sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
+      callbacks.sort((a: UpcomingCallback, b: UpcomingCallback) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
 
       // Cache for 90 seconds
       searchCache.set(cacheKey, callbacks, 90 * 1000);
@@ -130,7 +77,7 @@ const UpcomingCallbackAlert: React.FC = () => {
       setUpcomingCallbacks(callbacks);
       setIsVisible(callbacks.length > 0);
     } catch (error) {
-      // Handle error silently
+      console.error("Error fetching callbacks:", error)
     }
   };
 

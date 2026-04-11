@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { addDoc, collection, serverTimestamp, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { toast } from 'react-toastify';
+import { authFetch } from '@/lib/authFetch';
 
 interface CallbackSchedulingModalProps {
   isOpen: boolean;
@@ -8,7 +8,6 @@ interface CallbackSchedulingModalProps {
   onConfirm: () => void;
   leadId: string;
   leadName: string;
-  crmDb: any;
   isEditing?: boolean;
   existingCallbackInfo?: {
     id: string;
@@ -24,7 +23,6 @@ const CallbackSchedulingModal = ({
   onConfirm,
   leadId,
   leadName,
-  crmDb,
   isEditing = false,
   existingCallbackInfo = null
 }: CallbackSchedulingModalProps) => {
@@ -66,29 +64,22 @@ const CallbackSchedulingModal = ({
     try {
       const userName = typeof window !== 'undefined' ? localStorage.getItem('userName') || 'Unknown User' : 'Unknown User';
       
-      if (isEditing && existingCallbackInfo) {
-        // Update existing callback info
-        const callbackInfoRef = collection(crmDb, 'billcutLeads', leadId, 'callback_info');
-        const callbackSnapshot = await getDocs(callbackInfoRef);
-        
-        if (!callbackSnapshot.empty) {
-          const docRef = doc(crmDb, 'billcutLeads', leadId, 'callback_info', callbackSnapshot.docs[0].id);
-          await updateDoc(docRef, {
-            scheduled_dt: scheduledDateTime,
-            scheduled_by: userName,
-            updated_at: serverTimestamp()
-          });
-        }
-      } else {
-        // Create new callback info
-        const callbackInfoRef = collection(crmDb, 'billcutLeads', leadId, 'callback_info');
-        await addDoc(callbackInfoRef, {
-          id: 'attempt_1',
-          scheduled_dt: scheduledDateTime,
-          scheduled_by: userName,
-          created_at: serverTimestamp()
-        });
+      const method = isEditing ? "PUT" : "POST"
+      const body = {
+        leadId,
+        callbackDocId: existingCallbackInfo?.id,
+        scheduledDateTime: scheduledDateTime.toISOString(),
+        userName
       }
+
+      const response = await authFetch("/api/bill-cut-leads/callback-info", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      })
+
+      const result = await response.json()
+      if (result.error) throw new Error(result.error)
 
       toast.success(isEditing ? 'Callback updated successfully!' : 'Callback scheduled successfully!');
       onConfirm();

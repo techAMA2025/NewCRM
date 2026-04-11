@@ -3,10 +3,8 @@
 import type React from "react"
 import { FaFilter, FaUserTie } from "react-icons/fa"
 import { useEffect, useState, useCallback, useMemo } from "react"
-import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore"
-import { db as crmDb } from "@/firebase/firebase"
+import { authFetch } from "@/lib/authFetch"
 import { debounce } from "lodash"
-import { resolveLeadState } from "../utils/location"
 import BillcutDateInput from "./BillcutDateInput"
 
 type BillcutLeadsFiltersProps = {
@@ -29,16 +27,14 @@ type BillcutLeadsFiltersProps = {
   salesTeamMembers: any[]
   selectedLeads: string[]
   onBulkAssign: () => void
-  onBulkWhatsApp: () => void  // NEW: Add bulk WhatsApp handler
+  onBulkWhatsApp: () => void  
   onClearSelection: () => void
   debtRangeSort: "none" | "low-to-high" | "high-to-low"
   setDebtRangeSort: (sort: "none" | "low-to-high" | "high-to-low") => void
   allLeadsCount: number
-  // New props for search functionality
   onSearchResults?: (results: any[]) => void
   isSearching?: boolean
   setIsSearching?: (searching: boolean) => void
-  // New props for convertedAt and lastModified filters (admin/overlord only)
   convertedFromDate?: string
   setConvertedFromDate?: (date: string) => void
   convertedToDate?: string
@@ -47,7 +43,6 @@ type BillcutLeadsFiltersProps = {
   setLastModifiedFromDate?: (date: string) => void
   lastModifiedToDate?: string
   setLastModifiedToDate?: (date: string) => void
-  // New prop for actual search results count
   actualSearchResultsCount?: number
 }
 
@@ -71,7 +66,7 @@ const BillcutLeadsFiltersOptimized = ({
   salesTeamMembers,
   selectedLeads,
   onBulkAssign,
-  onBulkWhatsApp,  // NEW: Add bulk WhatsApp handler
+  onBulkWhatsApp,
   onClearSelection,
   debtRangeSort,
   setDebtRangeSort,
@@ -79,7 +74,6 @@ const BillcutLeadsFiltersOptimized = ({
   onSearchResults,
   isSearching = false,
   setIsSearching = () => {},
-  // New props for admin/overlord date filters
   convertedFromDate = "",
   setConvertedFromDate = () => {},
   convertedToDate = "",
@@ -93,181 +87,7 @@ const BillcutLeadsFiltersOptimized = ({
   const [salesUsers, setSalesUsers] = useState<{ id: string; name: string; noAnswerWorkModeEnabled: boolean }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchInput, setSearchInput] = useState(searchQuery)
-  const [searchResultsCount, setSearchResultsCount] = useState(0)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
-
-  // Normalize phone number for search
-  const normalizePhoneNumber = (phone: string): string => {
-    return phone.replace(/[\s\-$$$$+]/g, "")
-  }
-
-  // Perform database search using existing fields
-  const performDatabaseSearch = useCallback(
-    async (searchTerm: string) => {
-      if (!searchTerm.trim()) {
-        onSearchResults?.([])
-        setSearchResultsCount(0)
-        return
-      }
-
-      setIsSearching(true)
-
-      try {
-        const searchTermLower = searchTerm.toLowerCase().trim()
-        const normalizedPhone = normalizePhoneNumber(searchTerm)
-
-        const allResults = new Map() // Use Map to avoid duplicates
-
-        // Search by phone number (exact match)
-        if (normalizedPhone.length >= 10) {
-          try {
-            const phoneQuery = query(
-              collection(crmDb, "billcutLeads"),
-              where("mobile", ">=", normalizedPhone),
-              where("mobile", "<=", normalizedPhone + "\uf8ff"),
-              orderBy("mobile"),
-              limit(50),
-            )
-            const phoneSnapshot = await getDocs(phoneQuery)
-            phoneSnapshot.docs.forEach((doc) => {
-              const data = doc.data()
-              if (normalizePhoneNumber(data.mobile || "").includes(normalizedPhone)) {
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: 1 })
-              }
-            })
-          } catch (error) {
-            console.log("Phone search error:", error)
-          }
-        }
-
-        // Search by name (case-insensitive prefix match)
-        try {
-          const nameQuery = query(
-            collection(crmDb, "billcutLeads"),
-            where("name", ">=", searchTermLower),
-            where("name", "<=", searchTermLower + "\uf8ff"),
-            orderBy("name"),
-            limit(50),
-          )
-          const nameSnapshot = await getDocs(nameQuery)
-          nameSnapshot.docs.forEach((doc) => {
-            const data = doc.data()
-            if (data.name?.toLowerCase().includes(searchTermLower)) {
-              const relevance = data.name?.toLowerCase().startsWith(searchTermLower) ? 2 : 1
-              allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
-            }
-          })
-        } catch (error) {
-          console.log("Name search error:", error)
-        }
-
-        // Search by email (case-insensitive)
-        if (searchTermLower.includes("@") || searchTermLower.length > 3) {
-          try {
-            const emailQuery = query(
-              collection(crmDb, "billcutLeads"),
-              where("email", ">=", searchTermLower),
-              where("email", "<=", searchTermLower + "\uf8ff"),
-              orderBy("email"),
-              limit(50),
-            )
-            const emailSnapshot = await getDocs(emailQuery)
-            emailSnapshot.docs.forEach((doc) => {
-              const data = doc.data()
-              if (data.email?.toLowerCase().includes(searchTermLower)) {
-                const relevance = data.email?.toLowerCase().startsWith(searchTermLower) ? 2 : 1
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: relevance })
-              }
-            })
-          } catch (error) {
-            console.log("Email search error:", error)
-          }
-        }
-
-        // Alternative search: Get recent leads and filter (fallback)
-        if (allResults.size === 0) {
-          try {
-            const fallbackQuery = query(
-              collection(crmDb, "billcutLeads"),
-              orderBy("date", "desc"),
-              limit(1000), // Search through recent 1000 leads
-            )
-            const fallbackSnapshot = await getDocs(fallbackQuery)
-            fallbackSnapshot.docs.forEach((doc) => {
-              const data = doc.data()
-              const name = (data.name || "").toLowerCase()
-              const email = (data.email || "").toLowerCase()
-              const phone = normalizePhoneNumber(data.mobile || "")
-
-              if (
-                name.includes(searchTermLower) ||
-                email.includes(searchTermLower) ||
-                phone.includes(normalizedPhone)
-              ) {
-                allResults.set(doc.id, { id: doc.id, ...data, searchRelevance: 1 })
-              }
-            })
-          } catch (error) {
-            console.log("Fallback search error:", error)
-          }
-        }
-
-        // Convert Map to Array and sort by relevance
-        const searchResults = Array.from(allResults.values())
-          .sort((a, b) => (b.searchRelevance || 0) - (a.searchRelevance || 0))
-          .slice(0, 100) // Limit final results
-
-        // Transform results to match your Lead type
-        const transformedResults = searchResults.map((data) => {
-          const state = resolveLeadState(data)
-
-          return {
-            id: data.id,
-            name: data.name || "",
-            email: data.email || "",
-            phone: data.mobile || "",
-            city: state,
-            status: data.category || "No Status",
-            source_database: "Bill Cut",
-            assignedTo: data.assigned_to || "",
-            monthlyIncome: data.income || "",
-            salesNotes: data.sales_notes || "",
-            lastModified: data.lastModified ? new Date(data.lastModified.seconds * 1000) : (data.synced_date ? new Date(data.synced_date.seconds * 1000) : new Date()),
-            date: data.date || data.synced_date?.seconds * 1000 || Date.now(),
-            callbackInfo: null,
-            debtRange: data.debt_range || 0,
-            convertedAt: data.convertedAt || null,
-            statusHistory: data.statusHistory || [],
-          }
-        })
-
-        setSearchResultsCount(transformedResults.length)
-        onSearchResults?.(transformedResults)
-      } catch (error) {
-        console.error("Search error:", error)
-        onSearchResults?.([])
-        setSearchResultsCount(0)
-      } finally {
-        setIsSearching(false)
-      }
-    },
-    [onSearchResults, setIsSearching],
-  )
-
-  // Debounced search function
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((value: string) => {
-        if (value.trim()) {
-          performDatabaseSearch(value)
-        } else {
-          setSearchQuery(value)
-          onSearchResults?.([])
-          setSearchResultsCount(0)
-        }
-      }, 500),
-    [performDatabaseSearch, setSearchQuery, onSearchResults],
-  )
 
   // Update local search state when parent state changes
   useEffect(() => {
@@ -275,44 +95,24 @@ const BillcutLeadsFiltersOptimized = ({
   }, [searchQuery])
 
   // Handle search input changes
-  const handleSearchInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value
-      setSearchInput(value)
-      setSearchQuery(value) // Update parent state immediately for UI
-      debouncedSearch(value)
-    },
-    [debouncedSearch, setSearchQuery],
-  )
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchInput(value)
+    setSearchQuery(value) // Parent useEffect will handle the API call
+  }
 
   // Clear search function
-  const clearSearch = useCallback(() => {
+  const clearSearch = () => {
     setSearchInput("")
     setSearchQuery("")
-    onSearchResults?.([])
-    setSearchResultsCount(0)
-    debouncedSearch.cancel()
-  }, [setSearchQuery, onSearchResults, debouncedSearch])
+  }
 
-  // Fetch sales users - memoized
+  // Fetch sales users via API
   const fetchSalesUsers = useCallback(async () => {
     try {
       setIsLoading(true)
-      const salesQuery = query(collection(crmDb, "users"), where("role", "==", "sales"))
-      const querySnapshot = await getDocs(salesQuery)
-      const users = querySnapshot.docs.map((doc) => {
-        const data = doc.data()
-        const fullName =
-          data.firstName && data.lastName
-            ? `${data.firstName} ${data.lastName}`
-            : data.firstName || data.lastName || "Unknown"
-        return {
-          id: doc.id,
-          name: fullName,
-          status: data.status,
-          noAnswerWorkModeEnabled: data.noAnswerWorkModeEnabled || false
-        }
-      }).filter(user => user.status?.toLowerCase() === 'active')
+      const response = await authFetch("/api/users/list?roles=sales,salesperson")
+      const users = await response.json()
       setSalesUsers(users)
     } catch (error) {
       console.error("Error fetching sales users:", error)
@@ -321,7 +121,7 @@ const BillcutLeadsFiltersOptimized = ({
     }
   }, [])
 
-  // Handle Work Mode Toggle
+  // Handle Work Mode Toggle via API
   const handleWorkModeToggle = async () => {
     if (userRole !== 'admin' && userRole !== 'overlord') return
 
@@ -334,11 +134,14 @@ const BillcutLeadsFiltersOptimized = ({
     const newMode = !selectedUser.noAnswerWorkModeEnabled
     
     try {
-        const { doc, updateDoc } = await import("firebase/firestore")
-        const userRef = doc(crmDb, "users", selectedUser.id)
-        await updateDoc(userRef, {
-            noAnswerWorkModeEnabled: newMode
+        const response = await authFetch("/api/users/work-mode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: selectedUser.id, enabled: newMode })
         })
+        
+        const result = await response.json()
+        if (result.error) throw new Error(result.error)
         
         // Update local state
         setSalesUsers(prev => prev.map(u => 
@@ -470,14 +273,9 @@ const BillcutLeadsFiltersOptimized = ({
                   </span>
                 ) : (
                   <>
-                    Found <span className="text-blue-400 font-medium">{actualSearchResultsCount || searchResultsCount}</span> results for "
+                    Found <span className="text-blue-400 font-medium">{actualSearchResultsCount}</span> results for "
                     {searchQuery}"
-                    {showMyLeads && searchResultsCount > actualSearchResultsCount && (
-                      <span className="text-yellow-400 ml-2 text-xs">
-                        ({searchResultsCount - actualSearchResultsCount} hidden - not assigned to you)
-                      </span>
-                    )}
-                    {(actualSearchResultsCount || searchResultsCount) > 0 && <span className="text-green-400 ml-2">✓ Database search complete</span>}
+                    {actualSearchResultsCount > 0 && <span className="text-green-400 ml-2">✓ Database search complete</span>}
                   </>
                 )}
               </span>
@@ -511,7 +309,7 @@ const BillcutLeadsFiltersOptimized = ({
           <div className="flex items-center gap-4">
             <p className="text-sm text-gray-400">
               Showing{" "}
-              <span className="text-blue-400 font-medium">{searchQuery ? (actualSearchResultsCount || searchResultsCount) : allLeadsCount}</span>{" "}
+              <span className="text-blue-400 font-medium">{searchQuery ? actualSearchResultsCount : allLeadsCount}</span>{" "}
               Leads
               {searchQuery && <span className="text-green-400 ml-1">(from database search)</span>}
             </p>

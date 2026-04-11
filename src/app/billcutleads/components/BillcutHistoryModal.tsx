@@ -1,20 +1,49 @@
-import React from 'react';
-import { FaHistory, FaTimes } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
+import { FaHistory, FaTimes, FaSpinner } from 'react-icons/fa';
 import { HistoryItem } from '../types';
+import { authFetch } from '@/lib/authFetch';
+import { toast } from 'react-toastify';
 
 type BillcutHistoryModalProps = {
   showHistoryModal: boolean;
   setShowHistoryModal: (show: boolean) => void;
-  currentHistory: HistoryItem[];
+  leadId: string | null;
   leadName?: string;
 };
 
 const BillcutHistoryModal = ({ 
   showHistoryModal, 
   setShowHistoryModal, 
-  currentHistory,
+  leadId,
   leadName
 }: BillcutHistoryModalProps) => {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (showHistoryModal && leadId) {
+      const fetchHistory = async () => {
+        setIsLoading(true);
+        try {
+          const response = await authFetch(`/api/bill-cut-leads/history?leadId=${leadId}`);
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          setHistory(data.history || []);
+        } catch (error) {
+          console.error("Error fetching notes history:", error);
+          toast.error("Failed to load notes history");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchHistory();
+    } else if (!showHistoryModal) {
+      // Clear history when modal closes to avoid seeing old data for a new lead
+      setHistory([]);
+    }
+  }, [showHistoryModal, leadId]);
+
   if (!showHistoryModal) return null;
   
   return (
@@ -53,11 +82,16 @@ const BillcutHistoryModal = ({
         
         {/* Body */}
         <div 
-          className="flex-1 overflow-y-auto pr-2 overscroll-contain custom-scrollbar space-y-4"
+          className="flex-1 overflow-y-auto pr-2 overscroll-contain custom-scrollbar space-y-4 relative min-h-[200px]"
           onWheel={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
         >
-          {currentHistory.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <FaSpinner className="h-10 w-10 text-blue-500 animate-spin mb-4" />
+              <p className="text-gray-400 font-medium">Fetching history...</p>
+            </div>
+          ) : history.length === 0 ? (
             <div className="text-center py-16 bg-gray-900/40 rounded-3xl border border-gray-800/50">
               <FaHistory className="mx-auto h-16 w-16 text-gray-700 mb-4 opacity-50" />
               <p className="text-gray-400 font-medium">No sales notes history available yet.</p>
@@ -65,13 +99,18 @@ const BillcutHistoryModal = ({
             </div>
           ) : (
             <div className="space-y-4 pt-2">
-                {[...currentHistory]
+                {[...history]
                   .filter(entry => entry.createdAt != null)
                   .sort((a, b) => {
-                    const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 
-                                 (a.createdAt && typeof a.createdAt === 'object' && 'seconds' in a.createdAt ? (a.createdAt as any).seconds * 1000 : 0);
-                    const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : 
-                                 (b.createdAt && typeof b.createdAt === 'object' && 'seconds' in b.createdAt ? (b.createdAt as any).seconds * 1000 : 0);
+                    const getTime = (val: any) => {
+                      if (!val) return 0;
+                      if (val instanceof Date) return val.getTime();
+                      if (typeof val === 'string') return new Date(val).getTime();
+                      if (typeof val === 'object' && 'seconds' in val) return val.seconds * 1000;
+                      return 0;
+                    };
+                    const timeA = getTime(a.createdAt);
+                    const timeB = getTime(b.createdAt);
                     return timeB - timeA;
                   })
                   .map((entry, index) => (
@@ -86,7 +125,7 @@ const BillcutHistoryModal = ({
                             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{entry.displayDate || "Recent"}</p>
                           </div>
                         </div>
-                        <span className="px-2 py-1 bg-gray-900/50 rounded-lg text-[10px] font-bold text-gray-500 border border-gray-800">#{currentHistory.length - index}</span>
+                        <span className="px-2 py-1 bg-gray-900/50 rounded-lg text-[10px] font-bold text-gray-500 border border-gray-800">#{history.length - index}</span>
                       </div>
                       
                       <div className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed bg-gray-900/60 p-4 rounded-2xl border border-gray-800 group-hover:bg-gray-900 transition-colors">

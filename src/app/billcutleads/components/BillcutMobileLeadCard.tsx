@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react"
 import { BsCheckCircleFill } from "react-icons/bs"
-import { collection, addDoc, serverTimestamp, doc } from "firebase/firestore"
-import { db as crmDb, functions } from "@/firebase/firebase"
 import { toast } from "react-toastify"
-import { httpsCallable } from "firebase/functions"
 import { FaEllipsisV, FaWhatsapp } from "react-icons/fa"
 import { useWhatsAppTemplates } from "@/hooks/useWhatsAppTemplates"
+import { authFetch } from "@/lib/authFetch"
 
 const canUserEditLead = (lead: any) => {
   const currentUserRole = typeof window !== "undefined" ? localStorage.getItem("userRole") : ""
@@ -213,7 +211,7 @@ const BillcutMobileLeadCard = ({
     return []
   }
 
-  // Send WhatsApp message function
+  // Send WhatsApp message function via server API or helper
   const sendWhatsAppMessage = async (templateName: string) => {
     if (!phone || phone === "No phone") {
       toast.error("No phone number available for this lead")
@@ -224,45 +222,37 @@ const BillcutMobileLeadCard = ({
     setShowWhatsAppMenu(false)
 
     try {
-      const sendWhatsappMessageFn = httpsCallable(functions, "sendWhatsappMessage")
-
-      // Format phone number to ensure it's in the correct format
+      // Create message data
       let formattedPhone = String(phone).replace(/\s+/g, "").replace(/[()-]/g, "")
-      if (formattedPhone.startsWith("+91")) {
-        formattedPhone = formattedPhone.substring(3)
-      }
-      if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) {
-        formattedPhone = "91" + formattedPhone
-      }
+      if (formattedPhone.startsWith("+91")) formattedPhone = formattedPhone.substring(3)
+      if (!formattedPhone.startsWith("91") && formattedPhone.length === 10) formattedPhone = "91" + formattedPhone
 
-      const messageData = {
-        phoneNumber: formattedPhone,
-        templateName: templateName,
-        leadId: lead.id,
-        userId: localStorage.getItem("userName") || "Unknown",
-        userName: localStorage.getItem("userName") || "Unknown",
-        message: `Template message: ${templateName}`,
-        customParams: [
-          { name: "name", value: lead.name || "Customer" },
-          { name: "Channel", value: "Bill Cut" },
-          { name: "agent_name", value: localStorage.getItem("userName") || "Agent" },
-          { name: "customer_mobile", value: formattedPhone },
-        ],
-        channelNumber: "919289622596",
-        broadcastName: `${templateName}_${Date.now()}`,
-      }
+      const response = await authFetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone,
+          templateName: templateName,
+          leadId: lead.id,
+          customParams: [
+            { name: "name", value: lead.name || "Customer" },
+            { name: "Channel", value: "Bill Cut" },
+            { name: "agent_name", value: currentUserName || "Agent" },
+            { name: "customer_mobile", value: formattedPhone },
+          ]
+        })
+      })
 
-      const result = await sendWhatsappMessageFn(messageData)
+      const result = await response.json()
 
-      if (result.data && (result.data as any).success) {
+      if (result.success) {
         const templateDisplayName = whatsappTemplates.find((t) => t.templateName === templateName)?.name || templateName
         toast.success(`WhatsApp message sent successfully using "${templateDisplayName}" template`)
       } else {
-        toast.error("Failed to send WhatsApp message")
+        toast.error(result.error || "Failed to send WhatsApp message")
       }
     } catch (error: any) {
-      const errorMessage = error.message || error.details || "Unknown error"
-      toast.error(`Failed to send WhatsApp message: ${errorMessage}`)
+      toast.error(`Failed to send WhatsApp message: ${error.message}`)
     } finally {
       setIsSendingWhatsApp(false)
     }
@@ -298,7 +288,12 @@ const BillcutMobileLeadCard = ({
       {/* Name + Contact */}
       <div className="mb-3">
         <div className="flex items-center gap-2 mb-1.5">
-          <h3 className="font-bold text-gray-100 text-base tracking-tight">{name}</h3>
+          <h3 
+            className="font-bold text-gray-100 text-base tracking-tight"
+            title={name}
+          >
+            {name.length > 15 ? `${name.substring(0, 15)}...` : name}
+          </h3>
           {lead.conversion_id && <BsCheckCircleFill className="text-emerald-500" size={14} />}
         </div>
         <div className="flex flex-col gap-2">
@@ -322,6 +317,9 @@ const BillcutMobileLeadCard = ({
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">Debt Amount</span>
           <span className="text-xs text-blue-300 font-bold">💰 {debtDisplay}</span>
+          {lead.maxDpd > 0 && (
+            <span className="text-[9px] text-blue-300/60 font-medium">DPD: {lead.maxDpd}</span>
+          )}
         </div>
         <div className="flex flex-col gap-0.5 col-span-2 pt-2 border-t border-gray-800/30">
           <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">Monthly Income</span>

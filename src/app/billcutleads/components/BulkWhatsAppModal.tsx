@@ -56,7 +56,7 @@ const BulkWhatsAppModal: React.FC<BulkWhatsAppModalProps> = ({
       return {
         id: lead.id,
         name: lead.name || "Customer",
-        phone: phone,
+        phoneNumber: phone,
       }
     })
 

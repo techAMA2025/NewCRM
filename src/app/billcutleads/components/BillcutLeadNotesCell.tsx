@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, serverTimestamp, doc, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/firebase/firebase';
 import { toast } from 'react-toastify';
 import { FaEllipsisV, FaWhatsapp } from 'react-icons/fa';
 import { useWhatsAppTemplates } from '@/hooks/useWhatsAppTemplates';
+import { authFetch } from '@/lib/authFetch';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/firebase/firebase';
+
+const functions = getFunctions(app);
 
 type BillcutLeadNotesCellProps = {
   lead: {
@@ -14,12 +16,11 @@ type BillcutLeadNotesCellProps = {
     phone: string;
   };
   fetchNotesHistory: (leadId: string) => Promise<void>;
-  crmDb: any;
   updateLead: (id: string, data: any) => Promise<boolean>;
   disabled?: boolean;
 };
 
-const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disabled }: BillcutLeadNotesCellProps) => {
+const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }: BillcutLeadNotesCellProps) => {
   const [note, setNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -31,37 +32,11 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
   // Use the custom hook to fetch sales templates
   const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates('sales');
 
-  // Fetch the latest sales note on component mount
+  // Fetch the latest sales note via API - REMOVED to solve N+1 problem
   useEffect(() => {
-    const fetchLatestNote = async () => {
-      setIsLoadingLatestNote(true);
-      try {
-        const leadDocRef = doc(crmDb, 'billcutLeads', lead.id);
-        const salesNotesRef = collection(leadDocRef, 'salesNotes');
-        
-        // Query for the latest note from subcollection
-        const q = query(salesNotesRef, orderBy('createdAt', 'desc'), limit(1));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          // Use the latest note from subcollection
-          const latestNote = querySnapshot.docs[0].data();
-          setNote(latestNote.content || '');
-        } else {
-          // Fall back to sales_notes from main document
-          setNote(lead.salesNotes || '');
-        }
-      } catch (error) {
-        console.error('Error fetching latest note:', error);
-        // Fall back to sales_notes from main document in case of error
-        setNote(lead.salesNotes || '');
-      } finally {
-        setIsLoadingLatestNote(false);
-      }
-    };
-
-    fetchLatestNote();
-  }, [lead.id, lead.salesNotes, crmDb]);
+    setNote(lead.salesNotes || '');
+    setIsLoadingLatestNote(false);
+  }, [lead.id, lead.salesNotes]);
 
   // Handle clicking outside the menu to close it
   useEffect(() => {
@@ -85,29 +60,20 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, crmDb, updateLead, disa
     
     setIsLoading(true);
     try {
-      // Get userName from localStorage
       const userName = localStorage.getItem('userName') || 'Unknown';
       
-      // Save the note to the lead's salesNotes field
-      await updateLead(lead.id, { salesNotes: note });
-
-      // Add to salesNotes subcollection within the lead document
-      const leadDocRef = doc(crmDb, 'billcutLeads', lead.id);
-      const salesNotesRef = collection(leadDocRef, 'salesNotes');
-      await addDoc(salesNotesRef, {
-        content: note,
-        createdAt: serverTimestamp(),
-        createdBy: userName,
-        displayDate: new Date().toLocaleString('en-GB', {
-          month: 'numeric',
-          day: 'numeric',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
-          second: 'numeric',
-          hour12: true
+      const response = await authFetch("/api/bill-cut-leads/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: lead.id,
+          content: note,
+          userName: userName
         })
-      });
+      })
+
+      const result = await response.json()
+      if (result.error) throw new Error(result.error)
 
       toast.success('Note saved successfully');
     } catch (error) {

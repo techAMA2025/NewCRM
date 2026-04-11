@@ -13,6 +13,7 @@ type LeadStatusHistoryModalProps = {
   onClose: () => void;
   leadName: string;
   history: HistoryItem[] | undefined;
+  isLoading?: boolean;
 };
 
 const LeadStatusHistoryModal = ({
@@ -20,6 +21,7 @@ const LeadStatusHistoryModal = ({
   onClose,
   leadName,
   history,
+  isLoading = false,
 }: LeadStatusHistoryModalProps) => {
   if (!isOpen) return null;
 
@@ -67,7 +69,12 @@ const LeadStatusHistoryModal = ({
               onWheel={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
             >
-              {!sortedHistory || sortedHistory.length === 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-400"></div>
+                  <p className="text-sm text-gray-400 animate-pulse">Fetching history...</p>
+                </div>
+              ) : !sortedHistory || sortedHistory.length === 0 ? (
                 <div className="text-center py-12 bg-gray-900/40 rounded-2xl border border-gray-800/50">
                   <p className="text-sm text-gray-500">
                     No status history available for this lead.
