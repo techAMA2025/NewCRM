@@ -1,6 +1,10 @@
 import { adminDb } from './src/firebase/firebase-admin';
 
 async function check() {
+  if (!adminDb) {
+    console.error("Admin DB not initialized.");
+    return;
+  }
   const snapshot = await adminDb.collection('billcutLeads').limit(20).get();
   snapshot.docs.forEach(doc => {
     const data = doc.data();
