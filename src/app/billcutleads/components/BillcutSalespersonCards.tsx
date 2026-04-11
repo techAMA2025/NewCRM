@@ -50,7 +50,7 @@ export default function BillcutSalespersonCards({ onSalespersonClick, activeSale
     return (
       <div className="flex gap-3 overflow-x-auto pb-1 mb-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="min-w-[160px] h-[90px] rounded-lg bg-white/5 animate-pulse flex-shrink-0" />
+          <div key={i} className="min-w-[160px] h-[90px] rounded-lg bg-[#5A4C33]/5 animate-pulse flex-shrink-0" />
         ))}
       </div>
     )
@@ -66,23 +66,23 @@ export default function BillcutSalespersonCards({ onSalespersonClick, activeSale
           <div
             key={sp.id}
             onClick={() => onSalespersonClick?.(sp.name)}
-            className={`min-w-[160px] rounded-lg border px-4 py-3 flex-shrink-0 transition-colors
-              ${isActive ? "bg-blue-500/20 border-blue-400" : "bg-white/5 border-white/10 hover:border-white/25"}
+            className={`min-w-[140px] rounded-lg border px-3 py-2 flex-shrink-0 transition-all duration-200 shadow-sm
+              ${isActive ? "bg-[#D2A02A]/10 border-[#D2A02A]" : "bg-white/50 border-[#5A4C33]/10 hover:border-[#5A4C33]/30 backdrop-blur-sm"}
               ${onSalespersonClick ? "cursor-pointer" : ""}`}
           >
-            <p className={`text-sm font-semibold truncate mb-2 ${isActive ? "text-blue-300" : "text-white/90"}`}>
+            <p className={`text-[12px] font-bold truncate mb-1.5 ${isActive ? "text-[#D2A02A]" : "text-[#5A4C33]"}`}>
               {sp.name}
             </p>
-            <div className="flex justify-between gap-4">
+            <div className="flex justify-between gap-3">
               <div>
-                <p className="text-[11px] text-white/40">Month</p>
-                <p className={`text-lg font-bold leading-tight ${isActive ? "text-blue-300" : "text-white"}`}>
+                <p className="text-[10px] text-[#5A4C33]/40 font-bold uppercase tracking-tighter">Month</p>
+                <p className={`text-[16px] font-bold leading-tight ${isActive ? "text-[#D2A02A]" : "text-[#5A4C33]"}`}>
                   {sp.thisMonthCount}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] text-white/40">Overall</p>
-                <p className={`text-lg font-bold leading-tight ${isActive ? "text-blue-300" : "text-white"}`}>
+                <p className="text-[10px] text-[#5A4C33]/40 font-bold uppercase tracking-tighter">Overall</p>
+                <p className={`text-[16px] font-bold leading-tight ${isActive ? "text-[#D2A02A]" : "text-[#5A4C33]"}`}>
                   {sp.overallCount}
                 </p>
               </div>

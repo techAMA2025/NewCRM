@@ -98,67 +98,67 @@ const CallbackSchedulingModal = ({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-[60] p-4">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={handleGoBack}></div>
-      <div className="bg-gray-800 rounded-2xl p-6 md:p-8 w-full max-w-md border border-gray-700 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-100">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={handleGoBack}></div>
+      <div className="bg-[#F8F5EC] rounded-2xl p-6 md:p-8 w-full max-w-md border border-[#5A4C33]/10 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-[#5A4C33] italic tracking-tight uppercase">
             {isEditing ? 'Edit Callback' : 'Schedule Callback'}
           </h3>
           <button
             onClick={handleGoBack}
-            className="text-gray-400 hover:text-gray-300 transition-colors"
+            className="p-2 hover:bg-white rounded-xl text-[#5A4C33]/40 hover:text-[#5A4C33] transition-all duration-200 border border-transparent hover:border-[#5A4C33]/10 shadow-sm"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="mb-4">
-          <p className="text-gray-300 mb-2">
+        <div className="mb-6">
+          <p className="text-[#5A4C33]/60 font-bold">
             {isEditing ? 'Editing callback for: ' : 'Scheduling callback for: '} 
-            <span className="font-medium text-blue-300">{leadName}</span>
+            <span className="text-[#D2A02A] italic">“{leadName}”</span>
           </p>
         </div>
 
         <div className="space-y-4">
           {/* Date Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Callback Date
+            <label className="block text-[10px] font-bold text-[#D2A02A] uppercase tracking-widest mb-2 px-1">
+              Callback Date *
             </label>
             <input
               type="date"
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
               min={currentDate}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
+              className="w-full px-4 py-3 bg-white border border-[#5A4C33]/20 rounded-xl text-[#5A4C33] font-bold focus:outline-none focus:ring-1 focus:ring-[#D2A02A] focus:border-[#D2A02A] transition-all duration-200 shadow-sm"
               required
             />
           </div>
 
           {/* Time Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Callback Time
+            <label className="block text-[10px] font-bold text-[#D2A02A] uppercase tracking-widest mb-2 px-1">
+              Callback Time *
             </label>
             <input
               type="time"
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
               min={scheduledDate === currentDate ? currentTime : undefined}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
+              className="w-full px-4 py-3 bg-white border border-[#5A4C33]/20 rounded-xl text-[#5A4C33] font-bold focus:outline-none focus:ring-1 focus:ring-[#D2A02A] focus:border-[#D2A02A] transition-all duration-200 shadow-sm"
               required
             />
           </div>
 
           {/* Scheduled DateTime Preview */}
           {scheduledDate && scheduledTime && (
-            <div className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
-              <p className="text-sm text-gray-300">
-                <span className="font-medium">Scheduled for:</span>
+            <div className="bg-white/60 p-4 rounded-xl border border-[#5A4C33]/10 shadow-inner mt-6">
+              <p className="text-[10px] uppercase font-bold text-[#5A4C33]/40 tracking-widest mb-2 px-1">
+                Scheduled for
               </p>
-              <p className="text-blue-300 font-medium">
+              <p className="text-[#D2A02A] font-bold italic px-1 leading-relaxed">
                 {new Date(`${scheduledDate}T${scheduledTime}`).toLocaleString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
@@ -173,19 +173,19 @@ const CallbackSchedulingModal = ({
           )}
         </div>
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex gap-3 mt-8">
           <button
             onClick={handleSubmit}
             disabled={!scheduledDate || !scheduledTime || isSubmitting}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200"
+            className="flex-1 px-4 py-3 bg-[#D2A02A] hover:bg-[#B8911E] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all duration-200 shadow-md active:scale-[0.98]"
           >
             {isSubmitting ? (isEditing ? 'Updating...' : 'Scheduling...') : (isEditing ? 'Update Callback' : 'Schedule Callback')}
           </button>
           <button
             onClick={handleGoBack}
-            className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors duration-200"
+            className="flex-1 px-4 py-3 bg-[#5A4C33] hover:bg-[#4A3C2A] text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-md active:scale-[0.98] leading-tight"
           >
-            Clicked by mistake? Go back
+            Cancel Action
           </button>
         </div>
       </div>

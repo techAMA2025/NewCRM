@@ -215,10 +215,10 @@ const BillcutLeadsFiltersOptimized = ({
         <div className="relative rounded-md shadow-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             {isSearching ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#D2A02A]"></div>
             ) : (
               <svg
-                className="h-5 w-5 text-gray-400"
+                className="h-5 w-5 text-[#5A4C33]/40"
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
                 fill="currentColor"
@@ -234,7 +234,7 @@ const BillcutLeadsFiltersOptimized = ({
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-10 py-3 border border-gray-600/50 bg-gray-800/50 text-gray-100 rounded-xl focus:outline-none focus:ring-blue-500 focus:border-blue-400 transition-all duration-200 placeholder-gray-500"
+            className="block w-full pl-10 pr-10 py-3 border border-[#5A4C33]/20 bg-white text-[#5A4C33] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D2A02A]/30 focus:border-[#D2A02A] transition-all duration-200 placeholder-[#5A4C33]/40 shadow-sm"
             placeholder="Search by name, email, or phone number... (searches entire database)"
             value={searchInput}
             onChange={handleSearchInputChange}
@@ -243,7 +243,7 @@ const BillcutLeadsFiltersOptimized = ({
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
               <button
                 onClick={clearSearch}
-                className="text-gray-400 hover:text-gray-300 focus:outline-none"
+                className="text-[#5A4C33]/40 hover:text-[#5A4C33] focus:outline-none"
                 aria-label="Clear search"
                 type="button"
               >
@@ -265,24 +265,24 @@ const BillcutLeadsFiltersOptimized = ({
         {searchQuery && (
           <div className="mt-2 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-400">
+              <span className="text-sm text-[#5A4C33]/60">
                 {isSearching ? (
                   <span className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#D2A02A] mr-2"></div>
                     Searching database...
                   </span>
                 ) : (
                   <>
-                    Found <span className="text-blue-400 font-medium">{actualSearchResultsCount}</span> results for "
-                    {searchQuery}"
-                    {actualSearchResultsCount > 0 && <span className="text-green-400 ml-2">✓ Database search complete</span>}
+                    Found <span className="text-[#D2A02A] font-bold">{actualSearchResultsCount}</span> results for "
+                    <span className="text-[#5A4C33] font-medium">{searchQuery}</span>"
+                    {actualSearchResultsCount > 0 && <span className="text-green-600 ml-2 font-medium">✓ Database search complete</span>}
                   </>
                 )}
               </span>
             </div>
             <button
               onClick={clearSearch}
-              className="text-xs text-blue-400 hover:text-blue-300 focus:outline-none border border-blue-400/30 px-2 py-1 rounded-md hover:border-blue-300/50 transition-colors"
+              className="text-xs text-[#D2A02A] hover:text-[#B8911E] focus:outline-none border border-[#D2A02A]/30 px-2 py-1 rounded-md hover:border-[#D2A02A]/50 transition-colors font-medium bg-[#D2A02A]/5"
               type="button"
             >
               Clear search
@@ -291,49 +291,48 @@ const BillcutLeadsFiltersOptimized = ({
         )}
       </div>
 
-      {/* Rest of your existing filters code remains the same */}
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm">
+      <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 backdrop-blur-md shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <FaFilter className="text-gray-400 mr-2" />
-            <span className="text-sm font-medium text-gray-300">Filters</span>
+            <FaFilter className="text-[#5A4C33]/40 mr-2" />
+            <span className="text-sm font-bold text-[#5A4C33]">Filters</span>
             {/* Mobile toggle */}
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className="md:hidden ml-3 px-2 py-1 text-[10px] font-bold text-blue-400 border border-blue-400/30 rounded uppercase tracking-wider bg-blue-400/5"
+              className="md:hidden ml-3 px-2 py-1 text-[10px] font-bold text-[#D2A02A] border border-[#D2A02A]/30 rounded uppercase tracking-wider bg-[#D2A02A]/5"
             >
               {showMobileFilters ? "▲ Hide" : "▼ Show"}
             </button>
           </div>
 
           <div className="flex items-center gap-4">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-[#5A4C33]/60">
               Showing{" "}
-              <span className="text-blue-400 font-medium">{searchQuery ? actualSearchResultsCount : allLeadsCount}</span>{" "}
+              <span className="text-[#D2A02A] font-bold">{searchQuery ? actualSearchResultsCount : allLeadsCount}</span>{" "}
               Leads
-              {searchQuery && <span className="text-green-400 ml-1">(from database search)</span>}
+              {searchQuery && <span className="text-green-600 ml-1 font-medium">(from database search)</span>}
             </p>
 
             {selectedLeads.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-blue-300 font-medium">{selectedLeads.length} selected</span>
+                <span className="text-xs text-[#D2A02A] font-bold">{selectedLeads.length} selected</span>
                 <button
                   onClick={onBulkAssign}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
+                  className="px-3 py-1 bg-[#D2A02A] hover:bg-[#B8911E] text-white text-xs rounded-lg font-bold transition-all duration-200 shadow-sm"
                 >
                   Bulk Assign
                 </button>
                 {(userRole === 'admin' || userRole === 'overlord') && (
                 <button
                   onClick={onBulkWhatsApp}
-                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
+                  className="px-3 py-1 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white text-xs rounded-lg font-bold transition-all duration-200 shadow-sm"
                 >
                   Bulk WhatsApp
                 </button>
                 )}
                 <button
                   onClick={onClearSelection}
-                  className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-lg font-medium transition-colors duration-200"
+                  className="px-3 py-1 bg-white border border-[#5A4C33]/20 text-[#5A4C33] text-xs rounded-lg font-bold hover:bg-gray-50 transition-all duration-200"
                 >
                   Clear
                 </button>
@@ -343,7 +342,7 @@ const BillcutLeadsFiltersOptimized = ({
             {hasActiveFilters && (
               <button
                 onClick={clearAllFilters}
-                className="text-xs text-blue-400 hover:text-blue-300 focus:outline-none border border-blue-400/30 px-2 py-1 rounded-md hover:border-blue-300/50 transition-colors"
+                className="text-xs text-[#D2A02A] hover:text-[#B8911E] focus:outline-none border border-[#D2A02A]/30 px-2 py-1 rounded-md hover:border-[#D2A02A]/50 transition-colors font-medium"
                 type="button"
               >
                 Clear all filters
@@ -355,17 +354,17 @@ const BillcutLeadsFiltersOptimized = ({
         {/* Prominent Work Mode Toggle for Admins/Overlords */}
         {(userRole === "admin" || userRole === "overlord") && 
          salesPersonFilter !== "all" && salesPersonFilter !== "-" && (
-          <div className="mb-4 p-4 bg-gray-800/50 border-2 border-blue-500/30 rounded-2xl flex items-center justify-between shadow-lg ring-1 ring-blue-500/10 animate-in fade-in zoom-in duration-500 backdrop-blur-md">
+          <div className="mb-4 p-4 bg-white/60 border-2 border-[#D2A02A]/20 rounded-2xl flex items-center justify-between shadow-sm ring-1 ring-[#D2A02A]/5 animate-in fade-in zoom-in duration-500 backdrop-blur-md">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl text-white shadow-md">
+              <div className="p-3 bg-gradient-to-br from-[#D2A02A] to-[#B8911E] rounded-xl text-white shadow-md">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
               <div className="flex flex-col">
-                <p className="text-base font-bold text-gray-100 leading-tight">Full Edit Access Enabled</p>
-                <p className="text-[11px] text-gray-400 mt-1 uppercase font-semibold tracking-wider">
-                  Special Work Mode for <span className="text-blue-400">{salesPersonFilter}</span>
+                <p className="text-base font-bold text-[#5A4C33] leading-tight">Full Edit Access Enabled</p>
+                <p className="text-[11px] text-[#5A4C33]/60 mt-1 uppercase font-bold tracking-wider">
+                  Special Work Mode for <span className="text-[#D2A02A]">{salesPersonFilter}</span>
                 </p>
               </div>
             </div>
@@ -373,16 +372,16 @@ const BillcutLeadsFiltersOptimized = ({
               <div className="flex flex-col items-end">
                 <button
                   onClick={handleWorkModeToggle}
-                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#D2A02A] focus:ring-offset-2 ${
                     salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled
-                      ? "bg-blue-600"
-                      : "bg-gray-600"
+                      ? "bg-[#D2A02A]"
+                      : "bg-gray-300"
                   }`}
                   type="button"
                   role="switch"
                 >
                   <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-xl transition-transform duration-300 ${
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${
                       salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled
                         ? "translate-x-7"
                         : "translate-x-1"
@@ -390,7 +389,7 @@ const BillcutLeadsFiltersOptimized = ({
                   />
                 </button>
                 <span className={`text-[10px] font-black mt-1 ${
-                    salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled ? 'text-blue-400' : 'text-gray-500'
+                    salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled ? 'text-[#D2A02A]' : 'text-gray-400'
                   }`}>
                   {salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled ? 'ACTIVE' : 'OFF'}
                 </span>
@@ -400,183 +399,178 @@ const BillcutLeadsFiltersOptimized = ({
         )}
 
         <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block transition-all duration-300`}>
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-6 gap-3 md:gap-4">
-          {/* Status Filter */}
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-gray-400 mb-1">Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600"
-            >
-              <option value="all" className="bg-[#0b1437]">All Status</option>
-              <option value="No Status" className="bg-[#0b1437]">No Status</option>
-              {statusOptions
-                .filter((status) => status !== "No Status")
-                .map((status) => (
-                  <option key={status} value={status} className="bg-[#0b1437]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3">
+            {/* Status Filter */}
+            <div className="space-y-1">
+              <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="block w-full pl-3 pr-10 py-1.5 text-[11px] border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+              >
+                <option value="all">All Status</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
                     {status}
                   </option>
                 ))}
-            </select>
-          </div>
-
-          {/* Salesperson Filter */}
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-gray-400 mb-1">Salesperson</label>
-            <div className="relative">
-              <select
-                value={salesPersonFilter}
-                onChange={(e) => setSalesPersonFilter && setSalesPersonFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600 appearance-none"
-              >
-                <option value="all" className="bg-[#0b1437]">All Salesperson</option>
-                <option value="-" className="bg-[#0b1437]">Unassigned</option>
-                {isLoading ? (
-                  <option value="" disabled className="bg-[#0b1437]">
-                    Loading...
-                  </option>
-                ) : (
-                  salesTeamMembers.map((user) => (
-                    <option key={user.id} value={user.name} className="bg-[#0b1437]">
-                       {user.name}
-                    </option>
-                  ))
-                )}
               </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
-                <FaUserTie className="h-4 w-4" />
+            </div>
+
+            {/* Salesperson Filter */}
+            <div className="space-y-1">
+              <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70">Salesperson</label>
+              <div className="relative">
+                <select
+                  value={salesPersonFilter}
+                  onChange={(e) => setSalesPersonFilter(e.target.value)}
+                  className="block w-full pl-3 pr-10 py-1.5 text-[11px] border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200 appearance-none"
+                >
+                  <option value="all">All Salespersons</option>
+                  <option value="-">Unassigned</option>
+                  {isLoading ? (
+                    <option value="" disabled>Loading...</option>
+                  ) : (
+                    salesUsers.map((user) => (
+                      <option key={user.id} value={user.name}>
+                        {user.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-[#5A4C33]/40">
+                  <FaUserTie className="h-4 w-4" />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* From Date */}
-          <div className="space-y-1">
-            <BillcutDateInput
-              label="From Date"
-              value={fromDate}
-              onChange={setFromDate}
-              max={toDate || getCurrentDate}
-              placeholder="Select start date"
-            />
-          </div>
+            {/* From Date */}
+            <div className="space-y-1">
+              <BillcutDateInput
+                label="From Date"
+                value={fromDate}
+                onChange={setFromDate}
+                max={toDate || getCurrentDate}
+                placeholder="Select start date"
+              />
+            </div>
 
-          {/* To Date */}
-          <div className="space-y-1">
-            <BillcutDateInput
-              label="To Date"
-              value={toDate}
-              onChange={setToDate}
-              min={fromDate}
-              max={getCurrentDate}
-              placeholder="Select end date"
-            />
-          </div>
+            {/* To Date */}
+            <div className="space-y-1">
+              <BillcutDateInput
+                label="To Date"
+                value={toDate}
+                onChange={setToDate}
+                min={fromDate}
+                max={getCurrentDate}
+                placeholder="Select end date"
+              />
+            </div>
 
-          {/* Debt Range Filter */}
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-gray-400 mb-1">Debt Range</label>
-            <select
-              value={debtRangeSort}
-              onChange={(e) => setDebtRangeSort(e.target.value as "none" | "low-to-high" | "high-to-low")}
-              className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm hover:border-gray-600"
-            >
-              <option value="none" className="bg-[#0b1437]">No Sort</option>
-              <option value="low-to-high" className="bg-[#0b1437]">Low to High</option>
-              <option value="high-to-low" className="bg-[#0b1437]">High to Low</option>
-            </select>
-          </div>
-
-          {/* My Leads Toggle */}
-          <div className="space-y-1 flex flex-col justify-end">
-            <button
-              onClick={() => setShowMyLeads(!showMyLeads)}
-              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${
-                showMyLeads
-                  ? "bg-blue-500 text-white hover:bg-blue-600 border border-blue-400"
-                  : "bg-green-700/50 text-gray-300 hover:bg-gray-700 border border-gray-600/50"
-              }`}
-            >
-              <svg
-                className="w-4 h-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {/* Debt Range Filter */}
+            <div className="space-y-1">
+              <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70">Debt Range</label>
+              <select
+                value={debtRangeSort}
+                onChange={(e) => setDebtRangeSort(e.target.value as "none" | "low-to-high" | "high-to-low")}
+                className="block w-full pl-3 pr-10 py-1.5 text-[11px] border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-              {showMyLeads ? "All Leads" : "My Leads"}
-            </button>
-          </div>
-        </div>
-
-        {/* Admin/Overlord Only Filters */}
-        {(userRole === "admin" || userRole === "overlord") && (
-          <div className="mt-6 pt-4 border-t border-gray-700/50">
-            <div className="flex items-center mb-4">
-              <svg className="w-4 h-4 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium text-yellow-400">Advanced Date Filters</span>
+                <option value="none">No Sort</option>
+                <option value="low-to-high">Low to High</option>
+                <option value="high-to-low">High to Low</option>
+              </select>
             </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              {/* Converted Date Range */}
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-emerald-400 mb-1">Converted From</label>
-                <input
-                  type="date"
-                  value={convertedFromDate}
-                  onChange={(e) => setConvertedFromDate(e.target.value)}
-                  max={convertedToDate || getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-emerald-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 rounded-xl transition-all duration-200 shadow-sm"
-                />
-              </div>
 
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-emerald-400 mb-1">Converted To</label>
-                <input
-                  type="date"
-                  value={convertedToDate}
-                  onChange={(e) => setConvertedToDate(e.target.value)}
-                  min={convertedFromDate}
-                  max={getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-emerald-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 rounded-xl transition-all duration-200 shadow-sm"
-                />
-              </div>
-
-              {/* Last Modified Date Range */}
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-blue-400 mb-1">Last Modified From</label>
-                <input
-                  type="date"
-                  value={lastModifiedFromDate}
-                  onChange={(e) => setLastModifiedFromDate(e.target.value)}
-                  max={lastModifiedToDate || getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-blue-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-blue-400 mb-1">Last Modified To</label>
-                <input
-                  type="date"
-                  value={lastModifiedToDate}
-                  onChange={(e) => setLastModifiedToDate(e.target.value)}
-                  min={lastModifiedFromDate}
-                  max={getCurrentDate}
-                  className="block w-full pl-3 pr-3 py-2.5 text-sm border border-blue-600/50 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl transition-all duration-200 shadow-sm"
-                />
-              </div>
+            {/* My Leads Toggle */}
+            <div className="space-y-1 flex flex-col justify-end">
+              <button
+                onClick={() => setShowMyLeads(!showMyLeads)}
+                className={`flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg transition-all duration-200 text-[11px] font-bold shadow-sm ${
+                  showMyLeads
+                    ? "bg-[#D2A02A] text-white hover:bg-[#B8911E] border border-[#D2A02A]/20"
+                    : "bg-white text-[#5A4C33] hover:bg-gray-50 border border-[#5A4C33]/20"
+                }`}
+              >
+                <svg
+                  className="w-3 h-3"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                {showMyLeads ? "All Leads" : "My Leads"}
+              </button>
             </div>
           </div>
-        )}
+
+          {/* Admin/Overlord Only Filters */}
+          {(userRole === "admin" || userRole === "overlord") && (
+            <div className="mt-6 pt-4 border-t border-[#5A4C33]/10">
+              <div className="flex items-center mb-4">
+                <svg className="w-4 h-4 text-[#D2A02A] mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-bold text-[#D2A02A]">Advanced Date Filters</span>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                {/* Converted Date Range */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-green-600/80">Converted From</label>
+                  <input
+                    type="date"
+                    value={convertedFromDate}
+                    onChange={(e) => setConvertedFromDate(e.target.value)}
+                    max={convertedToDate || getCurrentDate}
+                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-green-600/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-green-600/80">Converted To</label>
+                  <input
+                    type="date"
+                    value={convertedToDate}
+                    onChange={(e) => setConvertedToDate(e.target.value)}
+                    min={convertedFromDate}
+                    max={getCurrentDate}
+                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-green-600/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                  />
+                </div>
+
+                {/* Last Modified Date Range */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-[#D2A02A]">Last Modified From</label>
+                  <input
+                    type="date"
+                    value={lastModifiedFromDate}
+                    onChange={(e) => setLastModifiedFromDate(e.target.value)}
+                    max={lastModifiedToDate || getCurrentDate}
+                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-[#D2A02A]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold text-[#D2A02A]">Last Modified To</label>
+                  <input
+                    type="date"
+                    value={lastModifiedToDate}
+                    onChange={(e) => setLastModifiedToDate(e.target.value)}
+                    min={lastModifiedFromDate}
+                    max={getCurrentDate}
+                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-[#D2A02A]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

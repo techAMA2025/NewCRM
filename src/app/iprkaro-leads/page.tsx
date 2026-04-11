@@ -178,7 +178,7 @@ function SortableHeader({
   return (
     <th
       style={style}
-      className="px-2 py-3 text-left text-[10px] font-bold uppercase tracking-wider select-none group relative whitespace-nowrap text-slate-500 bg-slate-50 border-r border-slate-200 last:border-r-0"
+      className="px-2 py-3 text-left text-[10px] font-bold uppercase tracking-wider select-none group relative whitespace-nowrap text-[#5A4C33]/60 bg-white border-r border-[#5A4C33]/10 last:border-r-0"
       {...attributes}
       {...listeners}
     >
@@ -191,7 +191,7 @@ function SortableHeader({
       {/* Resize Handle */}
       <div
         onMouseDown={handleMouseDown}
-        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-400 transition-colors z-20 pointer-events-auto"
+        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#D2A02A]/40 transition-colors z-20 pointer-events-auto"
       />
     </th>
   )
@@ -200,18 +200,18 @@ function SortableHeader({
 // ─── Helpers ───────────────────────────────────────────────────
 
 const formatInterest = (interest: string): { label: string; colorClass: string } => {
-  if (!interest) return { label: "–", colorClass: "bg-slate-50 text-slate-400 border-slate-200" }
+  if (!interest) return { label: "–", colorClass: "bg-[#F8F5EC] text-[#5A4C33]/40 border-[#5A4C33]/10" }
   const lower = interest.toLowerCase()
   if (lower.includes("trademark")) {
     const classMatch = interest.match(/class\s*(\d+)/i)
     return {
       label: classMatch ? `TM - ${classMatch[1]}` : "TM",
-      colorClass: "bg-indigo-50 text-indigo-700 border-indigo-200"
+      colorClass: "bg-indigo-900 text-indigo-100 border-indigo-700"
     }
   }
-  if (lower.includes("patent")) return { label: "P", colorClass: "bg-blue-50 text-blue-700 border-blue-200" }
-  if (lower.includes("copyright")) return { label: "C", colorClass: "bg-emerald-50 text-emerald-700 border-emerald-200" }
-  return { label: interest.length > 12 ? interest.substring(0, 12) + "…" : interest, colorClass: "bg-amber-50 text-amber-700 border-amber-200" }
+  if (lower.includes("patent")) return { label: "P", colorClass: "bg-blue-900 text-blue-100 border-blue-700" }
+  if (lower.includes("copyright")) return { label: "C", colorClass: "bg-emerald-900 text-emerald-100 border-emerald-700" }
+  return { label: interest.length > 12 ? interest.substring(0, 12) + "…" : interest, colorClass: "bg-amber-900 text-amber-100 border-amber-700" }
 }
 
 const getFormattedDate = (dateVal: any): { date: string; time: string } => {
@@ -234,14 +234,14 @@ const getFormattedDate = (dateVal: any): { date: string; time: string } => {
 const getStatusColor = (status: string) => {
   const key = (status || "").toLowerCase().trim()
   if (key === "no status") return "bg-[#F8F5EC] text-[#5A4C33] border border-[#5A4C33]/20"
-  if (key === "interested") return "bg-green-900 text-green-100 border border-green-700 shadow-sm"
-  if (key === "not interested") return "bg-red-900 text-red-100 border border-red-700 shadow-sm"
-  if (key === "not answering") return "bg-orange-900 text-orange-100 border border-orange-700 shadow-sm"
-  if (key === "callback") return "bg-yellow-900 text-yellow-100 border border-yellow-700 shadow-sm"
-  if (key === "future potential") return "bg-blue-900 text-blue-100 border border-blue-700 shadow-sm"
-  if (key === "converted") return "bg-emerald-900 text-emerald-100 border border-emerald-700 shadow-sm"
-  if (key === "language barrier") return "bg-indigo-900 text-indigo-100 border border-indigo-700 shadow-sm"
-  if (key === "closed lead") return "bg-gray-500 text-white border border-gray-700 shadow-sm"
+  if (key === "interested") return "bg-green-900 text-green-100 border border-green-700"
+  if (key === "not interested") return "bg-red-900 text-red-100 border border-red-700"
+  if (key === "not answering") return "bg-orange-900 text-orange-100 border border-orange-700"
+  if (key === "callback") return "bg-yellow-900 text-yellow-100 border border-yellow-700"
+  if (key === "future potential") return "bg-blue-900 text-blue-100 border border-blue-700"
+  if (key === "converted") return "bg-emerald-900 text-emerald-100 border border-emerald-700"
+  if (key === "language barrier") return "bg-indigo-900 text-indigo-100 border border-indigo-700"
+  if (key === "closed lead") return "bg-gray-500 text-white border border-gray-700"
   return "bg-gray-700 text-gray-200 border border-gray-600"
 }
 
@@ -662,17 +662,17 @@ const IprKaroLeadsPage = () => {
   // ── Cell Renderer ───────────────────────────────────────────
   const renderCell = (colId: string, lead: IprKaroLead, w: number) => {
     const cellStyle: React.CSSProperties = { width: `${w}px`, minWidth: `${w}px`, maxWidth: `${w}px` }
-    const cls = "px-1.5 py-1.5 border-r border-slate-100 last:border-r-0"
+    const cls = "px-1.5 py-1.5 border-r border-[#5A4C33]/10 last:border-r-0"
 
     switch (colId) {
       case "date": {
         const { date, time } = getFormattedDate(lead.createdAt)
-        return <td key={colId} className={cls} style={cellStyle}><div className="flex flex-col gap-0.5"><span className="text-[9.5px] font-semibold leading-tight text-slate-700">{date}</span><span className="text-[8.5px] leading-tight text-slate-400 font-medium">{time}</span></div></td>
+        return <td key={colId} className={cls} style={cellStyle}><div className="flex flex-col gap-0.5"><span className="text-[9.5px] font-bold leading-tight text-[#5A4C33]">{date}</span><span className="text-[8.5px] leading-tight text-[#5A4C33]/40 font-black">{time}</span></div></td>
       }
       case "personal":
-        return <td key={colId} className={cls} style={cellStyle}><div className="flex flex-col gap-0.5"><div className="font-bold text-[10.5px] text-slate-900 truncate">{lead.name || "Unknown"}</div><a href={`mailto:${lead.email}`} className="hover:text-blue-600 truncate text-[8.5px] text-slate-500 block font-medium transition-colors">{lead.email || "–"}</a><a href={`tel:${lead.phone}`} className="hover:text-blue-700 font-bold text-[9.5px] text-blue-600 transition-colors">{lead.phone || "–"}</a></div></td>
+        return <td key={colId} className={cls} style={cellStyle}><div className="flex flex-col gap-0.5"><div className="font-bold text-[10.5px] text-[#5A4C33] truncate">{lead.name || "Unknown"}</div><a href={`mailto:${lead.email}`} className="hover:text-[#D2A02A] truncate text-[8.5px] text-[#5A4C33]/50 block font-bold transition-colors">{lead.email || "–"}</a><a href={`tel:${lead.phone}`} className="hover:text-[#B8911E] font-bold text-[9.5px] text-[#D2A02A] transition-colors">{lead.phone || "–"}</a></div></td>
       case "state":
-        return <td key={colId} className={`${cls} text-[9.5px]`} style={cellStyle}><span className="text-slate-600 font-medium truncate block">{lead.state || "–"}</span></td>
+        return <td key={colId} className={`${cls} text-[9.5px]`} style={cellStyle}><span className="text-[#5A4C33]/70 font-bold truncate block">{lead.state || "–"}</span></td>
       case "interest": {
         const int = formatInterest(lead.interest)
         return <td key={colId} className={cls} style={cellStyle}><span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-bold border uppercase tracking-wider ${int.colorClass}`} title={lead.interest}>{int.label}</span></td>
@@ -683,19 +683,19 @@ const IprKaroLeadsPage = () => {
             {lead.trademarkName ? (
               <button
                 onClick={() => fetchTrademarkSearchResult(lead.trademarkName, lead.classNumber)}
-                className="inline-flex items-center px-1.5 py-1 rounded-lg text-[8.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-all cursor-pointer group shadow-sm active:scale-95"
+                className="inline-flex items-center px-1.5 py-1 rounded-lg text-[8.5px] font-bold bg-[#F8F5EC] text-[#5A4C33] border border-[#5A4C33]/10 hover:bg-white hover:border-[#D2A02A] hover:text-[#D2A02A] transition-all cursor-pointer group shadow-sm active:scale-95"
                 title="Click to view search report"
               >
                 <span className="mr-1 opacity-70">™</span> <span className="truncate">{lead.trademarkName}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 ml-1 text-blue-500 opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 ml-1 text-[#D2A02A] opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
               </button>
             ) : (
-              <span className="text-slate-300 text-[8.5px] font-medium tracking-widest pl-1.5">–––</span>
+              <span className="text-[#5A4C33]/20 text-[8.5px] font-black tracking-widest pl-1.5">–––</span>
             )}
           </td>
         )
       case "status":
-        return <td key={colId} className={cls} style={cellStyle}><select value={lead.status === "–" || lead.status === "-" ? "No Status" : lead.status} onChange={e => handleStatusChange(lead.id, e.target.value)} className={`text-[8.5px] font-bold rounded-full px-2 py-0.5 border-2 cursor-pointer focus:outline-none focus:ring-4 focus:ring-opacity-20 transition-all ${getStatusColor(lead.status).includes("green") ? "focus:ring-green-400" : getStatusColor(lead.status).includes("red") ? "focus:ring-red-400" : "focus:ring-blue-400"} ${getStatusColor(lead.status)}`}>{statusOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></td>
+        return <td key={colId} className={cls} style={cellStyle}><select value={lead.status === "–" || lead.status === "-" ? "No Status" : lead.status} onChange={e => handleStatusChange(lead.id, e.target.value)} className={`text-[8.5px] font-black rounded-xl px-2 py-1 border-2 cursor-pointer focus:outline-none focus:ring-4 focus:ring-opacity-20 transition-all ${getStatusColor(lead.status).includes("green") ? "focus:ring-green-400" : getStatusColor(lead.status).includes("red") ? "focus:ring-red-400" : "focus:ring-[#D2A02A]/40"} ${getStatusColor(lead.status)}`}>{statusOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></td>
       case "assignedTo":
         return (
           <td key={colId} className={`${cls} text-[11px]`} style={cellStyle}>
@@ -703,16 +703,16 @@ const IprKaroLeadsPage = () => {
               {!isUnassigned(lead) ? (
                 <div className="flex items-center group">
                   <div className={`inline-flex items-center justify-center h-5 w-5 rounded-md ${getBadgeColor(lead.assigned_to)} shadow-sm font-bold text-[8.5px] border border-white/20`}>{getInitials(lead.assigned_to)}</div>
-                  <span className="ml-1.5 text-[8.5px] text-slate-700 font-bold truncate flex-1">{lead.assigned_to}</span>
+                  <span className="ml-1.5 text-[8.5px] text-[#5A4C33] font-black truncate flex-1">{lead.assigned_to}</span>
                   {(userRole === "admin" || userRole === "overlord") && (
                     <button onClick={() => handleAssignmentChange(lead.id, "")} className="ml-0.5 opacity-0 group-hover:opacity-100 flex items-center justify-center h-4 w-4 rounded bg-red-50 text-red-500 hover:bg-red-100 transition-all" title="Unassign">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                     </button>
                   )}
                 </div>
-              ) : <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-slate-400 font-bold text-[8px] uppercase tracking-widest"><div className="h-1 w-1 rounded-full bg-slate-300 animate-pulse" />Unassigned</div>}
+              ) : <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#F8F5EC] border border-[#5A4C33]/10 rounded text-[#5A4C33]/40 font-black text-[8px] uppercase tracking-widest"><div className="h-1 w-1 rounded-full bg-[#5A4C33]/20 animate-pulse" />Unassigned</div>}
               {canModify && (isUnassigned(lead) || userRole === "admin" || userRole === "overlord") && (
-                <select value="" onChange={e => handleAssignmentChange(lead.id, e.target.value)} className="w-full px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[8.5px] text-slate-600 font-bold transition-all cursor-pointer hover:border-slate-300 focus:ring-2 focus:ring-blue-500/20">
+                <select value="" onChange={e => handleAssignmentChange(lead.id, e.target.value)} className="w-full px-1.5 py-0.5 bg-white border border-[#5A4C33]/10 rounded text-[8.5px] text-[#5A4C33] font-bold transition-all cursor-pointer hover:border-[#D2A02A] focus:ring-2 focus:ring-[#D2A02A]/20">
                   <option value="">{isUnassigned(lead) ? "Quick Assign..." : "Change Assignee..."}</option>
                   {salesTeamMembers.map(p => <option key={p.id} value={`${p.id}|${p.name}`}>{p.name}{p.name === currentUserName ? " (Me)" : ""}</option>)}
                 </select>
@@ -724,9 +724,9 @@ const IprKaroLeadsPage = () => {
         return (
           <td key={colId} className={`${cls} text-[9.5px]`} style={cellStyle}>
             <div className="flex items-start gap-1.5">
-              <div className="flex-1 break-words whitespace-pre-wrap line-clamp-2 text-slate-600 font-medium leading-relaxed italic">{lead.message && lead.message.length > 50 ? `${lead.message.substring(0, 50)}...` : lead.message || "No query provided"}</div>
+              <div className="flex-1 break-words whitespace-pre-wrap line-clamp-2 text-[#5A4C33]/70 font-bold leading-relaxed italic">{lead.message && lead.message.length > 50 ? `${lead.message.substring(0, 50)}...` : lead.message || "No query provided"}</div>
               {lead.message && lead.message.length > 10 && (
-                <button onClick={() => { setQueryModalContent(lead.message); setQueryModalName(lead.name); setShowQueryModal(true) }} className="flex-shrink-0 text-blue-600 text-[8px] font-bold px-1.5 py-0.5 border border-blue-200 rounded bg-blue-50 hover:bg-blue-100 transition-all shadow-sm active:scale-95">VIEW</button>
+                <button onClick={() => { setQueryModalContent(lead.message); setQueryModalName(lead.name); setShowQueryModal(true) }} className="flex-shrink-0 text-[#D2A02A] text-[8px] font-black px-1.5 py-0.5 border border-[#D2A02A]/20 rounded bg-white hover:bg-[#F8F5EC] transition-all shadow-sm active:scale-95">VIEW</button>
               )}
             </div>
           </td>
@@ -737,10 +737,10 @@ const IprKaroLeadsPage = () => {
         return (
           <td key={colId} className={`${cls} text-[9.5px] last:border-r-0`} style={cellStyle}>
             <div className="flex flex-col gap-1.5">
-              <textarea className="w-full border rounded-lg p-1.5 text-[9.5px] font-medium bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all resize-none" rows={2} value={notesValue} onChange={e => handleNotesChange(lead.id, e.target.value)} placeholder="Type remarks here..." />
+              <textarea className="w-full border rounded-lg p-1.5 text-[9.5px] font-bold bg-[#F8F5EC]/30 border-[#5A4C33]/10 text-[#5A4C33] placeholder-[#5A4C33]/30 focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] transition-all resize-none" rows={2} value={notesValue} onChange={e => handleNotesChange(lead.id, e.target.value)} placeholder="Type remarks here..." />
               <div className="flex gap-1.5">
-                <button onClick={() => saveNotes(lead.id)} disabled={isSaving || !notesValue.trim()} className="flex-1 py-1 rounded text-[8.5px] font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white transition-all shadow-sm active:scale-95 uppercase tracking-wider">{isSaving ? "Saving..." : "Save Note"}</button>
-                <button onClick={() => fetchHistory(lead.id)} className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded text-[8.5px] font-bold transition-all shadow-sm active:scale-95 uppercase tracking-wider">Log</button>
+                <button onClick={() => saveNotes(lead.id)} disabled={isSaving || !notesValue.trim()} className="flex-1 py-1 rounded text-[8.5px] font-black bg-[#D2A02A] hover:bg-[#B8911E] disabled:bg-[#F8F5EC] disabled:text-[#5A4C33]/20 disabled:cursor-not-allowed text-white transition-all shadow-sm active:scale-95 uppercase tracking-wider">{isSaving ? "Saving..." : "Save Note"}</button>
+                <button onClick={() => fetchHistory(lead.id)} className="px-2 py-1 bg-white hover:bg-[#F8F5EC] text-[#5A4C33]/60 border border-[#5A4C33]/10 rounded text-[8.5px] font-black transition-all shadow-sm active:scale-95 uppercase tracking-wider">Log</button>
               </div>
             </div>
           </td>
@@ -752,50 +752,50 @@ const IprKaroLeadsPage = () => {
 
   // ── Render ──────────────────────────────────────────────────
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#F8F5EC] overflow-hidden font-sans">
       {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />}
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 md:relative md:z-auto md:translate-x-0 ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}><Sidebar /></div>
 
-      <div ref={scrollContainerRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto w-full bg-slate-50">
+      <div ref={scrollContainerRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto w-full bg-[#F8F5EC]">
 
         {/* Header */}
-        <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-5 py-3">
+        <div className="sticky top-0 z-30 bg-white/50 backdrop-blur-md border-b border-[#5A4C33]/10 px-3 md:px-5 py-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5">
             <div className="flex items-center gap-2.5">
-              <button onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)} className="md:hidden p-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg></button>
+              <button onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)} className="md:hidden p-1.5 rounded-xl bg-[#F8F5EC] text-[#5A4C33] hover:bg-[#F0EAD6] transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg></button>
               <div>
-                <h1 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-1.5"><span className="text-xl">⚖️</span> IPRKaro Leads</h1>
-                <p className="text-slate-500 text-[8.5px] mt-0.5 uppercase tracking-[0.1em] font-bold">The Future of Brand Protection</p>
+                <h1 className="text-lg md:text-xl font-bold text-[#5A4C33] flex items-center gap-1.5 bg-gradient-to-r from-[#D2A02A] to-[#5A4C33] bg-clip-text text-transparent italic tracking-tight"><span className="text-xl not-italic">⚖️</span> IPRKaro Leads</h1>
+                <p className="text-[#5A4C33]/50 text-[8.5px] mt-0.5 uppercase tracking-[0.1em] font-black">The Future of Brand Protection</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm border border-slate-200 text-slate-900 font-semibold text-[13px] leading-none flex items-center gap-1"><span className="text-slate-500 text-[11px] font-medium">Total: </span>{totalCount}</div>
-              <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm border border-slate-200 text-slate-900 font-semibold text-[13px] leading-none flex items-center gap-1"><span className="text-slate-500 text-[11px] font-medium">Showing: </span>{leads.length}</div>
-              <button onClick={exportToCSV} className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[13px] font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 tracking-tight"><svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M16 10l-4 4m0 0l-4-4m4 4V4" /></svg>Export CSV</button>
+              <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm border border-[#5A4C33]/10 text-[#5A4C33] font-bold text-[13px] leading-none flex items-center gap-1"><span className="text-[#5A4C33]/50 text-[11px] font-medium">Total: </span>{totalCount}</div>
+              <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm border border-[#5A4C33]/10 text-[#5A4C33] font-bold text-[13px] leading-none flex items-center gap-1"><span className="text-[#5A4C33]/50 text-[11px] font-medium">Showing: </span>{leads.length}</div>
+              <button onClick={exportToCSV} className="bg-[#5A4C33] hover:bg-[#4A3F2A] text-white px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 tracking-tight border border-[#5A4C33]/20"><svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M16 10l-4 4m0 0l-4-4m4 4V4" /></svg>Export CSV</button>
             </div>
           </div>
         </div>
 
         {/* Filters */}
         <div className="px-3 md:px-5 py-3">
-          <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-xl p-3 shadow-sm border border-[#5A4C33]/10">
             <div className="flex flex-col xl:flex-row gap-2.5">
               <div className="flex-1 relative group">
-                <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" placeholder="Search leads by name, phone, trademark..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-[13px] text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-medium" />
-                {searchQuery && <div className="absolute right-2.5 top-1/2 -translate-y-1/2">{debouncedSearch !== searchQuery ? <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-400 border-t-transparent" /> : null}</div>}
+                <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5A4C33]/40 group-focus-within:text-[#D2A02A] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input type="text" placeholder="Search leads by name, phone, trademark..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg pl-8 pr-3 py-2 text-[13px] text-[#5A4C33] placeholder-[#5A4C33]/40 focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] transition-all font-medium" />
+                {searchQuery && <div className="absolute right-2.5 top-1/2 -translate-y-1/2">{debouncedSearch !== searchQuery ? <div className="animate-spin rounded-full h-3 w-3 border-2 border-[#D2A02A] border-t-transparent" /> : null}</div>}
               </div>
               <div className="flex flex-wrap md:flex-nowrap gap-2.5">
-                <select value={salespersonFilter} onChange={e => setSalespersonFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-w-[140px] font-medium transition-all">
+                <select value={salespersonFilter} onChange={e => setSalespersonFilter(e.target.value)} className="bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-2.5 py-2 text-[13px] text-[#5A4C33] focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] min-w-[140px] font-medium transition-all">
                   <option value="all">Assignee: All</option>
                   <option value="unassigned">Unassigned</option>
                   {salesTeamMembers.map(s => <option key={s.id} value={s.name}>{s.name}{s.name === currentUserName ? " (Me)" : ""}</option>)}
                 </select>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-w-[130px] font-medium transition-all"><option value="all">Status: All</option>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select>
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 transition-all focus-within:ring-4 focus-within:ring-blue-500/5 focus-within:border-blue-500 group"><label className="text-slate-400 text-[8.5px] uppercase font-bold whitespace-nowrap tracking-wider group-focus-within:text-blue-500">From</label><input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent border-none p-0 text-[13px] text-slate-900 focus:ring-0 w-24 font-semibold cursor-pointer" /></div>
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 transition-all focus-within:ring-4 focus-within:ring-blue-500/5 focus-within:border-blue-500 group"><label className="text-slate-400 text-[8.5px] uppercase font-bold whitespace-nowrap tracking-wider group-focus-within:text-blue-500">To</label><input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent border-none p-0 text-[13px] text-slate-900 focus:ring-0 w-24 font-semibold cursor-pointer" /></div>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-2.5 py-2 text-[13px] text-[#5A4C33] focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] min-w-[130px] font-medium transition-all"><option value="all">Status: All</option>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                <div className="flex items-center gap-2 bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-3 py-2 transition-all focus-within:ring-4 focus-within:ring-[#D2A02A]/5 focus-within:border-[#D2A02A] group"><label className="text-[#5A4C33]/40 text-[8.5px] uppercase font-black whitespace-nowrap tracking-wider group-focus-within:text-[#D2A02A]">From</label><input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent border-none p-0 text-[13px] text-[#5A4C33] focus:ring-0 w-24 font-bold cursor-pointer" /></div>
+                <div className="flex items-center gap-2 bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-3 py-2 transition-all focus-within:ring-4 focus-within:ring-[#D2A02A]/5 focus-within:border-[#D2A02A] group"><label className="text-[#5A4C33]/40 text-[8.5px] uppercase font-black whitespace-nowrap tracking-wider group-focus-within:text-[#D2A02A]">To</label><input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent border-none p-0 text-[13px] text-[#5A4C33] focus:ring-0 w-24 font-bold cursor-pointer" /></div>
                 {(searchQuery || salespersonFilter !== "all" || statusFilter !== "all" || fromDate || toDate) && (
-                  <button onClick={() => { setSearchQuery(""); setSalespersonFilter("all"); setStatusFilter("all"); setFromDate(""); setToDate("") }} className="bg-white text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-[13px] font-bold hover:bg-slate-50 hover:text-slate-700 transition-all shadow-sm">Clear</button>
+                  <button onClick={() => { setSearchQuery(""); setSalespersonFilter("all"); setStatusFilter("all"); setFromDate(""); setToDate("") }} className="bg-white text-[#5A4C33]/60 border border-[#5A4C33]/10 rounded-lg px-3 py-2 text-[13px] font-bold hover:bg-[#F8F5EC] hover:text-[#5A4C33] transition-all shadow-sm">Clear</button>
                 )}
               </div>
             </div>
@@ -804,12 +804,12 @@ const IprKaroLeadsPage = () => {
 
         {/* Table */}
         <div className="flex-1 px-3 md:px-5 pb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden ring-1 ring-slate-200/50">
+          <div className="bg-white rounded-2xl shadow-sm border border-[#5A4C33]/10 overflow-hidden ring-1 ring-[#5A4C33]/5">
             <div className="overflow-x-auto">
               <table className="w-full text-[13px] border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <thead className="sticky top-0 z-20 shadow-sm transition-shadow">
-                    <tr className="bg-slate-50">
+                    <tr className="bg-[#F8F5EC]">
                       <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
                         {columns.map(col => (
                           <SortableHeader key={col.id} id={col.id} width={columnWidths[col.id] || col.width} onResize={handleColumnResize}>
@@ -820,7 +820,7 @@ const IprKaroLeadsPage = () => {
                     </tr>
                   </thead>
                 </DndContext>
-                <tbody className="divide-y divide-slate-100 bg-white">
+                <tbody className="divide-y divide-[#5A4C33]/10 bg-white">
                   {isLoading ? (
                     Array.from({ length: 12 }).map((_, i) => (
                       <tr key={i} className="animate-pulse">{columns.map((c, j) => <td key={j} className="px-1.5 py-3 border-r border-slate-50 last:border-r-0" style={{ width: `${columnWidths[c.id] || c.width}px` }}><div className="h-2.5 bg-slate-100 rounded-full w-full opacity-50" /></td>)}</tr>
@@ -829,7 +829,7 @@ const IprKaroLeadsPage = () => {
                     <tr><td colSpan={columns.length} className="px-5 py-20 text-center bg-white"><div className="flex flex-col items-center gap-3"><div className="text-5xl grayscale opacity-30">📭</div><p className="text-slate-900 font-bold text-lg">No leads found</p><p className="text-slate-400 font-medium max-w-sm mx-auto text-[13px]">Try adjusting your filters or search terms to find what you're looking for.</p></div></td></tr>
                   ) : (
                     leads.map(lead => (
-                      <tr key={lead.id} className="hover:bg-blue-50/30 transition-colors duration-150 group">
+                      <tr key={lead.id} className="hover:bg-[#F8F5EC] transition-colors duration-150 group">
                         {columns.map(col => renderCell(col.id, lead, columnWidths[col.id] || col.width))}
                       </tr>
                     ))
@@ -838,9 +838,9 @@ const IprKaroLeadsPage = () => {
               </table>
             </div>
 
-            {isLoadingMore && <div className="flex justify-center items-center py-6 border-t border-slate-100 bg-slate-50/50"><div className="flex items-center gap-2.5"><div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" /><span className="text-slate-600 text-[13px] font-bold tracking-tight">Loading more leads…</span></div></div>}
-            {currentPage < totalPages && !isLoadingMore && !isLoading && leads.length > 0 && <div className="flex justify-center py-5 border-t border-slate-100 bg-slate-50/20"><button onClick={handleLoadMore} className="bg-white hover:bg-slate-50 text-slate-900 px-6 py-2 rounded-xl text-[13px] font-bold border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-slate-300 active:scale-95">Load More ({leads.length} of {totalCount})</button></div>}
-            {currentPage >= totalPages && leads.length > 0 && <div className="flex justify-center py-3 border-t border-slate-100 bg-slate-50/10"><span className="text-slate-400 text-[8.5px] text-center block w-full uppercase tracking-[0.2em] font-black opacity-40">End of Leads Repository</span></div>}
+            {isLoadingMore && <div className="flex justify-center items-center py-6 border-t border-[#5A4C33]/10 bg-[#F8F5EC]/50"><div className="flex items-center gap-2.5"><div className="animate-spin rounded-full h-4 w-4 border-2 border-[#D2A02A] border-t-transparent" /><span className="text-[#5A4C33]/60 text-[13px] font-black tracking-tight">Loading more leads…</span></div></div>}
+            {currentPage < totalPages && !isLoadingMore && !isLoading && leads.length > 0 && <div className="flex justify-center py-5 border-t border-[#5A4C33]/10 bg-[#F8F5EC]/20"><button onClick={handleLoadMore} className="bg-white hover:bg-[#F8F5EC] text-[#5A4C33] px-6 py-2 rounded-xl text-[13px] font-black border border-[#5A4C33]/10 shadow-sm transition-all hover:shadow-md hover:border-[#D2A02A]/30 active:scale-95">Load More ({leads.length} of {totalCount})</button></div>}
+            {currentPage >= totalPages && leads.length > 0 && <div className="flex justify-center py-3 border-t border-[#5A4C33]/10 bg-[#F8F5EC]/10"><span className="text-[#5A4C33]/30 text-[8.5px] text-center block w-full uppercase tracking-[0.2em] font-black opacity-40">End of Leads Repository</span></div>}
           </div>
         </div>
       </div>
@@ -848,32 +848,32 @@ const IprKaroLeadsPage = () => {
       {/* History Modal */}
       {showHistoryModal && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)} />
-          <div className="relative bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-xl mx-4 flex flex-col max-h-[85vh] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)]">
-            <div className="absolute top-5 right-5"><button onClick={() => setShowHistoryModal(false)} className="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all shadow-sm"><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+          <div className="absolute inset-0 bg-[#5A4C33]/40 backdrop-blur-sm" onClick={() => setShowHistoryModal(false)} />
+          <div className="relative bg-[#F8F5EC] border border-[#5A4C33]/20 rounded-2xl p-6 w-full max-w-xl mx-4 flex flex-col max-h-[85vh] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)]">
+            <div className="absolute top-5 right-5"><button onClick={() => setShowHistoryModal(false)} className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/50 text-[#5A4C33]/40 hover:text-[#5A4C33] hover:bg-white transition-all shadow-sm"><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg></button></div>
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              <h3 className="text-xl font-black text-slate-900 mb-5 flex items-center gap-2.5">📋 Remarks Timeline</h3>
+              <h3 className="text-xl font-black text-[#5A4C33] mb-5 flex items-center gap-2.5 italic">📋 Remarks Timeline</h3>
               {historyLoading ? (
-                <div className="text-center py-6 text-slate-400"><div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mx-auto mb-2" /><p className="font-medium text-[13px]">Fetching history…</p></div>
+                <div className="text-center py-6 text-[#5A4C33]/40"><div className="animate-spin rounded-full h-6 w-6 border-2 border-[#D2A02A] border-t-transparent mx-auto mb-2" /><p className="font-black text-[13px] uppercase tracking-widest">Fetching history…</p></div>
               ) : historyItems.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 font-medium text-[13px]"><p>No history entries found for this lead.</p></div>
+                <div className="text-center py-6 text-[#5A4C33]/40 font-black text-[13px] uppercase tracking-widest"><p>No history entries found.</p></div>
               ) : (
                 <div className="space-y-3">{historyItems.map((e, i) => (
-                  <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm">
+                  <div key={i} className="bg-white/50 p-3 rounded-xl border border-[#5A4C33]/10 shadow-sm">
                     <div className="flex justify-between items-start mb-2.5">
                       <div className="flex flex-col">
-                        {e.displayDate && <span className="text-[13px] font-bold text-slate-900">{e.displayDate}</span>}
-                        {e.displayTime && <span className="text-[8.5px] text-slate-500 uppercase tracking-wider font-bold">{e.displayTime}</span>}
+                        {e.displayDate && <span className="text-[13px] font-black text-[#5A4C33]">{e.displayDate}</span>}
+                        {e.displayTime && <span className="text-[8.5px] text-[#5A4C33]/40 uppercase tracking-wider font-black">{e.displayTime}</span>}
                       </div>
-                      {e.createdBy && <span className="text-[8.5px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-blue-100">{e.createdBy}</span>}
+                      {e.createdBy && <span className="text-[8.5px] bg-[#D2A02A]/10 text-[#D2A02A] px-2 py-0.5 rounded-full font-black uppercase tracking-widest border border-[#D2A02A]/20">{e.createdBy}</span>}
                     </div>
-                    <div className="whitespace-pre-wrap text-[11.5px] text-slate-700 bg-white p-3 rounded-lg border border-slate-100 shadow-sm leading-relaxed">{e.content || <span className="text-slate-400 italic font-medium">Empty note content</span>}</div>
+                    <div className="whitespace-pre-wrap text-[11.5px] text-[#5A4C33]/80 bg-white p-3 rounded-lg border border-[#5A4C33]/10 shadow-sm leading-relaxed font-bold italic">{e.content || <span className="text-[#5A4C33]/20 italic font-black">Empty note content</span>}</div>
                   </div>
                 ))}</div>
               )}
             </div>
-            <div className="mt-3.5 pt-3.5 border-t border-slate-100 flex justify-end">
-              <button onClick={() => setShowHistoryModal(false)} className="px-8 py-2.5 bg-slate-900 hover:bg-black text-white text-[13px] font-black rounded-lg transition-all shadow-lg active:scale-95 uppercase tracking-widest">Close History</button>
+            <div className="mt-3.5 pt-3.5 border-t border-[#5A4C33]/10 flex justify-end">
+              <button onClick={() => setShowHistoryModal(false)} className="px-8 py-2.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white text-[13px] font-black rounded-lg transition-all shadow-lg active:scale-95 uppercase tracking-widest">Close History</button>
             </div>
           </div>
         </div>, document.body
@@ -882,22 +882,22 @@ const IprKaroLeadsPage = () => {
       {/* Query Modal */}
       {showQueryModal && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowQueryModal(false)} />
-          <div className="relative bg-white rounded-3xl p-8 w-full max-w-2xl mx-4 max-h-[80vh] border border-slate-200 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] flex flex-col">
+          <div className="absolute inset-0 bg-[#5A4C33]/40 backdrop-blur-sm" onClick={() => setShowQueryModal(false)} />
+          <div className="relative bg-[#F8F5EC] rounded-3xl p-8 w-full max-w-2xl mx-4 max-h-[80vh] border border-[#5A4C33]/20 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3"><span>💬</span> Lead Message</h3>
-              <button onClick={() => setShowQueryModal(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all font-light text-2xl leading-none">×</button>
+              <h3 className="text-2xl font-black text-[#5A4C33] flex items-center gap-3 italic"><span>💬</span> Lead Message</h3>
+              <button onClick={() => setShowQueryModal(false)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/50 text-[#5A4C33]/40 hover:text-[#5A4C33] hover:bg-white transition-all font-light text-2xl leading-none">×</button>
             </div>
-            <div className="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-100"><span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">From: </span><span className="text-sm font-bold text-slate-700">{queryModalName}</span></div>
+            <div className="bg-white/50 rounded-2xl p-4 mb-4 border border-[#5A4C33]/10"><span className="text-[10px] uppercase font-black text-[#5A4C33]/40 tracking-wider">From: </span><span className="text-sm font-black text-[#5A4C33]">{queryModalName}</span></div>
             <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
-              <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                <p className="text-slate-800 whitespace-pre-wrap text-[15px] leading-relaxed font-medium italic">
+              <div className="bg-white rounded-2xl p-6 border border-[#5A4C33]/10 shadow-sm">
+                <p className="text-[#5A4C33] whitespace-pre-wrap text-[15px] leading-relaxed font-bold italic">
                   {queryModalContent || "No message content provided."}
                 </p>
               </div>
             </div>
-            <div className="flex justify-end mt-6 pt-6 border-t border-slate-100">
-              <button onClick={() => setShowQueryModal(false)} className="px-10 py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black transition-all shadow-lg active:scale-95 uppercase tracking-widest">Dismiss</button>
+            <div className="flex justify-end mt-6 pt-6 border-t border-[#5A4C33]/10">
+              <button onClick={() => setShowQueryModal(false)} className="px-10 py-3 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white rounded-xl font-black transition-all shadow-lg active:scale-95 uppercase tracking-widest">Dismiss</button>
             </div>
           </div>
         </div>, document.body
@@ -906,16 +906,16 @@ const IprKaroLeadsPage = () => {
       {/* Trademark Search Result Modal */}
       {showTrademarkModal && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowTrademarkModal(false)} />
-          <div className="relative bg-white border border-slate-200 rounded-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[92vh] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden">
+          <div className="absolute inset-0 bg-[#5A4C33]/40 backdrop-blur-sm" onClick={() => setShowTrademarkModal(false)} />
+          <div className="relative bg-[#F8F5EC] border border-[#5A4C33]/20 rounded-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[92vh] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden">
             {/* Modal Header */}
-            <div className="bg-slate-900 px-6 py-5 flex items-center justify-between flex-shrink-0">
+            <div className="bg-[#5A4C33] px-6 py-5 flex items-center justify-between flex-shrink-0">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2.5">
-                  <span className="text-xl">📊</span> Search Report
+                <h3 className="text-lg font-black text-white flex items-center gap-2.5 italic">
+                  <span className="text-xl not-italic">📊</span> Search Report
                 </h3>
                 {trademarkSearchResult && (
-                  <p className="text-blue-300 text-[11px] mt-1 font-bold tracking-wide uppercase">
+                  <p className="text-[#D2A02A] text-[11px] mt-1 font-black tracking-wide uppercase">
                     {trademarkSearchResult.trademarkName} — Class {trademarkSearchResult.classNumber}
                   </p>
                 )}
@@ -929,38 +929,38 @@ const IprKaroLeadsPage = () => {
             <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
               {trademarkSearchLoading ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent mb-5 shadow-sm" />
-                  <p className="text-slate-500 font-bold text-base">Generating Report…</p>
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#D2A02A] border-t-transparent mb-5 shadow-sm" />
+                  <p className="text-[#5A4C33]/40 font-black text-base uppercase tracking-widest">Generating Report…</p>
                 </div>
               ) : trademarkSearchError ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-2xl m-5 border border-dashed border-slate-200">
+                <div className="flex flex-col items-center justify-center py-20 bg-white/50 rounded-2xl m-5 border border-dashed border-[#5A4C33]/10">
                   <div className="text-5xl mb-5 grayscale opacity-30">🔍</div>
-                  <p className="text-slate-900 font-black text-lg mb-1.5">Search Result Not Found</p>
-                  <p className="text-slate-400 font-medium text-center max-w-sm px-5 text-[13px]">{trademarkSearchError}</p>
+                  <p className="text-[#5A4C33] font-black text-lg mb-1.5 italic">Search Result Not Found</p>
+                  <p className="text-[#5A4C33]/40 font-bold text-center max-w-sm px-5 text-[13px]">{trademarkSearchError}</p>
                 </div>
               ) : trademarkSearchResult ? (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                   {/* Health & Scores Row */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3 px-1">
-                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center shadow-sm">
-                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-slate-400 font-black mb-1.5">Health Status</p>
+                    <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 text-center shadow-sm">
+                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-[#5A4C33]/40 font-black mb-1.5">Health Status</p>
                       <p className={`text-xl font-black ${
                         trademarkSearchResult.overallHealth === "Good" ? "text-emerald-600" :
                         trademarkSearchResult.overallHealth === "Fair" ? "text-amber-600" :
-                        trademarkSearchResult.overallHealth === "Poor" ? "text-rose-600" : "text-slate-900"
+                        trademarkSearchResult.overallHealth === "Poor" ? "text-rose-600" : "text-[#5A4C33]"
                       }`}>{trademarkSearchResult.overallHealth}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center shadow-sm">
-                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-slate-400 font-black mb-1.5">Registrability</p>
-                      <p className="text-xl font-black text-slate-900">{trademarkSearchResult.registrabilityScore}<span className="text-[10px] text-slate-400 ml-0.5">/100</span></p>
+                    <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 text-center shadow-sm">
+                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-[#5A4C33]/40 font-black mb-1.5">Registrability</p>
+                      <p className="text-xl font-black text-[#5A4C33]">{trademarkSearchResult.registrabilityScore}<span className="text-[10px] text-[#5A4C33]/40 ml-0.5">/100</span></p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center shadow-sm">
-                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-slate-400 font-black mb-1.5">Similarity</p>
-                      <p className="text-xl font-black text-slate-900">{trademarkSearchResult.similarityScore}<span className="text-[10px] text-slate-400 ml-0.5">/100</span></p>
+                    <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 text-center shadow-sm">
+                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-[#5A4C33]/40 font-black mb-1.5">Similarity</p>
+                      <p className="text-xl font-black text-[#5A4C33]">{trademarkSearchResult.similarityScore}<span className="text-[10px] text-[#5A4C33]/40 ml-0.5">/100</span></p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-center shadow-sm">
-                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-slate-400 font-black mb-1.5">Class Fit</p>
-                      <p className="text-xl font-black text-slate-900">{trademarkSearchResult.classFitScore}<span className="text-[10px] text-slate-400 ml-0.5">/100</span></p>
+                    <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 text-center shadow-sm">
+                      <p className="text-[8.5px] uppercase tracking-[0.2em] text-[#5A4C33]/40 font-black mb-1.5">Class Fit</p>
+                      <p className="text-xl font-black text-[#5A4C33]">{trademarkSearchResult.classFitScore}<span className="text-[10px] text-[#5A4C33]/40 ml-0.5">/100</span></p>
                     </div>
                   </div>
 
@@ -977,30 +977,30 @@ const IprKaroLeadsPage = () => {
                           trademarkSearchResult.overallRecommendation.status === "Medium" ? "bg-white text-amber-600" :
                           "bg-white text-rose-600"
                         }`}>{trademarkSearchResult.overallRecommendation.status} Confidence</span>
-                        <p className="text-[8.5px] uppercase tracking-wider text-slate-400 font-black">AI Assessment</p>
+                        <p className="text-[8.5px] uppercase tracking-wider text-[#5A4C33]/40 font-black">AI Assessment</p>
                       </div>
                       <p className="text-[13px] font-bold leading-relaxed italic">"{trademarkSearchResult.overallRecommendation.message}"</p>
                     </div>
                   )}
 
                   {/* Similarity Analysis Progress Bars */}
-                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="bg-slate-50 px-5 py-3 border-b border-slate-100"><h4 className="font-black text-slate-900 uppercase tracking-widest text-[8.5px] flex items-center gap-1.5"><span>🔄</span> Analysis Breakdown</h4></div>
+                  <div className="bg-white rounded-2xl border border-[#5A4C33]/10 shadow-sm overflow-hidden">
+                    <div className="bg-[#F8F5EC] px-5 py-3 border-b border-[#5A4C33]/10"><h4 className="font-black text-[#5A4C33] uppercase tracking-widest text-[8.5px] flex items-center gap-1.5 italic"><span>🔄</span> Analysis Breakdown</h4></div>
                     <div className="p-5">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-5">
                           <div>
-                            <div className="flex justify-between items-center mb-1.5"><p className="text-[8.5px] uppercase font-black text-slate-400 tracking-wider">Visual Similarity (Estimated)</p><span className="text-[11px] font-black text-blue-600">{trademarkSearchResult.similarityScore}%</span></div>
-                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${trademarkSearchResult.similarityScore}%` }} /></div>
+                            <div className="flex justify-between items-center mb-1.5"><p className="text-[8.5px] uppercase font-black text-[#5A4C33]/40 tracking-wider text-right">Visual Similarity (Estimated)</p><span className="text-[11px] font-black text-[#D2A02A]">{trademarkSearchResult.similarityScore}%</span></div>
+                            <div className="h-1.5 bg-[#F8F5EC] rounded-full overflow-hidden"><div className="h-full bg-[#D2A02A] rounded-full" style={{ width: `${trademarkSearchResult.similarityScore}%` }} /></div>
                           </div>
                           <div>
-                            <div className="flex justify-between items-center mb-1.5"><p className="text-[8.5px] uppercase font-black text-slate-400 tracking-wider">Classification Fit</p><span className="text-[11px] font-black text-indigo-600">{trademarkSearchResult.classFitScore}%</span></div>
-                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-indigo-500 rounded-full" style={{ width: `${trademarkSearchResult.classFitScore}%` }} /></div>
+                            <div className="flex justify-between items-center mb-1.5"><p className="text-[8.5px] uppercase font-black text-[#5A4C33]/40 tracking-wider text-right">Classification Fit</p><span className="text-[11px] font-black text-[#5A4C33]">{trademarkSearchResult.classFitScore}%</span></div>
+                            <div className="h-1.5 bg-[#F8F5EC] rounded-full overflow-hidden"><div className="h-full bg-[#5A4C33] rounded-full" style={{ width: `${trademarkSearchResult.classFitScore}%` }} /></div>
                           </div>
                         </div>
-                        <div className="bg-blue-50/50 p-5 rounded-xl border border-blue-100 flex flex-col justify-center">
-                          <p className="text-[8.5px] uppercase font-black text-blue-500 tracking-wider mb-1.5 leading-none">Similarity Reasoning</p>
-                          <p className="text-[11.5px] font-bold text-blue-900/80 leading-relaxed italic">"{trademarkSearchResult.similarityReasoning || "No detailed similarity analysis provided."}"</p>
+                        <div className="bg-[#F8F5EC] p-5 rounded-xl border border-[#5A4C33]/10 flex flex-col justify-center">
+                          <p className="text-[8.5px] uppercase font-black text-[#D2A02A] tracking-wider mb-1.5 leading-none italic">Similarity Reasoning</p>
+                          <p className="text-[11.5px] font-bold text-[#5A4C33]/80 leading-relaxed italic">"{trademarkSearchResult.similarityReasoning || "No detailed similarity analysis provided."}"</p>
                         </div>
                       </div>
                     </div>
@@ -1009,20 +1009,20 @@ const IprKaroLeadsPage = () => {
                   {/* Fact Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-3">
-                      <h4 className="text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] px-1.5 flex items-center gap-1.5"><span>🔍</span> Registrability</h4>
-                      <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-sm min-h-[120px]">
-                        <p className="text-[8.5px] uppercase tracking-wider text-blue-600 font-black mb-2.5">Assessment Logic</p>
-                        <p className="text-[11.5px] text-slate-700 leading-relaxed font-medium italic">"{trademarkSearchResult.registrabilityReasoning || "The registrability assessment is pending further database verification."}"</p>
+                      <h4 className="text-[9.5px] font-black text-[#5A4C33]/40 uppercase tracking-[0.2em] px-1.5 flex items-center gap-1.5 italic"><span>🔍</span> Registrability</h4>
+                      <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 shadow-sm min-h-[120px]">
+                        <p className="text-[8.5px] uppercase tracking-wider text-[#D2A02A] font-black mb-2.5">Assessment Logic</p>
+                        <p className="text-[11.5px] text-[#5A4C33] leading-relaxed font-bold italic">"{trademarkSearchResult.registrabilityReasoning || "The registrability assessment is pending further database verification."}"</p>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <h4 className="text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] px-1.5 flex items-center gap-1.5"><span>🛡️</span> Key Factors</h4>
-                      <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-sm">
+                      <h4 className="text-[9.5px] font-black text-[#5A4C33]/40 uppercase tracking-[0.2em] px-1.5 flex items-center gap-1.5 italic"><span>🛡️</span> Key Factors</h4>
+                      <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 shadow-sm">
                         <ul className="space-y-2.5">
-                           <li className="flex justify-between items-center text-[11px] border-b border-slate-200/50 pb-1.5"><span className="text-slate-400 font-bold">Brand Strength</span><span className="text-slate-900 font-black uppercase text-[8.5px]">{trademarkSearchResult.keyFactors.brandStrength || "Maturity Level High"}</span></li>
-                           <li className="flex justify-between items-center text-[11px] border-b border-slate-200/50 pb-1.5"><span className="text-slate-400 font-bold">Famous Mark</span><span className={`text-[8.5px] font-black uppercase ${trademarkSearchResult.keyFactors.famousMark ? "text-green-600" : "text-slate-400"}`}>{trademarkSearchResult.keyFactors.famousMark ? "Verified" : "Unverified"}</span></li>
-                           <li className="flex justify-between items-center text-[11px] border-b border-slate-200/50 pb-1.5"><span className="text-slate-400 font-bold">Protection Level</span><span className="text-slate-900 font-black uppercase text-[8.5px]">{trademarkSearchResult.keyFactors.protectionLevel || "Comprehensive"}</span></li>
-                           <li className="flex justify-between items-center text-[11px]"><span className="text-slate-400 font-bold">Market Position</span><span className="text-slate-900 font-black uppercase text-[8.5px]">{trademarkSearchResult.keyFactors.marketPosition || "Strong"}</span></li>
+                           <li className="flex justify-between items-center text-[11px] border-b border-[#5A4C33]/10 pb-1.5"><span className="text-[#5A4C33]/40 font-black">Brand Strength</span><span className="text-[#5A4C33] font-black uppercase text-[8.5px]">{trademarkSearchResult.keyFactors.brandStrength || "Maturity Level High"}</span></li>
+                           <li className="flex justify-between items-center text-[11px] border-b border-[#5A4C33]/10 pb-1.5"><span className="text-[#5A4C33]/40 font-black">Famous Mark</span><span className={`text-[8.5px] font-black uppercase ${trademarkSearchResult.keyFactors.famousMark ? "text-emerald-600" : "text-[#5A4C33]/40"}`}>{trademarkSearchResult.keyFactors.famousMark ? "Verified" : "Unverified"}</span></li>
+                           <li className="flex justify-between items-center text-[11px] border-b border-[#5A4C33]/10 pb-1.5"><span className="text-[#5A4C33]/40 font-black">Protection Level</span><span className="text-[#5A4C33] font-black uppercase text-[8.5px]">{trademarkSearchResult.keyFactors.protectionLevel || "Comprehensive"}</span></li>
+                           <li className="flex justify-between items-center text-[11px]"><span className="text-[#5A4C33]/40 font-black">Market Position</span><span className="text-[#5A4C33] font-black uppercase text-[8.5px]">{trademarkSearchResult.keyFactors.marketPosition || "Strong"}</span></li>
                         </ul>
                       </div>
                     </div>
@@ -1030,16 +1030,16 @@ const IprKaroLeadsPage = () => {
 
                   {/* Sources Table */}
                   {trademarkSearchResult.sources?.length > 0 && (
-                    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+                    <div className="bg-white rounded-2xl p-5 border border-[#5A4C33]/10 shadow-sm">
                       <div className="flex items-center justify-between mb-5">
-                        <h4 className="text-[9.5px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5"><span>🌐</span> Database Sources</h4>
-                        <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full font-bold">{trademarkSearchResult.sources.length} Record(s)</span>
+                        <h4 className="text-[9.5px] font-black text-[#5A4C33]/40 uppercase tracking-[0.2em] flex items-center gap-1.5 italic"><span>🌐</span> Database Sources</h4>
+                        <span className="text-[8px] px-1.5 py-0.5 bg-[#F8F5EC] text-[#5A4C33]/60 rounded-full font-black uppercase tracking-wider">{trademarkSearchResult.sources.length} Record(s)</span>
                       </div>
                       <div className="space-y-2.5">
                         {trademarkSearchResult.sources.map((src, i) => (
-                          <div key={i} className="flex justify-between items-center p-3 bgColor-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-all group">
-                             <div className="flex flex-col"><span className="text-[8.5px] font-black text-slate-600">Verification Report #{i+1}</span><span className="text-[8px] font-bold text-slate-400 uppercase">Fetched on {new Date(src.fetched).toLocaleDateString()}</span></div>
-                             <a href={src.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[8.5px] font-black text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm">View Report</a>
+                          <div key={i} className="flex justify-between items-center p-3 bg-[#F8F5EC]/30 rounded-xl border border-[#5A4C33]/10 hover:border-[#D2A02A] transition-all group">
+                             <div className="flex flex-col"><span className="text-[8.5px] font-black text-[#5A4C33]/60">Verification Report #{i+1}</span><span className="text-[8px] font-black text-[#5A4C33]/30 uppercase tracking-widest">Fetched on {new Date(src.fetched).toLocaleDateString()}</span></div>
+                             <a href={src.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-white border border-[#5A4C33]/10 rounded-lg text-[8.5px] font-black text-[#D2A02A] hover:bg-[#D2A02A] hover:text-white hover:border-[#D2A02A] transition-all shadow-sm">View Report</a>
                           </div>
                         ))}
                       </div>
@@ -1050,8 +1050,8 @@ const IprKaroLeadsPage = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex-shrink-0 px-5 py-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-              <button onClick={() => setShowTrademarkModal(false)} className="px-5 py-1.5 bg-[#0B0121] dark:bg-blue-600 hover:bg-slate-900 dark:hover:bg-blue-700 text-white text-[13px] font-bold rounded-lg transition-all shadow-md">Close Report</button>
+            <div className="flex-shrink-0 px-5 py-3 border-t border-[#5A4C33]/10 bg-[#F8F5EC]/50">
+              <button onClick={() => setShowTrademarkModal(false)} className="px-5 py-1.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white text-[13px] font-black rounded-lg transition-all shadow-md uppercase tracking-widest">Close Report</button>
             </div>
           </div>
         </div>, document.body

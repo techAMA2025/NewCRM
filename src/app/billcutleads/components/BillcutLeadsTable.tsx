@@ -158,35 +158,21 @@ const BillcutLeadsTableOptimized = React.memo(
 
     // Memoized status color function
     const getStatusColor = useCallback((status: string) => {
-      switch (status.toLowerCase()) {
-        case "interested":
-          return "bg-green-900 text-green-100 border-green-700"
-        case "not interested":
-          return "bg-red-900 text-red-100 border-red-700"
-        case "not answering":
-          return "bg-orange-900 text-orange-100 border-orange-700"
-        case "callback":
-          return "bg-yellow-900 text-yellow-100 border-yellow-700"
-        case "future potential":
-          return "bg-blue-900 text-blue-100 border-blue-700"
-        case "converted":
-          return "bg-emerald-900 text-emerald-100 border-emerald-700"
-        case "loan required":
-          return "bg-purple-900 text-purple-100 border-purple-700"
-        case "short loan":
-          return "bg-teal-900 text-teal-100 border-teal-700"
-        case "cibil issue":
-          return "bg-rose-900 text-rose-100 border-rose-700"
-        case "language barrier":
-          return "bg-indigo-900 text-indigo-100 border-indigo-700"
-        case "retargeting":
-          return "bg-cyan-900 text-cyan-100 border-cyan-700"
-        case "closed lead":
-          return "bg-gray-500 text-white border-gray-700"
-        case "select status":
-        default:
-          return "bg-gray-700 text-gray-200 border-gray-600"
-      }
+      const key = (status || "").toLowerCase()
+      if (key === "no status" || key === "select status") return "bg-[#F8F5EC] text-[#5A4C33] border border-[#5A4C33]/20"
+      if (key === "interested") return "bg-green-900 text-green-100 border border-green-700"
+      if (key === "not interested") return "bg-red-900 text-red-100 border border-red-700"
+      if (key === "not answering") return "bg-orange-900 text-orange-100 border border-orange-700"
+      if (key === "callback") return "bg-yellow-900 text-yellow-100 border border-yellow-700"
+      if (key === "future potential") return "bg-blue-900 text-blue-100 border border-blue-700"
+      if (key === "converted") return "bg-emerald-900 text-emerald-100 border border-emerald-700"
+      if (key === "loan required") return "bg-purple-900 text-purple-100 border border-purple-700"
+      if (key === "short loan") return "bg-teal-900 text-teal-100 border border-teal-700"
+      if (key === "cibil issue") return "bg-rose-900 text-rose-100 border border-rose-700"
+      if (key === "language barrier") return "bg-indigo-900 text-indigo-100 border border-indigo-700"
+      if (key === "retargeting") return "bg-cyan-900 text-cyan-100 border border-cyan-700"
+      if (key === "closed lead") return "bg-gray-500 text-white border border-gray-700"
+      return "bg-gray-200 text-gray-700 border border-gray-300"
     }, [])
 
     // Get callback date color based on scheduled date - memoized
@@ -648,7 +634,7 @@ const BillcutLeadsTableOptimized = React.memo(
             }
           }
           return {
-            rowBg: "hover:bg-gray-700/20",
+            rowBg: "hover:bg-[#F8F5EC]",
             textColor: "",
           }
         }
@@ -656,26 +642,26 @@ const BillcutLeadsTableOptimized = React.memo(
         const rowColors = getRowBackground()
 
         return (
-          <tr key={lead.id} className={`transition-colors duration-150 ease-in-out ${rowColors.rowBg}`}>
-            <td className="px-4 py-4 whitespace-nowrap border-r border-gray-700/50">
+          <tr key={lead.id} className={`transition-colors duration-150 ease-in-out border-b border-[#5A4C33]/10 ${rowColors.rowBg}`}>
+            <td className="px-2 py-3 whitespace-nowrap border-r border-[#5A4C33]/10 text-center">
               <input
                 type="checkbox"
                 checked={selectedLeads.includes(lead.id)}
                 onChange={() => onSelectLead(lead.id)}
-                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                className="w-3.5 h-3.5 text-[#D2A02A] bg-white border-[#5A4C33]/30 rounded focus:ring-[#D2A02A] focus:ring-2"
               />
             </td>
 
-            <td className="px-4 py-4 whitespace-nowrap border-r border-gray-700/50">
-              <div className="flex flex-col gap-1">
-                <div className={`text-sm ${rowColors.textColor || "text-blue-300"}`}>
+            <td className="px-2 py-3 whitespace-nowrap border-r border-[#5A4C33]/10">
+              <div className="flex flex-col gap-0.5">
+                <div className={`text-[11px] font-bold ${rowColors.textColor || "text-[#5A4C33]"}`}>
                   {new Date(lead.date).toLocaleString("en-US", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
                   })}
                 </div>
-                <div className={`text-xs ${rowColors.textColor ? "text-white/70" : "text-blue-300/70"}`}>
+                <div className={`text-[10px] ${rowColors.textColor ? "text-white/70" : "text-[#D2A02A] font-medium"}`}>
                   {new Date(lead.date).toLocaleString("en-US", {
                     hour: "numeric",
                     minute: "numeric",
@@ -685,98 +671,56 @@ const BillcutLeadsTableOptimized = React.memo(
               </div>
             </td>
 
-            <td className="px-6 py-4 border-r border-gray-700/50">
-              <div className="flex flex-col gap-1">
+            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
+              <div className="flex flex-col gap-0.5">
                 <div 
-                  className={`text-sm font-medium ${rowColors.textColor || "text-gray-100"}`}
+                  className={`text-[12px] font-bold ${rowColors.textColor || "text-[#5A4C33]"}`}
                   title={lead.name}
                 >
-                  {lead.name.length > 15 ? `${lead.name.substring(0, 15)}...` : lead.name}
+                  {lead.name.length > 20 ? `${lead.name.substring(0, 20)}...` : lead.name}
                 </div>
-                <div className={`text-sm ${rowColors.textColor ? "text-white/80" : "text-blue-300/80"}`}>
+                <div className={`text-[10px] ${rowColors.textColor ? "text-white/80" : "text-[#5A4C33]/70"}`}>
                   {lead.email}
                 </div>
-                <div className={`text-sm ${rowColors.textColor ? "text-white/90" : "text-red-300"}`}>{lead.phone}</div>
+                <div className={`text-[12px] font-bold ${rowColors.textColor ? "text-white/90" : "text-[#D2A02A]"}`}>{lead.phone}</div>
               </div>
             </td>
 
-            <td className="px-6 py-4 border-r border-gray-700/50">
-              <div className={`text-sm ${rowColors.textColor ? "text-white/90" : "text-purple-300"}`}>{lead.city}</div>
+            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
+              <div className={`text-[11px] font-medium ${rowColors.textColor ? "text-white/90" : "text-[#5A4C33]"}`}>{lead.city}</div>
             </td>
 
-            <td className="px-6 py-4 border-r border-gray-700/50">
-              <div className="flex flex-col gap-1">
-                <div className={`text-sm ${rowColors.textColor ? "text-white/90" : "text-green-300"}`}>
+            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
+              <div className="flex flex-col gap-0.5">
+                <div className={`text-[11px] font-bold ${rowColors.textColor ? "text-white/90" : "text-green-600"}`}>
                   Income: ₹{lead.monthlyIncome}
                 </div>
-                <div className={`text-sm ${rowColors.textColor ? "text-white/90" : "text-orange-300"}`}>
+                <div className={`text-[11px] font-bold ${rowColors.textColor ? "text-white/90" : "text-[#D2A02A]"}`}>
                   Debt: ₹{lead.debtRange || 0}
                 </div>
                 {lead.maxDpd > 0 && (
-                  <div className={`text-[10px] ${rowColors.textColor ? "text-white/70" : "text-orange-300/70"}`}>
+                  <div className={`text-[8px] font-bold ${rowColors.textColor ? "text-white/70" : "text-orange-600"}`}>
                     Max DPD: {lead.maxDpd}
                   </div>
                 )}
               </div>
             </td>
 
-            <td className="px-6 py-4 border-r border-gray-700/50">
-              <div className="flex flex-col space-y-2">
+            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
+              <div className="flex flex-col space-y-1.5">
                 <span
-                  className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium shadow-sm ${getStatusColor(lead.status || "Select Status")}`}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm ${getStatusColor(lead.status || "Select Status")}`}
                 >
-                  {lead.status || "Select Status"}
+                  {lead.status || "No Status"}
                 </span>
 
                 <button
                   onClick={() => fetchStatusHistory(lead.id, lead.name)}
-                  className="mt-1 text-[10px] text-blue-600 hover:text-blue-800 underline block text-center w-full"
+                  className="text-[10px] text-[#D2A02A] hover:text-[#B8911E] underline block text-center w-full font-bold"
                   title="View Status History"
                 >
                   History
                 </button>
-                
-                {/* Show lastModified and convertedAt info only for admin and overlord roles */}
-                {(userRole === "admin" || userRole === "overlord") && (
-                  <div className="flex flex-col gap-1 mt-2">
-                    {/* Last Modified timestamp */}
-                    <div className={`text-xs ${rowColors.textColor ? "text-white/70" : "text-gray-400"}`}>
-                      Last Modified:
-                    </div>
-                    <div className={`text-xs ${rowColors.textColor ? "text-white/90" : "text-gray-300"}`}>
-                      {lead.lastModified 
-                        ? new Date(lead.lastModified).toLocaleString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true,
-                          })
-                        : "N/A"
-                      }
-                    </div>
-                    
-                    {/* Converted At timestamp - only show for converted leads */}
-                    {lead.status === "Converted" && lead.convertedAt && (
-                      <>
-                        <div className={`text-xs ${rowColors.textColor ? "text-white/70" : "text-emerald-400"} mt-1`}>
-                          Converted At:
-                        </div>
-                        <div className={`text-xs ${rowColors.textColor ? "text-white/90" : "text-emerald-300"}`}>
-                          {new Date(lead.convertedAt.seconds ? lead.convertedAt.seconds * 1000 : lead.convertedAt).toLocaleString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
                 
                 <select
                   value={editingData[lead.id]?.status || lead.status}
@@ -785,10 +729,10 @@ const BillcutLeadsTableOptimized = React.memo(
                     handleSave(lead.id)
                   }}
                   disabled={!canEditLead(lead, showMyLeads)}
-                  className={`w-full px-3 py-1.5 rounded-lg border text-sm ${
+                  className={`w-full px-2 py-1 rounded-lg border text-[10px] font-bold transition-all duration-200 ${
                     canEditLead(lead, showMyLeads)
-                      ? "bg-gray-700/50 border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-gray-100"
-                      : "bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed"
+                      ? "bg-white border-[#5A4C33]/20 focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A] text-[#5A4C33] shadow-sm"
+                      : "bg-[#F8F5EC] border-[#5A4C33]/10 text-[#5A4C33]/40 cursor-not-allowed"
                   }`}
                 >
                   {statusOptions.filter(status => status !== "Retargeting" || lead.status === "Retargeting").map((status) => (
@@ -800,15 +744,15 @@ const BillcutLeadsTableOptimized = React.memo(
               </div>
             </td>
 
-            <td className="px-6 py-4 border-r border-gray-700/50">
+            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
               <div className="flex flex-col space-y-2">
                 {!isUnassigned(lead) ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <div className="flex items-center flex-1">
                       <div
-                        className={`inline-flex items-center justify-center h-8 w-8 rounded-full ${
-                          salesPersonColors[lead.assignedTo] || "bg-gray-800"
-                        } text-white border border-gray-700 shadow-sm font-medium text-xs`}
+                        className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${
+                          salesPersonColors[lead.assignedTo] || "bg-[#5A4C33]"
+                        } text-white border border-white/20 shadow-sm font-bold text-[10px]`}
                       >
                         {lead.assignedTo
                           .split(" ")
@@ -816,116 +760,49 @@ const BillcutLeadsTableOptimized = React.memo(
                           .join("")
                           .toUpperCase()}
                       </div>
-                      <span
-                        className={`ml-2 text-xs ${rowColors.textColor ? "text-white/90" : "text-gray-300"} truncate`}
-                      >
-                        {lead.assignedTo}
-                      </span>
-                    </div>
-                    {(userRole === "admin" || userRole === "overlord" || (user && lead.assignedTo === userName)) && (
-                      <button
-                        onClick={() => handleUnassign(lead.id)}
-                        className="flex items-center justify-center h-6 w-6 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150"
-                        title="Unassign lead"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-800 text-gray-400 border border-gray-700 shadow-sm font-medium text-xs">
-                    UN
-                  </div>
-                )}
-
-                {canAssignLead(lead) && (
-                  <div className="mt-2">
-                    <select
-                      value={editingData[lead.id]?.assignedTo || (isUnassigned(lead) ? "" : lead.assignedTo)}
-                      onChange={(e) => {
-                        handleChange(lead.id, "assignedTo", e.target.value)
-                        handleSave(lead.id)
-                      }}
-                      className="w-full px-3 py-1.5 bg-gray-700/50 rounded-lg border border-gray-600/50 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm text-gray-100"
-                    >
-                      {isUnassigned(lead) && <option value="">Unassigned</option>}
-                      {/* Ensure the currently assigned person is an option, even if they're not in the filtered salesPeople list */}
-                      {!isUnassigned(lead) && !salesPeople.find(p => p.name === lead.assignedTo) && (
-                        <option value={lead.assignedTo}>{lead.assignedTo}</option>
-                      )}
-                      {salesPeople.map((person) => (
-                        <option
-                          key={person.id}
-                          value={person.name}
-                          style={{
-                            backgroundColor: salesPersonColors[person.name]?.replace("bg-", "") || "gray-700",
-                            color: "white",
-                          }}
-                        >
-                          {person.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            </td>
-
-            {activeTab === "callback" && (
-              <td className="px-6 py-4 border-r border-gray-700/50">
-                {lead.callbackInfo ? (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt)).dotColor}`}
-                      ></div>
-                      <div
-                        className={`text-sm font-medium ${getCallbackDateColor(new Date(lead.callbackInfo.scheduled_dt)).textColor}`}
-                      >
-                        {new Date(lead.callbackInfo.scheduled_dt).toLocaleString("en-US", {
-                          weekday: "short",
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                          hour12: true,
-                        })}
+                      <div className="ml-1.5 flex flex-col">
+                        <div className={`text-[11px] font-bold ${rowColors.textColor || "text-[#5A4C33]"}`}>
+                          {lead.assignedTo}
+                        </div>
+                        {userRole !== "sales" && (
+                          <button
+                            onClick={() => handleUnassign(lead.id)}
+                            className="text-[9px] text-red-500 hover:text-red-600 font-bold underline text-left"
+                          >
+                            Unassign
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className={`text-xs ${rowColors.textColor ? "text-white/80" : "text-gray-600"}`}>
-                      Scheduled by: {lead.callbackInfo.scheduled_by}
-                    </div>
-                    <div className={`text-xs ${rowColors.textColor ? "text-white/70" : "text-gray-500"}`}>
-                      {lead.callbackInfo.created_at?.toDate
-                        ? new Date(lead.callbackInfo.created_at.toDate()).toLocaleDateString()
-                        : "Date not available"}
-                    </div>
-                    <button
-                      onClick={() => handleEditCallback(lead)}
-                      className="mt-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md font-medium transition-colors duration-200"
-                      title="Edit callback details"
-                    >
-                      Edit
-                    </button>
                   </div>
                 ) : (
-                  <div className={`text-sm ${rowColors.textColor ? "text-white/70" : "text-gray-500"} italic`}>
-                    No callback info
+                  <div className="bg-[#D2A02A]/10 text-[#D2A02A] text-[10px] font-bold px-2 py-1 rounded-md text-center border border-[#D2A02A]/20">
+                    Unassigned
                   </div>
                 )}
-              </td>
-            )}
+
+                <select
+                  value={editingData[lead.id]?.assignedTo || lead.assignedTo || ""}
+                  onChange={async (e) => {
+                    await handleChange(lead.id, "assignedTo", e.target.value)
+                    handleSave(lead.id)
+                  }}
+                  disabled={!canAssignLead(lead)}
+                  className={`w-full px-2 py-1 rounded-lg border text-[10px] font-bold transition-all duration-200 ${
+                    canAssignLead(lead)
+                      ? "bg-white border-[#5A4C33]/20 focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A] text-[#5A4C33] shadow-sm"
+                      : "bg-[#F8F5EC] border-[#5A4C33]/10 text-[#5A4C33]/40 cursor-not-allowed"
+                  }`}
+                >
+                  <option value="">{isUnassigned(lead) ? "Assign Lead" : "Reassign"}</option>
+                  {salesPeople.map((person) => (
+                    <option key={person.id} value={person.name}>
+                      {person.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </td>
 
             <BillcutLeadNotesCell
               lead={{
@@ -962,65 +839,61 @@ const BillcutLeadsTableOptimized = React.memo(
       handleEditCallback,
       fetchNotesHistory,
       updateLead,
+      userRole,
     ])
 
     return (
       <>
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm">
-          <table className="min-w-full divide-y divide-gray-700/50">
-            <thead className="bg-gray-800/50">
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-[#5A4C33]/10 bg-white/50 backdrop-blur-md shadow-sm">
+          <table className="min-w-full divide-y divide-[#5A4C33]/10">
+            <thead className="bg-[#5A4C33]/5">
               <tr>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-16 border-r border-gray-700/50">
+                <th className="px-2 py-3 text-center border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20 w-10">
                   <input
                     type="checkbox"
-                    checked={selectedLeads.length === leads.length && leads.length > 0}
+                    checked={leads.length > 0 && selectedLeads.length === leads.length}
                     onChange={onSelectAll}
-                    className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                    className="w-3.5 h-3.5 text-[#D2A02A] bg-white border-[#5A4C33]/30 rounded focus:ring-[#D2A02A] focus:ring-2"
                   />
                 </th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-32 border-r border-gray-700/50">
-                  Date
+                <th className="px-2 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  Date & Time
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
-                  Contact Info
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  Contact Details
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
                   Location
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
                   Financials
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
                   Status
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
                   Assigned To
                 </th>
-                {activeTab === "callback" && (
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700/50">
-                    Callback Details
-                  </th>
-                )}
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                  Sales Notes
+                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-l border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  Actions & Notes
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700/50 bg-gray-800/10">{tableRows}</tbody>
+            <tbody className="divide-y divide-[#5A4C33]/10 bg-white/30">{tableRows}</tbody>
           </table>
         </div>
 
         {/* Mobile Card View */}
         <div className="md:hidden space-y-4">
           {leads.length > 0 && (
-            <div className="bg-gray-800/30 p-3 rounded-xl border border-gray-700/50 flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-300">Select All Leads</span>
+            <div className="bg-white/60 p-3 rounded-xl border border-[#5A4C33]/10 flex items-center justify-between mb-2 shadow-sm backdrop-blur-md">
+              <span className="text-sm font-bold text-[#5A4C33]">Select All Leads</span>
               <input
                 type="checkbox"
                 checked={selectedLeads.length === leads.length && leads.length > 0}
                 onChange={onSelectAll}
-                className="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                className="w-5 h-5 text-[#D2A02A] bg-white border-[#5A4C33]/30 rounded focus:ring-[#D2A02A] focus:ring-2"
               />
             </div>
           )}
@@ -1051,8 +924,8 @@ const BillcutLeadsTableOptimized = React.memo(
               />
             ))
           ) : (
-            <div className="text-center py-12 bg-gray-800/20 rounded-xl border border-gray-700/50">
-              <p className="text-gray-500 text-sm">No leads match your criteria</p>
+            <div className="text-center py-12 bg-white/40 rounded-xl border border-[#5A4C33]/10 italic shadow-inner">
+              <p className="text-[#5A4C33]/40 text-sm font-medium">No leads match your criteria</p>
             </div>
           )}
         </div>

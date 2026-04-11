@@ -48,42 +48,42 @@ const BulkAssignmentModal = ({
     : unassignedLeads.length + currentUserLeads.length + alreadyAssignedToOthers.length;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-xl p-6 w-full max-w-lg border border-gray-700">
-        <h3 className="text-xl font-semibold text-gray-100 mb-4">Bulk Assign Leads</h3>
-        <div className="mb-4">
-          <div className="mb-4 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
-            <p className="text-gray-300 mb-2 font-medium">Assignment Summary:</p>
-            <div className="space-y-1 text-sm">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onCancel}></div>
+      <div className="bg-[#F8F5EC] rounded-2xl p-6 w-full max-w-lg border border-[#5A4C33]/10 shadow-2xl relative animate-in zoom-in-95 duration-200">
+        <h3 className="text-xl font-bold text-[#5A4C33] mb-4 italic tracking-tight uppercase">Bulk Assign Leads</h3>
+        <div className="mb-6">
+          <div className="mb-6 p-4 bg-white/60 rounded-xl border border-[#5A4C33]/10 shadow-inner">
+            <p className="text-[10px] uppercase font-bold text-[#5A4C33]/40 tracking-widest mb-3">Assignment Summary</p>
+            <div className="space-y-2 text-sm">
               {unassignedLeads.length > 0 && (
-                <p className="text-green-400">
-                  ✓ {unassignedLeads.length} unassigned lead{unassignedLeads.length > 1 ? "s" : ""} can be assigned
+                <p className="text-green-600 font-bold">
+                  ✓ {unassignedLeads.length} unassigned lead{unassignedLeads.length > 1 ? "s" : ""}
                 </p>
               )}
               {currentUserLeads.length > 0 && (
-                <p className="text-blue-400">
-                  ✓ {currentUserLeads.length} of your lead{currentUserLeads.length > 1 ? "s" : ""} can be reassigned
+                <p className="text-[#D2A02A] font-bold">
+                  ✓ {currentUserLeads.length} of your lead{currentUserLeads.length > 1 ? "s" : ""}
                 </p>
               )}
               {alreadyAssignedToOthers.length > 0 && (
-                <p className={userRole === "sales" ? "text-red-400" : "text-yellow-400"}>
-                  {userRole === "sales" ? "✗" : "✓"} {alreadyAssignedToOthers.length} lead{alreadyAssignedToOthers.length > 1 ? "s are" : " is"} already assigned to others
-                  {userRole !== "sales" && " (can be reassigned)"}
+                <p className={userRole === "sales" ? "text-red-600 font-bold" : "text-orange-600 font-bold"}>
+                  {userRole === "sales" ? "✗" : "✓"} {alreadyAssignedToOthers.length} lead{alreadyAssignedToOthers.length > 1 ? "s" : ""} assigned to others
                 </p>
               )}
             </div>
-            <p className="text-gray-400 text-xs mt-2">
-              Total assignable: {totalAssignable} of {selectedLeads.length}
+            <p className="text-[#5A4C33]/30 text-[10px] font-bold uppercase tracking-tighter mt-4 border-t border-[#5A4C33]/5 pt-2">
+              Total assignable: {totalAssignable} / {selectedLeads.length}
             </p>
           </div>
           
-          <label className="block text-sm font-medium text-gray-300 mb-2">Assign to:</label>
+          <label className="block text-[10px] font-bold text-[#D2A02A] uppercase tracking-widest mb-2 px-1">Assign to *</label>
           <select
             value={bulkAssignTarget}
             onChange={(e) => setBulkAssignTarget(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-blue-400"
+            className="w-full px-4 py-3 bg-white border border-[#5A4C33]/20 rounded-xl text-[#5A4C33] font-bold focus:outline-none focus:ring-1 focus:ring-[#D2A02A] focus:border-[#D2A02A] shadow-sm appearance-none cursor-pointer"
           >
-            <option value="">Select Salesperson</option>
+            <option value="" className="bg-white">Select Salesperson</option>
             {(userRole === "admin" || userRole === "overlord"
               ? teamMembers.filter((member) => member.role === "sales")
               : teamMembers.filter(
@@ -92,23 +92,23 @@ const BulkAssignmentModal = ({
                     member.role === "sales",
                 )
             ).map((member) => (
-              <option key={member.id} value={member.name}>
+              <option key={member.id} value={member.name} className="bg-white">
                 {member.name}
               </option>
             ))}
           </select>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-8">
           <button
             onClick={onAssign}
             disabled={!bulkAssignTarget}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200"
+            className="flex-1 px-4 py-3 bg-[#D2A02A] hover:bg-[#B8911E] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all duration-200 shadow-md active:scale-[0.98]"
           >
             Assign Leads
           </button>
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors duration-200"
+            className="flex-1 px-4 py-3 bg-[#5A4C33] hover:bg-[#4A3C2A] text-white rounded-xl font-bold transition-all duration-200 shadow-md active:scale-[0.98]"
           >
             Cancel
           </button>

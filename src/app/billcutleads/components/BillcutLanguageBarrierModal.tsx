@@ -66,24 +66,24 @@ const BillcutLanguageBarrierModal: React.FC<BillcutLanguageBarrierModalProps> = 
       ></div>
       
       {/* Modal Content */}
-      <div className="relative bg-[#111c44] rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl border border-gray-700/50 animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="relative bg-[#F8F5EC] rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl border border-[#5A4C33]/10 animate-in zoom-in-95 duration-200 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-700/50">
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-[#5A4C33]/10">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20">
-              <FiGlobe className="h-6 w-6 text-blue-400" />
+            <div className="p-3 bg-[#D2A02A]/10 rounded-2xl border border-[#D2A02A]/20">
+              <FiGlobe className="h-6 w-6 text-[#D2A02A]" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-gray-100 italic tracking-tight uppercase">
+              <h3 className="text-xl font-bold text-[#5A4C33] italic tracking-tight uppercase">
                 Language Barrier
               </h3>
-              <p className="text-xs text-blue-400 font-bold tracking-widest uppercase mt-0.5">Configuration</p>
+              <p className="text-[10px] text-[#D2A02A] font-bold tracking-widest uppercase mt-0.5">Configuration</p>
             </div>
           </div>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="p-2.5 bg-gray-800/50 rounded-xl text-gray-400 hover:text-white transition-colors border border-gray-700/50"
+            className="p-2.5 bg-white rounded-xl text-[#5A4C33]/40 hover:text-[#5A4C33] transition-all duration-200 border border-[#5A4C33]/10 shadow-sm"
           >
             <FiX className="h-5 w-5" />
           </button>
@@ -92,14 +92,14 @@ const BillcutLanguageBarrierModal: React.FC<BillcutLanguageBarrierModalProps> = 
         {/* Body Content */}
         <div className="space-y-8">
           {/* Lead Info */}
-          <div className="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/30">
-            <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-2">Target Lead</p>
-            <p className="text-lg font-bold text-gray-100 italic">{leadName}</p>
+          <div className="bg-white/60 p-5 rounded-2xl border border-[#5A4C33]/10 shadow-inner">
+            <p className="text-[10px] uppercase font-bold text-[#5A4C33]/40 tracking-widest mb-2">Target Lead</p>
+            <p className="text-lg font-bold text-[#5A4C33] italic">{leadName}</p>
           </div>
 
           {/* Selection */}
           <div className="relative">
-            <label htmlFor="language-select" className="block text-[10px] uppercase font-bold text-blue-400 tracking-widest mb-3 px-1">
+            <label htmlFor="language-select" className="block text-[10px] uppercase font-bold text-[#D2A02A] tracking-widest mb-3 px-1">
               Select Preferred Language *
             </label>
             <div className="relative group">
@@ -108,38 +108,37 @@ const BillcutLanguageBarrierModal: React.FC<BillcutLanguageBarrierModalProps> = 
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full h-14 bg-gray-900 border border-gray-700 rounded-2xl px-5 text-gray-100 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 appearance-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group-hover:bg-gray-800"
+                className="w-full h-14 bg-white border border-[#5A4C33]/20 rounded-2xl px-5 text-[#5A4C33] font-bold focus:outline-none focus:ring-1 focus:ring-[#D2A02A] focus:border-[#D2A02A] appearance-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
-                <option value="" disabled className="bg-gray-900">Choose a language</option>
+                <option value="" disabled className="bg-white">Choose a language</option>
                 {indianLanguages.map((language) => (
-                  <option key={language} value={language} className="bg-gray-900 py-3">
+                  <option key={language} value={language} className="bg-white py-3">
                     {language}
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-gray-500 group-hover:text-blue-400">
+              <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-[#5A4C33]/30 group-hover:text-[#D2A02A]">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
-            <p className="mt-2 text-[10px] text-gray-500 font-medium px-1">Note: This will mark the lead for specific regional language follow-up.</p>
+            <p className="mt-2 text-[10px] text-[#5A4C33]/40 font-bold px-1">Note: This will mark the lead for specific regional language follow-up.</p>
           </div>
         </div>
 
-        {/* Footer Actions */}
         <div className="mt-10 flex items-center gap-4">
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex-1 py-4 text-sm font-bold text-gray-400 hover:text-gray-200 transition-colors active:scale-95"
+            className="flex-1 py-4 text-sm font-bold text-[#5A4C33]/40 hover:text-[#5A4C33] transition-all duration-200 active:scale-95"
           >
             Cancel Action
           </button>
           <button
             onClick={handleConfirm}
             disabled={isSubmitting || !selectedLanguage}
-            className="flex-[1.5] py-4 bg-blue-600 hover:bg-blue-700 text-sm font-bold text-white rounded-2xl border border-blue-500 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            className="flex-[1.5] py-4 bg-[#D2A02A] hover:bg-[#B8911E] text-sm font-bold text-white rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
           >
             {isSubmitting ? (
               <>

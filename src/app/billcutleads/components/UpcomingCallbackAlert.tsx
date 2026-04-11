@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { searchCache } from '@/app/dashboard/superadmin/utils/cache';
+import { FiX } from 'react-icons/fi';
 import { authFetch } from '@/lib/authFetch';
 
 interface UpcomingCallback {
@@ -128,13 +129,13 @@ const UpcomingCallbackAlert: React.FC = () => {
             <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
           </div>
           <div className="ml-3 flex-1">
-            <p className="text-sm font-medium text-white">
+            <p className="text-sm font-bold text-[#5A4C33]">
               ⚠️ Upcoming Callback Alert
             </p>
-            <p className="mt-1 text-sm text-yellow-100">
-              <span className="font-medium">{callback.name}</span>
+            <p className="mt-1 text-sm text-[#D2A02A] font-bold italic">
+              {callback.name}
             </p>
-            <p className="mt-1 text-sm text-yellow-200">
+            <p className="mt-1 text-xs text-[#5A4C33]/60 font-bold">
               Scheduled for: {callback.scheduledTime.toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
@@ -148,7 +149,7 @@ const UpcomingCallbackAlert: React.FC = () => {
                   window.location.href = '/billcutleads?tab=callback';
                   toast.dismiss(toastId);
                 }}
-                className="bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                className="bg-white/10 hover:bg-white/20 text-[#5A4C33] px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border border-[#5A4C33]/10"
               >
                 View Callbacks
               </button>
@@ -165,15 +166,13 @@ const UpcomingCallbackAlert: React.FC = () => {
         pauseOnHover: true,
         draggable: true,
         progress: undefined,
-        className: "bg-gradient-to-r from-yellow-600 via-orange-500 to-red-500 border-2 border-yellow-400",
+        className: "bg-[#F8F5EC] border-2 border-[#D2A02A] rounded-2xl shadow-2xl",
         closeButton: ({ closeToast }) => (
           <button
             onClick={closeToast}
-            className="text-white hover:text-yellow-200 transition-colors"
+            className="text-[#5A4C33]/40 hover:text-[#5A4C33] transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <FiX className="w-4 h-4" />
           </button>
         ),
       }

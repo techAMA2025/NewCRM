@@ -26,7 +26,7 @@ const CustomInput = forwardRef<HTMLInputElement, any>(
         onClick={onClick}
         placeholder={placeholder}
         readOnly
-        className="block w-full pl-3 pr-10 py-2.5 text-sm border border-gray-700 bg-[#0b1437] text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 rounded-xl cursor-pointer hover:border-gray-600 transition-all duration-200 shadow-sm"
+        className="block w-full pl-3 pr-10 py-2.5 text-sm border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-2 focus:ring-[#D2A02A]/30 focus:border-[#D2A02A] rounded-xl cursor-pointer hover:border-[#5A4C33]/40 transition-all duration-200 shadow-sm"
       />
       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
         {value && (
@@ -35,7 +35,7 @@ const CustomInput = forwardRef<HTMLInputElement, any>(
               e.stopPropagation();
               onClear();
             }}
-            className="text-gray-400 hover:text-gray-200 p-1 rounded"
+            className="text-[#5A4C33]/40 hover:text-[#5A4C33] p-1 rounded"
             title="Clear date"
             type="button"
           >
@@ -44,7 +44,7 @@ const CustomInput = forwardRef<HTMLInputElement, any>(
             </svg>
           </button>
         )}
-        <FaCalendarAlt className="text-gray-400" />
+        <FaCalendarAlt className="text-[#5A4C33]/40" />
       </div>
     </div>
   )
@@ -93,7 +93,7 @@ const BillcutDateInput = ({
   return (
     <div className={`relative ${className}`}>
       {label && (
-        <label className="block text-xs text-gray-400 mb-1">{label}</label>
+        <label className="block text-xs text-[#5A4C33]/60 mb-1">{label}</label>
       )}
       
       <div className="w-full">
@@ -111,7 +111,7 @@ const BillcutDateInput = ({
               onClear={handleClear}
             />
           }
-          calendarClassName="custom-datepicker-dark"
+          calendarClassName="custom-datepicker-light"
           popperClassName="custom-datepicker-popper"
           todayButton="Today"
           calendarStartDay={0}
@@ -124,13 +124,14 @@ const BillcutDateInput = ({
       </div>
 
       <style jsx global>{`
-        .custom-datepicker-dark {
-          background-color: #1f2937;
-          border: 1px solid #374151;
-          border-radius: 0.5rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        .custom-datepicker-light {
+          background-color: #ffffff;
+          border: 1px solid #5A4C3320;
+          border-radius: 0.75rem;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
           font-family: inherit;
-          color: #e5e7eb;
+          color: #5A4C33;
+          overflow: hidden;
         }
 
         .custom-datepicker-popper {
@@ -138,88 +139,90 @@ const BillcutDateInput = ({
         }
 
         .react-datepicker__header {
-          background-color: #111827;
-          border-bottom: 1px solid #374151;
-          border-radius: 0.5rem 0.5rem 0 0;
+          background-color: #F8F5EC;
+          border-bottom: 1px solid #5A4C3310;
+          border-radius: 0.75rem 0.75rem 0 0;
+          padding-top: 12px;
         }
 
         .react-datepicker__current-month {
-          color: #e5e7eb;
-          font-weight: 600;
-          font-size: 0.875rem;
+          color: #5A4C33;
+          font-weight: 700;
+          font-size: 0.9rem;
+          margin-bottom: 8px;
         }
 
         .react-datepicker__day-name {
-          color: #9ca3af;
+          color: #5A4C3360;
           font-size: 0.75rem;
-          font-weight: 500;
+          font-weight: 600;
+          width: 2rem;
         }
 
         .react-datepicker__day {
-          color: #e5e7eb;
-          font-size: 0.75rem;
-          border-radius: 0.25rem;
+          color: #5A4C33;
+          font-size: 0.8rem;
+          border-radius: 0.5rem;
           width: 2rem;
           height: 2rem;
           line-height: 2rem;
           margin: 0.125rem;
+          transition: all 0.2s;
         }
 
         .react-datepicker__day:hover {
-          background-color: #374151;
-          color: #60a5fa;
+          background-color: #D2A02A15;
+          color: #D2A02A;
         }
 
         .react-datepicker__day--selected {
-          background-color: #3b82f6;
-          color: white;
+          background-color: #D2A02A !important;
+          color: white !important;
           font-weight: 600;
-        }
-
-        .react-datepicker__day--selected:hover {
-          background-color: #2563eb;
         }
 
         .react-datepicker__day--today {
-          background-color: #1f2937;
-          color: #60a5fa;
-          font-weight: 600;
-          border: 1px solid #3b82f6;
+          background-color: transparent;
+          color: #D2A02A;
+          font-weight: 700;
+          border: 1px solid #D2A02A40;
         }
 
         .react-datepicker__day--disabled {
-          color: #4b5563;
+          color: #5A4C3330;
           cursor: not-allowed;
         }
 
         .react-datepicker__day--disabled:hover {
           background-color: transparent;
-          color: #4b5563;
+          color: #5A4C3330;
         }
 
         .react-datepicker__day--outside-month {
-          color: #4b5563;
+          color: #5A4C3330;
         }
 
         .react-datepicker__navigation {
-          top: 0.5rem;
+          top: 12px;
         }
 
         .react-datepicker__navigation-icon::before {
-          border-color: #9ca3af;
+          border-color: #5A4C3360;
+          border-width: 2px;
         }
 
         .react-datepicker__today-button {
-          background-color: #374151;
-          color: #e5e7eb;
-          border-top: 1px solid #374151;
-          border-radius: 0 0 0.5rem 0.5rem;
-          padding: 0.5rem 1rem;
-          font-weight: 500;
+          background-color: #F8F5EC;
+          color: #D2A02A;
+          border-top: 1px solid #5A4C3310;
+          border-radius: 0 0 0.75rem 0.75rem;
+          padding: 8px 0;
+          font-weight: 600;
+          font-size: 0.8rem;
         }
 
         .react-datepicker__today-button:hover {
-          background-color: #4b5563;
+          background-color: #D2A02A10;
         }
 
         .react-datepicker__triangle {

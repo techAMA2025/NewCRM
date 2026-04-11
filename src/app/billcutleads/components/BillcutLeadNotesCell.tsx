@@ -157,24 +157,24 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
     return (
       <td className="px-4 py-3">
         <div className="flex items-center justify-center">
-          <div className="text-sm text-gray-400">Loading...</div>
+          <div className="text-sm text-[#5A4C33]/40 font-medium">Loading...</div>
         </div>
       </td>
     );
   }
 
   return (
-    <td className="px-6 py-4">
+    <td className="px-3 py-3 border-l border-[#5A4C33]/20">
       <div className="flex flex-col space-y-2">
         <div className="flex items-start space-x-2">
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder={disabled ? "Sales notes (read-only)" : "Add sales notes..."}
-            className={`text-sm w-full rounded p-2 resize-none ${
+            className={`text-xs w-full rounded-lg p-2 resize-none transition-all duration-200 ${
               disabled
-                ? 'bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed'
-                : 'bg-gray-700 border-gray-600 text-gray-200'
+                ? 'bg-[#F8F5EC] border-[#5A4C33]/10 text-[#5A4C33]/40 cursor-not-allowed italic'
+                : 'bg-white border-[#5A4C33]/20 text-[#5A4C33] focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A] shadow-sm'
             }`}
             rows={2}
             disabled={disabled}
@@ -185,12 +185,12 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
             <button
               onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
               disabled={disabled || isSendingWhatsApp || templatesLoading}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2 rounded-lg transition-all duration-200 shadow-sm ${
                 disabled || isSendingWhatsApp || templatesLoading
-                  ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : showWhatsAppMenu
-                  ? 'bg-green-700 text-white'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
+                  ? 'bg-[#5A4C33] text-white'
+                  : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
               }`}
               title="Send WhatsApp message"
             >
@@ -203,28 +203,28 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
 
             {/* WhatsApp Menu Dropdown */}
             {showWhatsAppMenu && !templatesLoading && (
-              <div className="absolute right-0 mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50" ref={menuRef}>
-                <div className="p-3 border-b border-gray-700">
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-[#5A4C33]/10 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in duration-200" ref={menuRef}>
+                <div className="p-3 border-b border-[#5A4C33]/5">
                   <div className="flex items-center space-x-2">
-                    <FaWhatsapp className="text-green-400" />
-                    <span className="text-sm font-medium text-gray-200">WhatsApp Templates</span>
+                    <FaWhatsapp className="text-green-600" />
+                    <span className="text-sm font-bold text-[#5A4C33]">WhatsApp Templates</span>
                   </div>
                 </div>
-                <div className="py-2">
+                <div className="py-2 max-h-[300px] overflow-y-auto">
                   {whatsappTemplates.length > 0 ? (
                     whatsappTemplates.map((template, index) => (
                       <button
                         key={template.id}
                         onClick={() => sendWhatsAppMessage(template.templateName)}
                         disabled={isSendingWhatsApp}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-3 text-left hover:bg-[#F8F5EC] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <div className="text-sm font-medium text-gray-200">{template.name}</div>
-                        <div className="text-xs text-gray-400 mt-1">{template.description}</div>
+                        <div className="text-sm font-bold text-[#5A4C33]">{template.name}</div>
+                        <div className="text-[11px] text-[#5A4C33]/60 mt-0.5 leading-tight">{template.description}</div>
                       </button>
                     ))
                   ) : (
-                    <div className="px-4 py-3 text-sm text-gray-400">
+                    <div className="px-4 py-3 text-sm text-[#5A4C33]/40 italic">
                       No sales templates available
                     </div>
                   )}
@@ -234,20 +234,20 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
           </div>
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex space-x-1.5">
           <button
             onClick={handleSaveNote}
             disabled={isLoading || !note.trim() || disabled}
-            className="flex items-center justify-center px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded text-white transition-colors"
+            className="flex items-center justify-center px-2 py-0.5 text-[10px] bg-[#D2A02A] hover:bg-[#B8911E] disabled:bg-gray-300 rounded-md text-white font-bold transition-all duration-200 shadow-sm"
           >
             {isLoading ? 'Saving...' : 'Save'}
           </button>
           
           <button
             onClick={handleViewHistory}
-            className="flex items-center justify-center px-3 py-1 text-xs bg-gray-600 hover:bg-gray-700 rounded text-white transition-colors"
+            className="flex items-center justify-center px-2 py-0.5 text-[10px] bg-white border border-[#5A4C33]/20 text-[#5A4C33] hover:bg-gray-50 rounded-md font-bold transition-all duration-200 shadow-sm"
           >
-            Show History
+            History
           </button>
         </div>
       </div>

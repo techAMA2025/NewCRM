@@ -227,7 +227,7 @@ const BillCutLeadsPage = () => {
   }, [userRole])
 
   return (
-    <div className="flex h-screen bg-[#0b1437] overflow-hidden">
+    <div className="flex h-screen bg-[#F8F5EC] overflow-hidden font-sans text-[#5A4C33]">
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
         {SidebarComponent && <SidebarComponent />}
       </div>
@@ -236,7 +236,7 @@ const BillCutLeadsPage = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
       )}
 
-      <div className="flex-1 overflow-auto bg-[#0b1437] relative custom-scrollbar">
+      <div className="flex-1 overflow-auto bg-[#F8F5EC] relative custom-scrollbar">
         <div className="p-4 md:p-8 max-w-8xl mx-auto">
           <BillcutLeadsHeader
             isLoading={isLoading}
@@ -279,7 +279,7 @@ const BillCutLeadsPage = () => {
 
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D2A02A]"></div>
             </div>
           ) : (
             <>
@@ -306,12 +306,12 @@ const BillCutLeadsPage = () => {
 
               {hasMoreLeads && !searchQuery.trim() && (
                 <div ref={loadMoreRef} className="flex justify-center items-center py-8">
-                  {isLoadingMore ? <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-400" /> : <div className="text-gray-400 text-sm">Scroll down to load more leads...</div>}
+                  {isLoadingMore ? <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#D2A02A]" /> : <div className="text-[#5A4C33]/60 text-sm">Scroll down to load more leads...</div>}
                 </div>
               )}
 
               {!hasMoreLeads && !searchQuery.trim() && leads.length > 0 && (
-                <div className="flex justify-center items-center py-4 text-gray-400 text-sm">All leads loaded ({leads.length} total)</div>
+                <div className="flex justify-center items-center py-4 text-[#5A4C33]/60 text-sm">All leads loaded ({leads.length} total)</div>
               )}
             </>
           )}
