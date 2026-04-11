@@ -10,7 +10,6 @@ import { doc, onSnapshot, collection, query, where, orderBy, limit, Timestamp } 
 import LeadsHeader from "./components/AmaLeadsHeader"
 import LeadsFilters from "./components/AmaLeadsFilters"
 import AmaLeadsTable from "./components/AmaLeadsTable"
-import AmaLeadsTabs from "./components/AmaLeadsTabs"
 import SalespersonCards from "./components/SalespersonCards"
 import AdminSidebar from "@/components/navigation/AdminSidebar"
 import SalesSidebar from "@/components/navigation/SalesSidebar"
@@ -831,8 +830,7 @@ const AmaLeadsPage = () => {
         <Sidebar />
       </div>
       <div 
-        ref={scrollContainerRef}
-        className="flex-1 flex flex-col min-w-0 overflow-y-auto w-full"
+        className="flex-1 flex flex-col min-w-0 overflow-hidden w-full"
       >
         <LeadsHeader
           userRole={userRole}
@@ -842,9 +840,13 @@ const AmaLeadsPage = () => {
           loadAllLeads={handleLoadAllLeads}
           isLoadAllLoading={isLoadAllLoading}
           onMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          allLeadsCount={stats.total}
+          callbackCount={stats.callback}
         />
 
-        <div className="flex-1 flex flex-col min-h-xl p-0 md:p-5 gap-2 md:gap-4">
+        <div className="flex-1 flex flex-col min-h-0 p-3 md:px-6 md:py-4 gap-3 md:gap-5">
           {/* Salesperson Performance Cards */}
           {(userRole === "admin" || userRole === "overlord") && (
             <SalespersonCards
@@ -856,14 +858,9 @@ const AmaLeadsPage = () => {
               toDate={toDate}
             />
           )}
-          <AmaLeadsTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            allLeadsCount={stats.total}
-            callbackCount={stats.callback}
-          />
 
-          <div className="flex flex-col min-h-0 w-full">
+
+          <div className="flex-1 flex flex-col min-h-0 w-full">
             <LeadsFilters
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -904,7 +901,11 @@ const AmaLeadsPage = () => {
               setServiceRequiredFilter={setServiceRequiredFilter}
             />
 
-            <AmaLeadsTable
+            <div 
+              ref={scrollContainerRef}
+              className="flex-1 overflow-auto bg-white/30 backdrop-blur-sm rounded-xl border border-[#5A4C33]/10 shadow-inner"
+            >
+              <AmaLeadsTable
               filteredLeads={sortedLeads}
               leads={sortedLeads}
               editingLeads={editingLeads}
@@ -960,6 +961,7 @@ const AmaLeadsPage = () => {
               handleBulkUnassign={handleBulkUnassign}
               handleBulkWhatsApp={() => setShowBulkWhatsAppModal(true)}
             />
+            </div>
           </div>
         </div>
       </div>

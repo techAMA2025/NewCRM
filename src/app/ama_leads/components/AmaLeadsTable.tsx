@@ -277,10 +277,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
         {/* Select All Checkbox Column */}
         {columnVisibility.checkbox && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-10 cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-10 cursor-pointer border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <input
                 type="checkbox"
                 checked={selectedLeads.length === list.length && list.length > 0}
@@ -306,11 +306,11 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.date && (
           <th
-            className="py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
+            className="py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 cursor-pointer border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             onClick={() => requestSort("synced_at")}
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <div className="flex items-center">
                 <span className="text-[#D2A02A] text-[10px]">Date</span>
                 {sortConfig?.key === "synced_at" && <FaSort className="ml-1" />}
@@ -337,10 +337,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.name && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <span className="text-[#D2A02A] text-[10px]">Name</span>
               <button
                 onClick={() => toggleColumn("name")}
@@ -361,11 +361,11 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.location && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 cursor-pointer border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 cursor-pointer border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             onClick={() => requestSort("source_database")}
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <div className="flex items-center">
                 <span className="text-[#D2A02A] text-[10px]">Location</span>
                 {sortConfig?.key === "source_database" && <FaSort className="ml-1" />}
@@ -392,10 +392,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.source && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-20 border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-20 border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <span className="text-[#D2A02A] text-[10px]">Source</span>
               <button
                 onClick={() => toggleColumn("source")}
@@ -416,10 +416,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.debt && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-20 border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-20 border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <span className="text-[#D2A02A] text-[10px]">Debt</span>
               <button
                 onClick={() => toggleColumn("debt")}
@@ -440,10 +440,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.status && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-28 border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-28 border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <span className="text-[#D2A02A] text-[10px]">Status</span>
               <button
                 onClick={() => toggleColumn("status")}
@@ -464,10 +464,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.assignedTo && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <span className="text-[#D2A02A] text-[10px]">Assigned To</span>
               <button
                 onClick={() => toggleColumn("assignedTo")}
@@ -490,10 +490,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.customerQuery && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-40 border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-40 border-r border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <span className="text-[#D2A02A] text-[10px]">{activeTab === "callback" ? "Callback Info" : "Query"}</span>
               <button
                 onClick={() => toggleColumn("customerQuery")}
@@ -514,10 +514,10 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
         {columnVisibility.salesNotes && (
           <th
-            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-48 border border-[#5A4C33] bg-[#ffffff]/50"
+            className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-48 border-b border-[#5A4C33]/20 bg-[#ffffff]/50"
             scope="col"
           >
-            <div className="flex items-center justify-between border border-[#5A4C33] rounded-lg p-2">
+            <div className="flex items-center justify-between p-2">
               <span className="text-[#D2A02A] text-[10px]">Sales Notes</span>
               <button
                 onClick={() => toggleColumn("salesNotes")}
@@ -618,7 +618,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
   const assignmentOptions = getAssignmentOptions()
 
   return (
-    <div className="overflow-x-auto relative">
+    <div className="overflow-x-auto relative w-full">
       {/* Loading Overlay */}
       {isLoading && !isLoadingMore && (
         <div className="absolute inset-0 bg-white/50 z-50 flex items-center justify-center rounded-xl backdrop-blur-[1px]">
@@ -792,35 +792,38 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
 
       {/* Bulk Assignment Controls - responsive */}
       {selectedLeads.length > 0 && canModifyAssignment() && (
-        <div className="bg-[#F8F5EC] px-3 md:px-4 py-2 md:py-3 border-b border-[#5A4C33]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div className="flex items-center flex-wrap gap-2">
-            <span className="text-xs md:text-sm text-[#5A4C33]">
-              {selectedLeads.length} lead{selectedLeads.length > 1 ? "s" : ""} selected
-            </span>
-            <button
-              onClick={handleBulkAssign}
-              className="px-2 md:px-3 py-1 md:py-1.5 bg-[#D2A02A] hover:bg-[#B8911E] text-[#ffffff] text-xs md:text-sm rounded-md transition-colors duration-200"
-            >
-              Assign
-            </button>
-            <button
-              onClick={handleBulkUnassign}
-              className="px-2 md:px-3 py-1 md:py-1.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] text-xs md:text-sm rounded-md transition-colors duration-200"
-            >
-              Unassign
-            </button>
-            <button
-              onClick={handleBulkWhatsApp}
-              className="px-2 md:px-3 py-1 md:py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm rounded-md transition-colors duration-200"
-            >
-              WhatsApp
-            </button>
+        <div className="bg-[#D2A02A]/5 px-4 py-2 border-y border-[#D2A02A]/20 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center flex-wrap gap-3">
+            <div className="flex items-center gap-2 bg-[#D2A02A] text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+              <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              {selectedLeads.length} Lead{selectedLeads.length > 1 ? "s" : ""} Selected
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBulkAssign}
+                className="px-3 py-1.5 bg-white hover:bg-gray-50 text-[#D2A02A] text-xs font-bold rounded-lg transition-all border border-[#D2A02A]/20 shadow-sm hover:shadow"
+              >
+                Assign
+              </button>
+              <button
+                onClick={handleBulkUnassign}
+                className="px-3 py-1.5 bg-white hover:bg-gray-50 text-[#5A4C33] text-xs font-bold rounded-lg transition-all border border-[#5A4C33]/20 shadow-sm hover:shadow"
+              >
+                Unassign
+              </button>
+              <button
+                onClick={handleBulkWhatsApp}
+                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm hover:shadow"
+              >
+                WhatsApp
+              </button>
+            </div>
           </div>
           <button
             onClick={() => (handleSelectLead ? selectedLeads.forEach((id) => handleSelectLead(id)) : undefined)}
-            className="text-xs md:text-sm text-[#5A4C33]/70 hover:text-[#5A4C33]"
+            className="text-xs font-bold text-[#5A4C33]/50 hover:text-red-500 transition-colors py-1 px-2"
           >
-            Clear
+            Clear Selection
           </button>
         </div>
       )}
@@ -829,7 +832,7 @@ const AmaLeadsTable = (props: LeadsTableProps) => {
       <div className="hidden md:block">
         <table className="w-full divide-y divide-[#5A4C33]/10" role="table" aria-label="Leads table">
           {renderTableHeader()}
-          <tbody className="bg-[#ffffff] divide-y divide-[#5A4C33]/5">{renderTableBody()}</tbody>
+          <tbody className="bg-[#ffffff] divide-y divide-[#5A4C33]/10">{renderTableBody()}</tbody>
         </table>
       </div>
 

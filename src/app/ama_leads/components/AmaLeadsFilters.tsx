@@ -659,7 +659,7 @@ const AmaLeadsFilters = ({
         )}
 
         <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block mt-3 md:mt-0`}>
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-7 gap-2 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3 md:gap-4">
           {/* Source Filter */}
           <div className="space-y-1">
             <label className="block text-xs text-[#5A4C33]/70">Source</label>
@@ -756,9 +756,9 @@ const AmaLeadsFilters = ({
           </div>
 
           {/* Date Range Filters */}
-          <div className="col-span-2 md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-1 gap-2 md:gap-4">
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 md:space-x-6">
-              <div className="flex-1 min-w-[180px] space-y-1">
+          <div className="sm:col-span-2 md:col-span-3 lg:col-span-2 2xl:col-span-2">
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 md:gap-4">
+              <div className="flex-1 w-full sm:w-auto min-w-[130px] space-y-1">
                 <CustomDateInput
                   value={fromDate}
                   onChange={(date) => setFromDate(date)}
@@ -769,7 +769,7 @@ const AmaLeadsFilters = ({
                 />
               </div>
 
-              <div className="flex-1 min-w-[180px] space-y-1">
+              <div className="flex-1 w-full sm:w-auto min-w-[130px] space-y-1">
                 <CustomDateInput
                   value={toDate}
                   onChange={(date) => setToDate(date)}
@@ -782,9 +782,9 @@ const AmaLeadsFilters = ({
               </div>
 
               {/* My Leads Toggle Switch */}
-              <div className="space-y-1 flex-shrink-0">
-                <label className="block text-xs text-[#5A4C33]/70">My Leads</label>
-                <div className="flex items-center h-[38px]">
+              <div className="space-y-1 flex-shrink-0 bg-[#5A4C33]/5 p-2 rounded-lg border border-[#5A4C33]/10">
+                <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70 mb-1">My Leads</label>
+                <div className="flex items-center h-[26px]">
                   <button
                       onClick={() => {
                         const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") : ""
@@ -800,35 +800,30 @@ const AmaLeadsFilters = ({
                           toast.error("User name not found. Please log in again.")
                         }
                       }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#D2A02A] focus:ring-offset-2 ${
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#D2A02A] focus:ring-offset-1 ${
                       salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
-                        ? "bg-[#D2A02A]"
-                        : "bg-[#5A4C33]"
+                        ? "bg-[#D2A02A] shadow-inner"
+                        : "bg-[#5A4C33]/20"
                     }`}
                     type="button"
                     role="switch"
                     aria-checked={
                       salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
                     }
-                    title={
-                      salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
-                        ? "Turn off My Leads filter"
-                        : "Turn on My Leads filter"
-                    }
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
                         salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
-                          ? "translate-x-6"
+                          ? "translate-x-5.5"
                           : "translate-x-1"
                       }`}
                     />
                   </button>
                   <span
-                    className={`ml-2 text-xs ${
+                    className={`ml-2 text-[10px] font-bold ${
                       salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")
-                        ? "text-[#D2A02A] font-medium"
-                        : "text-[#5A4C33]"
+                        ? "text-[#D2A02A]"
+                        : "text-[#5A4C33]/40"
                     }`}
                   >
                     {salesPersonFilter === (typeof window !== "undefined" ? localStorage.getItem("userName") : "")

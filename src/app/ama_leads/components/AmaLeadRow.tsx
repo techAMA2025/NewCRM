@@ -529,10 +529,10 @@ const AmaLeadRow = ({
 
   return (
     <>
-      <tr className={`transition-colors duration-150 ${rowColors.rowBg} ${!canEdit ? "opacity-100" : ""}`} role="row">
+      <tr className={`transition-colors duration-150 border-b border-[#5A4C33]/10 ${rowColors.rowBg} ${!canEdit ? "opacity-100" : ""}`} role="row">
         {/* Selection Checkbox */}
         {columnVisibility.checkbox && (
-          <td className="px-2">
+          <td className="px-2 border-r border-b border-[#5A4C33]/10">
             <input
               type="checkbox"
               checked={selectedLeads.includes(lead.id)}
@@ -555,7 +555,7 @@ const AmaLeadRow = ({
 
         {/* Date & Time */}
         {columnVisibility.date && (
-          <td className="px-2 py-1 w-24">
+          <td className="px-2 py-1 w-24 border-r border-b border-[#5A4C33]/10">
             <div className="flex flex-col gap-0.5">
               <span className={`text-[11px] font-medium leading-tight ${rowColors.textColor || "text-[#5A4C33]"}`}>
                 {date}
@@ -571,7 +571,7 @@ const AmaLeadRow = ({
 
         {/* Contact Information */}
         {columnVisibility.name && (
-          <td className="px-2 max-w-[180px]">
+          <td className="px-2 max-w-[180px] border-r border-b border-[#5A4C33]/10">
             <div className="flex flex-col gap-0.5">
               <div
                 className={`font-medium flex items-center text-[12px] ${rowColors.textColor || "text-[#5A4C33]"}`}
@@ -605,7 +605,7 @@ const AmaLeadRow = ({
 
         {/* Location */}
         {columnVisibility.location && (
-          <td className="px-2 py-1 text-[11px] max-w-[100px]">
+          <td className="px-2 py-1 text-[11px] max-w-[100px] border-r border-b border-[#5A4C33]/10">
             <div className="flex items-center truncate">
               <span className={rowColors.textColor || "text-[#5A4C33]/70"}>{location}</span>
             </div>
@@ -614,7 +614,7 @@ const AmaLeadRow = ({
 
         {/* Source - keeping original colors as requested */}
         {columnVisibility.source && (
-          <td className="px-2 py-1 text-[10px]">
+          <td className="px-2 py-1 text-[10px] border-r border-b border-[#5A4C33]/10">
             <div className="flex flex-col gap-1">
               <span className={`inline-flex items-center justify-center px-3 py-0.5 rounded-full font-medium ${sourceColorClass}`}>
                 {sourceDisplay}
@@ -630,7 +630,7 @@ const AmaLeadRow = ({
 
         {/* Debt Range (instead of Financials) */}
         {columnVisibility.debt && (
-          <td className="px-2 py-1 text-[11px]">
+          <td className="px-2 py-1 text-[11px] border-r border-b border-[#5A4C33]/10">
             <div className="space-y-1">
               <div>
                 <span className="font-medium text-[#5A4C33]/70"></span>
@@ -671,7 +671,7 @@ const AmaLeadRow = ({
 
         {/* Customer Query / Callback Info */}
         {columnVisibility.customerQuery && (
-          <td className="px-2 py-1 text-[11px] max-w-[150px]">
+          <td className="px-2 py-1 text-[11px] max-w-[150px] border-r border-b border-[#5A4C33]/10">
             {activeTab === "callback" ? (
               // Show callback information
               <div className="flex flex-col gap-1">
@@ -727,7 +727,7 @@ const AmaLeadRow = ({
 
         {/* Sales Notes inline editor */}
         {columnVisibility.salesNotes && (
-          <td className="px-2 py-1 text-[11px] text-[#5A4C33] max-w-[200px]">
+          <td className="px-2 py-1 text-[11px] text-[#5A4C33] max-w-[200px] border-b border-[#5A4C33]/10">
             <div className="flex flex-col gap-1">
               <textarea
                 className={`w-full border rounded p-1 text-xs ${

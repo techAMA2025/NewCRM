@@ -143,7 +143,7 @@ const AmaSalespersonCell = ({
   };
 
   return (
-    <td className="px-2 py-0.5 text-xs max-w-[150px]">
+    <td className="px-2 py-0.5 text-xs max-w-[150px] border-r border-b border-[#5A4C33]/10">
       <div className="flex flex-col space-y-2">
         {/* Current Assignment Display */}
         {!isUnassigned(lead) ? (
