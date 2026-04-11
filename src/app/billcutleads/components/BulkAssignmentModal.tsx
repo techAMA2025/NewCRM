@@ -88,8 +88,7 @@ const BulkAssignmentModal = ({
               ? teamMembers.filter((member) => member.role === "sales")
               : teamMembers.filter(
                   (member) =>
-                    typeof window !== "undefined" &&
-                    member.name === localStorage.getItem("userName") &&
+                    member.name === currentUserName &&
                     member.role === "sales",
                 )
             ).map((member) => (

@@ -822,7 +822,7 @@ const BillcutLeadsTableOptimized = React.memo(
                         {lead.assignedTo}
                       </span>
                     </div>
-                    {(userRole === "admin" || userRole === "overlord" || (user && typeof window !== "undefined" && lead.assignedTo === localStorage.getItem("userName"))) && (
+                    {(userRole === "admin" || userRole === "overlord" || (user && lead.assignedTo === userName)) && (
                       <button
                         onClick={() => handleUnassign(lead.id)}
                         className="flex items-center justify-center h-6 w-6 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 transition-colors duration-150"

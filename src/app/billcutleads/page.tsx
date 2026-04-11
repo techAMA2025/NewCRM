@@ -213,7 +213,7 @@ const BillCutLeadsPage = () => {
   }, [hasMoreLeads, isLoadingMore, isLoading, fetchBillcutLeads, searchQuery, isLoadAllLoading])
 
   const callbackCount = useMemo(() => {
-    const curName = localStorage.getItem("userName")
+    const curName = typeof window !== "undefined" ? localStorage.getItem("userName") : ""
     return leads.filter(l => l.status === "Callback" && (
       userRole === "admin" || userRole === "overlord" || normalizeUserName(l.assignedTo) === normalizeUserName(curName || "")
     )).length
