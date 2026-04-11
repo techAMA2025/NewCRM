@@ -1,6 +1,6 @@
 "use client";
 
-import { FaHistory, FaTimes } from "react-icons/fa";
+import { FaHistory, FaTimes, FaSpinner } from "react-icons/fa";
 
 type HistoryItem = {
   status: string;
@@ -14,6 +14,24 @@ type LeadStatusHistoryModalProps = {
   leadName: string;
   history: HistoryItem[] | undefined;
   isLoading?: boolean;
+};
+
+const getStatusColor = (status: string) => {
+  const key = (status || "").toLowerCase();
+  if (key === "no status" || key === "select status") return "bg-[#F8F5EC] text-[#5A4C33] border border-[#5A4C33]/20";
+  if (key === "interested") return "bg-green-900 text-green-100 border border-green-700";
+  if (key === "not interested") return "bg-red-900 text-red-100 border border-red-700";
+  if (key === "not answering") return "bg-orange-900 text-orange-100 border border-orange-700";
+  if (key === "callback") return "bg-yellow-900 text-yellow-100 border border-yellow-700";
+  if (key === "future potential") return "bg-blue-900 text-blue-100 border border-blue-700";
+  if (key === "converted") return "bg-emerald-900 text-emerald-100 border border-emerald-700";
+  if (key === "loan required") return "bg-purple-900 text-purple-100 border border-purple-700";
+  if (key === "short loan") return "bg-teal-900 text-teal-100 border border-teal-700";
+  if (key === "cibil issue") return "bg-rose-900 text-rose-100 border border-rose-700";
+  if (key === "language barrier") return "bg-indigo-900 text-indigo-100 border border-indigo-700";
+  if (key === "retargeting") return "bg-cyan-900 text-cyan-100 border border-cyan-700";
+  if (key === "closed lead") return "bg-gray-500 text-white border border-gray-700";
+  return "bg-gray-700 text-gray-200 border border-gray-600";
 };
 
 const LeadStatusHistoryModal = ({
@@ -33,109 +51,131 @@ const LeadStatusHistoryModal = ({
     : [];
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-y-auto"
+      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+    >
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
-      ></div>
-      <div className="relative bg-[#0b1437] rounded-2xl p-6 md:p-8 w-full max-w-lg flex flex-col max-h-[90vh] shadow-2xl border border-gray-700/50 animate-in zoom-in-95 duration-200">
-          <div className="absolute top-0 right-0 pt-6 pr-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="bg-gray-800/50 rounded-lg p-2 text-gray-400 hover:text-white transition-colors border border-gray-700/50"
-            >
-              <span className="sr-only">Close</span>
-              <FaTimes className="h-4 w-4" />
-            </button>
-          </div>
+        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
 
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                <FaHistory className="h-6 w-6 text-blue-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-100 italic tracking-tight">
-                  Status History
-                </h3>
-                <p className="text-sm text-gray-400 font-medium">{leadName}</p>
-              </div>
+      {/* Modal Content */}
+      <div className="relative bg-[#F8F5EC] rounded-3xl p-6 md:p-8 w-full max-w-2xl flex flex-col max-h-[85vh] shadow-2xl border border-[#5A4C33]/10 overflow-hidden my-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#5A4C33]/10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-[#D2A02A]/10 rounded-2xl border border-[#D2A02A]/20">
+              <FaHistory className="h-6 w-6 text-[#D2A02A]" />
             </div>
-
-            <div 
-              className="mt-2 flex-1 overflow-y-auto pr-2 overscroll-contain custom-scrollbar max-h-[60vh]"
-              onWheel={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
-            >
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-400"></div>
-                  <p className="text-sm text-gray-400 animate-pulse">Fetching history...</p>
-                </div>
-              ) : !sortedHistory || sortedHistory.length === 0 ? (
-                <div className="text-center py-12 bg-gray-900/40 rounded-2xl border border-gray-800/50">
-                  <p className="text-sm text-gray-500">
-                    No status history available for this lead.
-                  </p>
-                </div>
-              ) : (
-                <ul className="space-y-4">
-                  {sortedHistory.map((entry, index) => {
-                    let dateDisplay = "Unknown Date";
-                    try {
-                      dateDisplay = new Date(entry.timestamp).toLocaleString("en-IN", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      });
-                    } catch (e) {
-                        console.error("Date parse error", e);
-                    }
-
-                    return (
-                      <li key={index} className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/30 relative hover:border-blue-500/30 transition-colors">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="space-y-1">
-                            <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-900/20 text-blue-400 border border-blue-500/10 mb-2 uppercase tracking-wider">
-                              {entry.status}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
-                                {entry.updatedBy?.charAt(0).toUpperCase() || "U"}
-                              </div>
-                              <span className="text-sm font-medium text-gray-300">
-                                {entry.updatedBy}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest whitespace-nowrap pt-1">
-                            {dateDisplay}
-                          </span>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+            <div>
+              <h3
+                className="text-xl font-bold text-[#5A4C33] italic tracking-tight"
+                id="status-history-modal-title"
+              >
+                Status History
+              </h3>
+              {leadName && (
+                <p className="text-sm text-[#5A4C33]/60 font-bold">{leadName}</p>
               )}
             </div>
           </div>
-
-          <div className="mt-8 pt-6 border-t border-gray-800/50">
-            <button
-              type="button"
-              className="w-full py-3.5 bg-gray-800 hover:bg-gray-700 text-sm font-bold text-gray-200 rounded-xl border border-gray-700 transition-all shadow-lg active:scale-95"
-              onClick={onClose}
-            >
-              Close History
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2.5 bg-white rounded-xl text-[#5A4C33]/40 hover:text-[#5A4C33] transition-all duration-200 border border-[#5A4C33]/10 shadow-sm"
+            aria-label="Close modal"
+          >
+            <FaTimes className="h-5 w-5" />
+          </button>
         </div>
-    </div>
 
+        {/* Body */}
+        <div
+          className="flex-1 overflow-y-auto pr-2 overscroll-contain space-y-4 relative min-h-[200px]"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <FaSpinner className="h-10 w-10 text-[#D2A02A] animate-spin mb-4" />
+              <p className="text-[#5A4C33]/60 font-bold">Fetching history...</p>
+            </div>
+          ) : !sortedHistory || sortedHistory.length === 0 ? (
+            <div className="text-center py-16 bg-white/40 rounded-3xl border border-[#5A4C33]/10 italic">
+              <FaHistory className="mx-auto h-16 w-16 text-[#5A4C33]/10 mb-4" />
+              <p className="text-[#5A4C33]/40 font-bold">No status history available yet.</p>
+              <p className="text-xs text-[#5A4C33]/30 mt-1">Status changes will appear here once made.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              {sortedHistory.map((entry, index) => {
+                let dateDisplay = "Unknown Date";
+                try {
+                  dateDisplay = new Date(entry.timestamp).toLocaleString("en-IN", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
+                } catch (e) {
+                  console.error("Date parse error", e);
+                }
+
+                return (
+                  <div
+                    key={index}
+                    className="group bg-white p-5 rounded-3xl border border-[#5A4C33]/5 hover:border-[#D2A02A]/30 transition-all duration-300 shadow-sm"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-[#5A4C33] flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-[#5A4C33]/10 border border-white/10">
+                          {entry.updatedBy?.charAt(0).toUpperCase() || "U"}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-[#5A4C33]">
+                            {entry.updatedBy || "System User"}
+                          </p>
+                          <p className="text-[10px] text-[#D2A02A] font-bold uppercase tracking-widest">
+                            {dateDisplay}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2 py-1 bg-[#F8F5EC] rounded-lg text-[10px] font-bold text-[#5A4C33]/40 border border-[#5A4C33]/5">
+                        #{sortedHistory.length - index}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${getStatusColor(entry.status)}`}
+                      >
+                        {entry.status}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 pt-6 border-t border-[#5A4C33]/10">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-4 bg-[#5A4C33] hover:bg-[#4A3C2A] text-sm font-bold text-white rounded-2xl transition-all shadow-lg active:scale-95"
+          >
+            Close History
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

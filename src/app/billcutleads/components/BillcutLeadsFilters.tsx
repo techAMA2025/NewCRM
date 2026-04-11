@@ -261,7 +261,7 @@ const BillcutLeadsFiltersOptimized = ({
           )}
         </div>
 
-        {/* Enhanced Search results summary */}
+        {/* Search results summary */}
         {searchQuery && (
           <div className="mt-2 flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -273,8 +273,8 @@ const BillcutLeadsFiltersOptimized = ({
                   </span>
                 ) : (
                   <>
-                    Found <span className="text-[#D2A02A] font-bold">{actualSearchResultsCount}</span> results for "
-                    <span className="text-[#5A4C33] font-medium">{searchQuery}</span>"
+                    Found <span className="text-[#D2A02A] font-bold">{actualSearchResultsCount}</span> results for &quot;
+                    <span className="text-[#5A4C33] font-medium">{searchQuery}</span>&quot;
                     {actualSearchResultsCount > 0 && <span className="text-green-600 ml-2 font-medium">✓ Database search complete</span>}
                   </>
                 )}
@@ -291,26 +291,26 @@ const BillcutLeadsFiltersOptimized = ({
         )}
       </div>
 
-      <div className="bg-white/50 rounded-xl p-4 border border-[#5A4C33]/10 backdrop-blur-md shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
-            <FaFilter className="text-[#5A4C33]/40 mr-2" />
-            <span className="text-sm font-bold text-[#5A4C33]">Filters</span>
-            {/* Mobile toggle */}
-            <button
-              onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className="md:hidden ml-3 px-2 py-1 text-[10px] font-bold text-[#D2A02A] border border-[#D2A02A]/30 rounded uppercase tracking-wider bg-[#D2A02A]/5"
-            >
-              {showMobileFilters ? "▲ Hide" : "▼ Show"}
-            </button>
-          </div>
+      {/* Filters section */}
+      <div className="p-0">
+        <div className="flex items-center mb-0 md:mb-3">
+          <FaFilter className="text-[#5A4C33]/70 mr-2" />
+          <span className="text-sm font-medium text-[#5A4C33]">Filters</span>
 
-          <div className="flex items-center gap-4">
-            <p className="text-sm text-[#5A4C33]/60">
-              Showing{" "}
-              <span className="text-[#D2A02A] font-bold">{searchQuery ? actualSearchResultsCount : allLeadsCount}</span>{" "}
-              Leads
-              {searchQuery && <span className="text-green-600 ml-1 font-medium">(from database search)</span>}
+          {/* Mobile toggle */}
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="md:hidden ml-2 px-2 py-1 text-xs text-[#D2A02A] border border-[#D2A02A]/30 rounded-md hover:bg-[#D2A02A]/5 transition-colors"
+          >
+            {showMobileFilters ? '▲ Hide' : '▼ Show'}
+          </button>
+
+          {/* Right side: count + bulk controls + clear all */}
+          <div className="ml-auto flex items-center gap-4">
+            <p className="text-sm text-[#5A4C33]/70">
+              <span className="text-[#D2A02A] font-medium">{searchQuery ? actualSearchResultsCount : allLeadsCount}</span>
+              <span> leads</span>
+              {searchQuery && <span className="text-[#D2A02A] ml-1">(from database search)</span>}
             </p>
 
             {selectedLeads.length > 0 && (
@@ -323,12 +323,12 @@ const BillcutLeadsFiltersOptimized = ({
                   Bulk Assign
                 </button>
                 {(userRole === 'admin' || userRole === 'overlord') && (
-                <button
-                  onClick={onBulkWhatsApp}
-                  className="px-3 py-1 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white text-xs rounded-lg font-bold transition-all duration-200 shadow-sm"
-                >
-                  Bulk WhatsApp
-                </button>
+                  <button
+                    onClick={onBulkWhatsApp}
+                    className="px-3 py-1 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white text-xs rounded-lg font-bold transition-all duration-200 shadow-sm"
+                  >
+                    Bulk WhatsApp
+                  </button>
                 )}
                 <button
                   onClick={onClearSelection}
@@ -342,7 +342,7 @@ const BillcutLeadsFiltersOptimized = ({
             {hasActiveFilters && (
               <button
                 onClick={clearAllFilters}
-                className="text-xs text-[#D2A02A] hover:text-[#B8911E] focus:outline-none border border-[#D2A02A]/30 px-2 py-1 rounded-md hover:border-[#D2A02A]/50 transition-colors font-medium"
+                className="text-xs text-[#D2A02A] hover:text-[#B8911E] focus:outline-none border border-[#D2A02A]/30 px-2 py-1 rounded-md hover:border-[#D2A02A]/50 transition-colors"
                 type="button"
               >
                 Clear all filters
@@ -352,9 +352,9 @@ const BillcutLeadsFiltersOptimized = ({
         </div>
 
         {/* Prominent Work Mode Toggle for Admins/Overlords */}
-        {(userRole === "admin" || userRole === "overlord") && 
+        {(userRole === "admin" || userRole === "overlord") &&
          salesPersonFilter !== "all" && salesPersonFilter !== "-" && (
-          <div className="mb-4 p-4 bg-white/60 border-2 border-[#D2A02A]/20 rounded-2xl flex items-center justify-between shadow-sm ring-1 ring-[#D2A02A]/5 animate-in fade-in zoom-in duration-500 backdrop-blur-md">
+          <div className="mb-4 p-4 bg-[#F8F5EC] border-2 border-[#D2A02A]/30 rounded-2xl flex items-center justify-between shadow-lg ring-1 ring-[#D2A02A]/10 animate-in fade-in zoom-in duration-500">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-gradient-to-br from-[#D2A02A] to-[#B8911E] rounded-xl text-white shadow-md">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,7 +363,7 @@ const BillcutLeadsFiltersOptimized = ({
               </div>
               <div className="flex flex-col">
                 <p className="text-base font-bold text-[#5A4C33] leading-tight">Full Edit Access Enabled</p>
-                <p className="text-[11px] text-[#5A4C33]/60 mt-1 uppercase font-bold tracking-wider">
+                <p className="text-[11px] text-[#5A4C33]/60 mt-1 uppercase font-semibold tracking-wider">
                   Special Work Mode for <span className="text-[#D2A02A]">{salesPersonFilter}</span>
                 </p>
               </div>
@@ -381,7 +381,7 @@ const BillcutLeadsFiltersOptimized = ({
                   role="switch"
                 >
                   <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-xl transition-transform duration-300 ${
                       salesUsers.find(u => u.name === salesPersonFilter)?.noAnswerWorkModeEnabled
                         ? "translate-x-7"
                         : "translate-x-1"
@@ -398,15 +398,15 @@ const BillcutLeadsFiltersOptimized = ({
           </div>
         )}
 
-        <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block transition-all duration-300`}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3">
+        <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block mt-3 md:mt-0`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-3 md:gap-4">
             {/* Status Filter */}
             <div className="space-y-1">
-              <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70">Status</label>
+              <label className="block text-xs text-[#5A4C33]/70">Status</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-1.5 text-[11px] border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
               >
                 <option value="all">All Status</option>
                 {statusOptions.map((status) => (
@@ -419,12 +419,12 @@ const BillcutLeadsFiltersOptimized = ({
 
             {/* Salesperson Filter */}
             <div className="space-y-1">
-              <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70">Salesperson</label>
+              <label className="block text-xs text-[#5A4C33]/70">Salesperson</label>
               <div className="relative">
                 <select
                   value={salesPersonFilter}
                   onChange={(e) => setSalesPersonFilter(e.target.value)}
-                  className="block w-full pl-3 pr-10 py-1.5 text-[11px] border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200 appearance-none"
+                  className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md appearance-none"
                 >
                   <option value="all">All Salespersons</option>
                   <option value="-">Unassigned</option>
@@ -438,42 +438,19 @@ const BillcutLeadsFiltersOptimized = ({
                     ))
                   )}
                 </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-[#5A4C33]/40">
-                  <FaUserTie className="h-4 w-4" />
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <FaUserTie className="h-4 w-4 text-[#5A4C33]/70" />
                 </div>
               </div>
             </div>
 
-            {/* From Date */}
-            <div className="space-y-1">
-              <BillcutDateInput
-                label="From Date"
-                value={fromDate}
-                onChange={setFromDate}
-                max={toDate || getCurrentDate}
-                placeholder="Select start date"
-              />
-            </div>
-
-            {/* To Date */}
-            <div className="space-y-1">
-              <BillcutDateInput
-                label="To Date"
-                value={toDate}
-                onChange={setToDate}
-                min={fromDate}
-                max={getCurrentDate}
-                placeholder="Select end date"
-              />
-            </div>
-
             {/* Debt Range Filter */}
             <div className="space-y-1">
-              <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70">Debt Range</label>
+              <label className="block text-xs text-[#5A4C33]/70">Debt Range</label>
               <select
                 value={debtRangeSort}
                 onChange={(e) => setDebtRangeSort(e.target.value as "none" | "low-to-high" | "high-to-low")}
-                className="block w-full pl-3 pr-10 py-1.5 text-[11px] border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                className="block w-full pl-3 pr-10 py-2 text-sm border border-[#5A4C33]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
               >
                 <option value="none">No Sort</option>
                 <option value="low-to-high">Low to High</option>
@@ -481,93 +458,146 @@ const BillcutLeadsFiltersOptimized = ({
               </select>
             </div>
 
-            {/* My Leads Toggle */}
-            <div className="space-y-1 flex flex-col justify-end">
-              <button
-                onClick={() => setShowMyLeads(!showMyLeads)}
-                className={`flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg transition-all duration-200 text-[11px] font-bold shadow-sm ${
-                  showMyLeads
-                    ? "bg-[#D2A02A] text-white hover:bg-[#B8911E] border border-[#D2A02A]/20"
-                    : "bg-white text-[#5A4C33] hover:bg-gray-50 border border-[#5A4C33]/20"
-                }`}
-              >
-                <svg
-                  className="w-3 h-3"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            {/* Date Range + My Leads toggle — grouped like AMA */}
+            <div className="sm:col-span-2 md:col-span-3 lg:col-span-2 2xl:col-span-4">
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5">
+                <div className="w-auto min-w-[130px] space-y-1">
+                  <BillcutDateInput
+                    label="From Date"
+                    value={fromDate}
+                    onChange={setFromDate}
+                    max={toDate || getCurrentDate}
+                    placeholder="From Date"
                   />
-                </svg>
-                {showMyLeads ? "All Leads" : "My Leads"}
-              </button>
+                </div>
+
+                <div className="w-auto min-w-[130px] space-y-1">
+                  <BillcutDateInput
+                    label="To Date"
+                    value={toDate}
+                    onChange={setToDate}
+                    min={fromDate}
+                    max={getCurrentDate}
+                    placeholder="To Date"
+                  />
+                </div>
+
+                {/* My Leads Toggle — inline switch like AMA */}
+                <div className="space-y-1 flex-shrink-0 bg-[#5A4C33]/5 p-2 rounded-lg border border-[#5A4C33]/10">
+                  <label className="block text-[10px] uppercase font-bold text-[#5A4C33]/70 mb-1">My Leads</label>
+                  <div className="flex items-center h-[26px]">
+                    <button
+                      onClick={() => setShowMyLeads(!showMyLeads)}
+                      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#D2A02A] focus:ring-offset-1 ${
+                        showMyLeads
+                          ? "bg-[#D2A02A] shadow-inner"
+                          : "bg-[#5A4C33]/20"
+                      }`}
+                      type="button"
+                      role="switch"
+                      aria-checked={showMyLeads}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
+                          showMyLeads ? "translate-x-5" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                    <span
+                      className={`ml-2 text-[10px] font-bold ${
+                        showMyLeads ? "text-[#D2A02A]" : "text-[#5A4C33]/40"
+                      }`}
+                    >
+                      {showMyLeads ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                </div>
+
+                {(fromDate || toDate) && (
+                  <div className="flex items-end">
+                    <button
+                      onClick={clearDateFilters}
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-[#D2A02A] hover:bg-[#B8911E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D2A02A]"
+                      type="button"
+                    >
+                      <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear dates
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Admin/Overlord Only Filters */}
+          {/* Admin/Overlord Advanced Date Filters */}
           {(userRole === "admin" || userRole === "overlord") && (
-            <div className="mt-6 pt-4 border-t border-[#5A4C33]/10">
-              <div className="flex items-center mb-4">
-                <svg className="w-4 h-4 text-[#D2A02A] mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-                <span className="text-sm font-bold text-[#D2A02A]">Advanced Date Filters</span>
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="mt-4 pt-4 border-t border-[#5A4C33]/10">
+              <h3 className="text-sm font-medium text-[#5A4C33] mb-3">Advanced Date Filters</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 {/* Converted Date Range */}
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-green-600/80">Converted From</label>
+                  <label className="block text-xs text-green-600/80">Converted From</label>
                   <input
                     type="date"
                     value={convertedFromDate}
                     onChange={(e) => setConvertedFromDate(e.target.value)}
                     max={convertedToDate || getCurrentDate}
-                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-green-600/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                    className="block w-full pl-3 pr-3 py-2 text-sm border border-green-600/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-green-600/80">Converted To</label>
+                  <label className="block text-xs text-green-600/80">Converted To</label>
                   <input
                     type="date"
                     value={convertedToDate}
                     onChange={(e) => setConvertedToDate(e.target.value)}
                     min={convertedFromDate}
                     max={getCurrentDate}
-                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-green-600/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                    className="block w-full pl-3 pr-3 py-2 text-sm border border-green-600/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
                   />
                 </div>
 
                 {/* Last Modified Date Range */}
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-[#D2A02A]">Last Modified From</label>
+                  <label className="block text-xs text-[#D2A02A]">Last Modified From</label>
                   <input
                     type="date"
                     value={lastModifiedFromDate}
                     onChange={(e) => setLastModifiedFromDate(e.target.value)}
                     max={lastModifiedToDate || getCurrentDate}
-                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-[#D2A02A]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                    className="block w-full pl-3 pr-3 py-2 text-sm border border-[#D2A02A]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold text-[#D2A02A]">Last Modified To</label>
+                  <label className="block text-xs text-[#D2A02A]">Last Modified To</label>
                   <input
                     type="date"
                     value={lastModifiedToDate}
                     onChange={(e) => setLastModifiedToDate(e.target.value)}
                     min={lastModifiedFromDate}
                     max={getCurrentDate}
-                    className="block w-full pl-3 pr-3 py-1.5 text-[11px] border border-[#D2A02A]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-lg shadow-sm transition-all duration-200"
+                    className="block w-full pl-3 pr-3 py-2 text-sm border border-[#D2A02A]/20 bg-white text-[#5A4C33] focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
                   />
                 </div>
+
+                {(convertedFromDate || convertedToDate || lastModifiedFromDate || lastModifiedToDate) && (
+                  <div className="flex items-end">
+                    <button
+                      onClick={() => { setConvertedFromDate(""); setConvertedToDate(""); setLastModifiedFromDate(""); setLastModifiedToDate(""); }}
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-[#D2A02A] hover:bg-[#B8911E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D2A02A]"
+                      type="button"
+                    >
+                      <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear advanced filters
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

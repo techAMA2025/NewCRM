@@ -11,6 +11,8 @@ import {
   updateDoc,
   addDoc,
   serverTimestamp,
+  onSnapshot,
+  Timestamp,
 } from "firebase/firestore"
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"
 import { db, auth } from "@/firebase/firebase"
@@ -38,6 +40,12 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import IprKaroStatusCell from "./components/IprKaroStatusCell"
+import IprKaroSalespersonCell from "./components/IprKaroSalespersonCell"
+import IprKaroLeadNotesCell from "./components/IprKaroLeadNotesCell"
+import IprKaroHeader from "./components/IprKaroHeader"
+import IprKaroFilters from "./components/IprKaroFilters"
+import IprKaroTable from "./components/IprKaroTable"
 
 // ─── Types ─────────────────────────────────────────────────────
 interface IprKaroLead {
@@ -137,65 +145,7 @@ const DEFAULT_COLUMNS: ColumnDef[] = [
   { id: "remarks", label: "Remarks", width: 160 },
 ]
 
-// ─── SortableHeader Component ──────────────────────────────────
-function SortableHeader({
-  id, children, width, onResize,
-}: {
-  id: string; children: React.ReactNode; width?: number;
-  onResize: (id: string, newWidth: number) => void;
-}) {
-  const {
-    attributes, listeners, setNodeRef, transform, transition, isDragging,
-  } = useSortable({ id })
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : "auto",
-    width: width ? `${width}px` : "auto",
-    minWidth: width ? `${width}px` : "auto",
-    cursor: "move",
-  }
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const startX = e.pageX
-    const startWidth = width || 150
-    const handleMouseMove = (ev: MouseEvent) => {
-      const newWidth = Math.max(50, startWidth + (ev.pageX - startX))
-      onResize(id, newWidth)
-    }
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-    }
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
-  }
-
-  return (
-    <th
-      style={style}
-      className="px-2 py-3 text-left text-[10px] font-bold uppercase tracking-wider select-none group relative whitespace-nowrap text-[#5A4C33]/60 bg-white border-r border-[#5A4C33]/10 last:border-r-0"
-      {...attributes}
-      {...listeners}
-    >
-      <div className="flex items-center gap-1 overflow-hidden pointer-events-none">
-        <div className="p-0.5 -ml-0.5 flex-shrink-0">
-          <FaGripVertical className="opacity-0 group-hover:opacity-100 text-slate-400 transition-opacity text-[8px]" />
-        </div>
-        <span className="truncate flex-1">{children}</span>
-      </div>
-      {/* Resize Handle */}
-      <div
-        onMouseDown={handleMouseDown}
-        className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#D2A02A]/40 transition-colors z-20 pointer-events-auto"
-      />
-    </th>
-  )
-}
+// SortableHeader moved to components/SortableHeader.tsx
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -220,7 +170,9 @@ const getFormattedDate = (dateVal: any): { date: string; time: string } => {
     let d: Date | null = null
     if (dateVal?.toDate) d = dateVal.toDate()
     else if (dateVal instanceof Date) d = dateVal
+    else if (dateVal?.seconds) d = new Date(dateVal.seconds * 1000)
     else d = new Date(dateVal)
+
     if (d && !isNaN(d.getTime())) {
       return {
         date: d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
@@ -285,9 +237,6 @@ const IprKaroLeadsPage = () => {
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
 
-  const [editingNotes, setEditingNotes] = useState<{ [key: string]: string }>({})
-  const [savingNotes, setSavingNotes] = useState<{ [key: string]: boolean }>({})
-
   const [salesTeamMembers, setSalesTeamMembers] = useState<SalesUser[]>([])
 
   const [showHistoryModal, setShowHistoryModal] = useState(false)
@@ -317,6 +266,7 @@ const IprKaroLeadsPage = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const listenersRef = useRef<{ [key: string]: () => void }>({})
 
   const currentUserName = typeof window !== "undefined" ? localStorage.getItem("userName") || "" : ""
 
@@ -344,6 +294,77 @@ const IprKaroLeadsPage = () => {
     })
     return () => unsub()
   }, [])
+
+  // ── Real-time Status Listeners ─────────────────────────────
+  
+  // Serialize Timestamp/dates for state storage
+  const serializeLeadData = (id: string, data: any) => {
+    const serializeDate = (val: any) => {
+      if (val instanceof Timestamp) return val.toDate().toISOString()
+      return val
+    }
+    return {
+      id,
+      className: data.className || "",
+      classNumber: data.classNumber || "",
+      createdAt: serializeDate(data.createdAt),
+      email: data.email || "",
+      interest: data.interest || "",
+      message: data.message || "",
+      name: data.name || "",
+      phone: data.phone || "",
+      state: data.state || "",
+      trademarkName: data.trademarkName || "",
+      source: data.source || "IPRKaro",
+      source_database: data.source_database || "iprkaro",
+      synced_at: serializeDate(data.synced_at),
+      synced_date: data.synced_date || 0,
+      status: data.status || "–",
+      assigned_to: data.assigned_to || "–",
+      assigned_to_id: data.assigned_to_id || data.assignedToId || "–",
+      salesNotes: data.salesNotes || "",
+    } as IprKaroLead
+  }
+
+  // Cleanup all listeners on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(listenersRef.current).forEach((unsubscribe) => unsubscribe())
+      listenersRef.current = {}
+    }
+  }, [])
+
+  // Sync leads with real-time updates
+  useEffect(() => {
+    if (!leads.length) return
+
+    const currentLeadIds = leads.map((l) => l.id)
+
+    // Remove listeners for IDs no longer in state
+    Object.keys(listenersRef.current).forEach((id) => {
+      if (!currentLeadIds.includes(id)) {
+        listenersRef.current[id]()
+        delete listenersRef.current[id]
+      }
+    })
+
+    // Add listeners for new leads
+    leads.forEach((l) => {
+      if (!listenersRef.current[l.id]) {
+        const docRef = doc(db, "ipr_karo_leads", l.id)
+        listenersRef.current[l.id] = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const updatedData = serializeLeadData(snap.id, snap.data())
+            setLeads((prev) =>
+              prev.map((ll) => (ll.id === snap.id ? updatedData : ll))
+            )
+          }
+        }, (error) => {
+          console.warn(`[onSnapshot] Error for lead ${l.id}:`, error)
+        })
+      }
+    })
+  }, [leads.map(l => l.id).join(",")])
 
   // ── Fetch Sales Team (active only) ─────────────────────────
   useEffect(() => {
@@ -550,22 +571,8 @@ const IprKaroLeadsPage = () => {
     } catch { toast.error("Failed to update assignment") }
   }
 
-  const handleNotesChange = (leadId: string, value: string) => setEditingNotes(prev => ({ ...prev, [leadId]: value }))
-
-  const saveNotes = async (leadId: string) => {
-    const value = editingNotes[leadId]
-    if (!value?.trim()) { toast.error("Please enter a note"); return }
-    setSavingNotes(prev => ({ ...prev, [leadId]: true }))
-    try {
-      const userName = currentUserName || "Unknown User"
-      const now = new Date()
-      const displayDate = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`
-      await addDoc(collection(db, "ipr_karo_leads", leadId, "history"), { content: value, createdBy: userName, createdAt: serverTimestamp(), displayDate, leadId })
-      await updateDoc(doc(db, "ipr_karo_leads", leadId), { salesNotes: value })
-      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, salesNotes: value } : l))
-      toast.success("Note saved")
-    } catch { toast.error("Failed to save note") }
-    finally { setSavingNotes(prev => ({ ...prev, [leadId]: false })) }
+  const handleNotesSaveSuccess = (leadId: string, newValue: string) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, salesNotes: newValue } : l))
   }
 
   const fetchHistory = async (leadId: string) => {
@@ -662,20 +669,45 @@ const IprKaroLeadsPage = () => {
   // ── Cell Renderer ───────────────────────────────────────────
   const renderCell = (colId: string, lead: IprKaroLead, w: number) => {
     const cellStyle: React.CSSProperties = { width: `${w}px`, minWidth: `${w}px`, maxWidth: `${w}px` }
-    const cls = "px-1.5 py-1.5 border-r border-[#5A4C33]/10 last:border-r-0"
+    const cls = "px-2 py-1 border-r border-b border-[#5A4C33]/10 last:border-r-0"
 
     switch (colId) {
       case "date": {
-        const { date, time } = getFormattedDate(lead.createdAt)
-        return <td key={colId} className={cls} style={cellStyle}><div className="flex flex-col gap-0.5"><span className="text-[9.5px] font-bold leading-tight text-[#5A4C33]">{date}</span><span className="text-[8.5px] leading-tight text-[#5A4C33]/40 font-black">{time}</span></div></td>
+        const { date, time } = getFormattedDate(lead.createdAt || lead.synced_at)
+        return (
+          <td key={colId} className={cls} style={cellStyle}>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-medium leading-tight text-[#5A4C33]">{date}</span>
+              <span className="text-[10px] leading-tight text-[#5A4C33]/70 font-medium">{time}</span>
+            </div>
+          </td>
+        )
       }
       case "personal":
-        return <td key={colId} className={cls} style={cellStyle}><div className="flex flex-col gap-0.5"><div className="font-bold text-[10.5px] text-[#5A4C33] truncate">{lead.name || "Unknown"}</div><a href={`mailto:${lead.email}`} className="hover:text-[#D2A02A] truncate text-[8.5px] text-[#5A4C33]/50 block font-bold transition-colors">{lead.email || "–"}</a><a href={`tel:${lead.phone}`} className="hover:text-[#B8911E] font-bold text-[9.5px] text-[#D2A02A] transition-colors">{lead.phone || "–"}</a></div></td>
+        return (
+          <td key={colId} className={cls} style={cellStyle}>
+            <div className="flex flex-col gap-0.5">
+              <div className="font-medium flex items-center text-[12px] text-[#5A4C33]">{lead.name || "Unknown"}</div>
+              <div className="flex items-center text-[10px]">
+                <a href={`mailto:${lead.email}`} className="text-[#D2A02A] hover:underline truncate max-w-[160px]">{lead.email || "No Email"}</a>
+              </div>
+              <div className="flex items-center">
+                <a href={`tel:${lead.phone}`} className="text-[#D2A02A] hover:underline font-medium text-[12px]">{lead.phone || "No Phone"}</a>
+              </div>
+            </div>
+          </td>
+        )
       case "state":
-        return <td key={colId} className={`${cls} text-[9.5px]`} style={cellStyle}><span className="text-[#5A4C33]/70 font-bold truncate block">{lead.state || "–"}</span></td>
+        return <td key={colId} className={`${cls} text-[11px]`} style={cellStyle}><span className="text-[#5A4C33]/70 font-bold truncate block">{lead.state || "–"}</span></td>
       case "interest": {
         const int = formatInterest(lead.interest)
-        return <td key={colId} className={cls} style={cellStyle}><span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-bold border uppercase tracking-wider ${int.colorClass}`} title={lead.interest}>{int.label}</span></td>
+        return (
+          <td key={colId} className={cls} style={cellStyle}>
+            <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${int.colorClass}`} title={lead.interest}>
+              {int.label}
+            </span>
+          </td>
+        )
       }
       case "trademark":
         return (
@@ -683,67 +715,66 @@ const IprKaroLeadsPage = () => {
             {lead.trademarkName ? (
               <button
                 onClick={() => fetchTrademarkSearchResult(lead.trademarkName, lead.classNumber)}
-                className="inline-flex items-center px-1.5 py-1 rounded-lg text-[8.5px] font-bold bg-[#F8F5EC] text-[#5A4C33] border border-[#5A4C33]/10 hover:bg-white hover:border-[#D2A02A] hover:text-[#D2A02A] transition-all cursor-pointer group shadow-sm active:scale-95"
+                className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold bg-[#F8F5EC] text-[#5A4C33] border border-[#5A4C33]/10 hover:bg-white hover:border-[#D2A02A] hover:text-[#D2A02A] transition-all cursor-pointer group shadow-sm active:scale-95"
                 title="Click to view search report"
               >
                 <span className="mr-1 opacity-70">™</span> <span className="truncate">{lead.trademarkName}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 ml-1 text-[#D2A02A] opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
               </button>
             ) : (
-              <span className="text-[#5A4C33]/20 text-[8.5px] font-black tracking-widest pl-1.5">–––</span>
+              <span className="text-[#5A4C33]/20 text-[10px] font-black tracking-widest pl-1.5">–––</span>
             )}
           </td>
         )
       case "status":
-        return <td key={colId} className={cls} style={cellStyle}><select value={lead.status === "–" || lead.status === "-" ? "No Status" : lead.status} onChange={e => handleStatusChange(lead.id, e.target.value)} className={`text-[8.5px] font-black rounded-xl px-2 py-1 border-2 cursor-pointer focus:outline-none focus:ring-4 focus:ring-opacity-20 transition-all ${getStatusColor(lead.status).includes("green") ? "focus:ring-green-400" : getStatusColor(lead.status).includes("red") ? "focus:ring-red-400" : "focus:ring-[#D2A02A]/40"} ${getStatusColor(lead.status)}`}>{statusOptions.map(o => <option key={o} value={o}>{o}</option>)}</select></td>
+        return (
+          <IprKaroStatusCell 
+            key={colId}
+            lead={lead} 
+            setLeads={setLeads} 
+            statusOptions={statusOptions} 
+            currentUserName={currentUserName} 
+            sendStatusEmail={sendStatusEmail}
+          />
+        )
       case "assignedTo":
         return (
-          <td key={colId} className={`${cls} text-[11px]`} style={cellStyle}>
-            <div className="flex flex-col space-y-1">
-              {!isUnassigned(lead) ? (
-                <div className="flex items-center group">
-                  <div className={`inline-flex items-center justify-center h-5 w-5 rounded-md ${getBadgeColor(lead.assigned_to)} shadow-sm font-bold text-[8.5px] border border-white/20`}>{getInitials(lead.assigned_to)}</div>
-                  <span className="ml-1.5 text-[8.5px] text-[#5A4C33] font-black truncate flex-1">{lead.assigned_to}</span>
-                  {(userRole === "admin" || userRole === "overlord") && (
-                    <button onClick={() => handleAssignmentChange(lead.id, "")} className="ml-0.5 opacity-0 group-hover:opacity-100 flex items-center justify-center h-4 w-4 rounded bg-red-50 text-red-500 hover:bg-red-100 transition-all" title="Unassign">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                    </button>
-                  )}
-                </div>
-              ) : <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#F8F5EC] border border-[#5A4C33]/10 rounded text-[#5A4C33]/40 font-black text-[8px] uppercase tracking-widest"><div className="h-1 w-1 rounded-full bg-[#5A4C33]/20 animate-pulse" />Unassigned</div>}
-              {canModify && (isUnassigned(lead) || userRole === "admin" || userRole === "overlord") && (
-                <select value="" onChange={e => handleAssignmentChange(lead.id, e.target.value)} className="w-full px-1.5 py-0.5 bg-white border border-[#5A4C33]/10 rounded text-[8.5px] text-[#5A4C33] font-bold transition-all cursor-pointer hover:border-[#D2A02A] focus:ring-2 focus:ring-[#D2A02A]/20">
-                  <option value="">{isUnassigned(lead) ? "Quick Assign..." : "Change Assignee..."}</option>
-                  {salesTeamMembers.map(p => <option key={p.id} value={`${p.id}|${p.name}`}>{p.name}{p.name === currentUserName ? " (Me)" : ""}</option>)}
-                </select>
-              )}
-            </div>
-          </td>
+          <IprKaroSalespersonCell 
+            key={colId}
+            lead={lead} 
+            userRole={userRole} 
+            salesTeamMembers={salesTeamMembers} 
+            currentUserName={currentUserName} 
+            setLeads={setLeads} 
+            sendAssignmentNotification={sendAssignmentNotification}
+          />
         )
       case "query":
         return (
-          <td key={colId} className={`${cls} text-[9.5px]`} style={cellStyle}>
-            <div className="flex items-start gap-1.5">
-              <div className="flex-1 break-words whitespace-pre-wrap line-clamp-2 text-[#5A4C33]/70 font-bold leading-relaxed italic">{lead.message && lead.message.length > 50 ? `${lead.message.substring(0, 50)}...` : lead.message || "No query provided"}</div>
-              {lead.message && lead.message.length > 10 && (
-                <button onClick={() => { setQueryModalContent(lead.message); setQueryModalName(lead.name); setShowQueryModal(true) }} className="flex-shrink-0 text-[#D2A02A] text-[8px] font-black px-1.5 py-0.5 border border-[#D2A02A]/20 rounded bg-white hover:bg-[#F8F5EC] transition-all shadow-sm active:scale-95">VIEW</button>
-              )}
+          <td key={colId} className={`${cls} text-[11px]`} style={cellStyle}>
+            <div className="flex items-start gap-1">
+              <div className="flex-1 break-words whitespace-pre-wrap line-clamp-2 text-black font-light">
+                {lead.message && lead.message.length > 50 ? `${lead.message.substring(0, 50)}...` : lead.message || "N/A"}
+              </div>
+              <button
+                onClick={() => { setQueryModalContent(lead.message); setQueryModalName(lead.name); setShowQueryModal(true) }}
+                className="flex-shrink-0 text-[#D2A02A] hover:text-[#B8911E] text-[10px] px-1 py-0.5 border border-[#D2A02A]/50 rounded hover:border-[#D2A02A] transition-colors bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20"
+                title="View full query in modal"
+              >
+                View
+              </button>
             </div>
           </td>
         )
       case "remarks": {
-        const notesValue = editingNotes[lead.id] ?? lead.salesNotes ?? ""
-        const isSaving = savingNotes[lead.id] || false
         return (
-          <td key={colId} className={`${cls} text-[9.5px] last:border-r-0`} style={cellStyle}>
-            <div className="flex flex-col gap-1.5">
-              <textarea className="w-full border rounded-lg p-1.5 text-[9.5px] font-bold bg-[#F8F5EC]/30 border-[#5A4C33]/10 text-[#5A4C33] placeholder-[#5A4C33]/30 focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] transition-all resize-none" rows={2} value={notesValue} onChange={e => handleNotesChange(lead.id, e.target.value)} placeholder="Type remarks here..." />
-              <div className="flex gap-1.5">
-                <button onClick={() => saveNotes(lead.id)} disabled={isSaving || !notesValue.trim()} className="flex-1 py-1 rounded text-[8.5px] font-black bg-[#D2A02A] hover:bg-[#B8911E] disabled:bg-[#F8F5EC] disabled:text-[#5A4C33]/20 disabled:cursor-not-allowed text-white transition-all shadow-sm active:scale-95 uppercase tracking-wider">{isSaving ? "Saving..." : "Save Note"}</button>
-                <button onClick={() => fetchHistory(lead.id)} className="px-2 py-1 bg-white hover:bg-[#F8F5EC] text-[#5A4C33]/60 border border-[#5A4C33]/10 rounded text-[8.5px] font-black transition-all shadow-sm active:scale-95 uppercase tracking-wider">Log</button>
-              </div>
-            </div>
-          </td>
+          <IprKaroLeadNotesCell
+            key={colId}
+            lead={lead}
+            fetchNotesHistory={fetchHistory}
+            currentUserName={currentUserName}
+            onSaveSuccess={handleNotesSaveSuccess}
+          />
         )
       }
       default: return <td key={colId} className={cls} style={cellStyle}>–</td>
@@ -759,90 +790,55 @@ const IprKaroLeadsPage = () => {
       <div ref={scrollContainerRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto w-full bg-[#F8F5EC]">
 
         {/* Header */}
-        <div className="sticky top-0 z-30 bg-white/50 backdrop-blur-md border-b border-[#5A4C33]/10 px-3 md:px-5 py-3">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5">
-            <div className="flex items-center gap-2.5">
-              <button onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)} className="md:hidden p-1.5 rounded-xl bg-[#F8F5EC] text-[#5A4C33] hover:bg-[#F0EAD6] transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg></button>
-              <div>
-                <h1 className="text-lg md:text-xl font-bold text-[#5A4C33] flex items-center gap-1.5 bg-gradient-to-r from-[#D2A02A] to-[#5A4C33] bg-clip-text text-transparent italic tracking-tight"><span className="text-xl not-italic">⚖️</span> IPRKaro Leads</h1>
-                <p className="text-[#5A4C33]/50 text-[8.5px] mt-0.5 uppercase tracking-[0.1em] font-black">The Future of Brand Protection</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm border border-[#5A4C33]/10 text-[#5A4C33] font-bold text-[13px] leading-none flex items-center gap-1"><span className="text-[#5A4C33]/50 text-[11px] font-medium">Total: </span>{totalCount}</div>
-              <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm border border-[#5A4C33]/10 text-[#5A4C33] font-bold text-[13px] leading-none flex items-center gap-1"><span className="text-[#5A4C33]/50 text-[11px] font-medium">Showing: </span>{leads.length}</div>
-              <button onClick={exportToCSV} className="bg-[#5A4C33] hover:bg-[#4A3F2A] text-white px-3 py-1.5 rounded-lg text-[13px] font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 tracking-tight border border-[#5A4C33]/20"><svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M16 10l-4 4m0 0l-4-4m4 4V4" /></svg>Export CSV</button>
-            </div>
-          </div>
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col min-h-0 bg-[#F8F5EC] overflow-y-auto custom-scrollbar">
+        {/* Header */}
+        <IprKaroHeader
+          totalCount={totalCount}
+          showingCount={leads.length}
+          userRole={userRole}
+          currentUserEmail={currentUser?.email || null}
+          exportToCSV={exportToCSV}
+          onMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        />
+
+        {/* Filters Section */}
+        <div className="px-3 md:px-5 py-4">
+          <IprKaroFilters
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            salespersonFilter={salespersonFilter}
+            setSalespersonFilter={setSalespersonFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            fromDate={fromDate}
+            setFromDate={setFromDate}
+            toDate={toDate}
+            setToDate={setToDate}
+            salesTeamMembers={salesTeamMembers}
+            statusOptions={statusOptions}
+            currentUserName={currentUserName}
+          />
         </div>
 
-        {/* Filters */}
-        <div className="px-3 md:px-5 py-3">
-          <div className="bg-white rounded-xl p-3 shadow-sm border border-[#5A4C33]/10">
-            <div className="flex flex-col xl:flex-row gap-2.5">
-              <div className="flex-1 relative group">
-                <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5A4C33]/40 group-focus-within:text-[#D2A02A] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                <input type="text" placeholder="Search leads by name, phone, trademark..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg pl-8 pr-3 py-2 text-[13px] text-[#5A4C33] placeholder-[#5A4C33]/40 focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] transition-all font-medium" />
-                {searchQuery && <div className="absolute right-2.5 top-1/2 -translate-y-1/2">{debouncedSearch !== searchQuery ? <div className="animate-spin rounded-full h-3 w-3 border-2 border-[#D2A02A] border-t-transparent" /> : null}</div>}
-              </div>
-              <div className="flex flex-wrap md:flex-nowrap gap-2.5">
-                <select value={salespersonFilter} onChange={e => setSalespersonFilter(e.target.value)} className="bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-2.5 py-2 text-[13px] text-[#5A4C33] focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] min-w-[140px] font-medium transition-all">
-                  <option value="all">Assignee: All</option>
-                  <option value="unassigned">Unassigned</option>
-                  {salesTeamMembers.map(s => <option key={s.id} value={s.name}>{s.name}{s.name === currentUserName ? " (Me)" : ""}</option>)}
-                </select>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-2.5 py-2 text-[13px] text-[#5A4C33] focus:outline-none focus:ring-4 focus:ring-[#D2A02A]/5 focus:border-[#D2A02A] min-w-[130px] font-medium transition-all"><option value="all">Status: All</option>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select>
-                <div className="flex items-center gap-2 bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-3 py-2 transition-all focus-within:ring-4 focus-within:ring-[#D2A02A]/5 focus-within:border-[#D2A02A] group"><label className="text-[#5A4C33]/40 text-[8.5px] uppercase font-black whitespace-nowrap tracking-wider group-focus-within:text-[#D2A02A]">From</label><input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-transparent border-none p-0 text-[13px] text-[#5A4C33] focus:ring-0 w-24 font-bold cursor-pointer" /></div>
-                <div className="flex items-center gap-2 bg-[#F8F5EC]/50 border border-[#5A4C33]/10 rounded-lg px-3 py-2 transition-all focus-within:ring-4 focus-within:ring-[#D2A02A]/5 focus-within:border-[#D2A02A] group"><label className="text-[#5A4C33]/40 text-[8.5px] uppercase font-black whitespace-nowrap tracking-wider group-focus-within:text-[#D2A02A]">To</label><input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-transparent border-none p-0 text-[13px] text-[#5A4C33] focus:ring-0 w-24 font-bold cursor-pointer" /></div>
-                {(searchQuery || salespersonFilter !== "all" || statusFilter !== "all" || fromDate || toDate) && (
-                  <button onClick={() => { setSearchQuery(""); setSalespersonFilter("all"); setStatusFilter("all"); setFromDate(""); setToDate("") }} className="bg-white text-[#5A4C33]/60 border border-[#5A4C33]/10 rounded-lg px-3 py-2 text-[13px] font-bold hover:bg-[#F8F5EC] hover:text-[#5A4C33] transition-all shadow-sm">Clear</button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
+        {/* Table Section */}
         <div className="flex-1 px-3 md:px-5 pb-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-[#5A4C33]/10 overflow-hidden ring-1 ring-[#5A4C33]/5">
-            <div className="overflow-x-auto">
-              <table className="w-full text-[13px] border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <thead className="sticky top-0 z-20 shadow-sm transition-shadow">
-                    <tr className="bg-[#F8F5EC]">
-                      <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
-                        {columns.map(col => (
-                          <SortableHeader key={col.id} id={col.id} width={columnWidths[col.id] || col.width} onResize={handleColumnResize}>
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{col.label}</span>
-                          </SortableHeader>
-                        ))}
-                      </SortableContext>
-                    </tr>
-                  </thead>
-                </DndContext>
-                <tbody className="divide-y divide-[#5A4C33]/10 bg-white">
-                  {isLoading ? (
-                    Array.from({ length: 12 }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">{columns.map((c, j) => <td key={j} className="px-1.5 py-3 border-r border-slate-50 last:border-r-0" style={{ width: `${columnWidths[c.id] || c.width}px` }}><div className="h-2.5 bg-slate-100 rounded-full w-full opacity-50" /></td>)}</tr>
-                    ))
-                  ) : leads.length === 0 ? (
-                    <tr><td colSpan={columns.length} className="px-5 py-20 text-center bg-white"><div className="flex flex-col items-center gap-3"><div className="text-5xl grayscale opacity-30">📭</div><p className="text-slate-900 font-bold text-lg">No leads found</p><p className="text-slate-400 font-medium max-w-sm mx-auto text-[13px]">Try adjusting your filters or search terms to find what you're looking for.</p></div></td></tr>
-                  ) : (
-                    leads.map(lead => (
-                      <tr key={lead.id} className="hover:bg-[#F8F5EC] transition-colors duration-150 group">
-                        {columns.map(col => renderCell(col.id, lead, columnWidths[col.id] || col.width))}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {isLoadingMore && <div className="flex justify-center items-center py-6 border-t border-[#5A4C33]/10 bg-[#F8F5EC]/50"><div className="flex items-center gap-2.5"><div className="animate-spin rounded-full h-4 w-4 border-2 border-[#D2A02A] border-t-transparent" /><span className="text-[#5A4C33]/60 text-[13px] font-black tracking-tight">Loading more leads…</span></div></div>}
-            {currentPage < totalPages && !isLoadingMore && !isLoading && leads.length > 0 && <div className="flex justify-center py-5 border-t border-[#5A4C33]/10 bg-[#F8F5EC]/20"><button onClick={handleLoadMore} className="bg-white hover:bg-[#F8F5EC] text-[#5A4C33] px-6 py-2 rounded-xl text-[13px] font-black border border-[#5A4C33]/10 shadow-sm transition-all hover:shadow-md hover:border-[#D2A02A]/30 active:scale-95">Load More ({leads.length} of {totalCount})</button></div>}
-            {currentPage >= totalPages && leads.length > 0 && <div className="flex justify-center py-3 border-t border-[#5A4C33]/10 bg-[#F8F5EC]/10"><span className="text-[#5A4C33]/30 text-[8.5px] text-center block w-full uppercase tracking-[0.2em] font-black opacity-40">End of Leads Repository</span></div>}
-          </div>
+          <IprKaroTable
+            leads={leads}
+            columns={columns}
+            columnWidths={columnWidths}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            onLoadMore={handleLoadMore}
+            onColumnResize={handleColumnResize}
+            onColumnReorder={setColumns}
+            renderCell={renderCell}
+          />
         </div>
+      </div>
       </div>
 
       {/* History Modal */}

@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { authFetch } from "@/lib/authFetch"
 import BillcutLeadNotesCell from "./BillcutLeadNotesCell"
+import BillcutStatusCell from "./BillcutStatusCell"
+import BillcutSalespersonCell from "./BillcutSalespersonCell"
 import CallbackSchedulingModal from "./CallbackSchedulingModal"
 import StatusChangeConfirmationModal from "./StatusChangeConfirmationModal"
 import BillcutMobileLeadCard from "./BillcutMobileLeadCard"
@@ -285,7 +287,7 @@ const BillcutLeadsTableOptimized = React.memo(
     )
 
     const handleChange = useCallback(
-      async (id: string, field: keyof Lead, value: any) => {
+      async (id: string, field: string, value: any) => {
         if (field === "status") {
           const currentLead = leads.find((l) => l.id === id);
           const currentStatus = currentLead?.status || 'Select Status';
@@ -643,7 +645,7 @@ const BillcutLeadsTableOptimized = React.memo(
 
         return (
           <tr key={lead.id} className={`transition-colors duration-150 ease-in-out border-b border-[#5A4C33]/10 ${rowColors.rowBg}`}>
-            <td className="px-2 py-3 whitespace-nowrap border-r border-[#5A4C33]/10 text-center">
+            <td className="px-2 py-1 border-r border-b border-[#5A4C33]/10 text-center">
               <input
                 type="checkbox"
                 checked={selectedLeads.includes(lead.id)}
@@ -652,162 +654,98 @@ const BillcutLeadsTableOptimized = React.memo(
               />
             </td>
 
-            <td className="px-2 py-3 whitespace-nowrap border-r border-[#5A4C33]/10">
+            <td className="px-2 py-1 border-r border-b border-[#5A4C33]/10">
               <div className="flex flex-col gap-0.5">
-                <div className={`text-[11px] font-bold ${rowColors.textColor || "text-[#5A4C33]"}`}>
+                <div className={`text-[11px] font-medium leading-tight ${rowColors.textColor || "text-[#5A4C33]"}`}>
                   {new Date(lead.date).toLocaleString("en-US", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
                   })}
                 </div>
-                <div className={`text-[10px] ${rowColors.textColor ? "text-white/70" : "text-[#D2A02A] font-medium"}`}>
+                <div className={`text-[10px] leading-tight ${rowColors.textColor ? "text-white/70" : "text-[#5A4C33]/70"}`}>
                   {new Date(lead.date).toLocaleString("en-US", {
                     hour: "numeric",
-                    minute: "numeric",
+                    minute: "2-digit",
                     hour12: true,
                   })}
                 </div>
               </div>
             </td>
 
-            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
+            <td className="px-2 py-1 border-r border-b border-[#5A4C33]/10 max-w-[180px]">
               <div className="flex flex-col gap-0.5">
                 <div 
-                  className={`text-[12px] font-bold ${rowColors.textColor || "text-[#5A4C33]"}`}
+                  className={`text-[12px] font-medium ${rowColors.textColor || "text-[#5A4C33]"}`}
                   title={lead.name}
                 >
                   {lead.name.length > 20 ? `${lead.name.substring(0, 20)}...` : lead.name}
                 </div>
-                <div className={`text-[10px] ${rowColors.textColor ? "text-white/80" : "text-[#5A4C33]/70"}`}>
-                  {lead.email}
+                <div className="flex items-center text-[10px]">
+                  <a
+                    href={`mailto:${lead.email}`}
+                    className={`hover:underline truncate max-w-[160px] ${rowColors.textColor || "text-[#D2A02A]"}`}
+                  >
+                    {lead.email}
+                  </a>
                 </div>
-                <div className={`text-[12px] font-bold ${rowColors.textColor ? "text-white/90" : "text-[#D2A02A]"}`}>{lead.phone}</div>
+                <div className="flex items-center">
+                  <a
+                    href={`tel:${lead.phone}`}
+                    className={`hover:underline font-medium text-[12px] ${rowColors.textColor || "text-[#D2A02A]"}`}
+                  >
+                    {lead.phone}
+                  </a>
+                </div>
               </div>
             </td>
 
-            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
-              <div className={`text-[11px] font-medium ${rowColors.textColor ? "text-white/90" : "text-[#5A4C33]"}`}>{lead.city}</div>
+            <td className="px-2 py-1 border-r border-b border-[#5A4C33]/10 max-w-[100px]">
+              <div className={`text-[11px] font-medium ${rowColors.textColor ? "text-white/90" : "text-[#5A4C33]/70"} truncate`}>{lead.city}</div>
             </td>
 
-            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
+            <td className="px-2 py-1 border-r border-b border-[#5A4C33]/10">
               <div className="flex flex-col gap-0.5">
                 <div className={`text-[11px] font-bold ${rowColors.textColor ? "text-white/90" : "text-green-600"}`}>
-                  Income: ₹{lead.monthlyIncome}
+                  I: ₹{lead.monthlyIncome}
                 </div>
                 <div className={`text-[11px] font-bold ${rowColors.textColor ? "text-white/90" : "text-[#D2A02A]"}`}>
-                  Debt: ₹{lead.debtRange || 0}
+                  D: ₹{lead.debtRange || 0}
                 </div>
                 {lead.maxDpd > 0 && (
                   <div className={`text-[8px] font-bold ${rowColors.textColor ? "text-white/70" : "text-orange-600"}`}>
-                    Max DPD: {lead.maxDpd}
+                    DPD: {lead.maxDpd}
                   </div>
                 )}
               </div>
             </td>
 
-            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
-              <div className="flex flex-col space-y-1.5">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm ${getStatusColor(lead.status || "Select Status")}`}
-                >
-                  {lead.status || "No Status"}
-                </span>
+            <BillcutStatusCell
+              lead={lead}
+              statusOptions={statusOptions}
+              onChange={handleChange}
+              canEdit={canEditLead(lead, showMyLeads)}
+              userRole={userRole}
+              fetchStatusHistory={fetchStatusHistory}
+            />
 
-                <button
-                  onClick={() => fetchStatusHistory(lead.id, lead.name)}
-                  className="text-[10px] text-[#D2A02A] hover:text-[#B8911E] underline block text-center w-full font-bold"
-                  title="View Status History"
-                >
-                  History
-                </button>
-                
-                <select
-                  value={editingData[lead.id]?.status || lead.status}
-                  onChange={async (e) => {
-                    await handleChange(lead.id, "status", e.target.value)
-                    handleSave(lead.id)
-                  }}
-                  disabled={!canEditLead(lead, showMyLeads)}
-                  className={`w-full px-2 py-1 rounded-lg border text-[10px] font-bold transition-all duration-200 ${
-                    canEditLead(lead, showMyLeads)
-                      ? "bg-white border-[#5A4C33]/20 focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A] text-[#5A4C33] shadow-sm"
-                      : "bg-[#F8F5EC] border-[#5A4C33]/10 text-[#5A4C33]/40 cursor-not-allowed"
-                  }`}
-                >
-                  {statusOptions.filter(status => status !== "Retargeting" || lead.status === "Retargeting").map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </td>
-
-            <td className="px-3 py-3 border-r border-[#5A4C33]/10">
-              <div className="flex flex-col space-y-2">
-                {!isUnassigned(lead) ? (
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex items-center flex-1">
-                      <div
-                        className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${
-                          salesPersonColors[lead.assignedTo] || "bg-[#5A4C33]"
-                        } text-white border border-white/20 shadow-sm font-bold text-[10px]`}
-                      >
-                        {lead.assignedTo
-                          .split(" ")
-                          .map((n: string) => n[0])
-                          .join("")
-                          .toUpperCase()}
-                      </div>
-                      <div className="ml-1.5 flex flex-col">
-                        <div className={`text-[11px] font-bold ${rowColors.textColor || "text-[#5A4C33]"}`}>
-                          {lead.assignedTo}
-                        </div>
-                        {userRole !== "sales" && (
-                          <button
-                            onClick={() => handleUnassign(lead.id)}
-                            className="text-[9px] text-red-500 hover:text-red-600 font-bold underline text-left"
-                          >
-                            Unassign
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-[#D2A02A]/10 text-[#D2A02A] text-[10px] font-bold px-2 py-1 rounded-md text-center border border-[#D2A02A]/20">
-                    Unassigned
-                  </div>
-                )}
-
-                <select
-                  value={editingData[lead.id]?.assignedTo || lead.assignedTo || ""}
-                  onChange={async (e) => {
-                    await handleChange(lead.id, "assignedTo", e.target.value)
-                    handleSave(lead.id)
-                  }}
-                  disabled={!canAssignLead(lead)}
-                  className={`w-full px-2 py-1 rounded-lg border text-[10px] font-bold transition-all duration-200 ${
-                    canAssignLead(lead)
-                      ? "bg-white border-[#5A4C33]/20 focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A] text-[#5A4C33] shadow-sm"
-                      : "bg-[#F8F5EC] border-[#5A4C33]/10 text-[#5A4C33]/40 cursor-not-allowed"
-                  }`}
-                >
-                  <option value="">{isUnassigned(lead) ? "Assign Lead" : "Reassign"}</option>
-                  {salesPeople.map((person) => (
-                    <option key={person.id} value={person.name}>
-                      {person.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </td>
+            <BillcutSalespersonCell
+              lead={lead}
+              userRole={userRole}
+              salesTeamMembers={salesPeople}
+              canAssignLead={canAssignLead(lead)}
+              isUnassigned={isUnassigned(lead)}
+              salesPersonColors={salesPersonColors}
+              handleChange={handleChange}
+              handleUnassign={handleUnassign}
+              currentUserName={userName}
+            />
 
             <BillcutLeadNotesCell
               lead={{
                 id: lead.id,
                 salesNotes: lead.salesNotes || '',
+                latestRemark: lead.latestRemark || '',
                 name: lead.name || '',
                 phone: lead.phone || ''
               }}
@@ -849,7 +787,7 @@ const BillcutLeadsTableOptimized = React.memo(
           <table className="min-w-full divide-y divide-[#5A4C33]/10">
             <thead className="bg-[#5A4C33]/5">
               <tr>
-                <th className="px-2 py-3 text-center border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20 w-10">
+                <th className="px-2 py-3 text-center border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20 w-10">
                   <input
                     type="checkbox"
                     checked={leads.length > 0 && selectedLeads.length === leads.length}
@@ -857,26 +795,40 @@ const BillcutLeadsTableOptimized = React.memo(
                     className="w-3.5 h-3.5 text-[#D2A02A] bg-white border-[#5A4C33]/30 rounded focus:ring-[#D2A02A] focus:ring-2"
                   />
                 </th>
-                <th className="px-2 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
-                  Date & Time
+                <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  <div className="flex items-center justify-between p-2">
+                    <span className="text-[#D2A02A] text-[10px]">Date</span>
+                  </div>
                 </th>
-                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
-                  Contact Details
+                <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  <div className="flex items-center justify-between p-2">
+                    <span className="text-[#D2A02A] text-[10px]">Contact</span>
+                  </div>
                 </th>
-                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
-                  Location
+                <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-24 border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  <div className="flex items-center justify-between p-2">
+                    <span className="text-[#D2A02A] text-[10px]">Location</span>
+                  </div>
                 </th>
-                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
-                  Financials
+                <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  <div className="flex items-center justify-between p-2">
+                    <span className="text-[#D2A02A] text-[10px]">Financials</span>
+                  </div>
                 </th>
-                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
-                  Status
+                <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-28 border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  <div className="flex items-center justify-between p-2">
+                    <span className="text-[#D2A02A] text-[10px]">Status</span>
+                  </div>
                 </th>
-                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-r border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
-                  Assigned To
+                <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-32 border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  <div className="flex items-center justify-between p-2">
+                    <span className="text-[#D2A02A] text-[10px]">Assigned To</span>
+                  </div>
                 </th>
-                <th className="px-3 py-3 text-left text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider border-l border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
-                  Actions & Notes
+                <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-48 border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                  <div className="flex items-center justify-between p-2">
+                    <span className="text-[#D2A02A] text-[10px]">Sales Notes</span>
+                  </div>
                 </th>
               </tr>
             </thead>

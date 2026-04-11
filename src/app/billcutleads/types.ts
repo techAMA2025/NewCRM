@@ -27,6 +27,7 @@ export type Lead = {
   assignedToId?: string;
   monthlyIncome: string;
   salesNotes: string;
+  latestRemark?: string;
   lastModified: Date;
   date: number;
   debtRange: string;

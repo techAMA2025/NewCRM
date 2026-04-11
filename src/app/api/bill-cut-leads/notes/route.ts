@@ -89,9 +89,10 @@ export async function POST(request: NextRequest) {
 
         await adminDb.collection("billcutLeads").doc(leadId).collection("salesNotes").add(noteData)
         
-        // Also update the main document's salesNotes field
+        // Also update the main document's salesNotes and latestRemark fields
         await adminDb.collection("billcutLeads").doc(leadId).update({
             sales_notes: content,
+            latestRemark: content,
             lastModified: FieldValue.serverTimestamp()
         })
 

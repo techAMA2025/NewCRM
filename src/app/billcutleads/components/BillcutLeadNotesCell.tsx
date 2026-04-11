@@ -12,6 +12,7 @@ type BillcutLeadNotesCellProps = {
   lead: {
     id: string;
     salesNotes: string;
+    latestRemark?: string;
     name: string;
     phone: string;
   };
@@ -34,9 +35,11 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
 
   // Fetch the latest sales note via API - REMOVED to solve N+1 problem
   useEffect(() => {
-    setNote(lead.salesNotes || '');
+    const rawNote = lead.latestRemark || lead.salesNotes || '';
+    const filteredNote = (rawNote === '-' || rawNote === '–') ? '' : rawNote;
+    setNote(filteredNote);
     setIsLoadingLatestNote(false);
-  }, [lead.id, lead.salesNotes]);
+  }, [lead.id, lead.salesNotes, lead.latestRemark]);
 
   // Handle clicking outside the menu to close it
   useEffect(() => {
@@ -164,17 +167,17 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
   }
 
   return (
-    <td className="px-3 py-3 border-l border-[#5A4C33]/20">
-      <div className="flex flex-col space-y-2">
-        <div className="flex items-start space-x-2">
+    <td className="px-2 py-1 text-[11px] text-[#5A4C33] max-w-[200px] border-b border-[#5A4C33]/10">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start gap-1">
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={disabled ? "Sales notes (read-only)" : "Add sales notes..."}
-            className={`text-xs w-full rounded-lg p-2 resize-none transition-all duration-200 ${
+            placeholder={disabled ? (lead.latestRemark || lead.salesNotes ? "" : "Sales notes (read-only)") : "Add sales notes..."}
+            className={`w-full border rounded p-1 text-xs resize-none transition-colors duration-200 ${
               disabled
-                ? 'bg-[#F8F5EC] border-[#5A4C33]/10 text-[#5A4C33]/40 cursor-not-allowed italic'
-                : 'bg-white border-[#5A4C33]/20 text-[#5A4C33] focus:outline-none focus:border-[#D2A02A] focus:ring-1 focus:ring-[#D2A02A] shadow-sm'
+                ? 'bg-[#F8F5EC] border-[#5A4C33]/10 text-[#5A4C33]/50 cursor-not-allowed'
+                : 'bg-[#ffffff] border-[#5A4C33]/20 text-[#5A4C33]'
             }`}
             rows={2}
             disabled={disabled}
@@ -185,67 +188,68 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
             <button
               onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
               disabled={disabled || isSendingWhatsApp || templatesLoading}
-              className={`p-2 rounded-lg transition-all duration-200 shadow-sm ${
+              className={`px-2 py-0.5 rounded text-xs transition-colors duration-200 ${
                 disabled || isSendingWhatsApp || templatesLoading
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  ? 'bg-[#5A4C33]/20 text-[#5A4C33]/30 cursor-not-allowed'
                   : showWhatsAppMenu
-                  ? 'bg-[#5A4C33] text-white'
-                  : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-500 hover:bg-green-600 text-white'
               }`}
               title="Send WhatsApp message"
             >
               {isSendingWhatsApp || templatesLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-full h-3 w-3 border-t border-b border-white"></div>
               ) : (
-                <FaEllipsisV className="w-3 h-3" />
+                <FaEllipsisV className="w-2 h-2" />
               )}
             </button>
 
             {/* WhatsApp Menu Dropdown */}
             {showWhatsAppMenu && !templatesLoading && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-[#5A4C33]/10 rounded-xl shadow-xl z-50 animate-in fade-in zoom-in duration-200" ref={menuRef}>
-                <div className="p-3 border-b border-[#5A4C33]/5">
-                  <div className="flex items-center space-x-2">
-                    <FaWhatsapp className="text-green-600" />
-                    <span className="text-sm font-bold text-[#5A4C33]">WhatsApp Templates</span>
+              <div className="absolute right-0 top-full mt-1 w-48 bg-[#ffffff] border border-[#5A4C33]/20 rounded-lg shadow-lg z-50" ref={menuRef}>
+                <div className="p-2">
+                  <p className="text-xs text-[#5A4C33] font-medium mb-2">Send WhatsApp Message</p>
+                  <div className="max-h-[300px] overflow-y-auto space-y-1">
+                    {whatsappTemplates.length > 0 ? (
+                      whatsappTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => sendWhatsAppMessage(template.templateName)}
+                          disabled={isSendingWhatsApp}
+                          className="w-full text-left px-2 py-1.5 rounded hover:bg-[#F8F5EC] text-[#5A4C33] transition-colors"
+                        >
+                          <p className="text-xs font-medium">{template.name}</p>
+                          <p className="text-[10px] opacity-60 line-clamp-1">{template.description}</p>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-2 py-3 text-xs text-[#5A4C33]/40 italic">
+                        No sales templates available
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="py-2 max-h-[300px] overflow-y-auto">
-                  {whatsappTemplates.length > 0 ? (
-                    whatsappTemplates.map((template, index) => (
-                      <button
-                        key={template.id}
-                        onClick={() => sendWhatsAppMessage(template.templateName)}
-                        disabled={isSendingWhatsApp}
-                        className="w-full px-4 py-3 text-left hover:bg-[#F8F5EC] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="text-sm font-bold text-[#5A4C33]">{template.name}</div>
-                        <div className="text-[11px] text-[#5A4C33]/60 mt-0.5 leading-tight">{template.description}</div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-3 text-sm text-[#5A4C33]/40 italic">
-                      No sales templates available
-                    </div>
-                  )}
                 </div>
               </div>
             )}
           </div>
         </div>
         
-        <div className="flex space-x-1.5">
+        <div className="flex gap-2">
           <button
             onClick={handleSaveNote}
             disabled={isLoading || !note.trim() || disabled}
-            className="flex items-center justify-center px-2 py-0.5 text-[10px] bg-[#D2A02A] hover:bg-[#B8911E] disabled:bg-gray-300 rounded-md text-white font-bold transition-all duration-200 shadow-sm"
+            className={`px-2 py-0.5 rounded text-xs transition-colors duration-200 ${
+              !disabled
+                ? "bg-[#D2A02A] hover:bg-[#B8911E] disabled:bg-[#5A4C33]/30 disabled:cursor-not-allowed text-[#ffffff]"
+                : "bg-[#5A4C33]/20 text-[#5A4C33]/50 cursor-not-allowed"
+            }`}
           >
             {isLoading ? 'Saving...' : 'Save'}
           </button>
           
           <button
             onClick={handleViewHistory}
-            className="flex items-center justify-center px-2 py-0.5 text-[10px] bg-white border border-[#5A4C33]/20 text-[#5A4C33] hover:bg-gray-50 rounded-md font-bold transition-all duration-200 shadow-sm"
+            className="px-2 py-0.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-[#ffffff] rounded text-xs"
           >
             History
           </button>

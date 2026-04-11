@@ -11,8 +11,8 @@ import { resolveLeadState } from "@/app/billcutleads/utils/location"
 
 const REQUIRED_FIELDS = [
   "name", "email", "mobile", "phone", "category", "assigned_to", "income", 
-  "sales_notes", "lastModified", "date", "synced_date", "debt_range", 
-  "max_dpd", "convertedAt", "address",
+  "sales_notes", "salesNotes", "lastModified", "date", "synced_date", "debt_range", 
+  "max_dpd", "convertedAt", "address", "latestRemark",
   "state", "State", "state_name", "city", "City", "location", "Location", "region", "Region",
   "pincode", "pin", "postal_code", "postalCode", "zip", "zipcode", "zipCode"
 ];
@@ -147,6 +147,17 @@ export async function GET(request: NextRequest) {
             seenIds.add(docSnapshot.id)
             const data = docSnapshot.data()
             
+            const getValidNote = (...notes: (string | undefined)[]) => {
+              for (const note of notes) {
+                if (note && note !== "-" && note !== "–" && note.trim() !== "") {
+                  return note
+                }
+              }
+              return ""
+            }
+
+            const finalNote = getValidNote(data.latestRemark, data.salesNotes, data.sales_notes)
+
             let lead = {
               id: docSnapshot.id,
               name: data.name || "",
@@ -157,7 +168,8 @@ export async function GET(request: NextRequest) {
               source_database: "Bill Cut",
               assignedTo: data.assigned_to || "",
               monthlyIncome: data.income || "",
-              salesNotes: data.sales_notes || "",
+              salesNotes: finalNote,
+              latestRemark: finalNote,
               lastModified: data.lastModified?.toDate ? data.lastModified.toDate().toISOString() : new Date().toISOString(),
               date: data.date || data.synced_date?.toDate()?.getTime() || Date.now(),
               callbackInfo: null,

@@ -1,5 +1,6 @@
 import { toast } from 'react-toastify';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import LeadStatusHistoryModal from "@/components/modals/LeadStatusHistoryModal";
 
 type AmaStatusCellProps = {
@@ -247,17 +248,21 @@ const AmaStatusCell = ({
         <>
           <button
             onClick={() => setShowHistoryModal(true)}
-            className="mt-1 text-[10px] text-blue-600 hover:text-blue-800 underline block w-full text-center"
+            className="mt-1 w-full flex items-center justify-center gap-1 px-2 py-1 bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20 border border-[#D2A02A]/30 hover:border-[#D2A02A]/60 rounded-md text-[9px] font-bold text-[#D2A02A] transition-all duration-150"
             title="View Status History"
           >
+            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             History
           </button>
-          <LeadStatusHistoryModal
-            isOpen={showHistoryModal}
-            onClose={() => setShowHistoryModal(false)}
-            leadName={lead.name || 'Lead'}
-            history={lead.statusHistory}
-          />
+          {showHistoryModal && typeof document !== 'undefined' && createPortal(
+            <LeadStatusHistoryModal
+              isOpen={showHistoryModal}
+              onClose={() => setShowHistoryModal(false)}
+              leadName={lead.name || 'Lead'}
+              history={lead.statusHistory}
+            />,
+            document.body
+          )}
         </>
       </div>
     </td>
