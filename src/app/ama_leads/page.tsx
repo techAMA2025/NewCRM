@@ -830,7 +830,8 @@ const AmaLeadsPage = () => {
         <Sidebar />
       </div>
       <div 
-        className="flex-1 flex flex-col min-w-0 overflow-hidden w-full"
+        ref={userRole === "admin" || userRole === "overlord" ? scrollContainerRef : null}
+        className={`flex-1 flex flex-col min-w-0 ${userRole === "admin" || userRole === "overlord" ? "overflow-y-auto" : "overflow-hidden"} w-full`}
       >
         <LeadsHeader
           userRole={userRole}
@@ -902,8 +903,8 @@ const AmaLeadsPage = () => {
             />
 
             <div 
-              ref={scrollContainerRef}
-              className="flex-1 overflow-auto bg-white/30 backdrop-blur-sm rounded-xl border border-[#5A4C33]/10 shadow-inner"
+              ref={userRole === "admin" || userRole === "overlord" ? null : scrollContainerRef}
+              className={`${userRole === "admin" || userRole === "overlord" ? "min-h-0 h-auto" : "flex-1 overflow-auto"} bg-white/30 backdrop-blur-sm rounded-xl border border-[#5A4C33]/10 shadow-inner`}
             >
               <AmaLeadsTable
               filteredLeads={sortedLeads}
