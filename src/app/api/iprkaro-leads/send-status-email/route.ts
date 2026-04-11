@@ -58,29 +58,66 @@ export async function POST(request: NextRequest) {
             })
         }
 
-        // --- Zoho SMTP Configuration ---
-        const smtpHost = process.env.IPRKARO_ZOHO_SMTP_HOST || "smtp.zoho.in"
-        const smtpPort = parseInt(process.env.IPRKARO_ZOHO_SMTP_PORT || "465", 10)
-        const senderEmail = process.env.IPRKARO_ZOHO_EMAIL
-        const senderPassword = process.env.IPRKARO_ZOHO_APP_PASSWORD
+        // --- Zoho SMTP Configuration (Robust Attempt) ---
+        const ZOHO_EMAIL = process.env.IPRKARO_ZOHO_EMAIL
+        const ZOHO_PASSWORD = process.env.IPRKARO_ZOHO_APP_PASSWORD
 
-        if (!senderEmail || !senderPassword) {
-            console.warn("[IPRKARO_EMAIL] Zoho credentials not configured — skipping")
+        if (!ZOHO_EMAIL || !ZOHO_PASSWORD) {
+            console.error("[IPRKARO_EMAIL] Zoho credentials missing in environment")
             return NextResponse.json({
                 success: false,
                 message: "Zoho email credentials not configured",
             })
         }
 
-        const transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: true, // SSL on port 465
-            auth: {
-                user: senderEmail,
-                pass: senderPassword,
+        // Try multiple SMTP configurations to ensure connectivity
+        const smtpConfigs = [
+            {
+                host: process.env.IPRKARO_ZOHO_SMTP_HOST || "smtp.zoho.com",
+                port: 465,
+                secure: true,
+                auth: { user: ZOHO_EMAIL, pass: ZOHO_PASSWORD }
             },
-        })
+            {
+                host: "smtp.zoho.in",
+                port: 465,
+                secure: true,
+                auth: { user: ZOHO_EMAIL, pass: ZOHO_PASSWORD }
+            },
+            {
+                host: process.env.IPRKARO_ZOHO_SMTP_HOST || "smtp.zoho.com",
+                port: 587,
+                secure: false,
+                requireTLS: true,
+                auth: { user: ZOHO_EMAIL, pass: ZOHO_PASSWORD }
+            }
+        ]
+
+        let transporter = null
+        let lastError = null
+
+        for (const config of smtpConfigs) {
+            try {
+                console.log(`[IPRKARO_EMAIL] Attempting SMTP: ${config.host}:${config.port} (secure: ${config.secure})`)
+                const t = nodemailer.createTransport(config)
+                await t.verify()
+                transporter = t
+                console.log(`[IPRKARO_EMAIL] SMTP connection verified: ${config.host}`)
+                break
+            } catch (err) {
+                lastError = err
+                console.warn(`[IPRKARO_EMAIL] Config failed: ${config.host}:${config.port}`, err instanceof Error ? err.message : err)
+            }
+        }
+
+        if (!transporter) {
+            console.error("[IPRKARO_EMAIL] All SMTP configurations failed", lastError)
+            return NextResponse.json({
+                success: false,
+                message: "Email service unavailable",
+                detail: lastError instanceof Error ? lastError.message : "Unknown error"
+            }, { status: 503 })
+        }
 
         const escapeHtml = (text: string) => {
             return text
@@ -288,7 +325,7 @@ export async function POST(request: NextRequest) {
 
         // --- Send Email ---
         const mailOptions = {
-            from: `"IPRKaro" <${senderEmail}>`,
+            from: `"IPRKaro" <${ZOHO_EMAIL}>`,
             to: leadEmail,
             subject,
             html: htmlBody,

@@ -493,7 +493,7 @@ const IprKaroLeadsPage = () => {
   }
 
   // Sends IPRKaro status-change email via API route (fire-and-forget)
-  const sendStatusEmail = async (
+  const sendStatusEmail = useCallback(async (
     leadId: string,
     leadName: string,
     leadEmail: string,
@@ -525,7 +525,7 @@ const IprKaroLeadsPage = () => {
     } catch (err) {
       console.error("[IPRKARO_EMAIL] Failed to initiate status email:", err)
     }
-  }
+  }, [currentUser])
 
   const sendAssignmentNotification = async (leadIds: string[], salespersonId: string) => {
     try {

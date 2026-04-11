@@ -43,6 +43,16 @@ const IprKaroStatusCell = ({
   
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
+
+    // Ask for confirmation if the status triggers an automated email
+    if (newStatus === "Interested" || newStatus === "Not Answering") {
+      const confirmMessage = `Changing status to "${newStatus}" will trigger an automated professional email to the client (${lead.email || 'No Email'}).\n\nAre you sure you want to proceed?`;
+      if (!window.confirm(confirmMessage)) {
+        // Reset the dropdown to the previous value
+        e.target.value = getDisplayStatus(lead.status);
+        return;
+      }
+    }
     try {
       await updateDoc(doc(db, "ipr_karo_leads", lead.id), { 
         status: newStatus, 
