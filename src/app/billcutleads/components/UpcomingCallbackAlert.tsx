@@ -95,7 +95,7 @@ const UpcomingCallbackAlert: React.FC = () => {
       
       return () => clearInterval(interval);
     }
-  }, [user, userRole, userName, isActive]);
+  }, [user, userName, isActive]);
 
   const getTimeUntil = (scheduledTime: Date): string => {
     const now = new Date();
