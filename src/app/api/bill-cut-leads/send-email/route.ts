@@ -5,6 +5,10 @@ import { getFunctions } from "firebase-admin/functions"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
+    if (!adminAuth) {
+        return NextResponse.json({ error: "Firebase Admin not initialized" }, { status: 500 })
+    }
+
     const authHeader = request.headers.get("Authorization")
     if (!authHeader?.startsWith("Bearer ")) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
