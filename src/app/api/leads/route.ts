@@ -366,8 +366,56 @@ export async function GET(request: NextRequest) {
 
                 const validLeads = leads.filter(l => l !== null)
 
+                // --- Duplicate Detection ---
+                // Collect unique phone numbers from this page
+                const uniquePhones = new Set<string>()
+                validLeads.forEach((lead: any) => {
+                    const rawPhone = String(lead.mobile || lead.phone || lead.number || "").trim()
+                    if (rawPhone && rawPhone !== "0") uniquePhones.add(rawPhone)
+                })
+
+                // Run parallel count queries — one per unique phone
+                const phoneArray = Array.from(uniquePhones)
+                const duplicatePhones = new Set<string>()
+
+                if (phoneArray.length > 0) {
+                    const countQueries = phoneArray.map(async (phone) => {
+                        try {
+                            const numPhone = Number(phone)
+                            let snap: FirebaseFirestore.AggregateQuerySnapshot<{count: FirebaseFirestore.AggregateField<number>}> | null = null
+
+                            if (!isNaN(numPhone) && numPhone > 0) {
+                                // Try numeric match first (most common storage format)
+                                snap = await db.collection("ama_leads").where("mobile", "==", numPhone).count().get()
+                                if (snap.data().count <= 1) {
+                                    // Also try string variant
+                                    const strSnap = await db.collection("ama_leads").where("mobile", "==", phone).count().get()
+                                    if (strSnap.data().count > 1) snap = strSnap
+                                }
+                            } else {
+                                snap = await db.collection("ama_leads").where("mobile", "==", phone).count().get()
+                            }
+
+                            if (snap && snap.data().count > 1) {
+                                duplicatePhones.add(phone)
+                            }
+                        } catch (e) {
+                            // Silently skip on error — don't fail the whole request
+                        }
+                    })
+
+                    await Promise.all(countQueries)
+                }
+
+                // Annotate leads with isDuplicate flag
+                const annotatedLeads = validLeads.map((lead: any) => {
+                    const rawPhone = String(lead.mobile || lead.phone || lead.number || "").trim()
+                    return { ...lead, isDuplicate: duplicatePhones.has(rawPhone) }
+                })
+                // --- End Duplicate Detection ---
+
                 return NextResponse.json({
-                    leads: validLeads,
+                    leads: annotatedLeads,
                     meta: {
                         total,
                         page,
@@ -486,12 +534,54 @@ export async function GET(request: NextRequest) {
                 }
             }))
 
-            // Filter out nulls if any errors occurred
             const validLeads = leads.filter(l => l !== null)
             console.log(`[API DEBUG] Leads returned: ${validLeads.length}`)
 
+            // --- Duplicate Detection ---
+            const uniquePhones2 = new Set<string>()
+            validLeads.forEach((lead: any) => {
+                const rawPhone = String(lead.mobile || lead.phone || lead.number || "").trim()
+                if (rawPhone && rawPhone !== "0") uniquePhones2.add(rawPhone)
+            })
+
+            const phoneArray2 = Array.from(uniquePhones2)
+            const duplicatePhones2 = new Set<string>()
+
+            if (phoneArray2.length > 0) {
+                const countQueries2 = phoneArray2.map(async (phone) => {
+                    try {
+                        const numPhone = Number(phone)
+                        let snap: FirebaseFirestore.AggregateQuerySnapshot<{count: FirebaseFirestore.AggregateField<number>}> | null = null
+
+                        if (!isNaN(numPhone) && numPhone > 0) {
+                            snap = await db.collection("ama_leads").where("mobile", "==", numPhone).count().get()
+                            if (snap.data().count <= 1) {
+                                const strSnap = await db.collection("ama_leads").where("mobile", "==", phone).count().get()
+                                if (strSnap.data().count > 1) snap = strSnap
+                            }
+                        } else {
+                            snap = await db.collection("ama_leads").where("mobile", "==", phone).count().get()
+                        }
+
+                        if (snap && snap.data().count > 1) {
+                            duplicatePhones2.add(phone)
+                        }
+                    } catch (e) {
+                        // Silently skip
+                    }
+                })
+
+                await Promise.all(countQueries2)
+            }
+
+            const annotatedLeads2 = validLeads.map((lead: any) => {
+                const rawPhone = String(lead.mobile || lead.phone || lead.number || "").trim()
+                return { ...lead, isDuplicate: duplicatePhones2.has(rawPhone) }
+            })
+            // --- End Duplicate Detection ---
+
             return NextResponse.json({
-                leads: validLeads,
+                leads: annotatedLeads2,
                 meta: {
                     total,
                     page,

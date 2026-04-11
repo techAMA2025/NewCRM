@@ -591,13 +591,21 @@ const AmaLeadRow = ({
                   {email}
                 </a>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center gap-1 flex-wrap">
                 <a
                   href={`tel:${phone}`}
                   className={`hover:underline font-medium text-[12px] ${rowColors.textColor || "text-[#D2A02A]"}`}
                 >
                   {phone}
                 </a>
+                {lead.isDuplicate && (
+                  <span
+                    title="This phone number appears more than once in the database"
+                    className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-600 text-white leading-none tracking-wide uppercase"
+                  >
+                    Duplicate
+                  </span>
+                )}
               </div>
             </div>
           </td>

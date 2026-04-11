@@ -39,6 +39,7 @@ export type Lead = {
     timestamp: string;
     updatedBy: string;
   }[];
+  isDuplicate?: boolean; // true if this phone number appears more than once in the DB
 };
 
 export type User = {
