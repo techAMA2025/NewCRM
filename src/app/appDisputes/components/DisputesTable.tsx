@@ -36,32 +36,26 @@ const getStatusColor = (status: string) => {
   if (key === 'short loan') return 'bg-teal-900 text-teal-100 border border-teal-700';
   if (key === 'cibil issue') return 'bg-rose-900 text-rose-100 border border-rose-700';
   if (key === 'retargeting') return 'bg-cyan-900 text-cyan-100 border border-cyan-700';
-  return 'bg-gray-700 text-gray-200 border border-gray-600';
+  return 'bg-[#5A4C33]/10 text-[#5A4C33] border border-[#5A4C33]/20';
 };
 
-export default function DisputesTable({ 
-  disputes, 
-  hasMore, 
-  loading, 
-  loadMore, 
-  statusOptions, 
+export default function DisputesTable({
+  disputes,
+  hasMore,
+  loading,
+  loadMore,
+  statusOptions,
   onUpdateDispute,
   onViewHistory,
   onOpenWhatsApp,
   selectedDisputes,
   onSelectDispute,
-  onSelectAll
+  onSelectAll,
 }: DisputesTableProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
   const [editingRemarks, setEditingRemarks] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState<{ [key: string]: boolean }>({});
-  
-  // WhatsApp state is now handled by parent via modal
-  // Removed local showWhatsAppMenu and isSendingWhatsApp states
-  // WhatsApp handling is now passed to parent
-  
-  // Query view state
-  const [selectedQuery, setSelectedQuery] = useState<{ text: string, name: string } | null>(null);
+  const [selectedQuery, setSelectedQuery] = useState<{ text: string; name: string } | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -73,14 +67,10 @@ export default function DisputesTable({
       { threshold: 0.1, rootMargin: '100px' }
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
+    if (observerTarget.current) observer.observe(observerTarget.current);
 
     return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
     };
   }, [hasMore, loading, loadMore]);
 
@@ -89,32 +79,46 @@ export default function DisputesTable({
   };
 
   const handleRemarksChange = (id: string, value: string) => {
-    setEditingRemarks(prev => ({ ...prev, [id]: value }));
+    setEditingRemarks((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleSaveRemarks = async (id: string) => {
     const remarks = editingRemarks[id];
     if (remarks === undefined) return;
-    
-    setIsSaving(prev => ({ ...prev, [id]: true }));
+    setIsSaving((prev) => ({ ...prev, [id]: true }));
     try {
       await onUpdateDispute(id, { remarks });
-      setEditingRemarks(prev => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
+      setEditingRemarks((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
       });
     } finally {
-      setIsSaving(prev => ({ ...prev, [id]: false }));
+      setIsSaving((prev) => ({ ...prev, [id]: false }));
     }
   };
 
+  // ── Shared th class ──────────────────────────────────────────────────────
+  const thBase =
+    'py-1 px-2 text-left font-semibold text-[10px] uppercase tracking-wider border-b border-[#5A4C33]/20 bg-white/50';
+  const thWithRight = `${thBase} border-r border-[#5A4C33]/20`;
+
   return (
-    <div className="space-y-4">
-      {/* Mobile view - Card stack */}
-      <div className="md:hidden space-y-4">
+    <div className="overflow-x-auto relative w-full">
+      {/* Loading overlay */}
+      {loading && disputes.length === 0 && (
+        <div className="absolute inset-0 bg-white/50 z-50 flex items-center justify-center rounded-xl backdrop-blur-[1px]">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#D2A02A]" />
+            <span className="text-sm font-medium text-[#5A4C33]">Loading disputes...</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mobile cards ── */}
+      <div className="md:hidden space-y-3 p-3">
         {disputes.length === 0 && !loading && (
-          <div className="bg-white p-8 text-center rounded-xl border border-gray-200 text-sm text-gray-500">
+          <div className="bg-[#F8F5EC] p-8 text-center rounded-xl border border-[#5A4C33]/15 text-sm text-[#5A4C33]/60">
             No disputes found.
           </div>
         )}
@@ -133,137 +137,220 @@ export default function DisputesTable({
         ))}
       </div>
 
-      {/* Desktop view - Standard table */}
-      <div className="hidden md:block overflow-hidden bg-white shadow-md rounded-lg border border-gray-200">
-        <div className="overflow-x-auto">
-
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      {/* ── Desktop table ── */}
+      <div className="hidden md:block">
+        <table className="min-w-full border-collapse">
+          {/* ── Header ── */}
+          <thead className="bg-[#F8F5EC] text-[10px] uppercase font-medium sticky top-0 z-10">
             <tr>
-              <th className="px-4 py-3 text-left sticky top-0 bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={disputes.length > 0 && selectedDisputes.length === disputes.length}
-                  onChange={onSelectAll}
-                  className="rounded border-gray-300 text-[#D2A02A] focus:ring-[#D2A02A]"
-                />
+              {/* Checkbox */}
+              <th className={`${thWithRight} w-10`}>
+                <div className="flex items-center justify-center p-1">
+                  <input
+                    type="checkbox"
+                    checked={disputes.length > 0 && selectedDisputes.length === disputes.length}
+                    onChange={onSelectAll}
+                    className="rounded border-[#5A4C33]/30 text-[#D2A02A] bg-white focus:ring-[#D2A02A] focus:ring-2"
+                  />
+                </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">Submitted At</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">Remarks</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">Service</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50">Query</th>
+
+              {/* Submitted At */}
+              <th className={`${thWithRight} w-28`}>
+                <div className="flex items-center p-2">
+                  <span className="text-[#D2A02A]">Submitted At</span>
+                </div>
+              </th>
+
+              {/* Name */}
+              <th className={`${thWithRight} w-40`}>
+                <div className="flex items-center p-2">
+                  <span className="text-[#D2A02A]">Name</span>
+                </div>
+              </th>
+
+              {/* Contact */}
+              {/* Status */}
+              <th className={`${thWithRight} w-36`}>
+                <div className="flex items-center p-2">
+                  <span className="text-[#D2A02A]">Status</span>
+                </div>
+              </th>
+
+              {/* Remarks */}
+              <th className={`${thWithRight} w-48`}>
+                <div className="flex items-center p-2">
+                  <span className="text-[#D2A02A]">Remarks</span>
+                </div>
+              </th>
+
+              {/* Service */}
+              <th className={`${thWithRight} w-32`}>
+                <div className="flex items-center p-2">
+                  <span className="text-[#D2A02A]">Service</span>
+                </div>
+              </th>
+
+              {/* Query — last column: no right border */}
+              <th className={`${thBase} w-44`}>
+                <div className="flex items-center p-2">
+                  <span className="text-[#D2A02A]">Query</span>
+                </div>
+              </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+
+          {/* ── Body ── */}
+          <tbody className="divide-y divide-[#5A4C33]/10">
             {disputes.length === 0 && !loading ? (
               <tr>
-                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td
+                  colSpan={7}
+                  className="px-6 py-12 text-center text-sm text-[#5A4C33]/50 font-medium"
+                >
                   No disputes found.
                 </td>
               </tr>
             ) : (
               disputes.map((dispute) => (
-                <tr key={dispute.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={selectedDisputes.includes(dispute.id)}
-                      onChange={() => onSelectDispute(dispute.id)}
-                      className="rounded border-gray-300 text-[#D2A02A] focus:ring-[#D2A02A]"
-                    />
+                <tr
+                  key={dispute.id}
+                  className={`transition-colors ${
+                    selectedDisputes.includes(dispute.id)
+                      ? 'bg-[#D2A02A]/8'
+                      : 'hover:bg-[#F8F5EC]/60'
+                  }`}
+                >
+                  {/* Checkbox */}
+                  <td className="px-3 py-2 border-r border-[#5A4C33]/10 w-10">
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedDisputes.includes(dispute.id)}
+                        onChange={() => onSelectDispute(dispute.id)}
+                        className="rounded border-[#5A4C33]/30 text-[#D2A02A] bg-white focus:ring-[#D2A02A]"
+                      />
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div>
+
+                  {/* Submitted At */}
+                  <td className="px-3 py-2 border-r border-[#5A4C33]/10 w-28">
+                    <div className="text-xs font-medium text-[#5A4C33]">
                       {dispute.submittedAt
                         ? new Date(dispute.submittedAt).toLocaleDateString()
-                        : '-'}
+                        : '–'}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-[10px] text-[#5A4C33]/50 mt-0.5">
                       {dispute.submittedAt
                         ? new Date(dispute.submittedAt).toLocaleTimeString()
                         : ''}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    <div>{dispute.name}</div>
-                    <div className="text-[10px] text-gray-500 font-normal mt-0.5">{dispute.userEmail}</div>
-                    <div className="text-[10px] text-[#D2A02A] font-normal">{dispute.userPhone}</div>
+
+                  {/* Name */}
+                  <td className="px-3 py-2 border-r border-[#5A4C33]/10 w-40">
+                    <div className="text-xs font-semibold text-[#5A4C33] leading-tight">
+                      {dispute.name}
+                    </div>
+                    <div className="text-[10px] text-[#5A4C33]/50 mt-0.5 truncate max-w-[150px]">
+                      {dispute.userEmail}
+                    </div>
+                    <div className="text-[10px] text-[#D2A02A] font-medium">
+                      {dispute.userPhone}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{dispute.phone}</td>
-                  
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex flex-col space-y-2">
-                       <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] font-medium border ${getStatusColor(dispute.status || 'No Status')}`}>
+
+                  {/* Status */}
+                  <td className="px-3 py-2 border-r border-[#5A4C33]/10 w-36">
+                    <div className="flex flex-col gap-1.5">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${getStatusColor(
+                          dispute.status || 'No Status'
+                        )}`}
+                      >
                         {dispute.status || 'No Status'}
                       </span>
-                      <select 
+                      <select
                         value={dispute.status || 'No Status'}
                         onChange={(e) => handleStatusChange(dispute.id, e.target.value)}
-                        className="text-xs border border-gray-300 rounded p-1 bg-white text-gray-900"
+                        className="text-[10px] border border-[#5A4C33]/20 rounded-md px-1.5 py-1 bg-white text-[#5A4C33] focus:outline-none focus:ring-1 focus:ring-[#D2A02A] focus:border-[#D2A02A] transition-colors"
                       >
-                        {statusOptions.map(option => (
-                          <option key={option} value={option}>{option}</option>
+                        {statusOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
                         ))}
                       </select>
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    <div className="flex flex-col space-y-1">
+                  {/* Remarks */}
+                  <td className="px-3 py-2 border-r border-[#5A4C33]/10 w-48">
+                    <div className="flex flex-col gap-1">
                       <textarea
-                        className="text-xs border border-gray-300 rounded p-1 w-full min-w-[150px] bg-white text-gray-900"
+                        className="text-[10px] border border-[#5A4C33]/20 rounded-md p-1.5 w-full min-w-[140px] bg-white text-[#5A4C33] placeholder-[#5A4C33]/30 focus:outline-none focus:ring-1 focus:ring-[#D2A02A] focus:border-[#D2A02A] transition-colors resize-none"
                         rows={2}
-                        value={editingRemarks[dispute.id] !== undefined ? editingRemarks[dispute.id] : dispute.remarks || ''}
+                        value={
+                          editingRemarks[dispute.id] !== undefined
+                            ? editingRemarks[dispute.id]
+                            : dispute.remarks || ''
+                        }
                         onChange={(e) => handleRemarksChange(dispute.id, e.target.value)}
                         placeholder="Add remarks..."
                       />
-                      <div className="flex justify-end gap-2 mt-1">
+                      <div className="flex justify-end gap-1.5">
                         {editingRemarks[dispute.id] !== undefined && (
                           <button
                             onClick={() => handleSaveRemarks(dispute.id)}
                             disabled={isSaving[dispute.id]}
-                            className="text-[10px] bg-[#D2A02A] text-white rounded px-2 py-1 hover:bg-[#B8911E] disabled:opacity-50"
+                            className="text-[10px] bg-[#D2A02A] text-white rounded px-2 py-0.5 hover:bg-[#B8911E] disabled:opacity-50 font-semibold transition-colors"
                           >
                             {isSaving[dispute.id] ? 'Saving...' : 'Save'}
                           </button>
                         )}
-                        
                         <button
                           onClick={() => onViewHistory(dispute.id, dispute.name)}
-                          className="text-[10px] bg-gray-500 text-white rounded px-2 py-1 hover:bg-gray-600"
+                          className="text-[10px] bg-[#5A4C33]/10 text-[#5A4C33] border border-[#5A4C33]/20 rounded px-2 py-0.5 hover:bg-[#5A4C33]/20 font-medium transition-colors"
                         >
                           History
                         </button>
-
-                          <button
-                            onClick={() => onOpenWhatsApp(dispute)}
-                            className="p-1.5 rounded transition-colors bg-green-500 hover:bg-green-600 text-white shadow-sm"
-                            title="Send WhatsApp message"
-                          >
-                            <FaWhatsapp className="w-4 h-4" />
-                          </button>
+                        <button
+                          onClick={() => onOpenWhatsApp(dispute)}
+                          className="p-1 rounded-md transition-colors bg-green-500 hover:bg-green-600 text-white shadow-sm"
+                          title="Send WhatsApp message"
+                        >
+                          <FaWhatsapp className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="font-medium text-gray-700">{dispute.selected_service}</div>
+                  {/* Service */}
+                  <td className="px-3 py-2 border-r border-[#5A4C33]/10 w-32">
+                    <div className="text-xs font-medium text-[#5A4C33]">
+                      {dispute.selected_service || '–'}
+                    </div>
                   </td>
 
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    <div className="flex flex-col space-y-2">
-                      <div className="max-w-xs truncate" title={dispute.query}>
-                        {dispute.query}
-                      </div>
-                      <button
-                        onClick={() => setSelectedQuery({ text: dispute.query, name: dispute.name })}
-                        className="text-[10px] w-fit font-medium text-[#D2A02A] border border-[#D2A02A]/30 px-2 py-0.5 rounded hover:bg-[#D2A02A] hover:text-white transition-all"
+                  {/* Query */}
+                  <td className="px-3 py-2 w-44">
+                    <div className="flex flex-col gap-1.5">
+                      <div
+                        className="text-[10px] text-[#5A4C33]/70 max-w-[160px] truncate leading-snug"
+                        title={dispute.query}
                       >
-                        View Full Query
-                      </button>
+                        {dispute.query || '–'}
+                      </div>
+                      {dispute.query && (
+                        <button
+                          onClick={() =>
+                            setSelectedQuery({ text: dispute.query, name: dispute.name })
+                          }
+                          className="text-[10px] w-fit font-semibold text-[#D2A02A] border border-[#D2A02A]/30 px-2 py-0.5 rounded hover:bg-[#D2A02A] hover:text-white transition-all"
+                        >
+                          View Full
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -271,28 +358,34 @@ export default function DisputesTable({
             )}
           </tbody>
         </table>
-      </div>
-    </div>
-    
-    <div ref={observerTarget} className="h-16 w-full flex items-center justify-center p-4 bg-gray-50 border-t border-gray-200">
-      {loading ? (
-        <div className="flex items-center space-x-2 text-gray-500">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600"></div>
-          <span className="text-sm">Loading more disputes...</span>
-        </div>
-      ) : (
-        !hasMore && disputes.length > 0 && (
-          <span className="text-gray-500 text-sm font-medium">End of list</span>
-        )
-      )}
-    </div>
 
-    <QueryViewModal 
-      isOpen={!!selectedQuery}
-      onClose={() => setSelectedQuery(null)}
-      query={selectedQuery?.text || ''}
-      name={selectedQuery?.name || ''}
-    />
-  </div>
-);
+        {/* ── Footer / Load more indicator ── */}
+        <div
+          ref={observerTarget}
+          className="h-14 w-full flex items-center justify-center border-t border-[#5A4C33]/10 bg-[#F8F5EC]/50"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2 text-[#5A4C33]/60">
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#D2A02A]" />
+              <span className="text-xs font-medium">Loading more disputes...</span>
+            </div>
+          ) : (
+            !hasMore &&
+            disputes.length > 0 && (
+              <div className="px-4 py-1.5 bg-[#5A4C33]/10 text-[#5A4C33] rounded-md text-xs font-medium">
+                No more disputes available
+              </div>
+            )
+          )}
+        </div>
+      </div>
+
+      <QueryViewModal
+        isOpen={!!selectedQuery}
+        onClose={() => setSelectedQuery(null)}
+        query={selectedQuery?.text || ''}
+        name={selectedQuery?.name || ''}
+      />
+    </div>
+  );
 }

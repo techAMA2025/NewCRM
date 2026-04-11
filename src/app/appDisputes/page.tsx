@@ -345,208 +345,181 @@ export default function DisputesPage() {
   };
 
   if (authLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-
-  const content = (
-      <div className="flex flex-col h-full">
-        <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm space-y-4">
-            <div className="flex justify-between items-center flex-wrap gap-3">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setIsMobileSidebarOpen(true)}
-                    className="md:hidden mr-3 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
-                    aria-label="Toggle menu"
-                  >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                  </button>
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">App Leads</h1>
-                </div>
-                <div className="flex items-center flex-wrap gap-2">
-                  <div className="bg-[#D2A02A] text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium shadow-sm">
-                  Total: {total.toLocaleString()}
-                  </div>
-                   <button
-                    onClick={exportToCSV}
-                    disabled={exporting}
-                    className={`flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D2A02A] ${
-                      exporting ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    <FiDownload className={`mr-1.5 h-3.5 w-3.5 ${exporting ? 'animate-bounce' : ''}`} />
-                    {exporting ? (exportProgress || '...') : 'Export'}
-                  </button>
-
-                  {selectedDisputes.length > 0 && (
-                    <button
-                      onClick={() => setShowBulkWhatsAppModal(true)}
-                      className="flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs sm:text-sm font-medium shadow-sm transition-colors"
-                    >
-                      <FaWhatsapp className="mr-1.5 h-3.5 w-3.5" />
-                      Bulk ({selectedDisputes.length})
-                    </button>
-                  )}
-                </div>
-            </div>
-            
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-                <div className="relative flex-1 max-w-md">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <FiSearch className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="text"
-                      className="text-black block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#D2A02A] focus:border-[#D2A02A] sm:text-sm"
-                      placeholder="Search by name or phone number..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <label htmlFor="statusFilter" className="text-sm font-medium text-gray-700">Status:</label>
-                  <select
-                    id="statusFilter"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="block w-full pl-3 pr-10 py-2 text-sm border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-[#D2A02A] focus:border-[#D2A02A] rounded-md"
-                  >
-                    <option value="all">All Status</option>
-                    {statusOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button 
-                  onClick={() => {
-                    setSearchQuery('');
-                    setStatusFilter('all');
-                  }}
-                  className="text-xs text-[#D2A02A] hover:underline"
-                >
-                  Clear Filters
-                </button>
-            </div>
-        </header>
-        
-        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden">
-          <div className="space-y-6">
-             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-                    <strong className="font-bold">Error: </strong>
-                    <span className="block sm:inline">{error}</span>
-                </div>
-             )}
-             
-             <DisputesTable 
-                disputes={disputes} 
-                hasMore={hasMore} 
-                loading={loading} 
-                loadMore={handleLoadMore}
-                statusOptions={statusOptions}
-                 onUpdateDispute={handleUpdateDispute}
-                 onViewHistory={handleViewHistory}
-                 onOpenWhatsApp={handleOpenWhatsApp}
-                 selectedDisputes={selectedDisputes}
-                 onSelectDispute={handleSelectDispute}
-                 onSelectAll={handleSelectAll}
-              />
-          </div>
-        </main>
-
-        <AppLeadsHistoryModal 
-          isOpen={showHistoryModal}
-          onClose={() => setShowHistoryModal(false)}
-          leadId={historyDisputeId || ""}
-          leadName={historyDisputeName || ""}
-          apiPath="/api/disputes"
-        />
-
-        <AmaBulkWhatsAppModal
-          isOpen={showBulkWhatsAppModal}
-          onClose={() => setShowBulkWhatsAppModal(false)}
-          selectedLeads={disputes.filter(d => selectedDisputes.includes(d.id))}
-          onSendBulkWhatsApp={handleSendBulkWhatsApp}
-          onSuccess={() => setSelectedDisputes([])}
-        />
-      </div>
-  );
-
-  if (userRole === 'admin') {
     return (
-      <div className="flex h-screen bg-gray-100 overflow-hidden">
-        {/* Sidebar - Desktop and Mobile Overlay */}
-        <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
-          <AdminSidebar />
-        </div>
-
-        {/* Mobile Sidebar Overlay */}
-        {isMobileSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-        )}
-
-        <div className="flex-1 flex flex-col overflow-hidden w-full">
-          <div className="flex-1 overflow-y-auto">
-             {content}
-          </div>
+      <div className="flex items-center justify-center h-screen bg-[#F8F5EC] text-[#5A4C33] font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-[#D2A02A] border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-medium text-[#5A4C33]/70">Loading...</span>
         </div>
       </div>
     );
   }
 
-  if (userRole === 'sales' || userRole === 'salesperson') {
-    return (
-      <div className="flex h-screen bg-gray-100 overflow-hidden">
-        {/* Sidebar - Desktop and Mobile Overlay */}
-        <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
-          <SalesSidebar />
-        </div>
-
-        {/* Mobile Sidebar Overlay */}
-        {isMobileSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-        )}
-
-        <div className="flex-1 flex flex-col overflow-hidden w-full">
-          <div className="flex-1 overflow-y-auto">
-             {content}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const SidebarComponent = () => {
+    if (userRole === 'admin') return AdminSidebar;
+    if (userRole === 'overlord') return OverlordSidebar;
+    return SalesSidebar;
+  };
+  const Sidebar = SidebarComponent();
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar - Desktop and Mobile Overlay */}
-      <div className={`fixed inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out flex-shrink-0`}>
-        <OverlordSidebar />
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
+    <div className="flex h-screen bg-[#F8F5EC] overflow-hidden font-sans text-[#5A4C33]">
+      {/* Mobile sidebar overlay backdrop */}
       {isMobileSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden w-full">
-        <div className="flex-1 overflow-y-auto">
-          {content}
+      {/* Sidebar - slides in on mobile, static on desktop */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
+        md:relative md:z-auto md:translate-x-0 md:transform-none
+        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <Sidebar />
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto w-full">
+
+        {/* ── Header ── */}
+        <header className="bg-white/80 backdrop-blur-sm border-b border-[#5A4C33]/15 px-4 md:px-6 py-3 md:py-4 shadow-sm space-y-3 sticky top-0 z-30">
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              {/* Mobile hamburger */}
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="md:hidden p-2 text-[#5A4C33]/60 hover:text-[#5A4C33] hover:bg-[#D2A02A]/10 rounded-lg transition-all"
+                aria-label="Toggle menu"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-[#5A4C33] tracking-tight leading-tight">App Disputes</h1>
+                <p className="text-xs text-[#5A4C33]/50 font-medium hidden sm:block">Manage and track dispute leads</p>
+              </div>
+            </div>
+
+            <div className="flex items-center flex-wrap gap-2">
+              {/* Total badge */}
+              <div className="bg-[#D2A02A] text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm">
+                Total: {total.toLocaleString()}
+              </div>
+
+              {/* Export button */}
+              <button
+                onClick={exportToCSV}
+                disabled={exporting}
+                className={`flex items-center gap-1.5 px-3 py-1.5 border border-[#D2A02A]/40 rounded-lg text-xs font-medium text-[#5A4C33] bg-white hover:bg-[#D2A02A]/10 focus:outline-none focus:ring-2 focus:ring-[#D2A02A]/40 transition-colors ${
+                  exporting ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <FiDownload className={`h-3.5 w-3.5 ${exporting ? 'animate-bounce' : ''}`} />
+                {exporting ? (exportProgress || '...') : 'Export'}
+              </button>
+
+              {/* Bulk WhatsApp */}
+              {selectedDisputes.length > 0 && (
+                <button
+                  onClick={() => setShowBulkWhatsAppModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
+                >
+                  <FaWhatsapp className="h-3.5 w-3.5" />
+                  Bulk ({selectedDisputes.length})
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filters row */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="h-4 w-4 text-[#5A4C33]/40" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-9 pr-3 py-2 text-sm border border-[#5A4C33]/20 rounded-lg bg-white text-[#5A4C33] placeholder-[#5A4C33]/40 focus:outline-none focus:ring-2 focus:ring-[#D2A02A]/40 focus:border-[#D2A02A] transition-colors"
+                placeholder="Search by name or phone number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Status filter */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="statusFilter" className="text-xs font-semibold text-[#5A4C33]/70 whitespace-nowrap">Status:</label>
+              <select
+                id="statusFilter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="text-sm border border-[#5A4C33]/20 bg-white text-[#5A4C33] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#D2A02A]/40 focus:border-[#D2A02A] transition-colors"
+              >
+                <option value="all">All Status</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Clear filters */}
+            <button
+              onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
+              className="text-xs font-semibold text-[#D2A02A] hover:text-[#B8891A] hover:underline transition-colors whitespace-nowrap"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </header>
+
+        {/* ── Main table area ── */}
+        <div className="p-3 md:px-6 md:py-4 flex flex-col gap-3">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm" role="alert">
+              <strong className="font-semibold">Error: </strong>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="bg-white/30 backdrop-blur-sm rounded-xl border border-[#5A4C33]/10 shadow-inner overflow-auto">
+            <DisputesTable
+              disputes={disputes}
+              hasMore={hasMore}
+              loading={loading}
+              loadMore={handleLoadMore}
+              statusOptions={statusOptions}
+              onUpdateDispute={handleUpdateDispute}
+              onViewHistory={handleViewHistory}
+              onOpenWhatsApp={handleOpenWhatsApp}
+              selectedDisputes={selectedDisputes}
+              onSelectDispute={handleSelectDispute}
+              onSelectAll={handleSelectAll}
+            />
+          </div>
         </div>
       </div>
+
+      {/* ── Modals ── */}
+      <AppLeadsHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        leadId={historyDisputeId || ""}
+        leadName={historyDisputeName || ""}
+        apiPath="/api/disputes"
+      />
+
+      <AmaBulkWhatsAppModal
+        isOpen={showBulkWhatsAppModal}
+        onClose={() => setShowBulkWhatsAppModal(false)}
+        selectedLeads={disputes.filter(d => selectedDisputes.includes(d.id))}
+        onSendBulkWhatsApp={handleSendBulkWhatsApp}
+        onSuccess={() => setSelectedDisputes([])}
+      />
     </div>
   );
 }
