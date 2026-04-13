@@ -11,6 +11,14 @@ const convertToIsoString = (dateVal: any): string => {
   return new Date().toISOString()
 }
 
+const convertToDate = (dateVal: any): Date => {
+  if (!dateVal) return new Date()
+  if (typeof dateVal.toDate === "function") return dateVal.toDate()
+  if (dateVal instanceof Date) return dateVal
+  const d = new Date(dateVal)
+  return isNaN(d.getTime()) ? new Date() : d
+}
+
 export const processBillcutLead = (docId: string, data: any): Lead => {
   const getValidNote = (...notes: (string | undefined)[]) => {
     for (const note of notes) {
@@ -25,23 +33,29 @@ export const processBillcutLead = (docId: string, data: any): Lead => {
 
   return {
     id: docId,
-    name: data.name || "",
-    email: data.email || "",
-    phone: data.mobile || data.phone || "",
+    name: String(data.name || ""),
+    email: String(data.email || ""),
+    phone: String(data.mobile || data.phone || ""),
     city: resolveLeadState(data),
-    status: data.category || "No Status",
+    status: String(data.category || "No Status"),
     source_database: "Bill Cut",
-    assignedTo: data.assigned_to || "",
-    monthlyIncome: data.income || "",
+    assignedTo: String(data.assigned_to || ""),
+    monthlyIncome: String(data.income || ""),
     salesNotes: finalNote,
     latestRemark: finalNote,
-    lastModified: convertToIsoString(data.lastModified),
-    date: data.date || data.synced_date?.toDate?.()?.getTime() || Date.now(),
-    debtRange: data.debt_range || 0,
-    maxDpd: data.max_dpd || 0,
-    convertedAt: data.convertedAt ? convertToIsoString(data.convertedAt) : null,
-    callbackInfo: data.callbackInfo || null,
-    statusHistory: data.statusHistory || [],
+    lastModified: convertToDate(data.lastModified),
+    date: Number(data.date || data.synced_date?.toDate?.()?.getTime() || Date.now()),
+    debtRange: String(data.debt_range || "0"),
+    maxDpd: Number(data.max_dpd || 0),
+    convertedAt: data.convertedAt ? convertToDate(data.convertedAt) : null,
+    callbackInfo: data.callbackInfo ? {
+      ...data.callbackInfo,
+      id: String(data.callbackInfo.id || ""),
+      scheduled_dt: convertToDate(data.callbackInfo.scheduled_dt),
+      scheduled_by: String(data.callbackInfo.scheduled_by || ""),
+      created_at: data.callbackInfo.created_at
+    } : null,
+    statusHistory: Array.isArray(data.statusHistory) ? data.statusHistory : [],
   }
 }
 
