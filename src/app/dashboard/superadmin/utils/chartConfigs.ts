@@ -217,8 +217,8 @@ export const statusColors = [
 ];
 
 export const sourceColors = {
-  settleloans: 'rgba(52, 191, 163, 0.8)',  // Teal
-  credsettlee: 'rgba(79, 70, 229, 0.8)',   // Indigo
-  ama: 'rgba(249, 115, 22, 0.8)',          // Orange
-  billcut: 'rgba(236, 72, 153, 0.8)',      // Pink
-}; 
+  settleloans: 'rgba(19, 78, 74, 0.8)',  // Teal-900 (#134e4a)
+  credsettlee: 'rgba(107, 33, 168, 0.8)', // Purple-800 (#6b21a8)
+  ama: 'rgba(146, 64, 14, 0.8)',          // Amber-800 (#92400e)
+  billcut: 'rgba(255, 212, 111, 0.8)',      // Golden Yellow (#FFD46F)
+};

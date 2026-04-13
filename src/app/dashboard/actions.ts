@@ -1204,6 +1204,221 @@ export async function getClientAdvocateWeeklyAnalytics(): Promise<ClientAdvocate
     }
 }
 
+// ─── Lead Trend Analytics ─────────────────────────────────────────────────────
+
+export interface LeadTrendWeekData {
+    week1: number; // days 1-7
+    week2: number; // days 8-14
+    week3: number; // days 15-21
+    week4: number; // days 22-end
+    total: number;
+}
+
+export interface LeadTrendData {
+    month: string;       // e.g. "Apr"
+    year: number;        // e.g. 2026
+    fullLabel: string;   // e.g. "Apr 2026"
+    sources: {
+        AMA: LeadTrendWeekData;
+        CredSettle: LeadTrendWeekData;
+        SettleLoans: LeadTrendWeekData;
+        BillCut: LeadTrendWeekData;
+        Total: LeadTrendWeekData;
+    };
+}
+
+/** Map a raw source string from ama_leads to one of our canonical buckets. */
+function normalizeLeadSource(raw: string | undefined): 'AMA' | 'CredSettle' | 'SettleLoans' | null {
+    if (!raw) return 'AMA'; // ama_leads with no source → AMA
+    const lower = raw.toLowerCase().trim();
+    if (lower === 'ama') return 'AMA';
+    if (lower === 'credsettle' || lower === 'credsettlee') return 'CredSettle';
+    if (lower === 'settleloans' || lower === 'settleloans contact' || lower === 'settleloans home') return 'SettleLoans';
+    // BillCut leads never appear in ama_leads; if an unexpected source appears, skip
+    return null;
+}
+
+function emptyWeekData(): LeadTrendWeekData {
+    return { week1: 0, week2: 0, week3: 0, week4: 0, total: 0 };
+}
+
+function weekKey(day: number): keyof Omit<LeadTrendWeekData, 'total'> {
+    if (day <= 7) return 'week1';
+    if (day <= 14) return 'week2';
+    if (day <= 21) return 'week3';
+    return 'week4';
+}
+
+/**
+ * Returns weekly lead-count data for all 4 sources (AMA, CredSettle, SettleLoans, BillCut)
+ * for every month that has data, or filtered to a specific month+year if provided.
+ *
+ * Week boundaries (calendar-based, NOT day-of-week):
+ *   Week 1 → days  1 –  7
+ *   Week 2 → days  8 – 14
+ *   Week 3 → days 15 – 21
+ *   Week 4 → days 22 – end of month
+ */
+export async function getLeadTrendData(
+    filterMonth?: number, // 0-indexed (0 = Jan … 11 = Dec), undefined = all months
+    filterYear?: number
+): Promise<LeadTrendData[]> {
+    try {
+        if (!db) throw new Error('Firebase Admin SDK not initialized');
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const trendMap: Record<string, LeadTrendData> = {};
+
+        // --- helper: get-or-create a month bucket ---
+        const getBucket = (monthIndex: number, year: number): LeadTrendData => {
+            const monthName = monthNames[monthIndex];
+            const key = `${monthName}_${year}`;
+            if (!trendMap[key]) {
+                trendMap[key] = {
+                    month: monthName,
+                    year,
+                    fullLabel: `${monthName} ${year}`,
+                    sources: {
+                        AMA:        emptyWeekData(),
+                        CredSettle: emptyWeekData(),
+                        SettleLoans:emptyWeekData(),
+                        BillCut:    emptyWeekData(),
+                        Total:      emptyWeekData(),
+                    }
+                };
+            }
+            return trendMap[key];
+        };
+
+        // --- helper: increment a source+week counter ---
+        const increment = (bucket: LeadTrendData, source: 'AMA' | 'CredSettle' | 'SettleLoans' | 'BillCut', day: number) => {
+            const wk = weekKey(day);
+            bucket.sources[source][wk]++;
+            bucket.sources[source].total++;
+            bucket.sources.Total[wk]++;
+            bucket.sources.Total.total++;
+        };
+
+        // Build Firestore date range bounds when filtering by month
+        let startMs: number | undefined;
+        let endMs: number | undefined;
+
+        if (filterYear !== undefined && filterMonth !== undefined) {
+            const startDate = new Date(filterYear, filterMonth, 1);
+            const endDate   = new Date(filterYear, filterMonth + 1, 0, 23, 59, 59, 999);
+            startMs  = startDate.getTime();
+            endMs    = endDate.getTime();
+        }
+
+        // ── 1. Fetch AMA leads (contains AMA / CredSettle / SettleLoans) ──────
+        try {
+            let amaQuery: FirebaseFirestore.Query = db.collection('ama_leads');
+            if (startMs !== undefined && endMs !== undefined) {
+                // ama_leads stores `date` as epoch milliseconds (number)
+                amaQuery = amaQuery
+                    .where('date', '>=', startMs)
+                    .where('date', '<=', endMs);
+            }
+            const amaSnap = await amaQuery.get();
+
+            amaSnap.forEach(doc => {
+                const data = doc.data();
+
+                // Resolve date from the `date` field (epoch ms number)
+                let leadDate: Date | null = null;
+                if (typeof data.date === 'number') {
+                    leadDate = new Date(data.date);
+                } else if (typeof data.date === 'string') {
+                    leadDate = new Date(data.date);
+                } else if (data.date?.toDate) {
+                    leadDate = data.date.toDate();
+                } else if (data.date?._seconds) {
+                    leadDate = new Date(data.date._seconds * 1000);
+                } else if (data.createdAt) {
+                    // fallback
+                    if (typeof data.createdAt === 'string') leadDate = new Date(data.createdAt);
+                    else if (data.createdAt?.toDate) leadDate = data.createdAt.toDate();
+                    else if (data.createdAt?._seconds) leadDate = new Date(data.createdAt._seconds * 1000);
+                }
+
+                if (!leadDate || isNaN(leadDate.getTime())) return;
+
+                const monthIndex = leadDate.getMonth();
+                const year       = leadDate.getFullYear();
+                const day        = leadDate.getDate();
+
+                // When NOT filtering, include all months; when filtering, double-check
+                if (filterYear !== undefined && filterMonth !== undefined) {
+                    if (year !== filterYear || monthIndex !== filterMonth) return;
+                }
+
+                const source = normalizeLeadSource(data.source);
+                if (!source) return;
+
+                const bucket = getBucket(monthIndex, year);
+                increment(bucket, source, day);
+            });
+        } catch (e) {
+            console.error('getLeadTrendData: error fetching ama_leads:', e);
+        }
+
+        // ── 2. Fetch BillCut leads ────────────────────────────────────────────
+        try {
+            let bcQuery: FirebaseFirestore.Query = db.collection('billcutLeads');
+            if (startMs !== undefined && endMs !== undefined) {
+                bcQuery = bcQuery
+                    .where('date', '>=', startMs)
+                    .where('date', '<=', endMs);
+            }
+            const bcSnap = await bcQuery.get();
+
+            bcSnap.forEach(doc => {
+                const data = doc.data();
+
+                let leadDate: Date | null = null;
+                if (typeof data.date === 'number') {
+                    leadDate = new Date(data.date);
+                } else if (typeof data.date === 'string') {
+                    leadDate = new Date(data.date);
+                } else if (data.date?.toDate) {
+                    leadDate = data.date.toDate();
+                } else if (data.date?._seconds) {
+                    leadDate = new Date(data.date._seconds * 1000);
+                } else if (data.createdAt) {
+                    if (typeof data.createdAt === 'string') leadDate = new Date(data.createdAt);
+                    else if (data.createdAt?.toDate) leadDate = data.createdAt.toDate();
+                    else if (data.createdAt?._seconds) leadDate = new Date(data.createdAt._seconds * 1000);
+                }
+
+                if (!leadDate || isNaN(leadDate.getTime())) return;
+
+                const monthIndex = leadDate.getMonth();
+                const year       = leadDate.getFullYear();
+                const day        = leadDate.getDate();
+
+                if (filterYear !== undefined && filterMonth !== undefined) {
+                    if (year !== filterYear || monthIndex !== filterMonth) return;
+                }
+
+                const bucket = getBucket(monthIndex, year);
+                increment(bucket, 'BillCut', day);
+            });
+        } catch (e) {
+            console.error('getLeadTrendData: error fetching billcutLeads:', e);
+        }
+
+        // ── Sort results chronologically ──────────────────────────────────────
+        return Object.values(trendMap).sort((a, b) => {
+            if (a.year !== b.year) return a.year - b.year;
+            return monthNames.indexOf(a.month) - monthNames.indexOf(b.month);
+        });
+
+    } catch (error) {
+        console.error('Error in getLeadTrendData:', error);
+        return [];
+    }
+}
+
 export async function getClientSourceWeeklyAnalytics(): Promise<ClientSourceWeeklyAnalytics[]> {
     try {
         if (!db) throw new Error('Firebase Admin SDK not initialized');

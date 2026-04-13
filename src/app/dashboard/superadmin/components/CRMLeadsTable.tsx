@@ -23,6 +23,14 @@ export const CRMLeadsTable: React.FC<CRMLeadsTableProps> = ({
   selectedAnalyticsMonth,
   selectedAnalyticsYear
 }) => {
+  const sourceHex: Record<string, string> = {
+    ama: '#92400e',
+    credsettlee: '#6b21a8',
+    settleloans: '#134e4a',
+    billcut: '#FFD46F',
+    total: '#475569'
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-48 bg-gray-100 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
@@ -49,8 +57,10 @@ export const CRMLeadsTable: React.FC<CRMLeadsTableProps> = ({
           <tbody>
             {/* Settleloans Row */}
             <tr className="bg-white dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
-              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-teal-600 dark:text-teal-300 text-xs">
-                Settleloans
+              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-xs">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white border border-teal-700" style={{ backgroundColor: sourceHex.settleloans }}>
+                  Settleloans
+                </span>
               </td>
               {leadsBySourceData.datasets.map((dataset, idx) => (
                 <td key={idx} className="p-2 text-center border-t border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 text-xs">
@@ -64,8 +74,10 @@ export const CRMLeadsTable: React.FC<CRMLeadsTableProps> = ({
             
             {/* Credsettlee Row */}
             <tr className="bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors">
-              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-indigo-600 dark:text-indigo-300 text-xs">
-                Credsettlee
+              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-xs">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white border border-purple-700" style={{ backgroundColor: sourceHex.credsettlee }}>
+                  Credsettlee
+                </span>
               </td>
               {leadsBySourceData.datasets.map((dataset, idx) => (
                 <td key={idx} className="p-2 text-center border-t border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 text-xs">
@@ -79,8 +91,10 @@ export const CRMLeadsTable: React.FC<CRMLeadsTableProps> = ({
             
             {/* AMA Row */}
             <tr className="bg-white dark:bg-gray-800/40 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
-              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-orange-600 dark:text-orange-300 text-xs">
-                AMA
+              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-xs">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white border border-amber-700" style={{ backgroundColor: sourceHex.ama }}>
+                  AMA
+                </span>
               </td>
               {leadsBySourceData.datasets.map((dataset, idx) => (
                 <td key={idx} className="p-2 text-center border-t border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 text-xs">
@@ -94,8 +108,10 @@ export const CRMLeadsTable: React.FC<CRMLeadsTableProps> = ({
             
             {/* Billcut Row */}
             <tr className="bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors">
-              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-pink-600 dark:text-pink-300 text-xs">
-                Billcut
+              <td className="p-2 border-t border-gray-200 dark:border-gray-700 font-medium text-xs">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold text-gray-900 border border-yellow-500" style={{ backgroundColor: sourceHex.billcut }}>
+                  Billcut
+                </span>
               </td>
               {leadsBySourceData.datasets.map((dataset, idx) => (
                 <td key={idx} className="p-2 text-center border-t border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 text-xs">
@@ -109,8 +125,10 @@ export const CRMLeadsTable: React.FC<CRMLeadsTableProps> = ({
             
             {/* Total Row */}
             <tr className="bg-gray-200 dark:bg-gradient-to-r dark:from-blue-900/90 dark:to-purple-900/90 transition-colors">
-              <td className="p-2 font-bold text-gray-800 dark:text-blue-100 border-t border-gray-300 dark:border-gray-600 text-xs">
-                Total
+              <td className="p-2 border-t border-gray-300 dark:border-gray-600 text-xs">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white border border-gray-600" style={{ backgroundColor: sourceHex.total }}>
+                  Total
+                </span>
               </td>
               {leadsBySourceData.datasets.map((dataset, idx) => {
                 const statusTotal = dataset.data.reduce((sum, val) => sum + val, 0);

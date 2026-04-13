@@ -152,8 +152,28 @@ export const ClientSourceWeeklyAnalyticsComponent: React.FC<ClientSourceWeeklyAn
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                             {sortedData.map((item) => (
                                 <tr key={item.source} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                    <td className="px-4 py-2 font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-800 z-10 border-r dark:border-gray-700 whitespace-nowrap">
-                                        {item.source}
+                                    <td className="px-4 py-2 font-medium sticky left-0 bg-white dark:bg-gray-800 z-10 border-r dark:border-gray-700 whitespace-nowrap">
+                                        {(() => {
+                                            const sourceHex: Record<string, string> = {
+                                                'AMA': '#92400e',
+                                                'CredSettle': '#6b21a8',
+                                                'SettleLoans': '#134e4a',
+                                                'BillCut': '#FFD46F'
+                                            };
+                                            const hex = sourceHex[item.source];
+                                            if (hex) {
+                                                const isBillCut = item.source === 'BillCut';
+                                                return (
+                                                    <span 
+                                                        className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${isBillCut ? 'text-gray-900 border-yellow-500' : 'text-white border-transparent'}`}
+                                                        style={{ backgroundColor: hex }}
+                                                    >
+                                                        {item.source}
+                                                    </span>
+                                                );
+                                            }
+                                            return <span className="text-gray-900 dark:text-white">{item.source}</span>;
+                                        })()}
                                     </td>
                                     {displayedMonths.map(month => {
                                         const hist = item.history[month] || { week1: 0, week2: 0, week3: 0, week4: 0, total: 0 };

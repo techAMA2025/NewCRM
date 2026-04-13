@@ -21,8 +21,14 @@ import {
   SourceAnalyticsData,     // [NEW]
   getBillcutPayoutAnalytics,
   getBillcutHistoryData,
-  BillcutHistoryData
+  BillcutHistoryData,
+  getLeadTrendData,
+  LeadTrendData
 } from '../actions';
+import {
+  BarChart,
+  Bar,
+} from 'recharts';
 
 // Lazy load Chart.js and heavy components
 const LazyCharts = lazy(() => import('./components/LazyCharts'));
@@ -172,11 +178,26 @@ const SuperAdminDashboard = React.memo(() => {
   const [sourceYear, setSourceYear] = useState<number>(new Date().getFullYear());
   const [billcutPayoutAmount, setBillcutPayoutAmount] = useState<number>(0);
   const [billcutHistory, setBillcutHistory] = useState<BillcutHistoryData[]>([]);
+
+  // --- Lead Trend State ---
+  const [leadTrendData, setLeadTrendData] = useState<LeadTrendData[]>([]);
+  const [leadTrendLoading, setLeadTrendLoading] = useState(false);
+  const [leadTrendViewMode, setLeadTrendViewMode] = useState<'table' | 'chart'>('table');
+  const [leadTrendMonthCount, setLeadTrendMonthCount] = useState<number>(4);
   const [billcutHistoryLoading, setBillcutHistoryLoading] = useState(false);
   const [hoveredBillcutMetric, setHoveredBillcutMetric] = useState<string | null>(null);
   const [hoveredCrmMetric, setHoveredCrmMetric] = useState<string | null>(null);
   const [hoveredOpsMetric, setHoveredOpsMetric] = useState<string | null>(null);
   const [hoveredTotalMetric, setHoveredTotalMetric] = useState<string | null>(null);
+
+  // --- Central Source Colors ---
+  const sourceHex: Record<string, string> = {
+    AMA: '#92400e',
+    CredSettle: '#6b21a8',
+    SettleLoans: '#134e4a',
+    BillCut: '#FFD46F',
+    Total: '#475569'
+  };
 
   // Fetch weekly data when toggle is enabled
   useEffect(() => {
@@ -237,6 +258,22 @@ const SuperAdminDashboard = React.memo(() => {
     fetchBillcutPayout();
     fetchBillcutHistory();
   }, [sourceMonth, sourceYear]);
+
+  // Fetch Lead Trend Data — always loads all months, UI shows last 4
+  useEffect(() => {
+    async function fetchLeadTrend() {
+      setLeadTrendLoading(true);
+      try {
+        const data = await getLeadTrendData(); // no filter → all months
+        setLeadTrendData(data);
+      } catch (error) {
+        console.error('Error fetching lead trend data:', error);
+      } finally {
+        setLeadTrendLoading(false);
+      }
+    }
+    fetchLeadTrend();
+  }, []);
 
   // Helper function for Indian number formatting
   const formatIndianCurrency = (value: number) => {
@@ -948,20 +985,30 @@ const SuperAdminDashboard = React.memo(() => {
                             </thead>
                             <tbody>
                               {sourceData.length > 0 ? (
-                                sourceData.map((item, index) => (
-                                  <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                    <td className="px-3 py-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                                      {item.source}
-                                    </td>
-                                    <td className="px-3 py-3 text-center">{item.leadsCount}</td>
-                                    <td className="px-3 py-3 text-right font-semibold text-emerald-500">
-                                      {formatFullCurrency(item.revenue)}
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-medium text-blue-500">
-                                      {formatFullCurrency(item.valuation)}
-                                    </td>
-                                  </tr>
-                                ))
+                                  sourceData.map((item, index) => {
+                                    const srcKey = item.source === 'Settleloans' ? 'SettleLoans' : item.source === 'Credsettlee' ? 'CredSettle' : item.source;
+                                    const hex = sourceHex[srcKey] || '#64748b';
+                                    const isBillCut = srcKey === 'BillCut';
+                                    return (
+                                      <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                        <td className="px-3 py-3 font-medium whitespace-nowrap">
+                                          <span 
+                                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${isBillCut ? 'text-gray-900 border-yellow-500' : 'text-white border-transparent'}`}
+                                            style={{ backgroundColor: hex }}
+                                          >
+                                            {item.source}
+                                          </span>
+                                        </td>
+                                        <td className="px-3 py-3 text-center">{item.leadsCount}</td>
+                                        <td className="px-3 py-3 text-right font-semibold text-emerald-500">
+                                          {formatFullCurrency(item.revenue)}
+                                        </td>
+                                        <td className="px-3 py-3 text-right font-medium text-blue-500">
+                                          {formatFullCurrency(item.valuation)}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
                               ) : (
                                 <tr>
                                   <td colSpan={4} className="px-3 py-4 text-center text-gray-500 dark:text-gray-400">
@@ -974,6 +1021,211 @@ const SuperAdminDashboard = React.memo(() => {
                         </div>
                         </>
                       )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* ─── Lead Trend Analytics Section ─────────────────────── */}
+                <div className="mt-4">
+                  <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
+                    <CardHeader className="pb-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                          <CardTitle className="text-gray-900 dark:text-white text-base">
+                            📈 Lead Trend Analytics
+                          </CardTitle>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            Last {leadTrendMonthCount === leadTrendData.length ? 'all' : leadTrendMonthCount} month{leadTrendMonthCount !== 1 ? 's' : ''} · Weekly lead count across all 4 sources&nbsp;·&nbsp;
+                            <span className="font-medium">W1</span>: 1–7&nbsp;
+                            <span className="font-medium">W2</span>: 8–14&nbsp;
+                            <span className="font-medium">W3</span>: 15–21&nbsp;
+                            <span className="font-medium">W4</span>: 22–end
+                          </p>
+                        </div>
+
+                        {/* Controls row */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* Months selector */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Show:</span>
+                            <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 text-xs">
+                              {[3, 4, 6, 9, 12].map(n => (
+                                <button
+                                  key={n}
+                                  onClick={() => setLeadTrendMonthCount(n)}
+                                  className={`px-2.5 py-1.5 font-medium transition-colors border-r border-gray-300 dark:border-gray-600 last:border-r-0 ${
+                                    leadTrendMonthCount === n
+                                      ? 'bg-amber-800 text-white'
+                                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-gray-600'
+                                  }`}
+                                >
+                                  {n}mo
+                                </button>
+                              ))}
+                              <button
+                                onClick={() => setLeadTrendMonthCount(leadTrendData.length || 999)}
+                                className={`px-2.5 py-1.5 font-medium transition-colors ${
+                                  leadTrendMonthCount >= (leadTrendData.length || 999)
+                                    ? 'bg-amber-800 text-white'
+                                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-gray-600'
+                                }`}
+                              >
+                                All
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* View mode toggle */}
+                          <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 text-xs flex-shrink-0">
+                            <button
+                              onClick={() => setLeadTrendViewMode('table')}
+                              className={`px-3 py-1.5 font-medium transition-colors ${
+                                leadTrendViewMode === 'table'
+                                  ? 'bg-amber-800 text-white'
+                                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              Table
+                            </button>
+                            <button
+                              onClick={() => setLeadTrendViewMode('chart')}
+                              className={`px-3 py-1.5 font-medium transition-colors ${
+                                leadTrendViewMode === 'chart'
+                                  ? 'bg-amber-800 text-white'
+                                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              Chart
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent>
+                      {leadTrendLoading ? (
+                        <div className="h-48 flex items-center justify-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                            <span className="text-xs text-gray-500">Fetching lead trend data…</span>
+                          </div>
+                        </div>
+                      ) : leadTrendData.length === 0 ? (
+                        <div className="h-32 flex items-center justify-center text-gray-400 text-sm">
+                          No lead data found.
+                        </div>
+                      ) : (() => {
+                        // Show the last N months based on user selection
+                        const last4 = leadTrendData.slice(-leadTrendMonthCount);
+
+                        const sources = ['AMA', 'CredSettle', 'SettleLoans', 'BillCut', 'Total'] as const;
+
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                            {last4.map((monthData) => {
+                              const chartData = [
+                                { week: 'W1', AMA: monthData.sources.AMA.week1, CredSettle: monthData.sources.CredSettle.week1, SettleLoans: monthData.sources.SettleLoans.week1, BillCut: monthData.sources.BillCut.week1 },
+                                { week: 'W2', AMA: monthData.sources.AMA.week2, CredSettle: monthData.sources.CredSettle.week2, SettleLoans: monthData.sources.SettleLoans.week2, BillCut: monthData.sources.BillCut.week2 },
+                                { week: 'W3', AMA: monthData.sources.AMA.week3, CredSettle: monthData.sources.CredSettle.week3, SettleLoans: monthData.sources.SettleLoans.week3, BillCut: monthData.sources.BillCut.week3 },
+                                { week: 'W4', AMA: monthData.sources.AMA.week4, CredSettle: monthData.sources.CredSettle.week4, SettleLoans: monthData.sources.SettleLoans.week4, BillCut: monthData.sources.BillCut.week4 },
+                              ];
+
+                              return (
+                                <div key={monthData.fullLabel}
+                                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 overflow-hidden flex flex-col"
+                                >
+                                  {/* Month header */}
+                                  <div className="bg-amber-900/10 dark:bg-amber-900/20 border-b border-amber-200/40 dark:border-amber-800/40 px-3 py-2 flex items-center justify-between">
+                                    <span className="text-sm font-bold text-amber-900 dark:text-amber-300">
+                                      {monthData.fullLabel}
+                                    </span>
+                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-900/20 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+                                      {monthData.sources.Total.total} leads
+                                    </span>
+                                  </div>
+
+                                  {leadTrendViewMode === 'table' ? (
+                                    <table className="w-full text-[11px]">
+                                      <thead>
+                                        <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                                          <th className="px-2 py-1.5 text-left font-semibold">Source</th>
+                                          <th className="px-1 py-1.5 text-center font-semibold">W1</th>
+                                          <th className="px-1 py-1.5 text-center font-semibold">W2</th>
+                                          <th className="px-1 py-1.5 text-center font-semibold">W3</th>
+                                          <th className="px-1 py-1.5 text-center font-semibold">W4</th>
+                                          <th className="px-2 py-1.5 text-right font-semibold">Tot</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {sources.map(src => {
+                                          const row = monthData.sources[src];
+                                          const isTotal = src === 'Total';
+                                          const abbr = src === 'SettleLoans' ? 'SL' : src === 'CredSettle' ? 'CS' : src === 'BillCut' ? 'BC' : src;
+                                          return (
+                                            <tr
+                                              key={src}
+                                              className={`border-t border-gray-100 dark:border-gray-800 ${isTotal ? 'font-bold bg-gray-100/80 dark:bg-gray-800/80' : 'hover:bg-white dark:hover:bg-gray-800'}`}
+                                            >
+                                              <td className="px-2 py-1.5">
+                                                <span
+                                                  className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold border ${src === 'BillCut' ? 'text-gray-900 border-yellow-500' : src === 'Total' ? 'text-gray-100 border-gray-600' : src === 'AMA' ? 'text-amber-100 border-amber-700' : src === 'CredSettle' ? 'text-purple-100 border-purple-700' : 'text-teal-100 border-teal-700'}`}
+                                                  style={{ backgroundColor: sourceHex[src] }}
+                                                >
+                                                  {abbr}
+                                                </span>
+                                              </td>
+                                              {(['week1','week2','week3','week4'] as const).map(wk => (
+                                                <td key={wk} className="px-1 py-1.5 text-center">
+                                                  {row[wk] > 0 ? (
+                                                    <span
+                                                      className={`inline-block min-w-[20px] px-1 py-0.5 rounded font-semibold text-[10px] ${ src === 'BillCut' ? 'text-gray-900' : 'text-white'}`}
+                                                      style={{ backgroundColor: sourceHex[src] }}
+                                                    >
+                                                      {row[wk]}
+                                                    </span>
+                                                  ) : (
+                                                    <span className="text-gray-300 dark:text-gray-600">–</span>
+                                                  )}
+                                                </td>
+                                              ))}
+                                              <td className="px-2 py-1.5 text-right">
+                                                <span
+                                                  className={`inline-block px-1.5 py-0.5 rounded font-bold text-[10px] ${ src === 'BillCut' ? 'text-gray-900' : 'text-white'}`}
+                                                  style={{ backgroundColor: sourceHex[src] }}
+                                                >
+                                                  {row.total}
+                                                </span>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  ) : (
+                                    <div className="p-2 flex-1 min-h-[180px]">
+                                      <ResponsiveContainer width="100%" height={180}>
+                                        <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                          <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.25} />
+                                          <XAxis dataKey="week" tick={{ fill: '#9CA3AF', fontSize: 9 }} stroke="#9CA3AF" />
+                                          <YAxis tick={{ fill: '#9CA3AF', fontSize: 9 }} stroke="#9CA3AF" allowDecimals={false} width={28} />
+                                          <Tooltip
+                                            contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6', fontSize: '10px' }}
+                                            itemStyle={{ color: '#F3F4F6' }}
+                                          />
+                                          <Bar dataKey="AMA"         name="AMA"        fill={sourceHex.AMA}         radius={[2,2,0,0]} />
+                                          <Bar dataKey="CredSettle"  name="CS"         fill={sourceHex.CredSettle}  radius={[2,2,0,0]} />
+                                          <Bar dataKey="SettleLoans" name="SL"         fill={sourceHex.SettleLoans} radius={[2,2,0,0]} />
+                                          <Bar dataKey="BillCut"     name="BillCut"    fill={sourceHex.BillCut}     radius={[2,2,0,0]} />
+                                        </BarChart>
+                                      </ResponsiveContainer>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 </div>
