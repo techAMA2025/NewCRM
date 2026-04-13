@@ -213,6 +213,10 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
       type: 'single',
       item: { href: '/settlement-tracker', icon: <FaHandshake />, label: 'Settlement Tracker', isActive: false }
     },
+    {
+      type: 'single',
+      item: { href: '/blogs-management', icon: <FaHandshake />, label: 'Blogs Management', isActive: false }
+    }
   ];
 
   const handleLogout = async () => {

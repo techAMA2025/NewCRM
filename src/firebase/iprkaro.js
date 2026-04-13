@@ -1,6 +1,7 @@
-// Secondary Firebase app for IPRKaro database (separate from CRM's main Firebase)
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
 const iprkaroFirebaseConfig = {
   apiKey: "AIzaSyBFGd7OGNuAvt9HazsdcLsWyS4mbfz9n5c",
@@ -18,6 +19,10 @@ const iprkaroApp = getApps().find(app => app.name === iprkaroAppName)
   ? getApp(iprkaroAppName)
   : initializeApp(iprkaroFirebaseConfig, iprkaroAppName);
 
-// Export the Firestore instance for IPRKaro
-export const iprkaroDb = getFirestore(iprkaroApp);
+// Export instances for IPRKaro
+export const auth = getAuth(iprkaroApp);
+export const storage = getStorage(iprkaroApp);
+export const db = getFirestore(iprkaroApp);
+export const iprkaroDb = db; // Maintain backward compatibility if needed
+
 export default iprkaroApp;
