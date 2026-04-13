@@ -44,6 +44,37 @@ const getCallbackPriority = (lead: any): number => {
   return 4
 }
 
+/**
+ * Helper to parse debt range string into a comparable numeric value (in Lakhs)
+ */
+const parseDebtRangeToNumber = (range: any): number => {
+  if (typeof range !== 'string') return 0;
+  
+  const cleanRange = range.replace(/[₹,]/g, '').toLowerCase();
+  
+  // Example: "43 lakhs - 44 lakhs" -> take the start "43"
+  // Matches "1", "1.5", etc.
+  const match = cleanRange.match(/(\d+\.?\d*)\s*(lakh|crore|cr)/);
+  
+  if (match) {
+    let value = parseFloat(match[1]);
+    const unit = match[2];
+    
+    if (unit.includes('crore') || unit === 'cr') {
+      value *= 100; // Convert Crores to Lakhs
+    }
+    return value;
+  }
+  
+  // Fallback for just numbers
+  const numMatch = cleanRange.match(/(\d+\.?\d*)/);
+  if (numMatch) {
+    return parseFloat(numMatch[1]);
+  }
+  
+  return 0;
+};
+
 export async function GET(request: NextRequest) {
   if (!adminDb || !adminAuth) {
     return NextResponse.json({ error: "Firebase Admin not initialized" }, { status: 500 })
@@ -146,25 +177,38 @@ export async function GET(request: NextRequest) {
     const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") &&
       (!!convertedFromDate || !!convertedToDate || !!lastModifiedFromDate || !!lastModifiedToDate)
 
-    if (debtRangeSort !== "none" && !hasInequalityFilters) {
-      queryRef = queryRef.orderBy("debt_range", debtRangeSort === "low-to-high" ? "asc" : "desc")
-      queryRef = queryRef.orderBy("date", "desc")
-    } else if (hasAdvancedDateFilters) {
-      if (convertedFromDate || convertedToDate) {
-        queryRef = queryRef.orderBy("convertedAt", "desc").orderBy("lastModified", "desc")
+    const shouldSortDebtInMemory = debtRangeSort !== "none";
+
+    if (!shouldSortDebtInMemory) {
+      if (hasAdvancedDateFilters) {
+        if (convertedFromDate || convertedToDate) {
+          queryRef = queryRef.orderBy("convertedAt", "desc").orderBy("lastModified", "desc")
+        } else {
+          queryRef = queryRef.orderBy("lastModified", "desc")
+        }
       } else {
-        queryRef = queryRef.orderBy("lastModified", "desc")
+        queryRef = queryRef.orderBy("date", "desc")
       }
-    } else {
-      queryRef = queryRef.orderBy("date", "desc")
     }
 
     // Parallelize Count and Fetch with Field Selection
     const offset = (page - 1) * limitCount;
-    const [countSnapshot, snapshot] = await Promise.all([
-      queryRef.count().get(),
-      queryRef.select(...REQUIRED_FIELDS).limit(limitCount).offset(offset).get()
-    ]);
+    
+    let countSnapshot;
+    let snapshot;
+    
+    if (shouldSortDebtInMemory) {
+      // Fetch ALL matching docs if sorting in memory
+      [countSnapshot, snapshot] = await Promise.all([
+        queryRef.count().get(),
+        queryRef.select(...REQUIRED_FIELDS).get()
+      ]);
+    } else {
+      [countSnapshot, snapshot] = await Promise.all([
+        queryRef.count().get(),
+        queryRef.select(...REQUIRED_FIELDS).limit(limitCount).offset(offset).get()
+      ]);
+    }
     
     const totalCount = countSnapshot.data().count;
 
@@ -225,7 +269,22 @@ export async function GET(request: NextRequest) {
 
     // Final sorting for special cases that might need client-side logic replication
     let sortedLeads = [...leads]
-    if (activeTab === "callback" && !hasAdvancedDateFilters) {
+    
+    if (shouldSortDebtInMemory) {
+      sortedLeads.sort((a, b) => {
+        const valA = parseDebtRangeToNumber(a.debtRange);
+        const valB = parseDebtRangeToNumber(b.debtRange);
+        
+        if (valA !== valB) {
+          return debtRangeSort === "low-to-high" ? valA - valB : valB - valA;
+        }
+        // Secondary sort by date
+        return (b.date || 0) - (a.date || 0);
+      });
+      
+      // Manual pagination
+      sortedLeads = sortedLeads.slice(offset, offset + limitCount);
+    } else if (activeTab === "callback" && !hasAdvancedDateFilters) {
       sortedLeads.sort((a, b) => {
         const priorityA = getCallbackPriority(a)
         const priorityB = getCallbackPriority(b)
