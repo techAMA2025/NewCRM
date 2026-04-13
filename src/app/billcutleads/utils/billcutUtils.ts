@@ -1,4 +1,49 @@
 import { Lead } from "../types"
+import { resolveLeadState } from "./location"
+
+// Helper to handle Firestore timestamps and other date types
+const convertToIsoString = (dateVal: any): string => {
+  if (!dateVal) return new Date().toISOString()
+  if (typeof dateVal.toDate === "function") return dateVal.toDate().toISOString()
+  if (dateVal instanceof Date) return dateVal.toISOString()
+  if (typeof dateVal === "number") return new Date(dateVal).toISOString()
+  if (typeof dateVal === "string") return new Date(dateVal).toISOString()
+  return new Date().toISOString()
+}
+
+export const processBillcutLead = (docId: string, data: any): Lead => {
+  const getValidNote = (...notes: (string | undefined)[]) => {
+    for (const note of notes) {
+      if (note && note !== "-" && note !== "–" && note.trim() !== "") {
+        return note
+      }
+    }
+    return ""
+  }
+
+  const finalNote = getValidNote(data.latestRemark, data.salesNotes, data.sales_notes)
+
+  return {
+    id: docId,
+    name: data.name || "",
+    email: data.email || "",
+    phone: data.mobile || data.phone || "",
+    city: resolveLeadState(data),
+    status: data.category || "No Status",
+    source_database: "Bill Cut",
+    assignedTo: data.assigned_to || "",
+    monthlyIncome: data.income || "",
+    salesNotes: finalNote,
+    latestRemark: finalNote,
+    lastModified: convertToIsoString(data.lastModified),
+    date: data.date || data.synced_date?.toDate?.()?.getTime() || Date.now(),
+    debtRange: data.debt_range || 0,
+    maxDpd: data.max_dpd || 0,
+    convertedAt: data.convertedAt ? convertToIsoString(data.convertedAt) : null,
+    callbackInfo: data.callbackInfo || null,
+    statusHistory: data.statusHistory || [],
+  }
+}
 
 // Constants
 export const LEADS_PER_PAGE = 50

@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from "react"
 import { authFetch } from "@/lib/authFetch"
 import { toast } from "react-toastify"
 import { Lead, EditingLeadsState } from "../types"
-import { LEADS_PER_PAGE } from "../utils/billcutUtils"
+import { LEADS_PER_PAGE, processBillcutLead } from "../utils/billcutUtils"
+import { db } from "@/lib/firebase"
+import { collection, query, where, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore"
 
 export const useBillcutLeads = (userRole: string) => {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -220,6 +222,164 @@ export const useBillcutLeads = (userRole: string) => {
     }, 500)
     return () => clearTimeout(timeoutId)
   }, [searchQuery, showMyLeads, performDatabaseSearch])
+
+  // --- Real-time Firestore Listener ---
+  useEffect(() => {
+    // Determine the current user name for "My Leads" filter
+    const currentUserName = localStorage.getItem("userName") || ""
+    
+    // Only set up real-time listener if we are NOT searching (search is complex)
+    // Or if we want real-time for search, we'd need a different query.
+    // For now, let's focus on the main list as requested.
+    
+    let q = query(collection(db, "billcutLeads"))
+
+    // 1. Date filters
+    if (fromDate) {
+      const start = new Date(`${fromDate}T00:00:00.000Z`)
+      start.setTime(start.getTime() - (330 * 60 * 1000))
+      q = query(q, where("date", ">=", start.getTime()))
+    }
+    if (toDate) {
+      const end = new Date(`${toDate}T23:59:59.999Z`)
+      end.setTime(end.getTime() - (330 * 60 * 1000))
+      q = query(q, where("date", "<=", end.getTime()))
+    }
+
+    // 2. Status Filter
+    if (statusFilter !== "all") {
+      if (statusFilter === "No Status") {
+        q = query(q, where("category", "in", ["", "-", "No Status"]))
+      } else {
+        q = query(q, where("category", "==", statusFilter))
+      }
+    }
+
+    // 3. Salesperson Filter
+    if (showMyLeads && currentUserName) {
+      q = query(q, where("assigned_to", "==", currentUserName))
+    } else if (salesPersonFilter !== "all") {
+      if (salesPersonFilter === "-") {
+        q = query(q, where("assigned_to", "in", ["", "-"]))
+      } else {
+        q = query(q, where("assigned_to", "==", salesPersonFilter))
+      }
+    }
+
+    // 4. Tab Filter
+    if (activeTab === "callback") {
+      q = query(q, where("category", "==", "Callback"))
+    }
+
+    // 5. Admin Advanced Filters
+    if (userRole === "admin" || userRole === "overlord") {
+      if (convertedFromDate) {
+        const start = new Date(convertedFromDate)
+        start.setHours(0, 0, 0, 0)
+        q = query(q, where("convertedAt", ">=", Timestamp.fromDate(start)))
+      }
+      if (convertedToDate) {
+        const end = new Date(convertedToDate)
+        end.setHours(23, 59, 59, 999)
+        q = query(q, where("convertedAt", "<=", Timestamp.fromDate(end)))
+      }
+      if (lastModifiedFromDate) {
+        const start = new Date(lastModifiedFromDate)
+        start.setHours(0, 0, 0, 0)
+        q = query(q, where("lastModified", ">=", Timestamp.fromDate(start)))
+      }
+      if (lastModifiedToDate) {
+        const end = new Date(lastModifiedToDate)
+        end.setHours(23, 59, 59, 999)
+        q = query(q, where("lastModified", "<=", Timestamp.fromDate(end)))
+      }
+    }
+
+    // 6. Sorting (Firestore requires explicit order for inequality filters)
+    const hasAdvancedDateFilters = (userRole === "admin" || userRole === "overlord") &&
+      (!!convertedFromDate || !!convertedToDate || !!lastModifiedFromDate || !!lastModifiedToDate)
+    
+    if (hasAdvancedDateFilters) {
+      if (convertedFromDate || convertedToDate) {
+        q = query(q, orderBy("convertedAt", "desc"), orderBy("lastModified", "desc"))
+      } else {
+        q = query(q, orderBy("lastModified", "desc"))
+      }
+    } else {
+      q = query(q, orderBy("date", "desc"))
+    }
+
+    // 7. Limit to current number of loaded leads or first page
+    const currentLimit = Math.max(leads.length, LEADS_PER_PAGE)
+    q = query(q, limit(currentLimit))
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      // Only update if we are not in searching mode
+      if (searchQuery.trim()) return
+
+      const updatedLeads = snapshot.docs.map(doc => processBillcutLead(doc.id, doc.data()))
+      
+      // Update leads state
+      setLeads(updatedLeads)
+
+      // Sync editing state for new/updated leads
+      setEditingLeads((prev) => {
+        const next = { ...prev }
+        updatedLeads.forEach(lead => {
+          if (!next[lead.id]) {
+            next[lead.id] = { ...lead, salesNotes: lead.salesNotes || "" }
+          }
+        })
+        return next
+      })
+    }, (error) => {
+      console.error("Firestore listener error:", error)
+      // Fallback to fetch if listener fails (e.g. missing index)
+    })
+
+    return () => unsubscribe()
+  }, [
+    fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, 
+    activeTab, userRole, convertedFromDate, convertedToDate, 
+    lastModifiedFromDate, lastModifiedToDate, searchQuery,
+    leads.length // Re-listen with larger limit when pagination happens
+  ])
+
+  // --- Search Results Listener (Simplified) ---
+  useEffect(() => {
+    if (!searchQuery.trim()) return
+
+    const currentUserName = localStorage.getItem("userName") || ""
+    
+    // We can't easily replicate the complex multi-query search in a single listener.
+    // However, we can listen for leads where the name starts with the search query (simplified)
+    // or just listen for any changes to the current search results.
+    
+    if (searchResults.length === 0) return
+
+    // Listen to changes for specifically the leads in the current search results
+    const leadIds = searchResults.map(l => l.id).slice(0, 10) // Limit to avoid too many listeners or complex 'in' query
+    if (leadIds.length === 0) return
+
+    const q = query(collection(db, "billcutLeads"), where("__name__", "in", leadIds))
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const updatedSearchLeads = snapshot.docs.map(doc => processBillcutLead(doc.id, doc.data()))
+      
+      setSearchResults(prev => {
+        const next = [...prev]
+        updatedSearchLeads.forEach(updated => {
+          const index = next.findIndex(l => l.id === updated.id)
+          if (index !== -1) {
+            next[index] = updated
+          }
+        })
+        return next
+      })
+    })
+
+    return () => unsubscribe()
+  }, [searchQuery, searchResults.map(l => l.id).join(",")])
 
   return {
     leads, setLeads,
