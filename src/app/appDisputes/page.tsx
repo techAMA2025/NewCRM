@@ -16,6 +16,7 @@ import { toast } from 'react-toastify';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/firebase/firebase';
 import { authFetch } from '@/lib/authFetch';
+import QueryViewModal from './components/QueryViewModal';
 
 const statusOptions = [
   "No Status",
@@ -57,6 +58,9 @@ export default function DisputesPage() {
   const [selectedDisputes, setSelectedDisputes] = useState<string[]>([]);
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Query Modal State
+  const [selectedQuery, setSelectedQuery] = useState<{ text: string; name: string } | null>(null);
 
   // Export to CSV function
   const exportToCSV = async () => {
@@ -285,6 +289,10 @@ export default function DisputesPage() {
     }
   };
 
+  const handleViewQuery = (text: string, name: string) => {
+    setSelectedQuery({ text, name });
+  };
+
   const handleSendBulkWhatsApp = async (templateName: string, leadIds: string[], leadData?: any[]) => {
     try {
       const sendWhatsappMessageFn = httpsCallable(functions, "sendWhatsappMessage");
@@ -499,6 +507,7 @@ export default function DisputesPage() {
               selectedDisputes={selectedDisputes}
               onSelectDispute={handleSelectDispute}
               onSelectAll={handleSelectAll}
+              onViewQuery={handleViewQuery}
             />
           </div>
         </div>
@@ -519,6 +528,13 @@ export default function DisputesPage() {
         selectedLeads={disputes.filter(d => selectedDisputes.includes(d.id))}
         onSendBulkWhatsApp={handleSendBulkWhatsApp}
         onSuccess={() => setSelectedDisputes([])}
+      />
+
+      <QueryViewModal
+        isOpen={!!selectedQuery}
+        onClose={() => setSelectedQuery(null)}
+        query={selectedQuery?.text || ''}
+        name={selectedQuery?.name || ''}
       />
     </div>
   );

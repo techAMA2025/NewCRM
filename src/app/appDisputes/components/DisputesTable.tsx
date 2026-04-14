@@ -2,7 +2,6 @@
 
 import { Dispute } from '../types';
 import { useEffect, useRef, useState } from 'react';
-import QueryViewModal from './QueryViewModal';
 import { FaWhatsapp } from 'react-icons/fa';
 import DisputeMobileCard from './DisputeMobileCard';
 
@@ -19,6 +18,7 @@ interface DisputesTableProps {
   selectedDisputes: string[];
   onSelectDispute: (id: string) => void;
   onSelectAll: () => void;
+  onViewQuery: (text: string, name: string) => void;
 }
 
 const getStatusColor = (status: string) => {
@@ -51,11 +51,11 @@ export default function DisputesTable({
   selectedDisputes,
   onSelectDispute,
   onSelectAll,
+  onViewQuery,
 }: DisputesTableProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
   const [editingRemarks, setEditingRemarks] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState<{ [key: string]: boolean }>({});
-  const [selectedQuery, setSelectedQuery] = useState<{ text: string; name: string } | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -132,7 +132,7 @@ export default function DisputesTable({
             onOpenWhatsApp={onOpenWhatsApp}
             isSelected={selectedDisputes.includes(dispute.id)}
             onSelect={onSelectDispute}
-            onViewQuery={(text, name) => setSelectedQuery({ text, name })}
+            onViewQuery={onViewQuery}
           />
         ))}
       </div>
@@ -344,7 +344,7 @@ export default function DisputesTable({
                       {dispute.query && (
                         <button
                           onClick={() =>
-                            setSelectedQuery({ text: dispute.query, name: dispute.name })
+                            onViewQuery(dispute.query, dispute.name)
                           }
                           className="text-[10px] w-fit font-semibold text-[#D2A02A] border border-[#D2A02A]/30 px-2 py-0.5 rounded hover:bg-[#D2A02A] hover:text-white transition-all"
                         >
@@ -380,12 +380,6 @@ export default function DisputesTable({
         </div>
       </div>
 
-      <QueryViewModal
-        isOpen={!!selectedQuery}
-        onClose={() => setSelectedQuery(null)}
-        query={selectedQuery?.text || ''}
-        name={selectedQuery?.name || ''}
-      />
     </div>
   );
 }
