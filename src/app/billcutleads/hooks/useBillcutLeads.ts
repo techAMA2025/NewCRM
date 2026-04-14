@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { authFetch } from "@/lib/authFetch"
 import { toast } from "react-toastify"
 import { Lead, EditingLeadsState } from "../types"
-import { LEADS_PER_PAGE, processBillcutLead } from "../utils/billcutUtils"
+import { LEADS_PER_PAGE, processBillcutLead, getCallbackPriority } from "../utils/billcutUtils"
 import { db } from "@/lib/firebase"
 import { collection, query, where, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore"
 
@@ -319,8 +319,31 @@ export const useBillcutLeads = (userRole: string) => {
 
       const updatedLeads = snapshot.docs.map(doc => processBillcutLead(doc.id, doc.data()))
       
-      // Update leads state
-      setLeads(updatedLeads)
+      // Update leads state while preserving callbackInfo which might be dropped by the snapshot
+      setLeads((prev) => {
+        let nextLeads = updatedLeads.map(updatedLead => {
+          const existingLead = prev.find(l => l.id === updatedLead.id)
+          // If the snapshot dropped the callbackInfo but we have it locally, preserve it
+          if (existingLead && existingLead.callbackInfo && !updatedLead.callbackInfo) {
+            return { ...updatedLead, callbackInfo: existingLead.callbackInfo }
+          }
+          return updatedLead
+        })
+        
+        // Always re-apply callback priority sorting if we are in the callback tab
+        if (activeTab === "callback") {
+          nextLeads.sort((a, b) => {
+            const priorityA = getCallbackPriority(a)
+            const priorityB = getCallbackPriority(b)
+            if (priorityA === priorityB && a.callbackInfo?.scheduled_dt && b.callbackInfo?.scheduled_dt) {
+               return new Date(a.callbackInfo.scheduled_dt).getTime() - new Date(b.callbackInfo.scheduled_dt).getTime()
+            }
+            return priorityA - priorityB
+          })
+        }
+        
+        return nextLeads
+      })
 
       // Sync editing state for new/updated leads
       setEditingLeads((prev) => {

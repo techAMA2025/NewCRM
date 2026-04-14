@@ -237,7 +237,7 @@ export async function GET(request: NextRequest) {
         if (!callbackSnap.empty) {
           const cbData = callbackSnap.docs[0].data()
           callbackInfo = {
-            id: cbData.id || "attempt_1",
+            id: callbackSnap.docs[0].id,
             scheduled_dt: cbData.scheduled_dt?.toDate ? cbData.scheduled_dt.toDate().toISOString() : cbData.scheduled_dt,
             scheduled_by: cbData.scheduled_by || "",
             created_at: cbData.created_at?.toDate ? cbData.created_at.toDate().toISOString() : cbData.created_at,
