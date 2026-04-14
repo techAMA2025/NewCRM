@@ -65,6 +65,13 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
     try {
       const userName = localStorage.getItem('userName') || 'Unknown';
       
+      // Update the lead optimistically in the parent state
+      // This ensures the value is updated "then and there only" without a full reload
+      await updateLead(lead.id, { 
+        latestRemark: note, 
+        salesNotes: note 
+      });
+
       const response = await authFetch("/api/bill-cut-leads/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

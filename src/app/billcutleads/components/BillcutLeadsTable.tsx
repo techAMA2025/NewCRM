@@ -36,6 +36,42 @@ const getRandomColor = (name: string): string => {
   return colors[index % colors.length]
 }
 
+// Format callback information for display
+const formatCallbackInfo = (callbackInfo: any) => {
+  if (!callbackInfo || !callbackInfo.scheduled_dt) {
+    return {
+      scheduledTime: "No callback scheduled",
+      scheduledBy: "",
+      scheduledDate: "",
+    }
+  }
+
+  const dateValue = callbackInfo.scheduled_dt?.toDate 
+    ? callbackInfo.scheduled_dt.toDate() 
+    : new Date(callbackInfo.scheduled_dt);
+
+  const scheduledDate = new Date(dateValue)
+
+  // Format like "Thu, Aug 14, 10:00 AM"
+  const scheduledTime = scheduledDate.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+  const scheduledDateOnly = scheduledDate.toLocaleDateString("en-GB")
+
+  const scheduledBy = callbackInfo.scheduled_by || "Unknown"
+
+  return {
+    scheduledTime,
+    scheduledBy,
+    scheduledDate: scheduledDateOnly,
+  }
+}
+
 interface User {
   id: string
   name: string
@@ -741,6 +777,43 @@ const BillcutLeadsTableOptimized = React.memo(
               currentUserName={userName}
             />
 
+            {activeTab === "callback" && (
+              <td className="px-2 py-1 text-[11px] max-w-[150px] border-r border-b border-[#5A4C33]/10">
+                <div className="flex flex-col gap-1">
+                  {(() => {
+                    const callbackInfo = formatCallbackInfo(lead.callbackInfo)
+                    const canEdit = canEditLead(lead, showMyLeads)
+                    return (
+                      <>
+                        <div className={`font-medium ${rowColors.textColor || "text-[#5A4C33]"}`}>
+                          {callbackInfo.scheduledTime}
+                        </div>
+                        {callbackInfo.scheduledBy && (
+                          <div className={rowColors.textColor ? "text-[#ffffff]/60" : "text-[#5A4C33]/60"}>
+                            Scheduled by: {callbackInfo.scheduledBy}
+                          </div>
+                        )}
+                        {lead.callbackInfo && (
+                          <button
+                            onClick={() => handleEditCallback(lead)}
+                            disabled={!canEdit}
+                            className={`mt-1 px-2 py-0.5 rounded text-xs font-medium transition-colors duration-200 ${
+                              canEdit
+                                ? "bg-[#D2A02A] hover:bg-[#B8911E] text-[#ffffff]"
+                                : "bg-[#5A4C33]/20 text-[#5A4C33]/50 cursor-not-allowed"
+                            }`}
+                            title={!canEdit ? "You do not have permission to edit this callback" : "Edit callback details"}
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
+              </td>
+            )}
+
             <BillcutLeadNotesCell
               lead={{
                 id: lead.id,
@@ -825,6 +898,13 @@ const BillcutLeadsTableOptimized = React.memo(
                     <span className="text-[#D2A02A] text-[10px]">Assigned To</span>
                   </div>
                 </th>
+                {activeTab === "callback" && (
+                  <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-40 border-r border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
+                    <div className="flex items-center justify-between p-2">
+                      <span className="text-[#D2A02A] text-[10px]">Callback Info</span>
+                    </div>
+                  </th>
+                )}
                 <th className="px-1 py-1 text-left font-semibold text-[#5A4C33] uppercase tracking-wider w-48 border-b border-[#5A4C33]/20 bg-[#F8F5EC] sticky top-0 z-20">
                   <div className="flex items-center justify-between p-2">
                     <span className="text-[#D2A02A] text-[10px]">Sales Notes</span>
