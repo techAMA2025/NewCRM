@@ -334,7 +334,7 @@ const MultiPublishManager = () => {
       if (!response.ok) throw new Error(`${platform} image generation failed`);
 
       const result = await response.json();
-      const imageUrl = platform === 'credsettle' ? result.url : result.imageUrl;
+      const imageUrl = result.imageUrl;
 
       if (platform === 'ama') setAmaData(prev => ({ ...prev, image: imageUrl }));
       else if (platform === 'credsettle') setCsData(prev => ({ ...prev, image: imageUrl }));

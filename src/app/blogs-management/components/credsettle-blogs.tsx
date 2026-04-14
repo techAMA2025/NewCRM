@@ -742,9 +742,9 @@ const BlogsDashboard = () => {
       const data = await response.json();
       setNewBlog((prev) => ({
         ...prev,
-        image: data.url,
+        image: data.imageUrl,
       }));
-      setImagePreview(data.url);
+      setImagePreview(data.imageUrl);
       alert('AI image generated and uploaded successfully!');
     } catch (error) {
       console.error('Image generation failed:', error);

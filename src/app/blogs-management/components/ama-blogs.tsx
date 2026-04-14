@@ -87,8 +87,6 @@ const BlogsDashboard = () => {
   // New Image Generation and Content Expansion state
   const [imagePrompt, setImagePrompt] = useState('');
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
-  const [isUploadingGenerated, setIsUploadingGenerated] = useState(false);
   const [expansionPrompt, setExpansionPrompt] = useState('');
   const [isExpanding, setIsExpanding] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -472,46 +470,19 @@ const BlogsDashboard = () => {
       }
 
       const data = await response.json();
-      setGeneratedImageUrl(data.imageUrl);
+      const imageUrl = data.imageUrl;
+      
+      setNewBlog(prevState => ({
+        ...prevState,
+        image: imageUrl
+      }));
+      setImagePreview(imageUrl);
+      alert('AI image generated and uploaded to Firebase successfully!');
     } catch (error) {
       console.error('Error generating image:', error);
       alert('Failed to generate image. Please try again.');
     } finally {
       setIsGeneratingImage(false);
-    }
-  };
-
-  const handleUploadGeneratedImage = async () => {
-    if (!generatedImageUrl) return;
-
-    try {
-      setIsUploadingGenerated(true);
-      
-      // Fetch the image from the URL via proxy to avoid CORS issues
-      const response = await fetch(`/api/proxy-image?url=${encodeURIComponent(generatedImageUrl)}`);
-      const blob = await response.blob();
-      const file = new File([blob], `generated_${Date.now()}.png`, { type: 'image/png' });
-
-      // Use the existing upload logic (indirectly or directly)
-      // Since handleFileUpload expects an event, we should extract the core upload logic
-      // But for simplicity, we'll repeat the core Firebase upload here
-      
-      const storageRef = ref(storage, `blog-images/${Date.now()}_generated.png`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-
-      setNewBlog(prevState => ({
-        ...prevState,
-        image: downloadURL
-      }));
-      setImagePreview(downloadURL);
-      setGeneratedImageUrl(null); // Clear the preview once uploaded
-      alert('Image uploaded to Firebase successfully!');
-    } catch (error) {
-      console.error('Error uploading generated image:', error);
-      alert('Failed to upload image to Firebase.');
-    } finally {
-      setIsUploadingGenerated(false);
     }
   };
 
@@ -1214,24 +1185,6 @@ const BlogsDashboard = () => {
                           >
                             {isGeneratingImage ? 'Generating Image...' : 'Generate Image with DALL-E'}
                           </button>
-                          
-                          {generatedImageUrl && (
-                            <div className="mt-4 flex flex-col items-center">
-                              <img 
-                                src={generatedImageUrl} 
-                                alt="Generated" 
-                                className="w-full max-w-xs rounded-lg shadow-lg mb-2"
-                              />
-                              <button
-                                type="button"
-                                onClick={handleUploadGeneratedImage}
-                                disabled={isUploadingGenerated}
-                                className="w-full px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium"
-                              >
-                                {isUploadingGenerated ? 'Uploading...' : 'Upload this Image to Firebase'}
-                              </button>
-                            </div>
-                          )}
                         </div>
                         
                         <input

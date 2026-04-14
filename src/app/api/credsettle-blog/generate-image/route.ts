@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         // 4. Get permanent download URL
         const publicUrl = await getDownloadURL(snapshot.ref);
 
-        return NextResponse.json({ url: publicUrl });
+        return NextResponse.json({ imageUrl: publicUrl });
 
     } catch (error) {
         console.error('Error generating image:', error);
