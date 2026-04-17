@@ -652,7 +652,7 @@ const MultiPublishManager = () => {
               </div>
               <textarea
                 placeholder="DALL-E prompts here..."
-                className="w-full px-3 py-2 rounded-xl border border-indigo-700 text-[10px] focus:ring-1 focus:ring-white transition-all outline-none bg-indigo-950/50 text-indigo-100 min-h-[50px] resize-none"
+                className="w-full px-3 py-2 rounded-xl border border-indigo-700 text-[10px] focus:ring-1 focus:ring-white transition-all outline-none bg-white text-black min-h-[50px] resize-none"
                 value={getActiveData().imagePrompt}
                 onChange={(e) => setActiveData({ ...getActiveData(), imagePrompt: e.target.value })}
               />
@@ -677,7 +677,7 @@ const MultiPublishManager = () => {
               </div>
               <textarea
                 placeholder="Specific instructions for expansion..."
-                className="w-full px-3 py-2 rounded-xl border border-indigo-700 text-[10px] focus:ring-1 focus:ring-white transition-all outline-none bg-indigo-950/50 text-indigo-100 min-h-[50px] resize-none font-medium"
+                className="w-full px-3 py-2 rounded-xl border border-indigo-700 text-[10px] focus:ring-1 focus:ring-white transition-all outline-none bg-white text-black min-h-[50px] resize-none font-medium"
                 value={expansionPrompts[activePlatform]}
                 onChange={(e) => setExpansionPrompts(prev => ({ ...prev, [activePlatform]: e.target.value }))}
               />
@@ -715,17 +715,17 @@ const MultiPublishManager = () => {
               </div>
               <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1 small-scrollbar">
                 {getActiveData().faqs.map((faq, idx) => (
-                  <div key={idx} className="p-2 bg-gray-50 rounded-lg space-y-1 relative group">
+                  <div key={idx} className="p-2 bg-white rounded-lg space-y-1 relative group border border-gray-100">
                     <input
                       type="text"
                       placeholder="Q"
-                      className="w-full bg-transparent text-[10px] font-black text-black outline-none"
+                      className="w-full bg-white px-2 py-1 rounded border border-gray-50 text-[10px] font-black text-black outline-none"
                       value={faq.question}
                       onChange={(e) => handleFaqChange(activePlatform, idx, 'question', e.target.value)}
                     />
                     <textarea
                       placeholder="A"
-                      className="w-full bg-transparent text-[9px] text-gray-600 outline-none resize-none"
+                      className="w-full bg-white px-2 py-1 rounded border border-gray-50 text-[9px] text-black outline-none resize-none"
                       value={faq.answer}
                       onChange={(e) => handleFaqChange(activePlatform, idx, 'answer', e.target.value)}
                     />
@@ -741,20 +741,20 @@ const MultiPublishManager = () => {
               </div>
               <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1 small-scrollbar">
                 {getActiveData().reviews.map((review, idx) => (
-                  <div key={idx} className="p-2 bg-gray-50 rounded-lg space-y-1">
-                    <div className="flex justify-between">
+                  <div key={idx} className="p-2 bg-white rounded-lg space-y-2 border border-gray-100">
+                    <div className="flex justify-between gap-2">
                       <input
                         type="text"
                         placeholder="Reviewer"
-                        className="bg-transparent text-[10px] font-black text-black outline-none flex-1"
+                        className="bg-white px-2 py-1 rounded border border-gray-50 text-[10px] font-black text-black outline-none flex-1"
                         value={review.name}
                         onChange={(e) => handleReviewChange(activePlatform, idx, 'name', e.target.value)}
                       />
-                      <span className="text-[10px]">⭐ {review.rating}</span>
+                      <span className="text-[10px] bg-emerald-50 px-2 py-1 rounded font-bold text-emerald-700">⭐ {review.rating}</span>
                     </div>
                     <textarea
                       placeholder="Review text..."
-                      className="w-full bg-transparent text-[9px] text-gray-600 outline-none resize-none"
+                      className="w-full bg-white px-2 py-1 rounded border border-gray-50 text-[9px] text-black outline-none resize-none"
                       value={review.review}
                       onChange={(e) => handleReviewChange(activePlatform, idx, 'review', e.target.value)}
                     />

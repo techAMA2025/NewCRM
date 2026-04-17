@@ -974,7 +974,7 @@ const BlogsDashboard = () => {
                             value={primaryKeyword}
                             onChange={(e) => setPrimaryKeyword(e.target.value)}
                             placeholder="e.g., 'Trademark Registration in India'"
-                            className="w-full px-4 py-3 bg-white border border-indigo-200 text-indigo-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            className="w-full px-4 py-3 bg-white border border-indigo-200 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                             disabled={isGenerating}
                           />
                       </div>
@@ -985,7 +985,7 @@ const BlogsDashboard = () => {
                             value={secondaryKeyword}
                             onChange={(e) => setSecondaryKeyword(e.target.value)}
                             placeholder="e.g., 'step by step guide'"
-                            className="w-full px-4 py-3 bg-white border border-indigo-200 text-indigo-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            className="w-full px-4 py-3 bg-white border border-indigo-200 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                             disabled={isGenerating}
                           />
                       </div>
@@ -1107,7 +1107,7 @@ const BlogsDashboard = () => {
                         value={newBlog.title}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter blog title"
                       />
                     </div>
@@ -1121,7 +1121,7 @@ const BlogsDashboard = () => {
                         value={newBlog.slug}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="url-friendly-blog-name"
                       />
                       <p className="mt-2 text-xs text-gray-500">Will be used in the URL: /resources/{newBlog.slug}</p>
@@ -1138,7 +1138,7 @@ const BlogsDashboard = () => {
                         value={newBlog.subtitle}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter subtitle or SEO keywords"
                       />
                     </div>
@@ -1151,7 +1151,7 @@ const BlogsDashboard = () => {
                         name="metaTitle"
                         value={newBlog.metaTitle || ''}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter meta title for SEO"
                       />
                     </div>
@@ -1167,7 +1167,7 @@ const BlogsDashboard = () => {
                         value={newBlog.date}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                       />
                     </div>
                     
@@ -1237,7 +1237,7 @@ const BlogsDashboard = () => {
                         name="metaDescription"
                         value={newBlog.metaDescription || ''}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter meta description for SEO"
                       />
                     </div>
@@ -1250,7 +1250,7 @@ const BlogsDashboard = () => {
                         value={newBlog.author}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                       >
                         <option value="Anuj Anand Malik">Anuj Anand Malik</option>
                         <option value="Shrey Arora">Shrey Arora</option>

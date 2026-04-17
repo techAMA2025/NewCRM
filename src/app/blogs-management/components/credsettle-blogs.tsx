@@ -961,7 +961,7 @@ const BlogsDashboard = () => {
                             value={primaryKeyword}
                             onChange={(e) => setPrimaryKeyword(e.target.value)}
                             placeholder="e.g., 'Get freed from loan'"
-                            className="w-full px-4 py-2 border border-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-black"
+                            className="w-full px-4 py-2 border border-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white text-black"
                             disabled={isGenerating}
                           />
                       </div>
@@ -972,7 +972,7 @@ const BlogsDashboard = () => {
                             value={secondaryKeyword}
                             onChange={(e) => setSecondaryKeyword(e.target.value)}
                             placeholder="e.g., 'loan settlement process'"
-                            className="w-full px-4 py-2 border border-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 text-black"
+                            className="w-full px-4 py-2 border border-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white text-black"
                             disabled={isGenerating}
                           />
                       </div>
@@ -1010,7 +1010,7 @@ const BlogsDashboard = () => {
                         value={newBlog.title}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter blog title"
                       />
                     </div>
@@ -1026,7 +1026,7 @@ const BlogsDashboard = () => {
                         value={newBlog.slug}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="url-friendly-blog-name"
                       />
                       <p className="mt-2 text-xs text-gray-500">
@@ -1047,7 +1047,7 @@ const BlogsDashboard = () => {
                         value={newBlog.subtitle}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter subtitle or SEO keywords"
                       />
                     </div>
@@ -1062,7 +1062,7 @@ const BlogsDashboard = () => {
                         name="metaTitle"
                         value={newBlog.metaTitle || ''}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter meta title for SEO"
                       />
                     </div>
@@ -1080,7 +1080,7 @@ const BlogsDashboard = () => {
                         value={newBlog.date}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                       />
                     </div>
 
@@ -1144,7 +1144,7 @@ const BlogsDashboard = () => {
                               value={imagePrompt}
                               onChange={(e) => setImagePrompt(e.target.value)}
                               placeholder="Describe the image you want..."
-                              className="flex-1 px-3 py-2 text-sm border border-purple-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 text-black"
+                              className="flex-1 px-3 py-2 text-sm border border-purple-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white text-black"
                               disabled={isGeneratingImage}
                             />
                             <button
@@ -1178,7 +1178,7 @@ const BlogsDashboard = () => {
                         name="metaDescription"
                         value={newBlog.metaDescription || ''}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                         placeholder="Enter meta description for SEO"
                       />
                     </div>
@@ -1193,7 +1193,7 @@ const BlogsDashboard = () => {
                         value={newBlog.author}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-3 bg-white border border-gray-300 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                       >
                         <option value="CredSettle Team">CredSettle Team</option>
                       </select>
@@ -1223,7 +1223,7 @@ const BlogsDashboard = () => {
                               type="text"
                               value={faq.question}
                               onChange={(event) => handleFaqChange(index, 'question', event.target.value)}
-                              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                               placeholder="Enter FAQ question"
                             />
                           </div>
@@ -1233,7 +1233,7 @@ const BlogsDashboard = () => {
                               value={faq.answer}
                               onChange={(event) => handleFaqChange(index, 'answer', event.target.value)}
                               rows={3}
-                              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+                              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
                               placeholder="Enter FAQ answer"
                             />
                           </div>
@@ -1280,7 +1280,7 @@ const BlogsDashboard = () => {
                                   type="text"
                                   value={review.name}
                                   onChange={(e) => handleReviewChange(index, 'name', e.target.value)}
-                                  className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all"
+                                  className="w-full px-3 py-2 text-sm bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all"
                                   placeholder="Reviewer Name"
                                 />
                              </div>
@@ -1289,7 +1289,7 @@ const BlogsDashboard = () => {
                                 <select
                                   value={review.rating}
                                   onChange={(e) => handleReviewChange(index, 'rating', Number(e.target.value))}
-                                  className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all"
+                                  className="w-full px-3 py-2 text-sm bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all"
                                 >
                                    {[1,2,3,4,5].map(r => <option key={r} value={r}>{r} Stars</option>)}
                                 </select>
@@ -1302,7 +1302,7 @@ const BlogsDashboard = () => {
                               value={review.review}
                               onChange={(e) => handleReviewChange(index, 'review', e.target.value)}
                               rows={3}
-                              className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all"
+                              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 text-black rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all"
                               placeholder="Review content..."
                             />
                           </div>
@@ -1344,7 +1344,7 @@ const BlogsDashboard = () => {
                           onChange={(e) => setExpansionPrompt(e.target.value)}
                           placeholder="What specific sections or details should be expanded? (e.g. 'Add more details about RBI 2025 guidelines and NBFC rules')"
                           rows={2}
-                          className="w-full px-4 py-2 text-sm border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 text-black"
+                          className="w-full px-4 py-2 text-sm border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white text-black"
                           disabled={isExpanding}
                         />
                         <button
