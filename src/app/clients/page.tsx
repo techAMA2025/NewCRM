@@ -18,6 +18,7 @@ import {
   startAt,
   endAt,
   getCountFromServer,
+  writeBatch,
   type QueryDocumentSnapshot,
   type DocumentData,
   type QueryConstraint,
@@ -287,6 +288,7 @@ function ClientsPageWithParams() {
   const [agreementFilter, setAgreementFilter] = useState<string>("all")
   const [fromDate, setFromDate] = useState<string>("")
   const [toDate, setToDate] = useState<string>("")
+  const [dateFilterField, setDateFilterField] = useState<"startDate" | "droppedAt" | "notRespondingAt" | "onHoldAt">("startDate")
 
   // Lists for filter dropdowns
   const [allAdvocates, setAllAdvocates] = useState<string[]>([])
@@ -484,6 +486,17 @@ function ClientsPageWithParams() {
               console.error(`Error fetching history for client ${client.name}:`, error)
             }
 
+            // Derive droppedAt from history if status is dropped and it's missing
+            if (enhancedClient.adv_status === "Dropped" && !enhancedClient.droppedAt && enhancedClient.status_change_history) {
+              const dropEntry = enhancedClient.status_change_history
+                .filter(h => h.newStatus === "Dropped")
+                .sort((a, b) => b.changedAt - a.changedAt)[0];
+              
+              if (dropEntry) {
+                enhancedClient.droppedAt = format(new Date(dropEntry.changedAt * 1000), "yyyy-MM-dd");
+              }
+            }
+
             return enhancedClient
     },
     [],
@@ -655,11 +668,11 @@ function ClientsPageWithParams() {
     }
 
     if (fromDate) {
-      constraints.push(where("startDate", ">=", fromDate))
+      constraints.push(where(dateFilterField, ">=", fromDate))
     }
 
     if (toDate) {
-      constraints.push(where("startDate", "<=", toDate))
+      constraints.push(where(dateFilterField, "<=", toDate))
     }
 
     if (agreementFilter === "sent") {
@@ -669,7 +682,7 @@ function ClientsPageWithParams() {
     }
 
     return constraints
-  }, [statusFilter, primaryAdvocateFilter, secondaryAdvocateFilter, sourceFilter, agreementFilter, fromDate, toDate])
+  }, [statusFilter, primaryAdvocateFilter, secondaryAdvocateFilter, sourceFilter, agreementFilter, fromDate, toDate, dateFilterField])
 
   const fetchFilteredCount = useCallback(async () => {
     try {
@@ -743,7 +756,7 @@ function ClientsPageWithParams() {
 
         const paginationConstraints: QueryConstraint[] = [
           ...baseConstraints,
-          orderBy("startDate", "desc"),
+          orderBy(dateFilterField, "desc"),
           ...(lastDocRef.current ? [startAfter(lastDocRef.current)] : []),
           limit(ITEMS_PER_PAGE),
         ]
@@ -1154,12 +1167,20 @@ function ClientsPageWithParams() {
         finalClientData.status_change_history = updatedStatusHistory
 
         let appStatusRemark = ""
+        const today = format(new Date(), "yyyy-MM-dd")
+        
         if (newStatus === "Not Responding") {
           appStatusRemark = "Awaiting Client Response"
+          updatedData.notRespondingAt = today
+          finalClientData.notRespondingAt = today
         } else if (newStatus === "Dropped") {
           appStatusRemark = "Case File Dropped"
+          updatedData.droppedAt = today
+          finalClientData.droppedAt = today
         } else if (newStatus === "On Hold") {
           appStatusRemark = "Process On Hold"
+          updatedData.onHoldAt = today
+          finalClientData.onHoldAt = today
         }
 
         if (appStatusRemark) {
@@ -1594,20 +1615,47 @@ function ClientsPageWithParams() {
       })
     }
 
-    // Apply date filter
+    // Apply date filter locally (always needed for droppedAt, and sometimes as fallback for startDate)
     if (fromDate) {
       results = results.filter((client) => {
-        const clientDate = typeof client.startDate === 'string' ? client.startDate : ''
+        let clientDate = ""
+        if (dateFilterField === "droppedAt") {
+          clientDate = client.droppedAt || ""
+        } else if (dateFilterField === "notRespondingAt") {
+          clientDate = client.notRespondingAt || ""
+        } else if (dateFilterField === "onHoldAt") {
+          clientDate = client.onHoldAt || ""
+        } else {
+          clientDate = typeof client.startDate === 'string' ? client.startDate : ''
+        }
         return clientDate >= fromDate
       })
     }
 
     if (toDate) {
       results = results.filter((client) => {
-        const clientDate = typeof client.startDate === 'string' ? client.startDate : ''
+        let clientDate = ""
+        if (dateFilterField === "droppedAt") {
+          clientDate = client.droppedAt || ""
+        } else if (dateFilterField === "notRespondingAt") {
+          clientDate = client.notRespondingAt || ""
+        } else if (dateFilterField === "onHoldAt") {
+          clientDate = client.onHoldAt || ""
+        } else {
+          clientDate = typeof client.startDate === 'string' ? client.startDate : ''
+        }
         return clientDate <= toDate
       })
     }
+
+    if (dateFilterField !== "startDate") {
+       results.sort((a, b) => {
+           const dateA = a[dateFilterField] || "";
+           const dateB = b[dateFilterField] || "";
+           return dateB.localeCompare(dateA); 
+       });
+    }
+
     setFilteredClients(results)
   }, [
     clients,
@@ -1621,6 +1669,7 @@ function ClientsPageWithParams() {
     agreementFilter,
     fromDate,
     toDate,
+    dateFilterField,
   ])
 
   useEffect(() => {
@@ -1677,7 +1726,9 @@ function ClientsPageWithParams() {
     setSourceFilter("all")
     setDocumentFilter("all")
     setBankNameFilter("all")
-    setBankNameFilter("all")
+    setFromDate("")
+    setToDate("")
+    setDateFilterField("startDate")
     setAgreementFilter("all")
     setFromDate("")
     setToDate("")
@@ -2549,18 +2600,20 @@ function ClientsPageWithParams() {
                   </Button>
 
                   {userRole === "overlord" && (
-                    <Button
-                      variant="outline"
-                      onClick={handleReindex}
-                      disabled={isReindexing}
-                      className={`h-9 px-3 text-sm ${
-                        theme === "dark" 
-                          ? "bg-purple-900/20 border-purple-800 text-purple-300 hover:bg-purple-900/40" 
-                          : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                      }`}
-                    >
-                      {isReindexing ? reindexProgress : "Reindex Search"}
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={handleReindex}
+                        disabled={isReindexing}
+                        className={`h-9 px-3 text-sm ${
+                          theme === "dark" 
+                            ? "bg-purple-900/20 border-purple-800 text-purple-300 hover:bg-purple-900/40" 
+                            : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                        }`}
+                      >
+                        {isReindexing ? reindexProgress : "Reindex Search"}
+                      </Button>
+                    </>
                   )}
 
                   {(statusFilter !== "all" || primaryAdvocateFilter !== "all" || secondaryAdvocateFilter !== "all" || sourceFilter !== "all" || documentFilter !== "all" || bankNameFilter !== "all" || agreementFilter !== "all" || searchTerm || fromDate || toDate) && (
@@ -2653,6 +2706,21 @@ function ClientsPageWithParams() {
                   </div>
 
                   <div className="space-y-1.5">
+                    <label className={`text-xs font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>Date Filter By</label>
+                    <Select value={dateFilterField} onValueChange={(val: any) => setDateFilterField(val)}>
+                      <SelectTrigger className={`w-full h-9 text-sm ${theme === "dark" ? "bg-gray-900 border-gray-700 text-gray-200" : "bg-white border-gray-200 text-gray-900"}`}>
+                        <SelectValue placeholder="Date Group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="startDate">Onboarding Date</SelectItem>
+                        <SelectItem value="droppedAt">Drop Date</SelectItem>
+                        <SelectItem value="notRespondingAt">Not Responding Date</SelectItem>
+                        <SelectItem value="onHoldAt">On Hold Date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
                     <label className={`text-xs font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>From Date</label>
                     <Input
                       type="date"
@@ -2680,6 +2748,49 @@ function ClientsPageWithParams() {
                           : "bg-white border-gray-200 text-gray-900"
                       }`}
                     />
+                  </div>
+                  
+                  <div className="md:col-span-2 lg:col-span-4 flex flex-wrap gap-2 pt-2 pb-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const today = format(new Date(), "yyyy-MM-dd")
+                        setFromDate(today)
+                        setToDate(today)
+                      }}
+                      className="h-8 text-xs font-normal"
+                    >
+                      Today
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const now = new Date()
+                        const firstDay = format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd")
+                        const lastDay = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd")
+                        setFromDate(firstDay)
+                        setToDate(lastDay)
+                      }}
+                      className="h-8 text-xs font-normal"
+                    >
+                      This Month
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const now = new Date()
+                        const firstDay = format(new Date(now.getFullYear(), now.getMonth() - 1, 1), "yyyy-MM-dd")
+                        const lastDay = format(new Date(now.getFullYear(), now.getMonth(), 0), "yyyy-MM-dd")
+                        setFromDate(firstDay)
+                        setToDate(lastDay)
+                      }}
+                      className="h-8 text-xs font-normal"
+                    >
+                      Last Month
+                    </Button>
                   </div>
                   
                   {/* Bulk Select by Number Input */}

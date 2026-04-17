@@ -68,6 +68,9 @@ export interface Client {
   feePercentage?: string;
   shouldGenerateAgreement?: boolean;
   status_change_history?: StatusChangeEntry[];
+  droppedAt?: string;
+  notRespondingAt?: string;
+  onHoldAt?: string;
 }
 
 export interface StatusChangeEntry {
