@@ -4,18 +4,39 @@ import {
 } from './demandNoticeImages';
 import { shreySignatureBase64 } from './signatureImages';
 
+interface Advocate {
+  name: string;
+  barEnrollment: string;
+}
+
 interface VakalatnamaData {
   arbitrator: string;
   caseNo: string;
   bankName: string;
   clientName: string;
   date: string;
+  advocates: Advocate[];
 }
 
 /**
  * Generates the complete HTML for a Vakalatnama PDF based on image reference.
  */
 export function fillVakalatnamaTemplate(data: VakalatnamaData): string {
+  const advocatesList = data.advocates && data.advocates.length > 0 
+    ? data.advocates 
+    : [
+        { name: "ANUJ MALIK", barEnrollment: "D-2651/2019" },
+        { name: "SHREY ARORA", barEnrollment: "D-1351/2023" }
+      ];
+
+  const advocatesHtml = advocatesList.map(adv => `
+    <div class="advocate-item">
+        <div class="bold uppercase">${adv.name}</div>
+        <div>ADVOCATE</div>
+        <div>${adv.barEnrollment}</div>
+    </div>
+  `).join('');
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,8 +56,8 @@ export function fillVakalatnamaTemplate(data: VakalatnamaData): string {
 
     body {
       font-family: 'Times New Roman', Times, serif;
-      font-size: 12pt;
-      line-height: 1.5;
+      font-size: 11pt;
+      line-height: 1.4;
       color: #000;
       background: #fff;
     }
@@ -61,22 +82,26 @@ export function fillVakalatnamaTemplate(data: VakalatnamaData): string {
     }
 
     .case-info {
-      margin: 20px 0;
+      margin: 15px 0;
     }
 
     .versus-section {
-      margin: 25px 0;
+      margin: 20px 0;
     }
 
     .advocates-block {
         display: flex;
-        justify-content: space-around;
-        margin: 30px 0;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin: 20px 0;
         text-align: center;
     }
 
     .advocate-item {
-        width: 45%;
+        min-width: 140px;
+        flex: 1;
+        max-width: 250px;
     }
 
     .advocate-address {
@@ -86,25 +111,26 @@ export function fillVakalatnamaTemplate(data: VakalatnamaData): string {
 
     .body-text {
       text-align: justify;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     ol {
-      margin-left: 30px;
-      margin-bottom: 20px;
+      margin-left: 25px;
+      margin-bottom: 15px;
     }
 
     li {
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       text-align: justify;
+      font-size: 10.5pt;
     }
 
     .witness-section {
-        margin-top: 40px;
+        margin-top: 30px;
     }
 
     .signature-area {
-        margin-top: 60px;
+        margin-top: 50px;
         display: flex;
         justify-content: space-between;
     }
@@ -150,7 +176,7 @@ export function fillVakalatnamaTemplate(data: VakalatnamaData): string {
     </div>
 
     <!-- KNOW ALL -->
-    <div class="body-text" style="margin-top: 30px;">
+    <div class="body-text" style="margin-top: 25px;">
       KNOW ALL to whom these present shall come that I <span class="bold">${data.clientName}</span>, the Above named accused do hereby appoint:
     </div>
 
@@ -159,16 +185,7 @@ export function fillVakalatnamaTemplate(data: VakalatnamaData): string {
 
     <!-- ADVOCATES -->
     <div class="advocates-block">
-        <div class="advocate-item">
-            <div class="bold uppercase">ANUJ MALIK</div>
-            <div>ADVOCATE</div>
-            <div>D-2651/2019</div>
-        </div>
-        <div class="advocate-item">
-            <div class="bold uppercase">SHREY ARORA</div>
-            <div>ADVOCATE</div>
-            <div>D-1351/2023</div>
-        </div>
+        ${advocatesHtml}
     </div>
     <div class="center advocate-address">
         2493AP SECTOR-57, GURUGRAM, HARYANA-122001

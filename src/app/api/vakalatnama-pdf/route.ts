@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
             caseNo,
             bankName,
             clientName,
-            date
+            date,
+            advocates
         } = body;
 
         // Input validation
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest) {
             caseNo,
             bankName,
             clientName,
-            date: formatDateToDDMMYYYY(date)
+            date: formatDateToDDMMYYYY(date),
+            advocates: advocates || []
         });
 
         // Launch Puppeteer
