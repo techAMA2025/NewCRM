@@ -32,6 +32,8 @@ import { useRouter } from 'next/navigation'
 import SettlementMobileCard from './components/SettlementMobileCard'
 import { RemarkInput, SettlementAmountInput } from './components/SettlementInputs'
 import { FaGripVertical } from 'react-icons/fa'
+import { authFetch } from '@/lib/authFetch'
+import { toast } from 'react-hot-toast'
 import {
   DndContext,
   closestCenter,
@@ -94,6 +96,7 @@ interface Client {
   }>
   source?: string
   source_database?: string
+  documentUrl?: string
 }
 
 const DEFAULT_COLUMNS = [
@@ -499,7 +502,8 @@ const SettlementTracker = () => {
           name: data.name || 'Unknown',
           banks: data.banks || [],
           source: data.source || '',
-          source_database: data.source_database || ''
+          source_database: data.source_database || '',
+          documentUrl: data.documentUrl || ''
         })
       })
       
@@ -995,6 +999,67 @@ const SettlementTracker = () => {
       alert("Failed to fetch remark history")
     }
   }
+  const [isFetchingFees, setIsFetchingFees] = useState(false)
+
+  const autoFetchFees = async (clientId: string, bankId: string, accNum: string, bName: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client?.documentUrl || !accNum) return;
+
+    setIsFetchingFees(true);
+    try {
+      const response = await authFetch('/api/extract-fees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentUrl: client.documentUrl,
+          accountNumber: accNum,
+          bankName: bName
+        })
+      });
+
+      const result = await response.json();
+      if (result.success && result.fee) {
+        // Clean and format the fee
+        const cleanFee = result.fee.replace(/,/g, '');
+        setTotalFees(Number(cleanFee).toLocaleString('en-IN'));
+        toast.success(`Fees fetched from Annexure-A: ₹${result.fee}`);
+      } else {
+        console.warn("Fee extraction failed:", result.error);
+      }
+    } catch (error) {
+      console.error("Error auto-fetching fees:", error);
+    } finally {
+      setIsFetchingFees(false);
+    }
+  };
+
+  // Trigger fetch when source changes to Billcut
+  useEffect(() => {
+    if (source === 'Billcut' && selectedBank && selectedClient && !isManualBankEntry) {
+      const selectedBankData = availableBanks.find(b => b.id === selectedBank);
+      if (selectedBankData) {
+        autoFetchFees(selectedClient, selectedBank, selectedBankData.accountNumber, selectedBankData.bankName);
+      }
+    }
+  }, [source, selectedBank, selectedClient, isManualBankEntry, availableBanks]);
+
+  const handleBankChange = (bankId: string) => {
+    if (bankId === 'manual') {
+      setIsManualBankEntry(true);
+      setSelectedBank('');
+    } else {
+      setIsManualBankEntry(false);
+      setSelectedBank(bankId);
+      
+      // TRIGGER AUTO-FETCH ONLY FOR BILLCUT
+      if (source === 'Billcut') {
+        const selectedBankData = availableBanks.find(b => b.id === bankId);
+        if (selectedBankData && selectedClient) {
+          autoFetchFees(selectedClient, bankId, selectedBankData.accountNumber, selectedBankData.bankName);
+        }
+      }
+    }
+  };
 
   // Add function to handle status update
   const handleStatusUpdate = async (settlementId: string, newStatus: string) => {
@@ -1957,15 +2022,7 @@ const SettlementTracker = () => {
                   <Label htmlFor="bank">Bank Account *</Label>
                   <Select 
                     value={isManualBankEntry ? 'manual' : selectedBank} 
-                    onValueChange={(value) => {
-                      if (value === 'manual') {
-                        setIsManualBankEntry(true)
-                        setSelectedBank('')
-                      } else {
-                        setIsManualBankEntry(false)
-                        setSelectedBank(value)
-                      }
-                    }}
+                    onValueChange={handleBankChange}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a bank account or enter manually" />
@@ -2081,50 +2138,58 @@ const SettlementTracker = () => {
                       </SelectContent>
                     </Select>
                   </div>
-               </div>
-
-               {/* Fees Section */}
-               <div className="grid grid-cols-3 gap-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
-                  <div className="space-y-2">
-                    <Label htmlFor="totalFees" className="text-indigo-700">Total Fees</Label>
-                    <Input
-                      id="totalFees"
-                      value={totalFees}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                        setTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
-                      }}
-                      placeholder="Total"
-                      className="border-indigo-200 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pendingFees" className="text-indigo-700">Pending Fees</Label>
-                    <Input
-                      id="pendingFees"
-                      value={pendingFees}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                        setPendingFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
-                      }}
-                      placeholder="Pending"
-                      className="border-indigo-200 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="receivedFees" className="text-indigo-700">Received Fees</Label>
-                    <Input
-                      id="receivedFees"
-                      value={receivedFees}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                        setReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
-                      }}
-                      placeholder="Received"
-                      className="border-indigo-200 focus:ring-indigo-500"
-                    />
-                  </div>
-               </div>
+                      {/* Fees Section - Only for Billcut Source */}
+               {source === 'Billcut' && (
+                 <div className="grid grid-cols-3 gap-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                    <div className="space-y-2">
+                      <Label htmlFor="totalFees" className="text-indigo-700">Total Fees</Label>
+                      <div className="relative">
+                        <Input
+                          id="totalFees"
+                          value={totalFees}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                            setTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                          }}
+                          placeholder="Total"
+                          className={`border-indigo-200 focus:ring-indigo-500 ${isFetchingFees ? 'pr-10 anim-pulse' : ''}`}
+                        />
+                        {isFetchingFees && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-b-transparent rounded-full"></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pendingFees" className="text-indigo-700">Pending Fees</Label>
+                      <Input
+                        id="pendingFees"
+                        value={pendingFees}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                          setPendingFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                        }}
+                        placeholder="Pending"
+                        className="border-indigo-200 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="receivedFees" className="text-indigo-700">Received Fees</Label>
+                      <Input
+                        id="receivedFees"
+                        value={receivedFees}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                          setReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                        }}
+                        placeholder="Recieved"
+                        className="border-indigo-200 focus:ring-indigo-500"
+                      />
+                    </div>
+                 </div>
+               )}
+         </div>
 
               {/* Settlement Status */}
               <div className="space-y-2">
@@ -2246,49 +2311,50 @@ const SettlementTracker = () => {
                         ))}
                       </SelectContent>
                     </Select>
-              </div>
-
-              {/* Edit Fees Section */}
-              <div className="grid grid-cols-1 gap-3 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
-                <div className="space-y-1">
-                  <Label htmlFor="editTotalFees" className="text-[10px] font-bold uppercase text-indigo-700">Total Fees</Label>
-                  <Input
-                    id="editTotalFees"
-                    value={editTotalFees}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                      setEditTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
-                    }}
-                    placeholder="Total"
-                    className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
-                  />
+                     {/* Edit Fees Section - Only for Billcut Source */}
+               {editSource === 'Billcut' && (
+                 <div className="grid grid-cols-1 gap-3 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                  <div className="space-y-1">
+                    <Label htmlFor="editTotalFees" className="text-[10px] font-bold uppercase text-indigo-700">Total Fees</Label>
+                    <Input
+                      id="editTotalFees"
+                      value={editTotalFees}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        setEditTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                      }}
+                      placeholder="Total"
+                      className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editPendingFees" className="text-[10px] font-bold uppercase text-indigo-700">Pending Fees</Label>
+                    <Input
+                      id="editPendingFees"
+                      value={editPendingFees}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        setEditPendingFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                      }}
+                      placeholder="Pending"
+                      className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="editReceivedFees" className="text-[10px] font-bold uppercase text-indigo-700">Received Fees</Label>
+                    <Input
+                      id="editReceivedFees"
+                      value={editReceivedFees}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        setEditReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                      }}
+                      placeholder="Received"
+                      className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editPendingFees" className="text-[10px] font-bold uppercase text-indigo-700">Pending Fees</Label>
-                  <Input
-                    id="editPendingFees"
-                    value={editPendingFees}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                      setEditPendingFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
-                    }}
-                    placeholder="Pending"
-                    className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editReceivedFees" className="text-[10px] font-bold uppercase text-indigo-700">Received Fees</Label>
-                  <Input
-                    id="editReceivedFees"
-                    value={editReceivedFees}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                      setEditReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
-                    }}
-                    placeholder="Received"
-                    className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
-                  />
-                </div>
+               )}
               </div>
               <DialogFooter>
                 <Button
