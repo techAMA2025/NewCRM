@@ -56,24 +56,13 @@ const BillcutHistoryModal = ({
       ></div>
       
       {/* Modal Content */}
-      <div className="relative bg-[#F8F5EC] rounded-3xl p-6 md:p-8 w-full max-w-2xl flex flex-col max-h-[90vh] shadow-2xl border border-[#5A4C33]/10 animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="relative bg-white border border-[#5A4C33]/10 rounded-lg p-6 md:p-8 w-full max-w-2xl flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#5A4C33]/10">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-[#D2A02A]/10 rounded-2xl border border-[#D2A02A]/20">
-              <FaHistory className="h-6 w-6 text-[#D2A02A]" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-[#5A4C33] italic tracking-tight" id="history-modal-title">
-                Sales Notes History
-              </h3>
-              {leadName && <p className="text-sm text-[#5A4C33]/60 font-bold">{leadName}</p>}
-            </div>
-          </div>
+        <div className="absolute top-0 right-0 pt-4 pr-4">
           <button
             type="button"
             onClick={() => setShowHistoryModal(false)}
-            className="p-2.5 bg-white rounded-xl text-[#5A4C33]/40 hover:text-[#5A4C33] transition-all duration-200 border border-[#5A4C33]/10 shadow-sm"
+            className="p-2 text-[#5A4C33]/40 hover:text-[#5A4C33] transition-all duration-200"
             aria-label="Close modal"
           >
             <FaTimes className="h-5 w-5" />
@@ -86,13 +75,23 @@ const BillcutHistoryModal = ({
           onWheel={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
         >
+          <div className="flex items-center gap-3 mb-6">
+            <FaHistory className="h-5 w-5 text-[#D2A02A]" />
+            <div>
+              <h3 className="text-lg font-bold text-[#5A4C33]" id="history-modal-title">
+                Sales Notes History
+              </h3>
+              {leadName && <p className="text-sm text-[#5A4C33]/60 font-bold">{leadName}</p>}
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <FaSpinner className="h-10 w-10 text-[#D2A02A] animate-spin mb-4" />
               <p className="text-[#5A4C33]/60 font-bold">Fetching history...</p>
             </div>
           ) : history.length === 0 ? (
-            <div className="text-center py-16 bg-white/40 rounded-3xl border border-[#5A4C33]/10 italic">
+            <div className="text-center py-16 bg-white/40 rounded-xl border border-[#5A4C33]/10 italic">
               <FaHistory className="mx-auto h-16 w-16 text-[#5A4C33]/10 mb-4" />
               <p className="text-[#5A4C33]/40 font-bold">No sales notes history available yet.</p>
               <p className="text-xs text-[#5A4C33]/30 mt-1">New notes will appear here once saved.</p>
@@ -128,7 +127,6 @@ const BillcutHistoryModal = ({
                         return "Recent";
                       }
 
-                      // Format: April 18, 2026 at 1:38:48 PM
                       const datePart = date.toLocaleDateString('en-US', { 
                         year: 'numeric', 
                         month: 'long', 
@@ -145,21 +143,24 @@ const BillcutHistoryModal = ({
                     };
 
                     return (
-                      <div key={`history-${index}`} className="group bg-white p-5 rounded-3xl border border-[#5A4C33]/5 hover:border-[#D2A02A]/30 transition-all duration-300 shadow-sm">
-                        <div className="flex justify-between items-start mb-4">
+                      <div key={`history-${index}`} className="group bg-[#F8F5EC] p-4 rounded-lg border border-[#5A4C33]/10 hover:border-[#D2A02A]/30 transition-all duration-300">
+                        <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-[#5A4C33] flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-[#5A4C33]/10 border border-white/10">
-                              {entry.createdBy?.charAt(0).toUpperCase() || "U"}
-                            </div>
                             <div>
-                              <p className="text-sm font-bold text-[#5A4C33]">{entry.createdBy || "System User"}</p>
-                              <p className="text-[10px] text-[#D2A02A] font-bold uppercase tracking-widest">{formatHistoryDate(entry.createdAt)}</p>
+                               <p className="text-sm font-bold text-[#5A4C33]">{formatHistoryDate(entry.createdAt)}</p>
                             </div>
                           </div>
-                          <span className="px-2 py-1 bg-[#F8F5EC] rounded-lg text-[10px] font-bold text-[#5A4C33]/40 border border-[#5A4C33]/5">#{history.length - index}</span>
+                          <span className="px-2 py-1 bg-white rounded text-[10px] font-bold text-[#5A4C33]/40 border border-[#5A4C33]/5">#{history.length - index}</span>
                         </div>
                         
-                        <div className="whitespace-pre-wrap text-sm text-[#5A4C33]/80 leading-relaxed bg-[#F8F5EC]/50 p-4 rounded-2xl border border-[#5A4C33]/5 group-hover:bg-white transition-colors">
+                        {entry.createdBy && (
+                          <div className="mb-2 text-xs">
+                            <span className="text-[#5A4C33]/70 font-semibold">Created by: </span>
+                            <span className="text-[#D2A02A] font-bold">{entry.createdBy}</span>
+                          </div>
+                        )}
+
+                        <div className="whitespace-pre-wrap text-sm text-[#5A4C33]/80 leading-relaxed bg-white p-3 rounded-md border border-[#5A4C33]/5">
                           {entry.content || <span className="text-[#5A4C33]/30 italic">No content</span>}
                         </div>
                       </div>
@@ -174,7 +175,7 @@ const BillcutHistoryModal = ({
           <button
             type="button"
             onClick={() => setShowHistoryModal(false)}
-            className="w-full py-4 bg-[#5A4C33] hover:bg-[#4A3C2A] text-sm font-bold text-white rounded-2xl transition-all shadow-lg active:scale-95"
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all active:scale-95 text-sm font-medium"
           >
             Close History
           </button>
