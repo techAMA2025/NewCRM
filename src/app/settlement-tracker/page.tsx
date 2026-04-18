@@ -74,6 +74,9 @@ interface Settlement {
   successFeeStatus?: 'Paid' | 'Not Paid' | 'Partially Paid' | 'Not Required'
   successFeeAmount?: string
   settlementAmount?: string
+  totalFees?: string
+  pendingFees?: string
+  receivedFees?: string
   letterAmount?: string
   source?: string
 }
@@ -95,13 +98,9 @@ interface Client {
 
 const DEFAULT_COLUMNS = [
   { id: 'date', label: 'Date', width: 100 },
-  { id: 'client', label: 'Client', width: 150 },
-  { id: 'bank', label: 'Bank', width: 150 },
-  { id: 'account', label: 'Account', width: 120 },
-  { id: 'amount', label: 'Amount', width: 100 },
-  { id: 'type', label: 'Type', width: 100 },
-  { id: 'settlementAmt', label: 'Settlement Amt', width: 130 },
-  { id: 'letterBal', label: 'Letter Bal', width: 130 },
+  { id: 'client', label: 'Client Details', width: 230 },
+  { id: 'amountDetails', label: 'Settlement / Letter', width: 180 },
+  { id: 'fees', label: 'Fees', width: 220 },
   { id: 'source', label: 'Source', width: 100 },
   { id: 'status', label: 'Status', width: 140 },
   { id: 'owner', label: 'Owner', width: 100 },
@@ -139,7 +138,10 @@ function SortableHeader({
     zIndex: isDragging ? 50 : 'auto',
     width: width ? `${width}px` : 'auto',
     minWidth: width ? `${width}px` : 'auto',
+    maxWidth: width ? `${width}px` : 'auto',
     cursor: 'move',
+    borderRight: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+    borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -209,6 +211,9 @@ const SettlementTracker = () => {
   const [manualLoanType, setManualLoanType] = useState('')
   const [settlementAmount, setSettlementAmount] = useState('')
   const [letterAmount, setLetterAmount] = useState('')
+  const [totalFees, setTotalFees] = useState('')
+  const [pendingFees, setPendingFees] = useState('')
+  const [receivedFees, setReceivedFees] = useState('')
   const [source, setSource] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
@@ -317,6 +322,9 @@ const SettlementTracker = () => {
   const [editAccount, setEditAccount] = useState('')
   const [editSettlementAmount, setEditSettlementAmount] = useState('')
   const [editLetterAmount, setEditLetterAmount] = useState('')
+  const [editTotalFees, setEditTotalFees] = useState('')
+  const [editPendingFees, setEditPendingFees] = useState('')
+  const [editReceivedFees, setEditReceivedFees] = useState('')
   const [editSource, setEditSource] = useState('')
   const [isEditing, setIsEditing] = useState(false)
 
@@ -520,8 +528,17 @@ const SettlementTracker = () => {
     if (savedColumns) {
       try {
         const parsed = JSON.parse(savedColumns);
-        if (parsed.length === DEFAULT_COLUMNS.length) {
+        
+        // Validate columns: check length and ensure all default IDs are present
+        const hasAllIds = DEFAULT_COLUMNS.every(dc => 
+          parsed.some((pc: any) => pc.id === dc.id)
+        );
+
+        if (parsed.length === DEFAULT_COLUMNS.length && hasAllIds) {
             setColumns(parsed);
+        } else {
+            console.warn("Column mismatch detected, resetting to default layout");
+            localStorage.removeItem('settlement-tracker-columns');
         }
       } catch (e) {
         console.error("Failed to parse saved columns", e);
@@ -571,6 +588,16 @@ const SettlementTracker = () => {
     fetchSettlements(false)
     fetchTotalCount()
   }, [filterStatus, filterSource, filterBank, filterAdvocate])
+
+  const handleResetLayout = () => {
+    if (confirm("Reset table layout to default? This will clear all custom column orders and widths.")) {
+      localStorage.removeItem('settlement-tracker-columns');
+      localStorage.removeItem('settlement-tracker-widths');
+      setColumns(DEFAULT_COLUMNS);
+      setColumnWidths({});
+      window.location.reload();
+    }
+  };
 
   // Infinite scroll observer
   useEffect(() => {
@@ -794,6 +821,9 @@ const SettlementTracker = () => {
         createdBy: userName,
         settlementAmount: settlementAmount.replace(/,/g, ''),
         letterAmount: letterAmount.replace(/,/g, ''),
+        totalFees: totalFees.replace(/,/g, ''),
+        pendingFees: pendingFees.replace(/,/g, ''),
+        receivedFees: receivedFees.replace(/,/g, ''),
         source: source
       }
 
@@ -814,6 +844,9 @@ const SettlementTracker = () => {
       setManualLoanType('')
       setSettlementAmount('')
       setLetterAmount('')
+      setTotalFees('')
+      setPendingFees('')
+      setReceivedFees('')
       setSource('')
       setIsNewClientMode(false)
       setNewClientName('')
@@ -1051,6 +1084,63 @@ const SettlementTracker = () => {
     }
   }
 
+  // Handle Total Fees Save
+  const handleTotalFeesSave = async (settlementId: string, amount: string) => {
+    try {
+      const settlementRef = doc(db, "settlements", settlementId)
+      await updateDoc(settlementRef, {
+        totalFees: amount,
+        lastModified: serverTimestamp(),
+      })
+
+      setSettlements(prev => prev.map(s => 
+        s.id === settlementId ? { ...s, totalFees: amount } : s
+      ))
+      alert("Total Fees saved successfully")
+    } catch (error) {
+      console.error("Error updating total fees:", error)
+      alert("Failed to update total fees")
+    }
+  }
+
+  // Handle Pending Fees Save
+  const handlePendingFeesSave = async (settlementId: string, amount: string) => {
+    try {
+      const settlementRef = doc(db, "settlements", settlementId)
+      await updateDoc(settlementRef, {
+        pendingFees: amount,
+        lastModified: serverTimestamp(),
+      })
+
+      setSettlements(prev => prev.map(s => 
+        s.id === settlementId ? { ...s, pendingFees: amount } : s
+      ))
+      alert("Pending Fees saved successfully")
+    } catch (error) {
+      console.error("Error updating pending fees:", error)
+      alert("Failed to update pending fees")
+    }
+  }
+
+  // Handle Received Fees Save
+  const handleReceivedFeesSave = async (settlementId: string, amount: string) => {
+    try {
+      const settlementRef = doc(db, "settlements", settlementId)
+      await updateDoc(settlementRef, {
+        receivedFees: amount,
+        lastModified: serverTimestamp(),
+      })
+
+      setSettlements(prev => prev.map(s => 
+        s.id === settlementId ? { ...s, receivedFees: amount } : s
+      ))
+      alert("Received Fees saved successfully")
+    } catch (error) {
+      console.error("Error updating received fees:", error)
+      alert("Failed to update received fees")
+    }
+  }
+
   // Handle Source Update
   const handleSourceUpdate = async (settlementId: string, newSource: string) => {
     try {
@@ -1120,6 +1210,9 @@ const SettlementTracker = () => {
     setEditAccount(settlement.accountNumber)
     setEditSettlementAmount(settlement.settlementAmount ? Number(settlement.settlementAmount).toLocaleString('en-IN') : '')
     setEditLetterAmount(settlement.letterAmount ? Number(settlement.letterAmount).toLocaleString('en-IN') : '')
+    setEditTotalFees(settlement.totalFees ? Number(settlement.totalFees).toLocaleString('en-IN') : '')
+    setEditPendingFees(settlement.pendingFees ? Number(settlement.pendingFees).toLocaleString('en-IN') : '')
+    setEditReceivedFees(settlement.receivedFees ? Number(settlement.receivedFees).toLocaleString('en-IN') : '')
     setEditSource(settlement.source || '')
     setIsEditModalOpen(true)
   }
@@ -1137,6 +1230,9 @@ const SettlementTracker = () => {
         accountNumber: editAccount,
         settlementAmount: editSettlementAmount.replace(/,/g, ''),
         letterAmount: editLetterAmount.replace(/,/g, ''),
+        totalFees: editTotalFees.replace(/,/g, ''),
+        pendingFees: editPendingFees.replace(/,/g, ''),
+        receivedFees: editReceivedFees.replace(/,/g, ''),
         source: editSource,
         lastModified: serverTimestamp()
       }
@@ -1275,8 +1371,17 @@ const SettlementTracker = () => {
               onClick={() => setIsDarkMode(!isDarkMode)}
               variant="outline"
               className={`flex-1 md:flex-none h-10 w-10 p-0 rounded-xl transition-all active:scale-95 ${isDarkMode ? 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700 shadow-lg shadow-black/20' : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50 shadow-md'}`}
+              title="Toggle Theme"
             >
               {isDarkMode ? '☀️' : '🌙'}
+            </Button>
+            <Button 
+              onClick={handleResetLayout}
+              variant="outline"
+              className={`flex-1 md:flex-none h-10 w-10 p-0 rounded-xl transition-all active:scale-95 text-xs font-bold ${isDarkMode ? 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 shadow-sm'}`}
+              title="Reset Table Layout"
+            >
+              🔄
             </Button>
             <Button 
               onClick={() => setIsDialogOpen(true)}
@@ -1403,7 +1508,7 @@ const SettlementTracker = () => {
                       collisionDetection={closestCenter} 
                       onDragEnd={handleDragEnd}
                     >
-                      <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                      <table className={`min-w-full border-collapse ${isDarkMode ? 'divide-gray-800' : 'divide-gray-200'}`}>
                         <thead className={`${isDarkMode ? 'bg-gray-900/40' : 'bg-gray-50/50'}`}>
                           <tr>
                             <SortableContext 
@@ -1432,6 +1537,8 @@ const SettlementTracker = () => {
                                   width: (columnWidths[col.id] || col.width) ? `${columnWidths[col.id] || col.width}px` : 'auto',
                                   minWidth: (columnWidths[col.id] || col.width) ? `${columnWidths[col.id] || col.width}px` : 'auto',
                                   maxWidth: (columnWidths[col.id] || col.width) ? `${columnWidths[col.id] || col.width}px` : 'auto',
+                                  borderRight: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                                  borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
                                 };
                                 switch (col.id) {
                                 case 'date':
@@ -1442,55 +1549,104 @@ const SettlementTracker = () => {
                                     );
                                   case 'client':
                                     return (
-                                      <td key="client" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold uppercase tracking-tight overflow-hidden ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                        {settlement.clientName}
+                                      <td key="client" style={cellStyle} className={`px-1.5 py-0 overflow-hidden ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                        <div className="flex flex-col h-full">
+                                          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800">
+                                            <span className="text-[9.5px] font-bold uppercase tracking-tight truncate block">
+                                              {settlement.clientName}
+                                            </span>
+                                          </div>
+                                          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800">
+                                            <div className="flex items-center gap-1.5">
+                                              <span className={`text-[8.5px] font-medium truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                {settlement.bankName}
+                                              </span>
+                                              <span className={`px-1 rounded-sm text-[7.5px] font-bold ${
+                                                settlement.loanType?.toLowerCase().includes('credit') ? 'bg-orange-100 text-orange-700' :
+                                                settlement.loanType?.toLowerCase().includes('personal') ? 'bg-blue-100 text-blue-700' :
+                                                'bg-gray-100 text-gray-600'
+                                              }`}>
+                                                {settlement.loanType?.toLowerCase().includes('credit') ? 'CC' :
+                                                 settlement.loanType?.toLowerCase().includes('personal') ? 'PL' :
+                                                 settlement.loanType?.toLowerCase().includes('business') ? 'BL' : '??'}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <div className="px-2 py-2">
+                                            <div className="flex flex-col">
+                                              <span className={`text-[8px] font-mono leading-none ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                A/C: {settlement.accountNumber}
+                                              </span>
+                                              <span className={`text-[9px] font-bold mt-0.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                                ₹{formatLoanAmount(settlement.loanAmount)}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
                                       </td>
                                     );
-                                  case 'bank':
+                                  case 'amountDetails':
                                     return (
-                                      <td key="bank" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-medium overflow-hidden ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                        {settlement.bankName}
+                                      <td key="amountDetails" style={cellStyle} className="px-1.5 py-0 whitespace-nowrap min-w-[180px] overflow-hidden">
+                                        <div className="flex flex-col h-full uppercase tracking-tighter">
+                                          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 bg-blue-50/10 dark:bg-blue-900/10">
+                                            <span className={`text-[8px] font-bold w-14 shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>Settlement</span>
+                                            <SettlementAmountInput 
+                                              settlementId={settlement.id}
+                                              initialValue={settlement.settlementAmount || ''}
+                                              isDarkMode={isDarkMode}
+                                              onSave={handleSettlementAmountSave}
+                                              buttonColor="bg-blue-600 hover:bg-blue-500"
+                                            />
+                                          </div>
+                                          <div className="px-2 py-2 flex items-center gap-2 bg-cyan-50/10 dark:bg-cyan-900/10">
+                                            <span className={`text-[8px] font-bold w-14 shrink-0 ${isDarkMode ? 'text-cyan-300' : 'text-cyan-600'}`}>Letter</span>
+                                            <SettlementAmountInput 
+                                              settlementId={settlement.id}
+                                              initialValue={settlement.letterAmount || ''}
+                                              isDarkMode={isDarkMode}
+                                              onSave={handleLetterAmountSave}
+                                              buttonColor="bg-cyan-600 hover:bg-cyan-500"
+                                            />
+                                          </div>
+                                        </div>
                                       </td>
                                     );
-                                  case 'account':
+                                  case 'fees':
                                     return (
-                                      <td key="account" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-mono overflow-hidden ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        {settlement.accountNumber}
-                                      </td>
-                                    );
-                                  case 'amount':
-                                    return (
-                                      <td key="amount" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9.5px] font-bold overflow-hidden ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                        ₹{formatLoanAmount(settlement.loanAmount)}
-                                      </td>
-                                    );
-                                  case 'type':
-                                    return (
-                                      <td key="type" style={cellStyle} className={`px-1.5 py-2 whitespace-nowrap text-[9px] font-bold uppercase overflow-hidden ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                                        {settlement.loanType}
-                                      </td>
-                                    );
-                                  case 'settlementAmt':
-                                    return (
-                                      <td key="settlementAmt" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] overflow-hidden">
-                                        <SettlementAmountInput 
-                                          settlementId={settlement.id}
-                                          initialValue={settlement.settlementAmount || ''}
-                                          isDarkMode={isDarkMode}
-                                          onSave={handleSettlementAmountSave}
-                                        />
-                                      </td>
-                                    );
-                                  case 'letterBal':
-                                    return (
-                                      <td key="letterBal" style={cellStyle} className="px-1.5 py-2 whitespace-nowrap min-w-[120px] overflow-hidden">
-                                        <SettlementAmountInput 
-                                          settlementId={settlement.id}
-                                          initialValue={settlement.letterAmount || ''}
-                                          isDarkMode={isDarkMode}
-                                          onSave={handleLetterAmountSave}
-                                          buttonColor="bg-blue-600 hover:bg-blue-500"
-                                        />
+                                      <td key="fees" style={cellStyle} className="px-1.5 py-0 whitespace-nowrap min-w-[220px] overflow-hidden">
+                                        <div className="flex flex-col h-full">
+                                          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 bg-indigo-50/10 dark:bg-indigo-900/10">
+                                            <span className={`text-[8px] font-bold uppercase w-12 shrink-0 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>Total</span>
+                                            <SettlementAmountInput 
+                                              settlementId={settlement.id}
+                                              initialValue={settlement.totalFees || ''}
+                                              isDarkMode={isDarkMode}
+                                              onSave={handleTotalFeesSave}
+                                              buttonColor="bg-indigo-600 hover:bg-indigo-500"
+                                            />
+                                          </div>
+                                          <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 bg-orange-50/10 dark:bg-orange-900/10">
+                                            <span className={`text-[8px] font-bold uppercase w-12 shrink-0 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>Pending</span>
+                                            <SettlementAmountInput 
+                                              settlementId={settlement.id}
+                                              initialValue={settlement.pendingFees || ''}
+                                              isDarkMode={isDarkMode}
+                                              onSave={handlePendingFeesSave}
+                                              buttonColor="bg-orange-600 hover:bg-orange-500"
+                                            />
+                                          </div>
+                                          <div className="px-2 py-2 flex items-center gap-2 bg-emerald-50/10 dark:bg-emerald-900/10">
+                                            <span className={`text-[8px] font-bold uppercase w-12 shrink-0 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>Recieved</span>
+                                            <SettlementAmountInput 
+                                              settlementId={settlement.id}
+                                              initialValue={settlement.receivedFees || ''}
+                                              isDarkMode={isDarkMode}
+                                              onSave={handleReceivedFeesSave}
+                                              buttonColor="bg-emerald-600 hover:bg-emerald-500"
+                                            />
+                                          </div>
+                                        </div>
                                       </td>
                                     );
                                   case 'source':
@@ -1927,6 +2083,49 @@ const SettlementTracker = () => {
                   </div>
                </div>
 
+               {/* Fees Section */}
+               <div className="grid grid-cols-3 gap-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                  <div className="space-y-2">
+                    <Label htmlFor="totalFees" className="text-indigo-700">Total Fees</Label>
+                    <Input
+                      id="totalFees"
+                      value={totalFees}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        setTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                      }}
+                      placeholder="Total"
+                      className="border-indigo-200 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pendingFees" className="text-indigo-700">Pending Fees</Label>
+                    <Input
+                      id="pendingFees"
+                      value={pendingFees}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        setPendingFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                      }}
+                      placeholder="Pending"
+                      className="border-indigo-200 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="receivedFees" className="text-indigo-700">Received Fees</Label>
+                    <Input
+                      id="receivedFees"
+                      value={receivedFees}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        setReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                      }}
+                      placeholder="Received"
+                      className="border-indigo-200 focus:ring-indigo-500"
+                    />
+                  </div>
+               </div>
+
               {/* Settlement Status */}
               <div className="space-y-2">
                 <Label htmlFor="status">Settlement Status *</Label>
@@ -2047,6 +2246,49 @@ const SettlementTracker = () => {
                         ))}
                       </SelectContent>
                     </Select>
+              </div>
+
+              {/* Edit Fees Section */}
+              <div className="grid grid-cols-1 gap-3 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                <div className="space-y-1">
+                  <Label htmlFor="editTotalFees" className="text-[10px] font-bold uppercase text-indigo-700">Total Fees</Label>
+                  <Input
+                    id="editTotalFees"
+                    value={editTotalFees}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                      setEditTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                    }}
+                    placeholder="Total"
+                    className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="editPendingFees" className="text-[10px] font-bold uppercase text-indigo-700">Pending Fees</Label>
+                  <Input
+                    id="editPendingFees"
+                    value={editPendingFees}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                      setEditPendingFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                    }}
+                    placeholder="Pending"
+                    className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="editReceivedFees" className="text-[10px] font-bold uppercase text-indigo-700">Received Fees</Label>
+                  <Input
+                    id="editReceivedFees"
+                    value={editReceivedFees}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                      setEditReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                    }}
+                    placeholder="Received"
+                    className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button
