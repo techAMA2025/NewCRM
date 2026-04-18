@@ -113,26 +113,58 @@ const BillcutHistoryModal = ({
                     const timeB = getTime(b.createdAt);
                     return timeB - timeA;
                   })
-                  .map((entry, index) => (
-                    <div key={`history-${index}`} className="group bg-white p-5 rounded-3xl border border-[#5A4C33]/5 hover:border-[#D2A02A]/30 transition-all duration-300 shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl bg-[#5A4C33] flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-[#5A4C33]/10 border border-white/10">
-                            {entry.createdBy?.charAt(0).toUpperCase() || "U"}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-[#5A4C33]">{entry.createdBy || "System User"}</p>
-                            <p className="text-[10px] text-[#D2A02A] font-bold uppercase tracking-widest">{entry.displayDate || "Recent"}</p>
-                          </div>
-                        </div>
-                        <span className="px-2 py-1 bg-[#F8F5EC] rounded-lg text-[10px] font-bold text-[#5A4C33]/40 border border-[#5A4C33]/5">#{history.length - index}</span>
-                      </div>
+                  .map((entry, index) => {
+                    const formatHistoryDate = (dateVal: any) => {
+                      if (!dateVal) return "Recent";
                       
-                      <div className="whitespace-pre-wrap text-sm text-[#5A4C33]/80 leading-relaxed bg-[#F8F5EC]/50 p-4 rounded-2xl border border-[#5A4C33]/5 group-hover:bg-white transition-colors">
-                        {entry.content || <span className="text-[#5A4C33]/30 italic">No content</span>}
+                      let date: Date;
+                      if (dateVal instanceof Date) {
+                        date = dateVal;
+                      } else if (typeof dateVal === 'string') {
+                        date = new Date(dateVal);
+                      } else if (typeof dateVal === 'object' && 'seconds' in dateVal) {
+                        date = new Date(dateVal.seconds * 1000);
+                      } else {
+                        return "Recent";
+                      }
+
+                      // Format: April 18, 2026 at 1:38:48 PM
+                      const datePart = date.toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      });
+                      const timePart = date.toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit', 
+                        second: '2-digit', 
+                        hour12: true 
+                      });
+                      
+                      return `${datePart} at ${timePart}`;
+                    };
+
+                    return (
+                      <div key={`history-${index}`} className="group bg-white p-5 rounded-3xl border border-[#5A4C33]/5 hover:border-[#D2A02A]/30 transition-all duration-300 shadow-sm">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-[#5A4C33] flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-[#5A4C33]/10 border border-white/10">
+                              {entry.createdBy?.charAt(0).toUpperCase() || "U"}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-[#5A4C33]">{entry.createdBy || "System User"}</p>
+                              <p className="text-[10px] text-[#D2A02A] font-bold uppercase tracking-widest">{formatHistoryDate(entry.createdAt)}</p>
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 bg-[#F8F5EC] rounded-lg text-[10px] font-bold text-[#5A4C33]/40 border border-[#5A4C33]/5">#{history.length - index}</span>
+                        </div>
+                        
+                        <div className="whitespace-pre-wrap text-sm text-[#5A4C33]/80 leading-relaxed bg-[#F8F5EC]/50 p-4 rounded-2xl border border-[#5A4C33]/5 group-hover:bg-white transition-colors">
+                          {entry.content || <span className="text-[#5A4C33]/30 italic">No content</span>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
             </div>
           )}
         </div>

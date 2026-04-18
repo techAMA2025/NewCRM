@@ -101,7 +101,35 @@ const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
                     <div className="flex justify-between items-start mb-2">
                       <div className="text-sm text-[#5A4C33]">
                         <span className="font-medium">
-                          {entry.displayDate || "Unknown Date"}
+                          {(() => {
+                            const dateVal = entry.createdAt;
+                            if (!dateVal) return "Recent";
+                            
+                            let date: Date;
+                            if (dateVal instanceof Date) {
+                              date = dateVal;
+                            } else if (typeof dateVal === 'string') {
+                              date = new Date(dateVal);
+                            } else if (typeof dateVal === 'object' && 'seconds' in dateVal) {
+                              date = new Date(dateVal.seconds * 1000);
+                            } else {
+                              return "Recent";
+                            }
+
+                            const datePart = date.toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            });
+                            const timePart = date.toLocaleTimeString('en-US', { 
+                              hour: 'numeric', 
+                              minute: '2-digit', 
+                              second: '2-digit', 
+                              hour12: true 
+                            });
+                            
+                            return `${datePart} at ${timePart}`;
+                          })()}
                         </span>
                       </div>
                     </div>
