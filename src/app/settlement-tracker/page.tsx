@@ -1552,16 +1552,16 @@ const SettlementTracker = () => {
                                       <td key="client" style={cellStyle} className={`px-1.5 py-0 overflow-hidden ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                         <div className="flex flex-col h-full">
                                           <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800">
-                                            <span className="text-[9.5px] font-bold uppercase tracking-tight truncate block">
+                                            <span className="text-[15.5px] font-semibold uppercase tracking-tight truncate block">
                                               {settlement.clientName}
                                             </span>
                                           </div>
                                           <div className="px-2 py-2 border-b border-gray-200 dark:border-gray-800">
                                             <div className="flex items-center gap-1.5">
-                                              <span className={`text-[8.5px] font-medium truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                              <span className={`text-[16px] font-medium truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {settlement.bankName}
                                               </span>
-                                              <span className={`px-1 rounded-sm text-[7.5px] font-bold ${
+                                              <span className={`px-1 rounded-sm text-[9.5px] font-bold ${
                                                 settlement.loanType?.toLowerCase().includes('credit') ? 'bg-orange-100 text-orange-700' :
                                                 settlement.loanType?.toLowerCase().includes('personal') ? 'bg-blue-100 text-blue-700' :
                                                 'bg-gray-100 text-gray-600'
@@ -1574,10 +1574,10 @@ const SettlementTracker = () => {
                                           </div>
                                           <div className="px-2 py-2">
                                             <div className="flex flex-col">
-                                              <span className={`text-[8px] font-mono leading-none ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                              <span className={`text-[12px] font-mono leading-none ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                                                 A/C: {settlement.accountNumber}
                                               </span>
-                                              <span className={`text-[9px] font-bold mt-0.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                              <span className={`text-[14px] font-bold mt-0.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                                 ₹{formatLoanAmount(settlement.loanAmount)}
                                               </span>
                                             </div>
