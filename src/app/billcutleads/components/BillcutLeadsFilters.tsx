@@ -137,7 +137,7 @@ const BillcutLeadsFiltersOptimized = ({
         const response = await authFetch("/api/users/work-mode", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: selectedUser.id, enabled: newMode })
+            body: JSON.stringify({ userId: selectedUser.id, userName: selectedUser.name, enabled: newMode })
         })
         
         const result = await response.json()

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { authFetch } from "@/lib/authFetch"
 import { toast } from "react-toastify"
 import { Lead, EditingLeadsState } from "../types"
-import { LEADS_PER_PAGE, processBillcutLead, getCallbackPriority } from "../utils/billcutUtils"
+import { LEADS_PER_PAGE, processBillcutLead, getCallbackPriority, parseDebtRangeToNumber } from "../utils/billcutUtils"
 import { db } from "@/lib/firebase"
 import { collection, query, where, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore"
 
@@ -339,6 +339,18 @@ export const useBillcutLeads = (userRole: string) => {
                return new Date(a.callbackInfo.scheduled_dt).getTime() - new Date(b.callbackInfo.scheduled_dt).getTime()
             }
             return priorityA - priorityB
+          })
+        } else if (debtRangeSort !== "none") {
+          // Re-apply debt sorting for non-callback tabs to maintain order during updates
+          nextLeads.sort((a, b) => {
+            const valA = parseDebtRangeToNumber(a.debtRange)
+            const valB = parseDebtRangeToNumber(b.debtRange)
+            
+            if (valA !== valB) {
+              return debtRangeSort === "low-to-high" ? valA - valB : valB - valA
+            }
+            // Secondary sort by date
+            return (b.date || 0) - (a.date || 0)
           })
         }
         

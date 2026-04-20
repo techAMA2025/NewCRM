@@ -103,32 +103,46 @@ const AmaHistoryModal = ({ isOpen, onClose, leadId }: AmaHistoryModalProps) => {
                         <span className="font-medium">
                           {(() => {
                             const dateVal = entry.createdAt;
-                            if (!dateVal) return "Recent";
+                            const displayDate = entry.displayDate;
                             
-                            let date: Date;
-                            if (dateVal instanceof Date) {
-                              date = dateVal;
-                            } else if (typeof dateVal === 'string') {
-                              date = new Date(dateVal);
-                            } else if (typeof dateVal === 'object' && 'seconds' in dateVal) {
-                              date = new Date(dateVal.seconds * 1000);
-                            } else {
-                              return "Recent";
+                            let date: Date | null = null;
+
+                            if (dateVal) {
+                              if (dateVal instanceof Date) {
+                                date = dateVal;
+                              } else if (typeof dateVal === 'string') {
+                                date = new Date(dateVal);
+                              } else if (typeof dateVal === 'object') {
+                                if ('seconds' in dateVal) {
+                                  date = new Date(dateVal.seconds * 1000);
+                                } else if ('_seconds' in dateVal) {
+                                  date = new Date(dateVal._seconds * 1000);
+                                }
+                              }
                             }
 
-                            const datePart = date.toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric' 
-                            });
-                            const timePart = date.toLocaleTimeString('en-US', { 
-                              hour: 'numeric', 
-                              minute: '2-digit', 
-                              second: '2-digit', 
-                              hour12: true 
-                            });
+                            if (date && !isNaN(date.getTime())) {
+                              const datePart = date.toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              });
+                              const timePart = date.toLocaleTimeString('en-US', { 
+                                hour: 'numeric', 
+                                minute: '2-digit', 
+                                second: '2-digit', 
+                                hour12: true 
+                              });
+                              
+                              return `${datePart} at ${timePart}`;
+                            }
+
+                            // Fallback to displayDate if available
+                            if (displayDate && displayDate !== "Unknown Date") {
+                              return displayDate;
+                            }
                             
-                            return `${datePart} at ${timePart}`;
+                            return "Recent";
                           })()}
                         </span>
                       </div>

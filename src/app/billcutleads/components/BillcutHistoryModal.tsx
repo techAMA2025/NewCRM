@@ -116,14 +116,20 @@ const BillcutHistoryModal = ({
                     const formatHistoryDate = (dateVal: any) => {
                       if (!dateVal) return "Recent";
                       
-                      let date: Date;
+                      let date: Date | null = null;
                       if (dateVal instanceof Date) {
                         date = dateVal;
                       } else if (typeof dateVal === 'string') {
                         date = new Date(dateVal);
-                      } else if (typeof dateVal === 'object' && 'seconds' in dateVal) {
-                        date = new Date(dateVal.seconds * 1000);
-                      } else {
+                      } else if (typeof dateVal === 'object') {
+                        if ('seconds' in dateVal) {
+                          date = new Date(dateVal.seconds * 1000);
+                        } else if ('_seconds' in dateVal) {
+                          date = new Date(dateVal._seconds * 1000);
+                        }
+                      }
+
+                      if (!date || isNaN(date.getTime())) {
                         return "Recent";
                       }
 

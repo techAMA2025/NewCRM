@@ -151,3 +151,24 @@ export const getCallbackPriority = (lead: Lead): number => {
   if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) return 3
   return 4
 }
+/**
+ * Helper to parse debt range string into a comparable numeric value (in Lakhs)
+ */
+export const parseDebtRangeToNumber = (range: any): number => {
+  if (!range) return 0;
+  const rangeStr = String(range).toLowerCase();
+  const cleanRange = rangeStr.replace(/[₹,]/g, '').toLowerCase();
+  
+  // Example: "43 lakhs - 44 lakhs" -> take the start "43"
+  const match = cleanRange.match(/(\d+\.?\d*)\s*(lakh|crore|cr)/);
+  if (match) {
+    let value = parseFloat(match[1]);
+    const unit = match[2];
+    if (unit.includes('crore') || unit === 'cr') value *= 100;
+    return value;
+  }
+  
+  const numMatch = cleanRange.match(/(\d+\.?\d*)/);
+  if (numMatch) return parseFloat(numMatch[1]);
+  return 0;
+};
