@@ -215,6 +215,10 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
     },
     {
       type: 'single',
+      item: { href: '/escalations', icon: <FaCommentDots />, label: 'Escalations', isActive: false }
+    },
+    {
+      type: 'single',
       item: { href: '/blogs-management', icon: <FaHandshake />, label: 'Blogs Management', isActive: false }
     }
   ];

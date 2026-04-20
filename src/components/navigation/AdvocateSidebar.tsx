@@ -95,6 +95,12 @@ const AdvocateSidebar = () => {
               </Link>
             </li> 
             <li>
+              <Link href="/escalations" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/escalations')}`}>
+                <FaComments className="mr-3 text-indigo-400" />
+                <span>Escalations</span>
+              </Link>
+            </li>
+            <li>
               <Link href="/settlement-analysis" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/settlement-analysis')}`}>
                 <FaChartPie className="mr-3 text-indigo-400" />
                 <span>Settlement Analysis</span>

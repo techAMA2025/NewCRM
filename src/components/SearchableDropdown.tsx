@@ -95,7 +95,9 @@ export default function SearchableDropdown({
   }, [isOpen, highlightedIndex, filteredOptions]);
 
   const handleSelect = (optionValue: string) => {
-    onChange(optionValue);
+    if (onChange) {
+      onChange(optionValue);
+    }
     setIsOpen(false);
     setSearchTerm("");
     setHighlightedIndex(-1);
@@ -118,7 +120,7 @@ export default function SearchableDropdown({
     }
   };
 
-  const defaultClassName = "w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm";
+  const defaultClassName = "w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md text-black focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm";
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -135,7 +137,7 @@ export default function SearchableDropdown({
           onChange={handleInputChange}
           placeholder={isLoading ? loadingText : placeholder}
           disabled={disabled || isLoading}
-          className="bg-transparent border-none outline-none flex-1 text-gray-900 placeholder-gray-500"
+          className="bg-transparent border-none outline-none flex-1 text-black placeholder-gray-500"
           autoComplete="off"
         />
         <svg
@@ -157,7 +159,7 @@ export default function SearchableDropdown({
           ) : (
             filteredOptions.map((option, index) => (
               <div
-                key={option.value}
+                key={option.value || `opt-${index}`}
                 className={`px-3 py-2 text-sm ${
                   option.value === "separator" 
                     ? "cursor-default text-gray-500 text-xs font-semibold border-t border-gray-300"
