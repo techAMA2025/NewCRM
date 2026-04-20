@@ -12,9 +12,10 @@ interface AmaQuestionsListProps {
   onViewComments: (q: AmaQuestion) => void;
   onAnswer: (q: AmaQuestion) => void;
   onDelete: (id: string) => void;
+  userRole?: string | null;
 }
 
-export default function AmaQuestionsList({ questions, hasMore, loading, loadMore, onViewComments, onAnswer, onDelete }: AmaQuestionsListProps) {
+export default function AmaQuestionsList({ questions, hasMore, loading, loadMore, onViewComments, onAnswer, onDelete, userRole }: AmaQuestionsListProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function AmaQuestionsList({ questions, hasMore, loading, loadMore
              onViewComments={onViewComments}
              onAnswer={onAnswer}
              onDelete={onDelete}
+             userRole={userRole}
           />
         ))
       )}

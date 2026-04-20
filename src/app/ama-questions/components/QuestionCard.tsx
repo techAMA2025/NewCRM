@@ -8,6 +8,7 @@ interface QuestionCardProps {
   onViewComments: (q: AmaQuestion) => void;
   onAnswer: (q: AmaQuestion) => void;
   onDelete: (id: string) => void;
+  userRole?: string | null;
 }
 
 function formatDate(timestamp: number) {
@@ -15,20 +16,24 @@ function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleString();
 }
 
-export default function QuestionCard({ question, onViewComments, onAnswer, onDelete }: QuestionCardProps) {
+export default function QuestionCard({ question, onViewComments, onAnswer, onDelete, userRole }: QuestionCardProps) {
+  const isAdmin = userRole === 'admin';
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all flex flex-col h-full relative group">
-       {/* Delete Button */}
-       <button
-         onClick={(e) => {
-           e.stopPropagation();
-           onDelete(question.id);
-         }}
-         className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all duration-200"
-         title="Delete Question"
-       >
-         <FaTrash size={14} />
-       </button>
+       {/* Delete Button - Only for non-admins */}
+       {!isAdmin && (
+         <button
+           onClick={(e) => {
+             e.stopPropagation();
+             onDelete(question.id);
+           }}
+           className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all duration-200"
+           title="Delete Question"
+         >
+           <FaTrash size={14} />
+         </button>
+       )}
 
        {/* Header: User Info */}
        <div className="flex justify-between items-start mb-4 pr-6">
@@ -84,13 +89,15 @@ export default function QuestionCard({ question, onViewComments, onAnswer, onDel
                    <span>{question.commentsCount} Comments</span>
                </button>
                
-               <button 
-                 onClick={() => onAnswer(question)}
-                 className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-green-600 transition-colors"
-               >
-                   <FaPen size={10} />
-                   <span>{question.answer ? 'Edit Answer' : 'Answer'}</span>
-               </button>
+               {!isAdmin && (
+                 <button 
+                   onClick={() => onAnswer(question)}
+                   className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-green-600 transition-colors"
+                 >
+                     <FaPen size={10} />
+                     <span>{question.answer ? 'Edit Answer' : 'Answer'}</span>
+                 </button>
+               )}
            </div>
            <div className="text-xs text-gray-400 font-mono">
                ID: {question.id.slice(0, 6)}
