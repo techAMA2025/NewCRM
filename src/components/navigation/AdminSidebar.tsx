@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaUsers, FaChartPie, FaCog, FaFileAlt, FaHistory, FaMoneyBillWave, FaSignOutAlt, FaBriefcase, FaUserPlus, FaUniversity, FaChartBar, FaHandshake, FaMobileAlt, FaQuestionCircle } from 'react-icons/fa'
+import { FaUsers, FaChartPie, FaCog, FaFileAlt, FaHistory, FaMoneyBillWave, FaSignOutAlt, FaBriefcase, FaUserPlus, FaUniversity, FaChartBar, FaHandshake, FaMobileAlt, FaQuestionCircle, FaComments } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
