@@ -27,10 +27,12 @@ import { useAuth } from '@/context/AuthContext'
 import AdminSidebar from '@/components/navigation/AdminSidebar'
 import AdvocateSidebar from '@/components/navigation/AdvocateSidebar'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
+import SalesSidebar from '@/components/navigation/SalesSidebar'
 import SearchableDropdown from '@/components/SearchableDropdown'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
-import { FaGripVertical, FaPlus, FaSearch, FaTrash, FaSun, FaMoon } from 'react-icons/fa'
+import { FaGripVertical, FaPlus, FaSearch, FaTrash, FaSun, FaMoon, FaHistory, FaEdit, FaChevronRight } from 'react-icons/fa'
+import EscalationHistoryModal from './components/EscalationHistoryModal'
 import {
   DndContext,
   closestCenter,
@@ -183,6 +185,42 @@ const EscalationsPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('All')
   const [totalCount, setTotalCount] = useState(0)
+
+  // Edit Mode States
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Manual Entry States
+  const [isManualEntry, setIsManualEntry] = useState(false)
+  const [manualClientName, setManualClientName] = useState('')
+  const [manualPhone, setManualPhone] = useState('')
+  const [manualEmail, setManualEmail] = useState('')
+  const [manualAllocAdv, setManualAllocAdv] = useState('')
+  const [manualAllocAdvSecondary, setManualAllocAdvSecondary] = useState('')
+  const [manualAssignedTo, setManualAssignedTo] = useState('')
+
+  // Remark Modal States
+  const [historyModal, setHistoryModal] = useState<{
+    isOpen: boolean;
+    type: 'concern' | 'sales' | 'ops';
+    escalationId: string;
+    title: string;
+  }>({
+    isOpen: false,
+    type: 'concern',
+    escalationId: '',
+    title: ''
+  })
+
+
+  // State for tracking inline edits
+  const [editingRemarks, setEditingRemarks] = useState<Record<string, { 
+    concern?: string, 
+    salesRemark?: string, 
+    opsRemark?: string 
+  }>>({})
+
+  const [isSavingRemark, setIsSavingRemark] = useState<string | null>(null)
   
   // Custom columns state
   const [columns, setColumns] = useState(DEFAULT_COLUMNS)
@@ -210,7 +248,7 @@ const EscalationsPage = () => {
   // Check access
   useEffect(() => {
     if (!authLoading && user && userRole) {
-      const allowedRoles = ['admin', 'advocate', 'overlord']
+      const allowedRoles = ['admin', 'advocate', 'overlord', 'sales']
       if (!allowedRoles.includes(userRole)) {
         router.push('/dashboard')
       }
@@ -289,41 +327,95 @@ const EscalationsPage = () => {
 
     setSubmitting(true)
     try {
-      const client = clients.find(c => c.id === selectedClient)
-      if (!client) throw new Error('Client not found')
-
-      const escalationData = {
-        clientId: client.id,
-        clientName: client.name,
-        phone: client.phone,
-        email: client.email,
-        alloc_adv: client.alloc_adv,
-        alloc_adv_secondary: client.alloc_adv_secondary,
-        assignedTo: client.assignedTo,
+      let escalationData: any = {
         concern,
-        salesRemark,
-        opsRemark,
         status,
-        createdAt: serverTimestamp(),
-        createdBy: userName || 'Unknown'
+        updatedAt: serverTimestamp(),
       }
 
-      await addDoc(collection(db, 'escalations'), escalationData)
-      toast.success('Escalation created successfully')
+      if (isManualEntry) {
+        escalationData = {
+          ...escalationData,
+          clientId: 'manual',
+          clientName: manualClientName,
+          phone: manualPhone,
+          email: manualEmail,
+          alloc_adv: manualAllocAdv || 'Not Assigned',
+          alloc_adv_secondary: manualAllocAdvSecondary || 'Not Assigned',
+          assignedTo: manualAssignedTo || userName || 'Unknown',
+        }
+      } else {
+        const client = clients.find(c => c.id === selectedClient)
+        if (!client) throw new Error('Client not found')
+        
+        escalationData = {
+          ...escalationData,
+          clientId: client.id,
+          clientName: client.name,
+          phone: client.phone,
+          email: client.email,
+          alloc_adv: client.alloc_adv,
+          alloc_adv_secondary: client.alloc_adv_secondary,
+          assignedTo: client.assignedTo,
+        }
+      }
+
+      if (isEditMode && editingId) {
+        // Update existing
+        const escRef = doc(db, 'escalations', editingId)
+        await updateDoc(escRef, escalationData)
+        toast.success('Escalation updated successfully')
+      } else {
+        // Create new
+        escalationData.createdAt = serverTimestamp()
+        escalationData.createdBy = userName || 'Unknown'
+        escalationData.salesRemark = ''
+        escalationData.opsRemark = ''
+        
+        await addDoc(collection(db, 'escalations'), escalationData)
+        toast.success('Escalation created successfully')
+      }
+
       setIsDialogOpen(false)
-      // Reset form
-      setSelectedClient('')
-      setConcern('')
-      setSalesRemark('')
-      setOpsRemark('')
-      setStatus('Open')
+      resetForm()
       fetchData()
     } catch (error) {
-      console.error('Error adding escalation:', error)
-      toast.error('Failed to create escalation')
+      console.error('Error saving escalation:', error)
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} escalation`)
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const resetForm = () => {
+    setSelectedClient('')
+    setConcern('')
+    setSalesRemark('')
+    setOpsRemark('')
+    setStatus('Open')
+    setIsEditMode(false)
+    setEditingId(null)
+    setIsManualEntry(false)
+    setManualClientName('')
+    setManualPhone('')
+    setManualEmail('')
+    setManualAllocAdv('')
+    setManualAllocAdvSecondary('')
+    setManualAssignedTo('')
+  }
+
+  const handleOpenAdd = () => {
+    resetForm()
+    setIsDialogOpen(true)
+  }
+
+  const handleOpenEdit = (esc: Escalation) => {
+    setSelectedClient(esc.clientId)
+    setConcern(esc.concern)
+    setStatus(esc.status)
+    setIsEditMode(true)
+    setEditingId(esc.id)
+    setIsDialogOpen(true)
   }
 
   const updateEscalationStatus = async (id: string, newStatus: string) => {
@@ -335,6 +427,72 @@ const EscalationsPage = () => {
     } catch (error) {
       console.error('Error updating status:', error)
       toast.error('Failed to update status')
+    }
+  }
+
+
+  const handleInlineRemarkChange = (escalationId: string, type: 'concern' | 'salesRemark' | 'opsRemark', value: string) => {
+    setEditingRemarks(prev => ({
+      ...prev,
+      [escalationId]: {
+        ...(prev[escalationId] || {}),
+        [type]: value
+      }
+    }))
+  }
+
+  const handleInlineSave = async (escalationId: string, type: 'concern' | 'sales' | 'ops') => {
+    const fieldMap = {
+      concern: 'concern',
+      sales: 'salesRemark',
+      ops: 'opsRemark'
+    } as const;
+    
+    const field = fieldMap[type] as 'concern' | 'salesRemark' | 'opsRemark';
+    const content = editingRemarks[escalationId]?.[field];
+    
+    // If content is undefined, it means no change happened to that specific field in editingstate
+    // However, if the user clicks save, we should ideally have something in content
+    if (content === undefined) return; 
+
+    setIsSavingRemark(`${escalationId}-${type}`)
+    try {
+      // 1. Add to sub-collection history
+      const historyRef = collection(db, 'escalations', escalationId, `${type}History`)
+      await addDoc(historyRef, {
+        content: content.trim(),
+        author: userName || 'Unknown',
+        role: userRole || 'Unknown',
+        timestamp: serverTimestamp()
+      })
+
+      // 2. Update main document
+      const escRef = doc(db, 'escalations', escalationId)
+      const updateData: any = {}
+      updateData[field] = content.trim()
+      await updateDoc(escRef, updateData)
+
+      // 3. Update local main state
+      setEscalations(prev => prev.map(esc => 
+        esc.id === escalationId ? { ...esc, ...updateData } : esc
+      ))
+
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} updated`)
+      
+      // Clear specific editing state
+      setEditingRemarks(prev => {
+        const newState = { ...prev };
+        if (newState[escalationId]) {
+          const { [field]: _, ...rest } = newState[escalationId];
+          newState[escalationId] = rest;
+        }
+        return newState;
+      })
+    } catch (error) {
+      console.error('Error saving inline remark:', error)
+      toast.error('Failed to save')
+    } finally {
+      setIsSavingRemark(null)
     }
   }
 
@@ -361,6 +519,7 @@ const EscalationsPage = () => {
     if (userRole === 'admin') return <AdminSidebar />
     if (userRole === 'advocate') return <AdvocateSidebar />
     if (userRole === 'overlord') return <OverlordSidebar />
+    if (userRole === 'sales') return <SalesSidebar />
     return null
   }
 
@@ -386,12 +545,12 @@ const EscalationsPage = () => {
                 variant="outline"
                 size="icon"
                 onClick={() => setIsDarkMode(!isDarkMode)}
-                className={isDarkMode ? 'border-gray-800 bg-gray-900/50' : 'border-gray-200 bg-white'}
+                className={isDarkMode ? 'border-gray-800 bg-gray-900/50' : 'border-gray-200 bg-white text-black'}
               >
                 {isDarkMode ? <FaSun className="h-4 w-4 text-yellow-400" /> : <FaMoon className="h-4 w-4 text-indigo-600" />}
               </Button>
               <Button 
-                onClick={() => setIsDialogOpen(true)}
+                onClick={handleOpenAdd}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
               >
                 <FaPlus className="mr-2 h-4 w-4" /> Add Escalation
@@ -406,7 +565,7 @@ const EscalationsPage = () => {
                   <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
                   <Input
                     placeholder="Search by client, phone or concern..."
-                    className={`pl-10 placeholder:text-gray-400 ${isDarkMode ? 'bg-gray-950/50 border-gray-800 text-white' : 'bg-white text-gray-950 border-gray-200'}`}
+                    className={`pl-10 placeholder:text-gray-400 ${isDarkMode ? 'bg-gray-950/50 border-gray-800 text-white' : 'bg-white text-black border-gray-200'}`}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -414,7 +573,7 @@ const EscalationsPage = () => {
                 <div className="flex items-center gap-2">
                   <Label htmlFor="status-filter" className="whitespace-nowrap">Filter Status:</Label>
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger id="status-filter" className={`w-40 ${isDarkMode ? 'bg-gray-950/50 border-gray-800 text-white' : 'bg-white text-gray-950 border-gray-200'}`}>
+                    <SelectTrigger id="status-filter" className={`w-40 ${isDarkMode ? 'bg-gray-950/50 border-gray-800 text-white' : 'bg-white text-black border-gray-200'}`}>
                       <SelectValue placeholder="All Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -489,28 +648,128 @@ const EscalationsPage = () => {
                                         <span className={`text-[9px] font-bold opacity-60 uppercase mr-1 inline-block w-4 ${isDarkMode ? 'text-violet-500/70' : 'text-violet-600'}`}>S:</span>{esc.alloc_adv_secondary}
                                       </div>
                                       <div className={`text-[10px] border-t pt-1 ${isDarkMode ? 'text-amber-400/70 border-gray-800/50' : 'text-amber-700 border-gray-200'}`}>
-                                        <span className={`text-[8px] font-bold opacity-40 uppercase mr-1`}>BY:</span>{esc.assignedTo}
+                                        <span className={`text-[8px] font-bold opacity-40 uppercase mr-1`}>SALES BY:</span>{esc.assignedTo}
                                       </div>
                                     </td>
                                   )
-                                  if (col.id === 'details') return (
-                                    <td key={col.id} style={cellStyle} className="px-2 py-2 text-[11px] leading-relaxed">
-                                      <div className={`p-2 rounded-md border mb-1.5 shadow-sm ${isDarkMode ? 'bg-rose-500/10 border-rose-500/20 shadow-rose-900/10' : 'bg-rose-50 border-rose-200 shadow-rose-500/5'}`}>
-                                        <span className={`text-[9px] font-black uppercase tracking-wider mb-1 block ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>Concern</span>
-                                        <div className={`italic font-medium break-words leading-tight ${isDarkMode ? 'text-rose-100/90' : 'text-rose-900'}`}>{esc.concern}</div>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-2 mt-1.5">
-                                        <div className={`p-1.5 rounded border shadow-sm ${isDarkMode ? 'bg-sky-500/5 border-sky-500/20 shadow-sky-900/5' : 'bg-sky-50 border-sky-200 shadow-sky-500/5'}`}>
-                                          <span className={`text-[8px] font-black uppercase tracking-wider mb-1 block ${isDarkMode ? 'text-sky-400' : 'text-sky-600'}`}>Sales Remark</span>
-                                          <div className={`line-clamp-2 hover:line-clamp-none transition-all duration-300 ${isDarkMode ? 'text-sky-100/70' : 'text-sky-900'}`}>{esc.salesRemark || '-'}</div>
+                                  if (col.id === 'details') {
+                                    const escEditing = editingRemarks[esc.id] || {};
+                                    
+                                    return (
+                                      <td key={col.id} style={cellStyle} className="px-2 py-3">
+                                        <div className="space-y-4">
+                                          {/* Concern Section */}
+                                          <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between px-1">
+                                              <span className={`text-[10px] font-black uppercase tracking-wider ${isDarkMode ? 'text-rose-400/80' : 'text-rose-600/80'}`}>Concern</span>
+                                              <button 
+                                                onClick={() => setHistoryModal({ isOpen: true, type: 'concern', escalationId: esc.id, title: 'Concern History' })}
+                                                className={`flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded transition-colors ${
+                                                  isDarkMode ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                                                }`}
+                                              >
+                                                <FaHistory size={8} /> History
+                                              </button>
+                                            </div>
+                                            <div className="relative group">
+                                              <Textarea 
+                                                value={escEditing.concern ?? esc.concern}
+                                                onChange={(e) => handleInlineRemarkChange(esc.id, 'concern', e.target.value)}
+                                                className={`text-[11px] min-h-[60px] resize-none border-none shadow-none focus-visible:ring-1 focus-visible:ring-rose-500/50 ${
+                                                  isDarkMode ? 'bg-rose-500/5 text-rose-100 placeholder:text-rose-900/50' : 'bg-rose-50 text-rose-950 placeholder:text-rose-300'
+                                                }`}
+                                                placeholder="Describe the concern..."
+                                              />
+                                              {escEditing.concern !== undefined && escEditing.concern !== esc.concern && (
+                                                <Button 
+                                                  size="sm"
+                                                  onClick={() => handleInlineSave(esc.id, 'concern')}
+                                                  disabled={isSavingRemark === `${esc.id}-concern`}
+                                                  className="absolute bottom-1.5 right-1.5 h-6 text-[10px] bg-rose-600 hover:bg-rose-700 text-white px-3 py-0 rounded-lg shadow-lg animate-in fade-in slide-in-from-right-2"
+                                                >
+                                                  {isSavingRemark === `${esc.id}-concern` ? '...' : 'Save'}
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          <div className="grid grid-cols-2 gap-3">
+                                            {/* Sales Remark Section */}
+                                            <div className="space-y-1.5">
+                                              <div className="flex items-center justify-between px-1">
+                                                <span className={`text-[9px] font-black uppercase tracking-wider ${isDarkMode ? 'text-sky-400/80' : 'text-sky-600/80'}`}>Sales Remark</span>
+                                                <button 
+                                                  onClick={() => setHistoryModal({ isOpen: true, type: 'sales', escalationId: esc.id, title: 'Sales Remark History' })}
+                                                  className={`flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded transition-colors ${
+                                                    isDarkMode ? 'bg-sky-500/10 text-sky-400 hover:bg-sky-500/20' : 'bg-sky-100 text-sky-700 hover:bg-sky-200'
+                                                  }`}
+                                                >
+                                                  <FaHistory size={7} /> History
+                                                </button>
+                                              </div>
+                                              <div className="relative group">
+                                                <Textarea 
+                                                  disabled={userRole !== 'sales' && userRole !== 'admin' && userRole !== 'overlord'}
+                                                  value={escEditing.salesRemark ?? esc.salesRemark}
+                                                  onChange={(e) => handleInlineRemarkChange(esc.id, 'salesRemark', e.target.value)}
+                                                  className={`text-[10px] min-h-[70px] resize-none border-none shadow-none focus-visible:ring-1 focus-visible:ring-sky-500/50 ${
+                                                    isDarkMode ? 'bg-sky-500/5 text-sky-100 disabled:opacity-100 disabled:text-sky-200' : 'bg-sky-50 text-sky-950 disabled:opacity-100 disabled:text-black'
+                                                  }`}
+                                                  placeholder={userRole === 'sales' || userRole === 'admin' || userRole === 'overlord' ? "Sales notes..." : "Read only"}
+                                                />
+                                                {escEditing.salesRemark !== undefined && escEditing.salesRemark !== esc.salesRemark && (
+                                                  <Button 
+                                                    size="sm"
+                                                    onClick={() => handleInlineSave(esc.id, 'sales')}
+                                                    disabled={isSavingRemark === `${esc.id}-sales`}
+                                                    className="absolute bottom-1 right-1 h-5 text-[9px] bg-sky-600 hover:bg-sky-700 text-white px-2 py-0 rounded shadow-md animate-in fade-in slide-in-from-right-2"
+                                                  >
+                                                    {isSavingRemark === `${esc.id}-sales` ? '...' : 'Save'}
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Ops Remark Section */}
+                                            <div className="space-y-1.5">
+                                              <div className="flex items-center justify-between px-1">
+                                                <span className={`text-[9px] font-black uppercase tracking-wider ${isDarkMode ? 'text-amber-400/80' : 'text-amber-600/80'}`}>Ops Remark</span>
+                                                <button 
+                                                  onClick={() => setHistoryModal({ isOpen: true, type: 'ops', escalationId: esc.id, title: 'Ops Remark History' })}
+                                                  className={`flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded transition-colors ${
+                                                    isDarkMode ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                                  }`}
+                                                >
+                                                  <FaHistory size={7} /> History
+                                                </button>
+                                              </div>
+                                              <div className="relative group">
+                                                <Textarea 
+                                                  disabled={userRole !== 'advocate' && userRole !== 'admin' && userRole !== 'overlord'}
+                                                  value={escEditing.opsRemark ?? esc.opsRemark}
+                                                  onChange={(e) => handleInlineRemarkChange(esc.id, 'opsRemark', e.target.value)}
+                                                  className={`text-[10px] min-h-[70px] resize-none border-none shadow-none focus-visible:ring-1 focus-visible:ring-amber-500/50 ${
+                                                    isDarkMode ? 'bg-amber-500/5 text-amber-100 disabled:opacity-100 disabled:text-amber-200' : 'bg-amber-50 text-amber-950 disabled:opacity-100 disabled:text-black'
+                                                  }`}
+                                                  placeholder={userRole === 'advocate' || userRole === 'admin' || userRole === 'overlord' ? "Ops notes..." : "Read only"}
+                                                />
+                                                {escEditing.opsRemark !== undefined && escEditing.opsRemark !== esc.opsRemark && (
+                                                  <Button 
+                                                    size="sm"
+                                                    onClick={() => handleInlineSave(esc.id, 'ops')}
+                                                    disabled={isSavingRemark === `${esc.id}-ops`}
+                                                    className="absolute bottom-1 right-1 h-5 text-[9px] bg-amber-600 hover:bg-amber-700 text-white px-2 py-0 rounded shadow-md animate-in fade-in slide-in-from-right-2"
+                                                  >
+                                                    {isSavingRemark === `${esc.id}-ops` ? '...' : 'Save'}
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
                                         </div>
-                                        <div className={`p-1.5 rounded border shadow-sm ${isDarkMode ? 'bg-amber-500/5 border-amber-500/20 shadow-amber-900/5' : 'bg-amber-50 border-amber-200 shadow-amber-500/5'}`}>
-                                          <span className={`text-[8px] font-black uppercase tracking-wider mb-1 block ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Ops Remark</span>
-                                          <div className={`line-clamp-2 hover:line-clamp-none transition-all duration-300 ${isDarkMode ? 'text-amber-100/70' : 'text-amber-900'}`}>{esc.opsRemark || '-'}</div>
-                                        </div>
-                                      </div>
-                                    </td>
-                                  )
+                                      </td>
+                                    )
+                                  }
                                   if (col.id === 'status') return (
                                     <td key={col.id} style={cellStyle} className="px-2 py-2">
                                       <Select 
@@ -533,15 +792,25 @@ const EscalationsPage = () => {
                                     </td>
                                   )
                                   if (col.id === 'actions') return (
-                                    <td key={col.id} style={cellStyle} className="px-2 py-2 text-center">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDelete(esc.id)}
-                                        className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-500/10 transition-colors p-0"
-                                      >
-                                        <FaTrash className="h-3 w-3" />
-                                      </Button>
+                                    <td key={col.id} style={cellStyle} className="px-2 py-2">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleOpenEdit(esc)}
+                                          className="h-7 w-7 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-500/10 transition-colors p-0"
+                                        >
+                                          <FaEdit className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDelete(esc.id)}
+                                          className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-500/10 transition-colors p-0"
+                                        >
+                                          <FaTrash className="h-3 w-3" />
+                                        </Button>
+                                      </div>
                                     </td>
                                   )
                                   return <td key={col.id} style={cellStyle}></td>
@@ -559,25 +828,108 @@ const EscalationsPage = () => {
         </div>
       </main>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className={`${isDarkMode ? 'bg-gray-900 border-gray-800 text-white' : 'bg-white'}`}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open)
+        if (!open) resetForm()
+      }}>
+        <DialogContent className={`${isDarkMode ? 'bg-gray-900 border-gray-800 text-white' : 'bg-white text-black'}`}>
           <DialogHeader>
-            <DialogTitle>Add New Escalation</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit Escalation' : 'Add New Escalation'}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Create a new escalation for a client and assign initial remarks.
+              {isEditMode ? 'Update core details of this escalation.' : 'Create a new escalation for a client.'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Select Client</Label>
-              <SearchableDropdown
-                options={clients.map(c => ({ value: c.id, label: `${c.name} (${c.phone})` }))}
-                value={selectedClient}
-                onChange={setSelectedClient}
-                placeholder="Search Client..."
-                className="bg-white text-black border-gray-300"
-              />
+
+          {!isEditMode && (
+            <div className="flex items-center justify-between p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mb-4">
+              <span className="text-xs font-bold text-indigo-400">Manual Client Entry</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsManualEntry(!isManualEntry)}
+                className={`h-7 transition-all ${isManualEntry ? 'bg-indigo-600 text-black' : 'text-black'}`}
+              >
+                {isManualEntry ? 'Enabled' : 'Disabled'}
+              </Button>
             </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+            {!isManualEntry || isEditMode ? (
+              <div className="space-y-2">
+                <Label>Select Client</Label>
+                <SearchableDropdown
+                  options={clients.map(c => ({ value: c.id, label: `${c.name} (${c.phone})` }))}
+                  value={selectedClient}
+                  onChange={setSelectedClient}
+                  placeholder="Search Client..."
+                  className="bg-white text-black border-gray-300"
+                />
+              </div>
+            ) : (
+              <div className="space-y-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Client Name</Label>
+                    <Input 
+                      value={manualClientName}
+                      onChange={(e) => setManualClientName(e.target.value)}
+                      className="bg-white text-black border-gray-300"
+                      placeholder="Enter Name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input 
+                      value={manualPhone}
+                      onChange={(e) => setManualPhone(e.target.value)}
+                      className="bg-white text-black border-gray-300"
+                      placeholder="Enter Phone"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input 
+                    value={manualEmail}
+                    onChange={(e) => setManualEmail(e.target.value)}
+                    className="bg-white text-black border-gray-300"
+                    placeholder="Enter Email"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-bold text-emerald-500">Advocate (Primary)</Label>
+                    <Input 
+                      value={manualAllocAdv}
+                      onChange={(e) => setManualAllocAdv(e.target.value)}
+                      className="bg-white text-black border-gray-300 h-8 text-xs"
+                      placeholder="Name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-bold text-violet-500">Advocate (Secondary)</Label>
+                    <Input 
+                      value={manualAllocAdvSecondary}
+                      onChange={(e) => setManualAllocAdvSecondary(e.target.value)}
+                      className="bg-white text-black border-gray-300 h-8 text-xs"
+                      placeholder="Name"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] uppercase font-bold text-amber-500">Assigned By (Sales)</Label>
+                  <Input 
+                    value={manualAssignedTo}
+                    onChange={(e) => setManualAssignedTo(e.target.value)}
+                    className="bg-white text-black border-gray-300 h-8 text-xs"
+                    placeholder="Salesperson Name"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="concern">Concern</Label>
               <Textarea 
@@ -586,35 +938,12 @@ const EscalationsPage = () => {
                 value={concern}
                 onChange={(e) => setConcern(e.target.value)}
                 className="bg-white text-black border-gray-300 placeholder:text-gray-400"
-                rows={3}
+                rows={4}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="salesRemark">Sales Remark</Label>
-                <Textarea 
-                  id="salesRemark" 
-                  placeholder="Sales perspective..." 
-                  value={salesRemark}
-                  onChange={(e) => setSalesRemark(e.target.value)}
-                  className="bg-white text-black border-gray-300 text-xs placeholder:text-gray-400"
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="opsRemark">Ops Remark</Label>
-                <Textarea 
-                  id="opsRemark" 
-                  placeholder="Operations perspective..." 
-                  value={opsRemark}
-                  onChange={(e) => setOpsRemark(e.target.value)}
-                  className="bg-white text-black border-gray-300 text-xs placeholder:text-gray-400"
-                  rows={3}
-                />
-              </div>
-            </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="initial-status">Initial Status</Label>
+              <Label htmlFor="initial-status">{isEditMode ? 'Status' : 'Initial Status'}</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="bg-white text-black border-gray-300">
                   <SelectValue />
@@ -640,12 +969,21 @@ const EscalationsPage = () => {
                 disabled={submitting}
                 className="bg-indigo-600 hover:bg-indigo-700"
               >
-                {submitting ? 'Creating...' : 'Create Escalation'}
+                {submitting ? 'Saving...' : isEditMode ? 'Update Escalation' : 'Create Escalation'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* History Modal */}
+      <EscalationHistoryModal
+        isOpen={historyModal.isOpen}
+        onClose={() => setHistoryModal(prev => ({ ...prev, isOpen: false }))}
+        escalationId={historyModal.escalationId}
+        type={historyModal.type}
+        title={historyModal.title}
+      />
     </div>
   )
 }

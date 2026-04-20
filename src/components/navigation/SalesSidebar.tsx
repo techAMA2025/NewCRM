@@ -202,6 +202,15 @@ const SalesSidebar: React.FC<SalesSidebarProps> = ({ collapsed }) => {
               </Link>
             </li>
             <li>
+              <Link href="/escalations" 
+                className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/escalations')}`}
+                title={isCollapsed ? "Escalations" : ""}
+              >
+                <FaEnvelopeOpenText className={isCollapsed ? '' : 'mr-3'} />
+                {!isCollapsed && <span>Escalations</span>}
+              </Link>
+            </li>
+            <li>
               <Link href="/calculator" 
                 className={`flex items-center py-3 hover:bg-green-700 dark:hover:bg-gray-800 ${isCollapsed ? 'justify-center px-0' : 'px-6'} ${isActive('/calculator')}`}
                 title={isCollapsed ? "Calculator" : ""}
