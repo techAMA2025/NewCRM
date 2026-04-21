@@ -817,7 +817,7 @@ const SettlementTracker = () => {
         bankId: (isManualBankEntry || isNewClientMode) ? 'manual' : selectedBank,
         bankName: bankData.bankName,
         accountNumber: bankData.accountNumber,
-        loanAmount: bankData.loanAmount,
+        loanAmount: (isManualBankEntry || isNewClientMode) ? manualLoanAmount.replace(/,/g, '') : (manualLoanAmount || bankData.loanAmount).replace(/,/g, ''),
         loanType: bankData.loanType,
         status: settlementStatus,
         remarks: remarks,
@@ -1001,7 +1001,7 @@ const SettlementTracker = () => {
   }
   const [isFetchingFees, setIsFetchingFees] = useState(false)
 
-  const autoFetchFees = async (clientId: string, bankId: string, accNum: string, bName: string) => {
+  const autoFetchFees = async (clientId: string, bankId: string, accNum: string, bName: string, expectedLoan?: string) => {
     const client = clients.find(c => c.id === clientId);
     if (!client?.documentUrl || !accNum) return;
 
@@ -1013,21 +1013,37 @@ const SettlementTracker = () => {
         body: JSON.stringify({
           documentUrl: client.documentUrl,
           accountNumber: accNum,
-          bankName: bName
+          bankName: bName,
+          expectedLoanAmount: expectedLoan
         })
       });
 
       const result = await response.json();
-      if (result.success && result.fee) {
-        // Clean and format the fee
-        const cleanFee = result.fee.replace(/,/g, '');
-        setTotalFees(Number(cleanFee).toLocaleString('en-IN'));
-        toast.success(`Fees fetched from Annexure-A: ₹${result.fee}`);
+      if (result.success) {
+        let toastMsg = "";
+        
+        if (result.fee) {
+          // Clean and format the fee
+          const cleanFee = result.fee.replace(/,/g, '');
+          setTotalFees(Number(cleanFee).toLocaleString('en-IN'));
+          toastMsg += `Fees: ₹${result.fee}`;
+        }
+        
+        if (result.loanAmount) {
+          // Clean and format the loan amount
+          const cleanLoan = result.loanAmount.replace(/,/g, '');
+          setManualLoanAmount(Number(cleanLoan).toLocaleString('en-IN'));
+          toastMsg += toastMsg ? ` | Loan: ₹${result.loanAmount}` : `Loan: ₹${result.loanAmount}`;
+        }
+
+        if (toastMsg) {
+          toast.success(`Data fetched from Annexure-A: ${toastMsg}`);
+        }
       } else {
-        console.warn("Fee extraction failed:", result.error);
+        console.warn("Data extraction failed:", result.error);
       }
     } catch (error) {
-      console.error("Error auto-fetching fees:", error);
+      console.error("Error auto-fetching data:", error);
     } finally {
       setIsFetchingFees(false);
     }
@@ -1038,7 +1054,7 @@ const SettlementTracker = () => {
     if (source === 'Billcut' && selectedBank && selectedClient && !isManualBankEntry) {
       const selectedBankData = availableBanks.find(b => b.id === selectedBank);
       if (selectedBankData) {
-        autoFetchFees(selectedClient, selectedBank, selectedBankData.accountNumber, selectedBankData.bankName);
+        autoFetchFees(selectedClient, selectedBank, selectedBankData.accountNumber, selectedBankData.bankName, selectedBankData.loanAmount);
       }
     }
   }, [source, selectedBank, selectedClient, isManualBankEntry, availableBanks]);
@@ -1051,11 +1067,19 @@ const SettlementTracker = () => {
       setIsManualBankEntry(false);
       setSelectedBank(bankId);
       
+      // Auto-populate loan amount from database bank info
+      const selectedBankData = availableBanks.find(b => b.id === bankId);
+      if (selectedBankData && selectedBankData.loanAmount) {
+        setManualLoanAmount(formatLoanAmount(selectedBankData.loanAmount));
+      } else {
+        setManualLoanAmount('');
+      }
+      
       // TRIGGER AUTO-FETCH ONLY FOR BILLCUT
       if (source === 'Billcut') {
-        const selectedBankData = availableBanks.find(b => b.id === bankId);
-        if (selectedBankData && selectedClient) {
-          autoFetchFees(selectedClient, bankId, selectedBankData.accountNumber, selectedBankData.bankName);
+        const bankData = selectedBankData || availableBanks.find(b => b.id === bankId);
+        if (bankData && selectedClient) {
+          autoFetchFees(selectedClient, bankId, bankData.accountNumber, bankData.bankName, bankData.loanAmount);
         }
       }
     }
@@ -2030,7 +2054,7 @@ const SettlementTracker = () => {
                     <SelectContent>
                       {availableBanks.map((bank) => (
                         <SelectItem key={bank.id} value={bank.id}>
-                          {bank.bankName} - {bank.accountNumber} ({bank.loanType})
+                          {bank.bankName} - {bank.accountNumber} ({bank.loanType}) {bank.loanAmount ? `| ₹${formatLoanAmount(bank.loanAmount)}` : ''}
                         </SelectItem>
                       ))}
                       <SelectItem value="manual">
@@ -2093,6 +2117,18 @@ const SettlementTracker = () => {
 
               {/* Settlement Amount and Source */}
                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                    <Label htmlFor="manualLoanAmount">Loan Amount</Label>
+                    <Input
+                      id="manualLoanAmount"
+                      value={manualLoanAmount}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
+                        setManualLoanAmount(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                      }}
+                      placeholder="Enter loan amount"
+                    />
+                  </div>
                    <div className="space-y-2">
                     <Label htmlFor="settlementAmount">Settlement Amount</Label>
                     <Input

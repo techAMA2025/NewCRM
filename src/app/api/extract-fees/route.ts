@@ -7,15 +7,15 @@ export async function POST(request: NextRequest) {
   if (auth.error) return auth.error;
 
   try {
-    const { documentUrl, accountNumber, bankName } = await request.json();
+    const { documentUrl, accountNumber, bankName, expectedLoanAmount } = await request.json();
 
     if (!documentUrl || !accountNumber) {
       return NextResponse.json({ error: 'documentUrl and accountNumber are required' }, { status: 400 });
     }
 
-    console.log(`Starting fee extraction for account: ${accountNumber} from ${documentUrl}`);
+    console.log(`Starting smarter fee extraction for account: ${accountNumber} (Expected Loan: ${expectedLoanAmount}) from ${documentUrl}`);
 
-    // 1. Fetch the document
+    // ... (fetching and parsing remains same) ...
     const response = await fetch(documentUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch document: ${response.statusText}`);
@@ -23,58 +23,53 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 2. Convert DOCX to HTML using mammoth
     const { value: html } = await mammoth.convertToHtml({ buffer });
 
-    // 3. Extraction Logic
-    // Look for ANNEXURE-A heading (more flexible)
     const annexureHeading = /ANNEXURE\s*[-–]?\s*A/i;
     const annexureIndex = html.search(annexureHeading);
 
     if (annexureIndex === -1) {
-      console.warn("ANNEXURE-A heading not found in document. Content snippet:", html.substring(0, 500));
       return NextResponse.json({ error: 'Annexure-A section not found in document' }, { status: 404 });
     }
 
-    // Extract content AFTER the heading
     const postAnnexureContent = html.substring(annexureIndex);
-    
-    // Find the first table in this section
     const tableMatch = postAnnexureContent.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
     if (!tableMatch) {
       return NextResponse.json({ error: 'Annexure-A table not found' }, { status: 404 });
     }
 
     const tableContent = tableMatch[1];
-    
-    // Split table into rows
     const rows = tableContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
     
-    let extractedFee: string | null = null;
     let feesColumnIndex = -1;
+    let loanColumnIndex = -1;
 
-    // Identify "Fees" column index
+    // Identify column indices
     const headerRow = rows[0];
     if (headerRow) {
       const headerCells = headerRow.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi) || [];
       for (let i = 0; i < headerCells.length; i++) {
         const text = headerCells[i].replace(/<[^>]*>/g, '').trim().toLowerCase();
-        if (text.includes('fee')) {
-          feesColumnIndex = i;
-          break;
+        if (text.includes('fee') && feesColumnIndex === -1) feesColumnIndex = i;
+        if ((text.includes('loan') || text.includes('principle') || text.includes('principal') || text.includes('amount')) && 
+            !text.includes('fee') && loanColumnIndex === -1) {
+          loanColumnIndex = i;
         }
       }
     }
 
-    // Default to last column if "Fees" not found by name
-    if (feesColumnIndex === -1 && rows[1]) {
+    if (rows[1]) {
         const firstDataCells = rows[1].match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi) || [];
-        feesColumnIndex = firstDataCells.length - 1;
+        if (feesColumnIndex === -1) feesColumnIndex = firstDataCells.length - 1;
+        if (loanColumnIndex === -1 && firstDataCells.length > 2) loanColumnIndex = 2;
     }
 
-    // Matcher logic
+    // Matcher logic with scoring
     const cleanAccount = accountNumber.replace(/\s/g, '').toLowerCase();
     const cleanBank = bankName ? bankName.toLowerCase().trim() : "";
+    const cleanExpectedLoan = expectedLoanAmount ? String(expectedLoanAmount).replace(/,/g, '').split('.')[0] : null;
+
+    let bestMatch = { fee: null as string | null, loan: null as string | null, score: 0 };
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
@@ -82,34 +77,61 @@ export async function POST(request: NextRequest) {
       const rowText = row.replace(/<[^>]*>/g, '').toLowerCase();
       const cleanRowText = rowText.replace(/\s/g, '');
 
-      // Priority 1: Exact account number match in the row
-      const hasAccount = cleanRowText.includes(cleanAccount);
-      
-      // Priority 2: Bank name match
-      const hasBank = cleanBank && rowText.includes(cleanBank);
+      let currentScore = 0;
 
-      if (hasAccount || hasBank) {
-        if (cells[feesColumnIndex]) {
-          const rawFee = cells[feesColumnIndex].replace(/<[^>]*>/g, '').trim();
-          // Extract the decimal number (handling ₹ and commas)
-          const feeMatch = rawFee.match(/[\d,]+(\.\d+)?/);
-          if (feeMatch) {
-            extractedFee = feeMatch[0].replace(/,/g, '');
-            break;
+      // Match Account Number (Highest Weight)
+      if (cleanRowText.includes(cleanAccount)) {
+        currentScore += 100;
+      }
+
+      // Match Bank Name
+      if (cleanBank && rowText.includes(cleanBank)) {
+        currentScore += 40;
+      }
+
+      // Extract Loan for this row to compare
+      let rowLoan = null;
+      if (loanColumnIndex !== -1 && cells[loanColumnIndex]) {
+        const rawLoan = cells[loanColumnIndex].replace(/<[^>]*>/g, '').trim();
+        const loanMatch = rawLoan.match(/[\d,]+(\.\d+)?/);
+        if (loanMatch) {
+          rowLoan = loanMatch[0].replace(/,/g, '');
+          // Match Loan Amount (Weighted higher than bank name alone)
+          if (cleanExpectedLoan && rowLoan.includes(cleanExpectedLoan)) {
+            currentScore += 60;
           }
         }
       }
+
+      if (currentScore > bestMatch.score) {
+        // Extract Fee for this potential best match
+        let rowFee = null;
+        if (feesColumnIndex !== -1 && cells[feesColumnIndex]) {
+          const rawFee = cells[feesColumnIndex].replace(/<[^>]*>/g, '').trim();
+          const feeMatch = rawFee.match(/[\d,]+(\.\d+)?/);
+          if (feeMatch) {
+            rowFee = feeMatch[0].replace(/,/g, '');
+          }
+        }
+        
+        bestMatch = { fee: rowFee, loan: rowLoan, score: currentScore };
+        
+        // If we have a very strong match (Account or Bank+Loan), we can stop early
+        if (currentScore >= 100) break; 
+      }
     }
 
-    if (extractedFee) {
+    if (bestMatch.score > 0 && (bestMatch.fee || bestMatch.loan)) {
       return NextResponse.json({ 
         success: true, 
-        fee: extractedFee,
-        method: 'Annexure-A Table extraction'
+        fee: bestMatch.fee,
+        loanAmount: bestMatch.loan,
+        method: 'Smarter Annexure-A detection',
+        score: bestMatch.score
       });
     }
 
-    return NextResponse.json({ error: 'Could not find fee for this account in Annexure-A' }, { status: 404 });
+    return NextResponse.json({ error: 'Could not find data for this account in Annexure-A' }, { status: 404 });
 
   } catch (error: any) {
     console.error('Error in fee extraction API:', error);
