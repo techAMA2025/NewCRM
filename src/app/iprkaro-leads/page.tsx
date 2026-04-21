@@ -9,6 +9,8 @@ import {
   where,
   doc,
   updateDoc,
+  setDoc,
+  deleteDoc,
   addDoc,
   serverTimestamp,
   onSnapshot,
@@ -192,6 +194,7 @@ const DEFAULT_COLUMNS: ColumnDef[] = [
   { id: "assignedTo", label: "Assigned To", width: 112 },
   { id: "query", label: "Query", width: 120 },
   { id: "remarks", label: "Remarks", width: 160 },
+  { id: "actions", label: "Actions", width: 140 },
 ]
 
 // SortableHeader moved to components/SortableHeader.tsx
@@ -310,6 +313,11 @@ const IprKaroLeadsPage = () => {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [isMounted, setIsMounted] = useState(false)
 
+  // Actions states
+  const [banningLeadId, setBanningLeadId] = useState<string | null>(null)
+  const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null)
+  const [bannedPhones, setBannedPhones] = useState<Set<string>>(new Set())
+
   // TM class tooltip (portal-rendered to escape overflow/stacking clipping)
   const [tmTooltip, setTmTooltip] = useState<{ classNum: number; x: number; y: number } | null>(null)
 
@@ -419,6 +427,103 @@ const IprKaroLeadsPage = () => {
       }
     })
   }, [leads.map(l => l.id).join(",")])
+
+  // ── Real-time Banned Users Sync ───────────────────────────────
+  useEffect(() => {
+    if (!currentUser) return
+
+    const q = query(collection(iprkaroDb, "banned_users"))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const bannedSet = new Set<string>()
+      snapshot.forEach((doc) => {
+        bannedSet.add(doc.id)
+      })
+      setBannedPhones(bannedSet)
+    }, (error) => {
+      console.error("[onSnapshot] Error for banned_users:", error)
+    })
+
+    return () => unsubscribe()
+  }, [currentUser])
+
+  // ── Action Handlers ─────────────────────────────────────────
+  const banLead = async (lead: IprKaroLead) => {
+    if (!lead.phone) {
+      toast.error("Cannot ban lead without a phone number")
+      return
+    }
+
+    if (!confirm(`Are you sure you want to BAN this lead (${lead.phone})? They will be blocked from performing trademark searches.`)) {
+      return
+    }
+
+    try {
+      setBanningLeadId(lead.id)
+      
+      const phoneId = lead.phone.replace(/\s+/g, "").trim()
+      
+      // Using iprkaroDb for the banned_users collection
+      await setDoc(doc(iprkaroDb, "banned_users", phoneId), {
+        bannedAt: serverTimestamp(),
+        reason: "Banned by admin from IPRKaro Dashboard",
+        leadId: lead.id,
+        leadName: lead.name,
+        bannedBy: currentUser?.email || "admin",
+        source: "IPRKaro"
+      })
+      
+      // onSnapshot will update bannedPhones state automatically
+      toast.success(`Lead ${lead.name} has been BANNED successfully`)
+      
+    } catch (err) {
+      console.error("Error banning lead:", err)
+      toast.error("Failed to ban lead")
+    } finally {
+      setBanningLeadId(null)
+    }
+  }
+
+  const unbanLead = async (lead: IprKaroLead) => {
+    if (!lead.phone) return
+
+    if (!confirm(`Are you sure you want to UNBAN lead ${lead.name}?`)) {
+      return
+    }
+
+    try {
+      setBanningLeadId(lead.id)
+      const phoneId = lead.phone.replace(/\s+/g, "").trim()
+      
+      // Using iprkaroDb for the banned_users collection
+      await deleteDoc(doc(iprkaroDb, "banned_users", phoneId))
+      
+      // onSnapshot will update bannedPhones state automatically
+      toast.success(`Lead ${lead.name} has been UNBANNED`)
+    } catch (err) {
+      console.error("Error unbanning lead:", err)
+      toast.error("Failed to unban lead")
+    } finally {
+      setBanningLeadId(null)
+    }
+  }
+
+  const deleteLead = async (leadId: string, leadName: string) => {
+    if (!confirm(`Are you sure you want to PERMANENTLY DELETE lead: ${leadName}? This cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setDeletingLeadId(leadId)
+      await deleteDoc(doc(db, "ipr_karo_leads", leadId))
+      setLeads(prev => prev.filter(l => l.id !== leadId))
+      toast.success("Lead deleted successfully")
+    } catch (err) {
+      console.error("Error deleting lead:", err)
+      toast.error("Failed to delete lead")
+    } finally {
+      setDeletingLeadId(null)
+    }
+  }
 
   // ── Fetch Sales Team (active only) ─────────────────────────
   useEffect(() => {
@@ -837,6 +942,55 @@ const IprKaroLeadsPage = () => {
             currentUserName={currentUserName}
             onSaveSuccess={handleNotesSaveSuccess}
           />
+        )
+      }
+      case "actions": {
+        const phoneNormalized = lead.phone?.replace(/\s+/g, "").trim() || ""
+        const isBanned = phoneNormalized && bannedPhones.has(phoneNormalized)
+        
+        return (
+          <td key={colId} className={cls} style={cellStyle}>
+            <div className="flex items-center gap-1.5">
+              {/* Ban/Unban Button */}
+              <button
+                onClick={() => isBanned ? unbanLead(lead) : banLead(lead)}
+                disabled={banningLeadId === lead.id}
+                className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all shadow-sm active:scale-95 disabled:opacity-50 ${
+                  isBanned 
+                    ? "bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200" 
+                    : "bg-[#5A4C33] text-white border border-[#5A4C33]/10 hover:bg-[#4A3F2A]"
+                }`}
+                title={isBanned ? "Unban this user" : "Ban this user from searching"}
+              >
+                {banningLeadId === lead.id ? (
+                  <div className="animate-spin rounded-full h-2.5 w-2.5 border-2 border-current border-t-transparent" />
+                ) : (
+                  <>
+                    {isBanned ? (
+                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                    ) : (
+                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                    )}
+                    <span>{isBanned ? "Unban" : "Ban"}</span>
+                  </>
+                )}
+              </button>
+
+              {/* Delete Button */}
+              <button
+                onClick={() => deleteLead(lead.id, lead.name)}
+                disabled={deletingLeadId === lead.id}
+                className="w-8 flex items-center justify-center px-1 py-1.5 rounded-lg text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                title="Delete lead"
+              >
+                {deletingLeadId === lead.id ? (
+                  <div className="animate-spin rounded-full h-2.5 w-2.5 border-2 border-rose-600 border-t-transparent" />
+                ) : (
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                )}
+              </button>
+            </div>
+          </td>
         )
       }
       default: return <td key={colId} className={cls} style={cellStyle}>–</td>
