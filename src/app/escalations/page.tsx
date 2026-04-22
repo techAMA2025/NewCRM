@@ -67,6 +67,10 @@ interface Escalation {
   status: string
   createdAt: any
   createdBy: string
+  addedByName?: string
+  addedByRole?: string
+  updatedAt?: any
+  lastRemarkAt?: any
 }
 
 // Interface for client data
@@ -369,6 +373,13 @@ const EscalationsPage = () => {
         // Create new
         escalationData.createdAt = serverTimestamp()
         escalationData.createdBy = userName || 'Unknown'
+        
+        // Store addedByName and addedByRole from localStorage
+        if (typeof window !== 'undefined') {
+          escalationData.addedByName = localStorage.getItem('userName') || userName || 'Unknown'
+          escalationData.addedByRole = localStorage.getItem('userRole') || userRole || 'Unknown'
+        }
+
         escalationData.salesRemark = ''
         escalationData.opsRemark = ''
         
@@ -468,8 +479,11 @@ const EscalationsPage = () => {
 
       // 2. Update main document
       const escRef = doc(db, 'escalations', escalationId)
-      const updateData: any = {}
-      updateData[field] = content.trim()
+      const updateData: any = {
+        [field]: content.trim(),
+        lastRemarkAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }
       await updateDoc(escRef, updateData)
 
       // 3. Update local main state
@@ -625,8 +639,29 @@ const EscalationsPage = () => {
                               </td>
                             </tr>
                           ) : (
-                            filteredEscalations.map((esc) => (
-                              <tr key={esc.id} className={`${isDarkMode ? 'hover:bg-gray-800/30' : 'hover:bg-gray-50'} transition-colors`}>
+                            filteredEscalations.map((esc) => {
+                              const lastRemark = esc.lastRemarkAt || esc.createdAt;
+                              let isStale = false;
+                              
+                              if (esc.status !== 'Closed' && lastRemark) {
+                                const lastRemarkDate = lastRemark instanceof Timestamp ? lastRemark.toDate() : 
+                                                      (lastRemark?.seconds ? new Date(lastRemark.seconds * 1000) : new Date(lastRemark));
+                                const twoDaysAgo = new Date();
+                                twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+                                isStale = lastRemarkDate < twoDaysAgo;
+                              }
+
+                              return (
+                                <tr 
+                                  key={esc.id} 
+                                  className={`
+                                    ${isDarkMode 
+                                      ? (isStale ? 'bg-red-950/40 hover:bg-red-950/60 border-l-4 border-l-red-600' : 'hover:bg-gray-800/30') 
+                                      : (isStale ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500' : 'hover:bg-gray-50')
+                                    } 
+                                    transition-colors
+                                  `}
+                                >
                                 {columns.map((col) => {
                                   const width = columnWidths[col.id] || col.width;
                                   const cellStyle = { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` };
