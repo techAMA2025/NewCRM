@@ -304,14 +304,23 @@ const BillcutLeadReportContent = () => {
       params.append("status", "No Status")
     }
 
+    // Add date filters from the current report view
+    if (dateRange.startDate) {
+      params.append("fromDate", dateRange.startDate)
+    }
+    if (dateRange.endDate) {
+      params.append("toDate", dateRange.endDate)
+    }
+
     // Debug logging
     console.log("Navigating to billcut leads with filters:", {
       originalSalesperson: salesperson,
       originalStatus: status,
+      dateRange: dateRange,
       finalParams: params.toString(),
     })
 
-    // Navigate to billcut leads page with filters (without date restrictions)
+    // Navigate to billcut leads page with filters
     router.push(`/billcutleads?${params.toString()}`)
   }
 

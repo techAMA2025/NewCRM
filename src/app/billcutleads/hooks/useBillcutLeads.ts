@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useSearchParams } from "next/navigation"
 import { authFetch } from "@/lib/authFetch"
 import { toast } from "react-toastify"
 import { Lead, EditingLeadsState } from "../types"
@@ -18,12 +19,19 @@ export const useBillcutLeads = (userRole: string) => {
   const [totalFilteredCount, setTotalFilteredCount] = useState(0)
   const [editingLeads, setEditingLeads] = useState<EditingLeadsState>({})
 
+  // Ref to track the listener limit without causing re-subscriptions
+  const listenerLimitRef = useRef(LEADS_PER_PAGE)
+  // Ref to skip listener updates while API fetch is in-flight
+  const isFetchingRef = useRef(false)
+
+  const searchParams = useSearchParams()
+
   // Filter states (moved from page.tsx)
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [salesPersonFilter, setSalesPersonFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all")
+  const [salesPersonFilter, setSalesPersonFilter] = useState(searchParams.get("salesPerson") || "all")
   const [showMyLeads, setShowMyLeads] = useState(false)
-  const [fromDate, setFromDate] = useState("")
-  const [toDate, setToDate] = useState("")
+  const [fromDate, setFromDate] = useState(searchParams.get("fromDate") || "")
+  const [toDate, setToDate] = useState(searchParams.get("toDate") || "")
   const [activeTab, setActiveTab] = useState<"all" | "callback">("all")
   const [debtRangeSort, setDebtRangeSort] = useState<"none" | "low-to-high" | "high-to-low">("none")
   
@@ -36,6 +44,7 @@ export const useBillcutLeads = (userRole: string) => {
 
   const fetchBillcutLeads = useCallback(
     async (isLoadMore = false) => {
+      isFetchingRef.current = true
       if (isLoadMore) {
         setIsLoadingMore(true)
       } else {
@@ -79,8 +88,10 @@ export const useBillcutLeads = (userRole: string) => {
         }
 
         setLeads((prevLeads: Lead[]) => {
-          if (isLoadMore) return [...prevLeads, ...fetchedLeads]
-          return fetchedLeads
+          const merged = isLoadMore ? [...prevLeads, ...fetchedLeads] : fetchedLeads
+          // Update the listener limit ref to cover all loaded leads
+          listenerLimitRef.current = Math.max(merged.length, LEADS_PER_PAGE)
+          return merged
         })
 
         setHasMoreLeads(fetchedLeads.length === LEADS_PER_PAGE)
@@ -103,6 +114,7 @@ export const useBillcutLeads = (userRole: string) => {
       } finally {
         setIsLoading(false)
         setIsLoadingMore(false)
+        isFetchingRef.current = false
       }
     },
     [fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, activeTab, debtRangeSort, userRole, page, convertedFromDate, convertedToDate, lastModifiedFromDate, lastModifiedToDate]
@@ -310,27 +322,48 @@ export const useBillcutLeads = (userRole: string) => {
     }
 
     // 7. Limit to current number of loaded leads or first page
-    const currentLimit = Math.max(leads.length, LEADS_PER_PAGE)
-    q = query(q, limit(currentLimit))
+    q = query(q, limit(listenerLimitRef.current))
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Only update if we are not in searching mode
-      if (searchQuery.trim()) return
+      // Skip updates if we are searching or if an API fetch is in-flight
+      if (searchQuery.trim() || isFetchingRef.current) return
 
-      const updatedLeads = snapshot.docs.map(doc => processBillcutLead(doc.id, doc.data()))
+      const snapshotLeadsMap = new Map<string, Lead>()
+      snapshot.docs.forEach(doc => {
+        const lead = processBillcutLead(doc.id, doc.data())
+        snapshotLeadsMap.set(lead.id, lead)
+      })
       
-      // Update leads state while preserving callbackInfo which might be dropped by the snapshot
+      // Merge strategy: update existing leads in-place, preserve leads loaded via pagination
+      // that the limited listener query may not have fetched.
       setLeads((prev) => {
-        let nextLeads = updatedLeads.map(updatedLead => {
-          const existingLead = prev.find(l => l.id === updatedLead.id)
-          // If the snapshot dropped the callbackInfo but we have it locally, preserve it
-          if (existingLead && existingLead.callbackInfo && !updatedLead.callbackInfo) {
-            return { ...updatedLead, callbackInfo: existingLead.callbackInfo }
+        if (prev.length === 0) {
+          // No API data yet, use the snapshot directly
+          return Array.from(snapshotLeadsMap.values())
+        }
+
+        // Update existing leads in-place with real-time data
+        let nextLeads = prev.map(existingLead => {
+          const updatedLead = snapshotLeadsMap.get(existingLead.id)
+          if (updatedLead) {
+            // Preserve callbackInfo if the snapshot dropped it
+            if (existingLead.callbackInfo && !updatedLead.callbackInfo) {
+              return { ...updatedLead, callbackInfo: existingLead.callbackInfo }
+            }
+            return updatedLead
           }
-          return updatedLead
+          // Lead not in snapshot (e.g. loaded from a later page) — keep it as-is
+          return existingLead
+        })
+
+        // Check if any leads in the snapshot are new (not already in the list)
+        snapshotLeadsMap.forEach((lead, id) => {
+          if (!nextLeads.find(l => l.id === id)) {
+            nextLeads.push(lead)
+          }
         })
         
-        // Always re-apply callback priority sorting if we are in the callback tab
+        // Re-apply sorting
         if (activeTab === "callback") {
           nextLeads.sort((a, b) => {
             const priorityA = getCallbackPriority(a)
@@ -341,7 +374,6 @@ export const useBillcutLeads = (userRole: string) => {
             return priorityA - priorityB
           })
         } else if (debtRangeSort !== "none") {
-          // Re-apply debt sorting for non-callback tabs to maintain order during updates
           nextLeads.sort((a, b) => {
             const valA = parseDebtRangeToNumber(a.debtRange)
             const valB = parseDebtRangeToNumber(b.debtRange)
@@ -349,7 +381,6 @@ export const useBillcutLeads = (userRole: string) => {
             if (valA !== valB) {
               return debtRangeSort === "low-to-high" ? valA - valB : valB - valA
             }
-            // Secondary sort by date
             return (b.date || 0) - (a.date || 0)
           })
         }
@@ -360,7 +391,7 @@ export const useBillcutLeads = (userRole: string) => {
       // Sync editing state for new/updated leads
       setEditingLeads((prev) => {
         const next = { ...prev }
-        updatedLeads.forEach(lead => {
+        snapshotLeadsMap.forEach((lead) => {
           if (!next[lead.id]) {
             next[lead.id] = { ...lead, salesNotes: lead.salesNotes || "" }
           }
@@ -376,8 +407,7 @@ export const useBillcutLeads = (userRole: string) => {
   }, [
     fromDate, toDate, statusFilter, salesPersonFilter, showMyLeads, 
     activeTab, userRole, convertedFromDate, convertedToDate, 
-    lastModifiedFromDate, lastModifiedToDate, searchQuery,
-    leads.length // Re-listen with larger limit when pagination happens
+    lastModifiedFromDate, lastModifiedToDate, searchQuery
   ])
 
   // --- Search Results Listener (Simplified) ---

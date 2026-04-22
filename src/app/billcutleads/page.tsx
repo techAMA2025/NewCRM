@@ -22,7 +22,9 @@ import { useBillcutLeadActions } from "./hooks/useBillcutLeadActions"
 import { statusOptions, normalizeUserName } from "./utils/billcutUtils"
 import { Lead } from "./types"
 
-const BillCutLeadsPage = () => {
+import { Suspense } from "react"
+
+const BillCutLeadsPageContent = () => {
   // 1. Auth & Team State
   const { currentUser, userRole, teamMembers, salesTeamMembers } = useBillcutAuthTeam()
 
@@ -350,6 +352,18 @@ const BillCutLeadsPage = () => {
         </div>
       </div>
     </div>
+  )
+}
+
+const BillCutLeadsPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-screen bg-[#F8F5EC]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#D2A02A]"></div>
+      </div>
+    }>
+      <BillCutLeadsPageContent />
+    </Suspense>
   )
 }
 
