@@ -171,6 +171,7 @@ export const useBillcutLeads = (userRole: string) => {
     }
 
     setIsLoadAllLoading(true)
+    isFetchingRef.current = true
     try {
       const queryParams = new URLSearchParams({
         fromDate,
@@ -198,6 +199,7 @@ export const useBillcutLeads = (userRole: string) => {
       setLeads(data.leads)
       setTotalFilteredCount(data.totalCount || data.leads.length)
       setHasMoreLeads(false)
+      listenerLimitRef.current = Math.max(data.leads.length, LEADS_PER_PAGE)
 
       const initialEditingState: EditingLeadsState = {}
       data.leads.forEach((lead: Lead) => {
@@ -211,6 +213,7 @@ export const useBillcutLeads = (userRole: string) => {
       toast.error("Failed to load all leads")
     } finally {
       setIsLoadAllLoading(false)
+      isFetchingRef.current = false
     }
   }
 

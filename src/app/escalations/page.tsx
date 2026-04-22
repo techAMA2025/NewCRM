@@ -851,7 +851,7 @@ const EscalationsPage = () => {
                                   return <td key={col.id} style={cellStyle}></td>
                                 })}
                               </tr>
-                            ))
+                            )})
                           )}
                         </tbody>
                       </table>
