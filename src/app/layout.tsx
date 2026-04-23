@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AMA Workspace",
-  description: "AMA Workspace",
+  description: "AMA Workspace", 
   robots: {
     index: false,
     follow: false,
