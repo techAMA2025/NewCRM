@@ -31,8 +31,9 @@ import SalesSidebar from '@/components/navigation/SalesSidebar'
 import SearchableDropdown from '@/components/SearchableDropdown'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
-import { FaGripVertical, FaPlus, FaSearch, FaTrash, FaSun, FaMoon, FaHistory, FaEdit, FaChevronRight } from 'react-icons/fa'
+import { FaGripVertical, FaPlus, FaSearch, FaTrash, FaSun, FaMoon, FaHistory, FaEdit, FaChevronRight, FaEnvelope } from 'react-icons/fa'
 import EscalationHistoryModal from './components/EscalationHistoryModal'
+import EscalationEmailModal from './components/EscalationEmailModal'
 import {
   DndContext,
   closestCenter,
@@ -90,6 +91,7 @@ const DEFAULT_COLUMNS = [
   { id: 'advocates', label: 'Advocates (P/S)', width: 200 },
   { id: 'details', label: 'Escalation Details & Remarks', width: 600 },
   { id: 'status', label: 'Status', width: 120 },
+  { id: 'email', label: 'Email', width: 70 },
   { id: 'actions', label: 'Action', width: 60 },
 ];
 
@@ -216,6 +218,14 @@ const EscalationsPage = () => {
     title: ''
   })
 
+  // Email Modal State
+  const [emailModal, setEmailModal] = useState<{
+    isOpen: boolean;
+    escalation: { id: string; clientName: string; email: string; concern: string } | null;
+  }>({
+    isOpen: false,
+    escalation: null,
+  })
 
   // State for tracking inline edits
   const [editingRemarks, setEditingRemarks] = useState<Record<string, { 
@@ -826,6 +836,28 @@ const EscalationsPage = () => {
                                       </Select>
                                     </td>
                                   )
+                                  if (col.id === 'email') return (
+                                    <td key={col.id} style={cellStyle} className="px-2 py-2 text-center">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEmailModal({
+                                          isOpen: true,
+                                          escalation: {
+                                            id: esc.id,
+                                            clientName: esc.clientName,
+                                            email: esc.email,
+                                            concern: esc.concern,
+                                          }
+                                        })}
+                                        disabled={!esc.email}
+                                        className={`h-7 w-7 p-0 transition-colors ${esc.email ? 'text-indigo-500 hover:text-indigo-700 hover:bg-indigo-500/10' : 'text-gray-400 cursor-not-allowed'}`}
+                                        title={esc.email ? `Send email to ${esc.email}` : 'No email address'}
+                                      >
+                                        <FaEnvelope className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </td>
+                                  )
                                   if (col.id === 'actions') return (
                                     <td key={col.id} style={cellStyle} className="px-2 py-2">
                                       <div className="flex items-center justify-center gap-1">
@@ -1018,6 +1050,14 @@ const EscalationsPage = () => {
         escalationId={historyModal.escalationId}
         type={historyModal.type}
         title={historyModal.title}
+      />
+
+      {/* Email Modal */}
+      <EscalationEmailModal
+        isOpen={emailModal.isOpen}
+        onClose={() => setEmailModal({ isOpen: false, escalation: null })}
+        escalation={emailModal.escalation}
+        isDarkMode={isDarkMode}
       />
     </div>
   )
