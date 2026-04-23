@@ -197,6 +197,12 @@ export default function EscalationEmailModal({ isOpen, onClose, escalation, isDa
       return
     }
 
+    const draftLabel = DRAFT_TEMPLATES.find(d => d.id === selectedDraft)?.label || 'Custom'
+    const confirmed = window.confirm(
+      `You are sending "${draftLabel}" mail to ${recipientEmail}. Are you sure you want to send it?`
+    )
+    if (!confirmed) return
+
     setSending(true)
     try {
       const htmlBody = textToHtml(body, escalation.clientName)
