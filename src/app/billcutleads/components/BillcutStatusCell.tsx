@@ -8,6 +8,7 @@ type BillcutStatusCellProps = {
   canEdit: boolean;
   userRole: string;
   fetchStatusHistory: (leadId: string, leadName: string) => Promise<void>;
+  textColor?: string;
 };
 
 const getStatusColor = (status: string) => {
@@ -35,6 +36,7 @@ const BillcutStatusCell = ({
   canEdit,
   userRole,
   fetchStatusHistory,
+  textColor,
 }: BillcutStatusCellProps) => {
   return (
     <td className="px-2 py-0.5 text-xs max-w-[150px] border-r border-b border-[#5A4C33]/10">
@@ -68,7 +70,11 @@ const BillcutStatusCell = ({
 
         <button
           onClick={() => fetchStatusHistory(lead.id, lead.name)}
-          className="mt-1 w-full flex items-center justify-center gap-1 px-2 py-1 bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20 border border-[#D2A02A]/30 hover:border-[#D2A02A]/60 rounded-md text-[9px] font-bold text-[#D2A02A] transition-all duration-150"
+          className={`mt-1 w-full flex items-center justify-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all duration-150 ${
+            textColor 
+              ? "bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white/60 text-white" 
+              : "bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20 border border-[#D2A02A]/30 hover:border-[#D2A02A]/60 text-[#D2A02A]"
+          }`}
           title="View Status History"
         >
           <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>

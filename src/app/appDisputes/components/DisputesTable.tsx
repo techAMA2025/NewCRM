@@ -334,13 +334,28 @@ export default function DisputesTable({
 
                   {/* Query */}
                   <td className="px-3 py-2 w-44">
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 group relative">
                       <div
-                        className="text-[10px] text-[#5A4C33]/70 max-w-[160px] truncate leading-snug"
-                        title={dispute.query}
+                        className="text-[10px] text-[#5A4C33]/70 max-w-[160px] truncate leading-snug cursor-help"
                       >
                         {dispute.query || '–'}
                       </div>
+
+                      {/* Premium Hover Container */}
+                      {dispute.query && (
+                        <div className="absolute bottom-full right-0 mb-2 w-72 p-4 bg-white/95 backdrop-blur-md border border-[#D2A02A]/20 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[100] transform translate-y-2 group-hover:translate-y-0">
+                           <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#5A4C33]/10">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#D2A02A] animate-pulse"></div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#5A4C33]/60">Lead Query</span>
+                           </div>
+                           <div className="text-[11px] text-[#5A4C33] leading-relaxed break-words max-h-48 overflow-y-auto scrollbar-hide">
+                              {dispute.query}
+                           </div>
+                           {/* Arrow */}
+                           <div className="absolute -bottom-1.5 right-4 w-3 h-3 bg-white/95 border-r border-b border-[#D2A02A]/20 rotate-45"></div>
+                        </div>
+                      )}
+
                       {dispute.query && (
                         <button
                           onClick={() =>

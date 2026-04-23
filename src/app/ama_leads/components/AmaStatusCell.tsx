@@ -224,20 +224,20 @@ const AmaStatusCell = ({
         {(userRole === "admin" || userRole === "overlord") && (
           <div className="flex flex-col gap-1 mt-2">
             {/* Last Modified timestamp */}
-            <div className={`text-[10px] ${textColor ? "text-white/70" : "text-[#5A4C33]/60"}`}>
+            <div className={`text-[10px] ${textColor ? (textColor.includes("white") ? "text-white/70" : textColor) : "text-[#5A4C33]/60"}`}>
               Last Modified:
             </div>
-            <div className={`text-[10px] ${textColor ? "text-white/90" : "text-[#5A4C33]/80"}`}>
+            <div className={`text-[10px] ${textColor ? (textColor.includes("white") ? "text-white/90" : textColor) : "text-[#5A4C33]/80"}`}>
               {formatTimestamp(lead.lastModified)}
             </div>
 
             {/* Converted At timestamp - only show for converted leads */}
             {lead.status === "Converted" && lead.convertedAt && (
               <>
-                <div className={`text-[10px] ${textColor ? "text-white/70" : "text-green-600/70"} mt-1`}>
+                <div className={`text-[10px] ${textColor ? (textColor.includes("white") ? "text-white/70" : textColor) : "text-green-600/70"} mt-1`}>
                   Converted At:
                 </div>
-                <div className={`text-[10px] ${textColor ? "text-white/90" : "text-green-600/90"}`}>
+                <div className={`text-[10px] ${textColor ? (textColor.includes("white") ? "text-white/90" : textColor) : "text-green-600/90"}`}>
                   {formatTimestamp(lead.convertedAt)}
                 </div>
               </>
@@ -248,7 +248,11 @@ const AmaStatusCell = ({
         <>
           <button
             onClick={() => setShowHistoryModal(true)}
-            className="mt-1 w-full flex items-center justify-center gap-1 px-2 py-1 bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20 border border-[#D2A02A]/30 hover:border-[#D2A02A]/60 rounded-md text-[9px] font-bold text-[#D2A02A] transition-all duration-150"
+            className={`mt-1 w-full flex items-center justify-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all duration-150 ${
+              textColor 
+                ? "bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white/60 text-white" 
+                : "bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20 border border-[#D2A02A]/30 hover:border-[#D2A02A]/60 text-[#D2A02A]"
+            }`}
             title="View Status History"
           >
             <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>

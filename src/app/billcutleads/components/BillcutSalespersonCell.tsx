@@ -10,6 +10,7 @@ type BillcutSalespersonCellProps = {
   handleChange: (id: string, field: string, value: any) => Promise<void>;
   handleUnassign: (leadId: string) => Promise<void>;
   currentUserName: string;
+  textColor?: string;
 };
 
 const getInitials = (name: string) => {
@@ -29,6 +30,7 @@ const BillcutSalespersonCell = ({
   handleChange,
   handleUnassign,
   currentUserName,
+  textColor,
 }: BillcutSalespersonCellProps) => {
   return (
     <td className="px-2 py-0.5 text-xs max-w-[150px] border-r border-b border-[#5A4C33]/10">
@@ -42,7 +44,7 @@ const BillcutSalespersonCell = ({
               >
                 {getInitials(lead.assignedTo)}
               </div>
-              <span className="ml-2 text-[8px] text-[#5A4C33] truncate font-medium">
+              <span className={`ml-2 text-[8px] truncate font-medium ${textColor || "text-[#5A4C33]"}`}>
                 {lead.assignedTo}
               </span>
             </div>
@@ -68,7 +70,11 @@ const BillcutSalespersonCell = ({
             )}
           </div>
         ) : (
-          <div className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[#5A4C33]/10 text-[#5A4C33]/70 border border-[#5A4C33]/20 shadow-sm font-medium text-[10px]">
+          <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full shadow-sm font-medium text-[10px] ${
+            textColor 
+              ? "bg-white/20 text-white border border-white/20" 
+              : "bg-[#5A4C33]/10 text-[#5A4C33]/70 border border-[#5A4C33]/20"
+          }`}>
             UN
           </div>
         )}

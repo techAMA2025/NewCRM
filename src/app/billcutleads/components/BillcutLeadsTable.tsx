@@ -763,6 +763,7 @@ const BillcutLeadsTableOptimized = React.memo(
               canEdit={canEditLead(lead, showMyLeads)}
               userRole={userRole}
               fetchStatusHistory={fetchStatusHistory}
+              textColor={rowColors.textColor}
             />
 
             <BillcutSalespersonCell
@@ -775,6 +776,7 @@ const BillcutLeadsTableOptimized = React.memo(
               handleChange={handleChange}
               handleUnassign={handleUnassign}
               currentUserName={userName}
+              textColor={rowColors.textColor}
             />
 
             {activeTab === "callback" && (

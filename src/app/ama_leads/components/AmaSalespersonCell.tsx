@@ -8,6 +8,7 @@ type AmaSalespersonCellProps = {
   assignLeadToSalesperson: (leadId: string, salesPersonName: string, salesPersonId: string) => Promise<void>;
   crmDb?: any;
   unassignLead?: (leadId: string) => Promise<void>;
+  textColor?: string;
 };
 
 const getInitials = (name: string) => {
@@ -43,7 +44,8 @@ const AmaSalespersonCell = ({
   salesTeamMembers: propMembers, 
   assignLeadToSalesperson, 
   crmDb,
-  unassignLead 
+  unassignLead,
+  textColor,
 }: AmaSalespersonCellProps) => {
   const [salesTeamMembers, setSalesTeamMembers] = useState<any[]>(propMembers || []);
   const [loading, setLoading] = useState(false);
@@ -155,7 +157,7 @@ const AmaSalespersonCell = ({
                 {getInitials(lead.assignedTo)}
               </div>
               <span
-                className={`ml-2 text-[8px] text-[#5A4C33] truncate`}
+                className={`ml-2 text-[8px] truncate ${textColor || "text-[#5A4C33]"}`}
               >
                 {lead.assignedTo}
               </span>
@@ -182,7 +184,11 @@ const AmaSalespersonCell = ({
             )}
           </div>
         ) : (
-          <div className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[#5A4C33]/20 text-[#5A4C33]/70 border border-[#5A4C33]/20 shadow-sm font-medium text-[10px]">
+          <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full shadow-sm font-medium text-[10px] ${
+            textColor 
+              ? "bg-white/20 text-white border border-white/20" 
+              : "bg-[#5A4C33]/20 text-[#5A4C33]/70 border border-[#5A4C33]/20"
+          }`}>
             UN
           </div>
         )}

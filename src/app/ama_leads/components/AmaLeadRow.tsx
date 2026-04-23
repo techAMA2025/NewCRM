@@ -176,27 +176,27 @@ const getCallbackDateColor = (scheduledDate: Date) => {
 
   if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
     return {
-      textColor: "",
-      dotColor: "bg-red-600",
-      rowBg: "hover:bg-[#F8F5EC] border-l-4 border-red-600",
+      textColor: "text-white font-bold",
+      dotColor: "bg-white",
+      rowBg: "bg-red-600",
     }
   } else if (scheduledDateOnly.getTime() === tomorrowOnly.getTime()) {
     return {
-      textColor: "",
-      dotColor: "bg-yellow-500",
-      rowBg: "hover:bg-[#F8F5EC] border-l-4 border-yellow-500",
+      textColor: "text-white font-bold",
+      dotColor: "bg-white",
+      rowBg: "bg-yellow-500",
     }
   } else if (scheduledDateOnly.getTime() >= dayAfterTomorrowOnly.getTime()) {
     return {
-      textColor: "",
-      dotColor: "bg-green-600",
-      rowBg: "hover:bg-[#F8F5EC] border-l-4 border-green-600",
+      textColor: "text-white font-bold",
+      dotColor: "bg-white",
+      rowBg: "bg-green-600",
     }
   } else {
     return {
-      textColor: "",
-      dotColor: "bg-gray-600",
-      rowBg: "hover:bg-[#F8F5EC] border-l-4 border-gray-600",
+      textColor: "text-white",
+      dotColor: "bg-white",
+      rowBg: "bg-gray-600",
     }
   }
 }
@@ -357,7 +357,7 @@ const AmaLeadRow = ({
       }
     }
     return {
-      rowBg: "hover:bg-[#F8F5EC] border-l-4 border-transparent",
+      rowBg: "hover:bg-[#F8F5EC]",
       textColor: "",
     }
   }
@@ -674,6 +674,7 @@ const AmaLeadRow = ({
             assignLeadToSalesperson={assignLeadToSalesperson}
             unassignLead={unassignLead}
             crmDb={crmDb}
+            textColor={rowColors.textColor}
           />
         )}
 
@@ -691,7 +692,7 @@ const AmaLeadRow = ({
                         {callbackInfo.scheduledTime}
                       </div>
                       {callbackInfo.scheduledBy && (
-                        <div className={rowColors.textColor ? "text-[#ffffff]/60" : "text-[#5A4C33]/60"}>
+                        <div className={rowColors.textColor ? "text-[#ffffff]/70" : "text-[#5A4C33]/60"}>
                           Scheduled by: {callbackInfo.scheduledBy}
                         </div>
                       )}
@@ -716,14 +717,18 @@ const AmaLeadRow = ({
             ) : (
               // Show customer query (original behavior)
               <div className="flex items-start gap-1">
-                <div className="flex-1 break-words whitespace-pre-wrap line-clamp-2">
+                <div className={`flex-1 break-words whitespace-pre-wrap line-clamp-2 ${rowColors.textColor || "text-[#5A4C33]"}`}>
                   {lead.query && lead.query.length > 50 ? `${lead.query.substring(0, 50)}...` : lead.query || "N/A"}
                 </div>
                 <button
                   onClick={() => {
                     setShowQueryModal(true)
                   }}
-                  className="flex-shrink-0 text-[#D2A02A] hover:text-[#B8911E] text-[10px] px-1 py-0.5 border border-[#D2A02A]/50 rounded hover:border-[#D2A02A] transition-colors bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20"
+                  className={`flex-shrink-0 text-[10px] px-1 py-0.5 border rounded transition-colors ${
+                    rowColors.textColor 
+                      ? "text-white border-white/50 hover:bg-white/20" 
+                      : "text-[#D2A02A] border-[#D2A02A]/50 hover:border-[#D2A02A] bg-[#D2A02A]/10 hover:bg-[#D2A02A]/20"
+                  }`}
                   title="View full query in modal"
                 >
                   View
