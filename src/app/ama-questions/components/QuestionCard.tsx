@@ -17,12 +17,12 @@ function formatDate(timestamp: number) {
 }
 
 export default function QuestionCard({ question, onViewComments, onAnswer, onDelete, userRole }: QuestionCardProps) {
-  const isAdmin = userRole === 'admin';
+  const isRestricted = userRole === 'admin' || userRole === 'sales';
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all flex flex-col h-full relative group">
-       {/* Delete Button - Only for non-admins */}
-       {!isAdmin && (
+       {/* Delete Button - Only for non-restricted users */}
+       {!isRestricted && (
          <button
            onClick={(e) => {
              e.stopPropagation();
@@ -89,7 +89,7 @@ export default function QuestionCard({ question, onViewComments, onAnswer, onDel
                    <span>{question.commentsCount} Comments</span>
                </button>
                
-               {!isAdmin && (
+               {!isRestricted && (
                  <button 
                    onClick={() => onAnswer(question)}
                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-green-600 transition-colors"

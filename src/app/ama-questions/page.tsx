@@ -7,6 +7,7 @@ import CommentsModal from './components/CommentsModal';
 import AnswerModal from './components/AnswerModal';
 import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import AdminSidebar from "@/components/navigation/AdminSidebar";
+import SalesSidebar from "@/components/navigation/SalesSidebar";
 import { authFetch } from '@/lib/authFetch';
 import { useAuth } from '@/context/AuthContext';
 
@@ -88,8 +89,8 @@ export default function AmaQuestionsPage() {
   };
 
   const handleDelete = async (questionId: string) => {
-    if (userRole === 'admin') {
-      alert('Admins do not have permission to delete questions.');
+    if (userRole === 'admin' || userRole === 'sales') {
+      alert(`${userRole === 'admin' ? 'Admins' : 'Sales users'} do not have permission to delete questions.`);
       return;
     }
 
@@ -167,6 +168,17 @@ export default function AmaQuestionsPage() {
 
   if (userRole === 'overlord') {
     return <OverlordSidebar>{pageContent}</OverlordSidebar>;
+  }
+
+  if (userRole === 'sales') {
+    return (
+      <div className="flex h-screen bg-gray-100 overflow-hidden">
+        <SalesSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden w-full">
+          {pageContent}
+        </div>
+      </div>
+    );
   }
 
   return (
