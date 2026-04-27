@@ -11,6 +11,7 @@ export interface AppUser {
   topic: string;
   updated_at: number;
   week_topic?: string;
+  service_type?: string;
 }
 
 export interface AppUsersResponse {

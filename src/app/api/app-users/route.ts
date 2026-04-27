@@ -81,7 +81,8 @@ export async function GET(request: NextRequest) {
           start_date: data.start_date,
           status: data.status,
           topic: data.topic,
-          updated_at: data.updated_at
+          updated_at: data.updated_at,
+          service_type: data.service_type
         };
       });
 
@@ -115,7 +116,8 @@ export async function GET(request: NextRequest) {
           start_date: data.start_date,
           status: data.status,
           topic: data.topic,
-          updated_at: data.updated_at
+          updated_at: data.updated_at,
+          service_type: data.service_type
         };
       });
 
@@ -189,7 +191,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Fields that are allowed to be updated
-    const allowedFields = ['email', 'name', 'otp', 'phone', 'role', 'start_date', 'status', 'topic'];
+    const allowedFields = ['email', 'name', 'otp', 'phone', 'role', 'start_date', 'status', 'topic', 'service_type'];
     const dataToUpdate: any = {};
 
     for (const field of allowedFields) {

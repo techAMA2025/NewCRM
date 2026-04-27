@@ -18,6 +18,7 @@ export default function EditUserModal({ user, isOpen, onClose, onSave }: EditUse
     role: user.role,
     status: user.status,
     start_date: user.start_date,
+    service_type: user.service_type || '',
     // otp: user.otp, // Removed
     // topic: user.topic, // Removed
   });
@@ -127,6 +128,30 @@ export default function EditUserModal({ user, isOpen, onClose, onSave }: EditUse
               placeholder="YYYY-MM-DD"
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D2A02A] focus:border-[#D2A02A] sm:text-sm"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Service type</label>
+            <select
+              name="service_type"
+              value={formData.service_type || ''}
+              onChange={handleChange}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#D2A02A] focus:border-[#D2A02A] sm:text-sm"
+            >
+              <option value="">Select Service Type</option>
+              <option value="Banking and Finance">Banking and Finance</option>
+              <option value="Loan Settlement">Loan Settlement</option>
+              <option value="Intellectual Property Rights">Intellectual Property Rights</option>
+              <option value="Entertainment Law">Entertainment Law</option>
+              <option value="Real Estate">Real Estate</option>
+              <option value="Criminal Law">Criminal Law</option>
+              <option value="Corporate Law">Corporate Law</option>
+              <option value="Arbitration Law">Arbitration Law</option>
+              <option value="IT and Cyber Law">IT and Cyber Law</option>
+              <option value="Civil Law">Civil Law</option>
+              <option value="Drafting">Drafting</option>
+              <option value="Litigation">Litigation</option>
+            </select>
           </div>
 
           <div className="flex justify-end pt-4 space-x-3">
