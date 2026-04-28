@@ -190,7 +190,25 @@ export default function ClientsTable({
                 <TableCell className="p-1 text-[10px]">{formatStartDate(client.startDate)}</TableCell>
                 <TableCell className={`font-medium p-1 ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                   <div className="flex flex-col">
-                    <span className="font-medium text-[10px]">{client.name.toUpperCase()}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium text-[10px]">{client.name.toUpperCase()}</span>
+                      {(() => {
+                        if (client.agreementType !== 'pps' || !client.startDate) return null;
+                        const today = new Date();
+                        const startDate = new Date(client.startDate);
+                        const diffInMonths = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth());
+                        const isDue = diffInMonths > 9 || (diffInMonths === 9 && today.getDate() >= startDate.getDate());
+                        
+                        if (!isDue) return null;
+                        return (
+                          <span className={`text-[7px] px-1 py-0 rounded font-bold animate-pulse ${
+                            isDark ? 'bg-cyan-900/80 text-cyan-300' : 'bg-cyan-100 text-cyan-700'
+                          }`}>
+                            RENEWAL DUE
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <span className={`text-[8px] ${formatSourceName(client.source_database || '').color}`}>
                       {formatSourceName(client.source_database || '').name}
                     </span>

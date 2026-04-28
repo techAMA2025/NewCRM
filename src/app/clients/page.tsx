@@ -376,6 +376,7 @@ function ClientsPageWithParams() {
   const [filteredTotalCount, setFilteredTotalCount] = useState<number>(0)
   const [showFilters, setShowFilters] = useState(false)
   const [isLoadingAll, setIsLoadingAll] = useState(false)
+  const [isRenewalFilter, setIsRenewalFilter] = useState(false)
 
   // App Status states
   const [appStatuses, setAppStatuses] = useState<{ [key: string]: string }>({})
@@ -682,8 +683,14 @@ function ClientsPageWithParams() {
       constraints.push(where("sentAgreement", "==", false))
     }
 
+    // When renewal filter is active, we MUST filter by agreementType pps
+    // If this fails due to missing index, we might need to handle it.
+    if (isRenewalFilter) {
+      constraints.push(where("agreementType", "==", "pps"))
+    }
+
     return constraints
-  }, [statusFilter, primaryAdvocateFilter, secondaryAdvocateFilter, sourceFilter, agreementFilter, fromDate, toDate, dateFilterField])
+  }, [statusFilter, primaryAdvocateFilter, secondaryAdvocateFilter, sourceFilter, agreementFilter, fromDate, toDate, dateFilterField, isRenewalFilter])
 
   const fetchFilteredCount = useCallback(async () => {
     try {
@@ -812,7 +819,7 @@ function ClientsPageWithParams() {
         }
       }
     },
-    [debouncedSearchTerm, executeSearchQueries, enhanceClientData, mergeAndSortClients, buildBaseFilterConstraints, fetchFilteredCount, userRole],
+    [debouncedSearchTerm, executeSearchQueries, enhanceClientData, mergeAndSortClients, buildBaseFilterConstraints, fetchFilteredCount, userRole, isRenewalFilter],
   )
 
   // Function to load ALL clients at once
@@ -899,8 +906,12 @@ function ClientsPageWithParams() {
       }
     }
 
-    fetchClientsBatch({ reset: true })
-  }, [fetchClientsBatch])
+    if (isRenewalFilter && !debouncedSearchTerm) {
+      loadAllClients()
+    } else {
+      fetchClientsBatch({ reset: true })
+    }
+  }, [fetchClientsBatch, isRenewalFilter, debouncedSearchTerm, loadAllClients])
 
   // Add URL parameter handling
   useEffect(() => {
@@ -1600,6 +1611,35 @@ function ClientsPageWithParams() {
       })
     }
 
+    // Apply renewal filter
+    if (isRenewalFilter) {
+      const today = new Date()
+      results = results.filter((client) => {
+        // Robust check for PPS and startDate
+        const isPPS = client.agreementType === "pps" || (client.source_database?.toLowerCase().trim() === "billcut" && !client.agreementType);
+        if (!isPPS || !client.startDate) return false;
+
+        let startDate: Date;
+        if (typeof client.startDate === 'string') {
+          startDate = new Date(client.startDate);
+        } else if (client.startDate && (client.startDate as any).toDate) {
+          startDate = (client.startDate as any).toDate();
+        } else {
+          startDate = new Date(client.startDate);
+        }
+
+        if (isNaN(startDate.getTime())) return false;
+
+        const diffInMonths = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth());
+        
+        // Past 9 months means 9 or more months have passed
+        if (diffInMonths > 9) return true;
+        if (diffInMonths === 9 && today.getDate() >= startDate.getDate()) return true;
+        
+        return false;
+      })
+    }
+
     // Apply bank name filter
     if (bankNameFilter !== "all") {
       results = results.filter((client) => {
@@ -1673,6 +1713,7 @@ function ClientsPageWithParams() {
     fromDate,
     toDate,
     dateFilterField,
+    isRenewalFilter,
   ])
 
   useEffect(() => {
@@ -2450,19 +2491,39 @@ function ClientsPageWithParams() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-               <Button
-                 onClick={loadAllClients}
-                 disabled={isLoadingAll}
-                 variant="outline"
-                 className={`${
-                   theme === "dark" 
-                     ? "bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700" 
-                     : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-                 } h-9 text-xs font-medium`}
-               >
-                 <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isLoadingAll ? "animate-spin" : ""}`} />
-                 {isLoadingAll ? "Loading..." : "Load All Clients"}
-               </Button>
+                <Button
+                  onClick={() => {
+                    const newValue = !isRenewalFilter;
+                    setIsRenewalFilter(newValue);
+                    if (newValue) {
+                      loadAllClients();
+                    }
+                  }}
+                  variant={isRenewalFilter ? "default" : "outline"}
+                  className={`${
+                    isRenewalFilter
+                      ? "bg-cyan-600 hover:bg-cyan-700 text-white border-0"
+                      : theme === "dark"
+                      ? "bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700"
+                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                  } h-9 text-xs font-medium`}
+                >
+                  <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isRenewalFilter ? "animate-spin-slow" : ""}`} />
+                  {isRenewalFilter ? "Showing Renewals" : "Renewals"}
+                </Button>
+                <Button
+                  onClick={loadAllClients}
+                  disabled={isLoadingAll}
+                  variant="outline"
+                  className={`${
+                    theme === "dark" 
+                      ? "bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700" 
+                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                  } h-9 text-xs font-medium`}
+                >
+                  <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isLoadingAll ? "animate-spin" : ""}`} />
+                  {isLoadingAll ? "Loading..." : "Load All Clients"}
+                </Button>
                {userRole !== "billcut" && userRole !== "assistant" && (
                   <Button
                     onClick={downloadCSV}
