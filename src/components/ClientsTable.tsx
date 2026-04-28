@@ -160,6 +160,7 @@ export default function ClientsTable({
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Phone</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>City</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Advocate</TableHead>
+              <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Type</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Status</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Agreement</TableHead>
               <TableHead className={`${isDark ? 'text-gray-400' : 'text-gray-600'} p-1`}>Remarks</TableHead>
@@ -209,6 +210,19 @@ export default function ClientsTable({
                       </span>
                     )}
                   </div>
+                </TableCell>
+                <TableCell className="p-1">
+                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-medium border ${
+                    client.agreementType === 'pps' 
+                      ? isDark
+                        ? 'bg-indigo-900/50 text-indigo-400 border-indigo-700'
+                        : 'bg-indigo-50 text-indigo-400 border-indigo-200'
+                      : isDark
+                        ? 'bg-emerald-900/50 text-emerald-400 border-emerald-700'
+                        : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                  }`}>
+                    {client.agreementType === 'pps' ? 'PPS' : 'Retainer'}
+                  </span>
                 </TableCell>
                 <TableCell className="p-1">
                   <Select 

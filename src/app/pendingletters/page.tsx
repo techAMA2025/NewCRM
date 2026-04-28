@@ -34,6 +34,8 @@ export default function PendingLettersPage() {
   const [syncStatus, setSyncStatus] = useState<string>('');
   const [backfillSourceLoading, setBackfillSourceLoading] = useState(false);
   const [backfillSourceStatus, setBackfillSourceStatus] = useState<string>('');
+  const [backfillAgreementLoading, setBackfillAgreementLoading] = useState(false);
+  const [backfillAgreementStatus, setBackfillAgreementStatus] = useState<string>('');
 
   const handleSyncSettlements = async () => {
     setSyncLoading(true);
@@ -164,6 +166,36 @@ export default function PendingLettersPage() {
       console.error('Backfill error:', error);
     } finally {
       setBackfillSourceLoading(false);
+    }
+  };
+  const handleBackfillAgreementType = async () => {
+    setBackfillAgreementLoading(true);
+    setBackfillAgreementStatus('Starting agreement type backfill...');
+    
+    try {
+      const response = await authFetch('/api/clients/backfill-agreement-type', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const { summary } = data;
+        setBackfillAgreementStatus(
+          `Backfill completed! Updated: ${summary.updated}, Skipped (already set): ${summary.skipped}, Total: ${summary.totalProcessed}`
+        );
+        toast.success(`Agreement type backfill completed! ${summary.updated} clients updated.`);
+      } else {
+        throw new Error(data.error || 'Backfill failed');
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Unknown error occurred';
+      setBackfillAgreementStatus(`Backfill failed: ${errorMessage}`);
+      toast.error(`Backfill failed: ${errorMessage}`);
+      console.error('Backfill error:', error);
+    } finally {
+      setBackfillAgreementLoading(false);
     }
   };
 
@@ -553,6 +585,72 @@ export default function PendingLettersPage() {
                 <>
                   <FiTag className="text-lg mr-2" />
                   Backfill Settlement Sources
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Agreement Type Backfill Section */}
+          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-xl p-8 mb-12">
+            <div className="flex items-center mb-6">
+              <div className="bg-indigo-900/50 p-3 rounded-xl mr-4">
+                <FiFileText className="text-indigo-400 text-xl" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Agreement Type Backfill</h2>
+                <p className="text-gray-400 text-sm">Update agreementType field based on source (Billcut → pps, Others → retainer)</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50 mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Logic Details</h3>
+              <ul className="text-gray-300 text-sm space-y-2">
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                  If source_database is 'billcut' → agreementType: 'pps'
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                  For all other sources → agreementType: 'retainer'
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                  Skips clients that already have the correct agreementType set
+                </li>
+              </ul>
+            </div>
+
+            {backfillAgreementStatus && (
+              <div className="mb-6 p-4 rounded-xl border border-gray-700/50 bg-gray-900/30">
+                <div className="flex items-center">
+                  {backfillAgreementLoading ? (
+                    <FiRefreshCw className="text-blue-400 text-lg mr-3 animate-spin" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-indigo-500 mr-3"></div>
+                  )}
+                  <span className="text-gray-300 text-sm">{backfillAgreementStatus}</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleBackfillAgreementType}
+              disabled={backfillAgreementLoading}
+              className={`flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                backfillAgreementLoading
+                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-lg hover:shadow-indigo-900/25'
+              }`}
+            >
+              {backfillAgreementLoading ? (
+                <>
+                  <FiRefreshCw className="text-lg mr-2 animate-spin" />
+                  Backfilling...
+                </>
+              ) : (
+                <>
+                  <FiFileText className="text-lg mr-2" />
+                  Backfill Agreement Types
                 </>
               )}
             </button>

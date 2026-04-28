@@ -52,6 +52,7 @@ interface Client {
   documentName?: string
   documentUploadedAt?: Date
   sentAgreement?: boolean
+  agreementType?: 'pps' | 'retainer'
   request_letter?: boolean
   shouldGenerateAgreement?: boolean
   feePercentage?: string
@@ -437,6 +438,21 @@ export default function EditModal({
                         <SelectItem value="On Hold">On Hold</SelectItem>
                         <SelectItem value="Renewal">Renewal</SelectItem>
                         <SelectItem value="Inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">Agreement Type</label>
+                    <Select 
+                      value={client.agreementType || "retainer"}
+                      onValueChange={(value) => handleSelectChange('agreementType', value)}
+                    >
+                      <SelectTrigger className="bg-gray-950 border-gray-700 text-white">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 text-white border-gray-700">
+                        <SelectItem value="retainer">Retainer</SelectItem>
+                        <SelectItem value="pps">PPS</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

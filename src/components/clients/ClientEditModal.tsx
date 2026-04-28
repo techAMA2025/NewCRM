@@ -43,6 +43,7 @@ interface Client {
   documentName?: string;
   documentUploadedAt?: Date;
   adv_status?: string;
+  agreementType?: 'pps' | 'retainer';
   client_app_status?: {
     index: string;
     remarks: string;
@@ -333,6 +334,20 @@ export default function ClientEditModal({
                     <option value="Not Responding">Not Responding</option>
                     <option value="On Hold">On Hold</option>
                     <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="agreementType" className="block text-sm font-medium text-gray-300 mb-1">Agreement Type</label>
+                  <select
+                    id="agreementType"
+                    name="agreementType"
+                    value={formData.agreementType || "retainer"}
+                    onChange={handleInputChange}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="retainer">Retainer</option>
+                    <option value="pps">PPS</option>
                   </select>
                 </div>
                 

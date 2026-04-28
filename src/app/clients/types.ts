@@ -52,6 +52,7 @@ export interface Client {
   dob?: string
   message: string
   sentAgreement?: boolean
+  agreementType?: 'pps' | 'retainer'
   request_letter?: boolean
   latestRemark?: {
     remark: string;
