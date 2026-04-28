@@ -435,6 +435,7 @@ export default function EditModal({
                         <SelectItem value="Dropped">Dropped</SelectItem>
                         <SelectItem value="Not Responding">Not Responding</SelectItem>
                         <SelectItem value="On Hold">On Hold</SelectItem>
+                        <SelectItem value="Renewal">Renewal</SelectItem>
                         <SelectItem value="Inactive">Inactive</SelectItem>
                       </SelectContent>
                     </Select>

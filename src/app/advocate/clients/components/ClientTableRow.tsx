@@ -273,7 +273,9 @@ export default function ClientTableRow({
                     ? "bg-yellow-800 text-yellow-200 focus:ring-yellow-500"
                     : client.adv_status === "On Hold"
                       ? "bg-purple-800 text-purple-200 focus:ring-purple-500"
-                      : "bg-gray-800 text-gray-200 focus:ring-gray-500"
+                      : client.adv_status === "Renewal"
+                        ? "bg-cyan-800 text-cyan-200 focus:ring-cyan-500"
+                        : "bg-gray-800 text-gray-200 focus:ring-gray-500"
           }`}
         >
           <option value="Active">Active</option>
@@ -281,6 +283,7 @@ export default function ClientTableRow({
           <option value="Dropped">Dropped</option>
           <option value="Not Responding">Not Responding</option>
           <option value="On Hold">On Hold</option>
+          <option value="Renewal">Renewal</option>
         </select>
       </td>
 

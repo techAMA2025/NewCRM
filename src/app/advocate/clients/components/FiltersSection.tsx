@@ -100,6 +100,7 @@ export default function FiltersSection({
                 <option value="Dropped">DROPPED</option>
                 <option value="Not Responding">NOT RESPONDING</option>
                 <option value="On Hold">ON HOLD</option>
+                <option value="Renewal">RENEWAL</option>
               </select>
             </div>
 

@@ -233,6 +233,10 @@ export default function ClientsTable({
                         ? isDark
                           ? 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
                           : 'bg-yellow-50 text-yellow-600 border-yellow-200'
+                        : client.adv_status === 'Renewal'
+                        ? isDark
+                          ? 'bg-cyan-900/50 text-cyan-400 border-cyan-700'
+                          : 'bg-cyan-50 text-cyan-600 border-cyan-200'
                         : client.adv_status === 'Inactive'
                         ? isDark
                           ? 'bg-gray-900/50 text-gray-400 border-gray-700'
@@ -248,6 +252,7 @@ export default function ClientsTable({
                       <SelectItem value="Dropped" className={isDark ? 'text-red-400' : 'text-red-600'}>Dropped</SelectItem>
                       <SelectItem value="Not Responding" className={isDark ? 'text-yellow-400' : 'text-yellow-600'}>Not Responding</SelectItem>
                       <SelectItem value="On Hold" className={isDark ? 'text-purple-400' : 'text-purple-600'}>On Hold</SelectItem>
+                      <SelectItem value="Renewal" className={isDark ? 'text-cyan-400' : 'text-cyan-600'}>Renewal</SelectItem>
                       <SelectItem value="Inactive" className={isDark ? 'text-gray-400' : 'text-gray-600'}>Inactive</SelectItem>
                     </SelectContent>
                   </Select>

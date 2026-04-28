@@ -255,7 +255,9 @@ export default function ClientViewModal({
                               ? "bg-yellow-800 text-yellow-200"
                               : client.adv_status === "On Hold"
                                 ? "bg-purple-800 text-purple-200"
-                                : "bg-gray-700 text-gray-300"
+                                : client.adv_status === "Renewal"
+                                  ? "bg-cyan-800 text-cyan-200"
+                                  : "bg-gray-700 text-gray-300"
                     }`}
                   >
                     {client.adv_status || "Inactive"}

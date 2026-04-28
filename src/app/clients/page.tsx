@@ -298,6 +298,7 @@ function ClientsPageWithParams() {
     "Dropped",
     "Not Responding",
     "On Hold",
+    "Renewal",
     "Inactive",
   ])
   const [allBankNames, setAllBankNames] = useState<string[]>([])
@@ -1282,6 +1283,8 @@ function ClientsPageWithParams() {
         return "bg-amber-500/20 text-amber-500 border-amber-500/50"
       case "on hold":
         return "bg-blue-500/20 text-blue-500 border-blue-500/50"
+      case "renewal":
+        return "bg-cyan-500/20 text-cyan-500 border-cyan-500/50"
       case "inactive":
         return "bg-gray-500/20 text-gray-500 border-gray-500/50"
       default:

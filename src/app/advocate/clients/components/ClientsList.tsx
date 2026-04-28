@@ -164,7 +164,7 @@ export default function ClientsList() {
       setAdvocateName(userName || "")
 
       const status = searchParams.get("status")
-      if (status && ["Active", "Dropped", "Not Responding", "On Hold"].includes(status)) {
+      if (status && ["Active", "Dropped", "Not Responding", "On Hold", "Renewal"].includes(status)) {
         setFilters((prev) => ({ ...prev, statusFilter: status }))
       }
     }

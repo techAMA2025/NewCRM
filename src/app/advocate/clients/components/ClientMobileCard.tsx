@@ -215,6 +215,7 @@ export default function ClientMobileCard({
                 client.adv_status === "Active" ? "bg-blue-600 text-white" :
                 client.adv_status === "Dropped" ? "bg-red-600 text-white" :
                 client.adv_status === "On Hold" ? "bg-purple-600 text-white" :
+                client.adv_status === "Renewal" ? "bg-cyan-600 text-white" :
                 client.adv_status === "Not Responding" ? "bg-yellow-600 text-white" : "bg-gray-700 text-gray-200"
               }`}
             >
@@ -223,6 +224,7 @@ export default function ClientMobileCard({
               <option value="Dropped">DROPPED</option>
               <option value="Not Responding">N/R</option>
               <option value="On Hold">HOLD</option>
+              <option value="Renewal">RENEWAL</option>
             </select>
             <span className="text-[10px] text-gray-400 font-medium">{formatIndianDate(client.startDate)}</span>
           </div>
