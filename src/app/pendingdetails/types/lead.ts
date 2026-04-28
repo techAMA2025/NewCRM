@@ -44,6 +44,7 @@ export interface Lead {
   // AMA specific fields
   date?: number
   synced_date?: number
+  agreementType?: 'pps' | 'retainer'
   // String index signature for other dynamically accessed properties
   [key: string]: any
 }

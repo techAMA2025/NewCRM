@@ -421,6 +421,18 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
+                  <div>
+                    <label htmlFor="agreementType" className="block text-sm font-medium text-gray-400">Agreement Type</label>
+                    <select
+                      id="agreementType"
+                      value={clientData.agreementType || 'retainer'}
+                      onChange={(e) => handleFieldChange('agreementType', e.target.value)}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="retainer">Retainer</option>
+                      <option value="pps">PPS</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

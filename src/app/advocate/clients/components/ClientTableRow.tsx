@@ -297,14 +297,6 @@ export default function ClientTableRow({
             className="w-4 h-4 rounded-sm text-purple-600 border-gray-600 bg-gray-700 focus:ring-purple-500 focus:ring-opacity-25"
           />
         </div>
-      </td>      <td className="px-3 py-2 whitespace-nowrap text-center text-xs">
-        <span className={`px-1.5 py-0.5 rounded-full font-medium ${
-          client.agreementType === 'pps' 
-            ? "bg-indigo-900/60 text-indigo-300"
-            : "bg-emerald-900/60 text-emerald-300"
-        }`}>
-          {client.agreementType === 'pps' ? 'PPS' : 'Retainer'}
-        </span>
       </td>
 
       <td className="px-3 py-2">

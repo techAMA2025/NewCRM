@@ -187,7 +187,7 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
           </div>
         </div>
       </td>
-      
+
       {/* Action Button */}
       <td className="px-4 py-3 text-sm">
         <div className="flex space-x-2">
