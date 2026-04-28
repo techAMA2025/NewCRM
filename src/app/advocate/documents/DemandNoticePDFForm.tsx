@@ -417,29 +417,29 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
             options={getBankOptions()}
             value={selectedBank}
             onChange={handleBankSelect}
-            placeholder={selectedClientId ? "Select a bank..." : "Please select a client first"}
+            placeholder="Select a bank..."
             isLoading={isLoadingBanks}
             loadingText="Loading banks..."
-            disabled={isLoadingBanks || !selectedClientId}
+            disabled={isLoadingBanks}
           />
           {selectedClientId && selectedBank && selectedBank.includes('|') && (
             <p className="text-xs text-green-500 mt-0.5">
               ✅ Client account selected - account number auto-filled
             </p>
           )}
-          {selectedClientId && selectedBank && !selectedBank.includes('|') && (
+          {selectedBank && !selectedBank.includes('|') && (
             <p className="text-xs text-amber-500 mt-0.5">
-              Other bank selected - please enter account number manually
+              Bank selected - please enter account number manually
             </p>
           )}
-                      {selectedClientId && !selectedBank && (
-              <p className="text-xs text-gray-500 mt-0.5">
-                Banks with ✅ show client's accounts. → indicates fuzzy-matched bank (name will be corrected). ⚠️ indicates bank details not available in system.
-              </p>
-            )}
-          {!selectedClientId && (
+          {selectedClientId && !selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
-              Select a client to see their banks
+              Banks with ✅ show client's accounts. → indicates fuzzy-matched bank (name will be corrected). ⚠️ indicates bank details not available in system.
+            </p>
+          )}
+          {!selectedClientId && !selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Select a client to see their banks, or select a bank directly to auto-fill details.
             </p>
           )}
         </div>
@@ -477,14 +477,19 @@ export default function DemandNoticeForm({ onClose }: DemandNoticeFormProps) {
               ✅ Auto-filled from selected client account (editable)
             </p>
           )}
-          {selectedBank && !selectedBank.includes('|') && selectedClientId && (
+          {selectedBank && !selectedBank.includes('|') && (
             <p className="text-xs text-amber-500 mt-0.5">
-              Other bank selected - please enter account number manually
+              Bank selected - please enter account number manually
             </p>
           )}
           {selectedClientId && !selectedBank && (
             <p className="text-xs text-gray-500 mt-0.5">
               Select a client account to auto-fill the account number
+            </p>
+          )}
+          {!selectedClientId && !selectedBank && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Enter account number manually
             </p>
           )}
           {selectedBank && selectedBank.includes('|') && !bankData[selectedBank.split('|')[0]] && !findClosestBankMatch(selectedBank.split('|')[0], Object.keys(bankData)) && (
