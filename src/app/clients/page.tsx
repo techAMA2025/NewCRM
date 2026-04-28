@@ -2467,7 +2467,7 @@ function ClientsPageWithParams() {
     }
   }
 
-  const requiresClientSideRefinement = documentFilter !== "all" || bankNameFilter !== "all"
+  const requiresClientSideRefinement = documentFilter !== "all" || bankNameFilter !== "all" || isRenewalFilter
 
   const baseTotalCount = filteredTotalCount || totalClientCount || filteredClients.length
   const displayedTotalCount = requiresClientSideRefinement ? filteredClients.length : baseTotalCount
