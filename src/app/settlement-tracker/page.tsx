@@ -1176,14 +1176,22 @@ const SettlementTracker = () => {
   // Handle Total Fees Save
   const handleTotalFeesSave = async (settlementId: string, amount: string) => {
     try {
+      const settlement = settlements.find(s => s.id === settlementId)
+      const receivedAmount = settlement?.receivedFees || '0'
+      const totalVal = parseFloat(amount) || 0
+      const receivedVal = parseFloat(receivedAmount.replace(/,/g, '')) || 0
+      const pendingVal = totalVal - receivedVal
+      const pendingStr = pendingVal <= 0 ? '0' : pendingVal.toString()
+
       const settlementRef = doc(db, "settlements", settlementId)
       await updateDoc(settlementRef, {
         totalFees: amount,
+        pendingFees: pendingStr,
         lastModified: serverTimestamp(),
       })
 
       setSettlements(prev => prev.map(s => 
-        s.id === settlementId ? { ...s, totalFees: amount } : s
+        s.id === settlementId ? { ...s, totalFees: amount, pendingFees: pendingStr } : s
       ))
       alert("Total Fees saved successfully")
     } catch (error) {
@@ -1214,14 +1222,22 @@ const SettlementTracker = () => {
   // Handle Received Fees Save
   const handleReceivedFeesSave = async (settlementId: string, amount: string) => {
     try {
+      const settlement = settlements.find(s => s.id === settlementId)
+      const totalAmount = settlement?.totalFees || '0'
+      const totalVal = parseFloat(totalAmount.replace(/,/g, '')) || 0
+      const receivedVal = parseFloat(amount) || 0
+      const pendingVal = totalVal - receivedVal
+      const pendingStr = pendingVal <= 0 ? '0' : pendingVal.toString()
+
       const settlementRef = doc(db, "settlements", settlementId)
       await updateDoc(settlementRef, {
         receivedFees: amount,
+        pendingFees: pendingStr,
         lastModified: serverTimestamp(),
       })
 
       setSettlements(prev => prev.map(s => 
-        s.id === settlementId ? { ...s, receivedFees: amount } : s
+        s.id === settlementId ? { ...s, receivedFees: amount, pendingFees: pendingStr } : s
       ))
       alert("Received Fees saved successfully")
     } catch (error) {
@@ -2185,7 +2201,14 @@ const SettlementTracker = () => {
                           value={totalFees}
                           onChange={(e) => {
                             const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                            setTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                            const formatted = raw === '' ? '' : Number(raw).toLocaleString('en-IN')
+                            setTotalFees(formatted)
+                            
+                            // Auto-calculate pending
+                            const totalVal = parseFloat(raw) || 0
+                            const receivedVal = parseFloat(receivedFees.replace(/,/g, '')) || 0
+                            const pendingVal = totalVal - receivedVal
+                            setPendingFees(pendingVal <= 0 ? '0' : pendingVal.toLocaleString('en-IN'))
                           }}
                           placeholder="Total"
                           className={`border-indigo-200 focus:ring-indigo-500 ${isFetchingFees ? 'pr-10 anim-pulse' : ''}`}
@@ -2217,7 +2240,14 @@ const SettlementTracker = () => {
                         value={receivedFees}
                         onChange={(e) => {
                           const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                          setReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                          const formatted = raw === '' ? '' : Number(raw).toLocaleString('en-IN')
+                          setReceivedFees(formatted)
+                          
+                          // Auto-calculate pending
+                          const totalVal = parseFloat(totalFees.replace(/,/g, '')) || 0
+                          const receivedVal = parseFloat(raw) || 0
+                          const pendingVal = totalVal - receivedVal
+                          setPendingFees(pendingVal <= 0 ? '0' : pendingVal.toLocaleString('en-IN'))
                         }}
                         placeholder="Recieved"
                         className="border-indigo-200 focus:ring-indigo-500"
@@ -2357,7 +2387,14 @@ const SettlementTracker = () => {
                       value={editTotalFees}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                        setEditTotalFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                        const formatted = raw === '' ? '' : Number(raw).toLocaleString('en-IN')
+                        setEditTotalFees(formatted)
+                        
+                        // Auto-calculate pending
+                        const totalVal = parseFloat(raw) || 0
+                        const receivedVal = parseFloat(editReceivedFees.replace(/,/g, '')) || 0
+                        const pendingVal = totalVal - receivedVal
+                        setEditPendingFees(pendingVal <= 0 ? '0' : pendingVal.toLocaleString('en-IN'))
                       }}
                       placeholder="Total"
                       className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
@@ -2383,7 +2420,14 @@ const SettlementTracker = () => {
                       value={editReceivedFees}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '')
-                        setEditReceivedFees(raw === '' ? '' : Number(raw).toLocaleString('en-IN'))
+                        const formatted = raw === '' ? '' : Number(raw).toLocaleString('en-IN')
+                        setEditReceivedFees(formatted)
+                        
+                        // Auto-calculate pending
+                        const totalVal = parseFloat(editTotalFees.replace(/,/g, '')) || 0
+                        const receivedVal = parseFloat(raw) || 0
+                        const pendingVal = totalVal - receivedVal
+                        setEditPendingFees(pendingVal <= 0 ? '0' : pendingVal.toLocaleString('en-IN'))
                       }}
                       placeholder="Received"
                       className="h-8 text-xs border-indigo-200 focus:ring-indigo-500"
