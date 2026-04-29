@@ -106,9 +106,9 @@ export const SettlementAmountInput = ({
 }) => {
   // Format initial value to Indian standard if it exists
   const formatValue = (val: string) => {
-    if (!val) return ''
+    if (!val) return '0'
     const clean = val.toString().replace(/,/g, '').replace(/[^0-9.]/g, '')
-    if (clean === '') return ''
+    if (clean === '') return '0'
     const num = parseFloat(clean)
     if (isNaN(num)) return val
     return num.toLocaleString('en-IN')

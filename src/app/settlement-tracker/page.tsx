@@ -212,11 +212,11 @@ const SettlementTracker = () => {
   const [manualAccountNumber, setManualAccountNumber] = useState('')
   const [manualLoanAmount, setManualLoanAmount] = useState('')
   const [manualLoanType, setManualLoanType] = useState('')
-  const [settlementAmount, setSettlementAmount] = useState('')
-  const [letterAmount, setLetterAmount] = useState('')
-  const [totalFees, setTotalFees] = useState('')
-  const [pendingFees, setPendingFees] = useState('')
-  const [receivedFees, setReceivedFees] = useState('')
+  const [settlementAmount, setSettlementAmount] = useState('0')
+  const [letterAmount, setLetterAmount] = useState('0')
+  const [totalFees, setTotalFees] = useState('0')
+  const [pendingFees, setPendingFees] = useState('0')
+  const [receivedFees, setReceivedFees] = useState('0')
   const [source, setSource] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
@@ -909,7 +909,7 @@ const SettlementTracker = () => {
 
   // Format loan amount - handles comma-separated values and empty strings
   const formatLoanAmount = (amount: string): string => {
-    if (!amount || amount.trim() === '') return 'N/A'
+    if (!amount || amount.trim() === '') return '0'
     
     // Remove all commas and whitespace, then parse
     const cleanedAmount = amount.replace(/,/g, '').trim()
@@ -1025,7 +1025,9 @@ const SettlementTracker = () => {
         if (result.fee) {
           // Clean and format the fee
           const cleanFee = result.fee.replace(/,/g, '');
-          setTotalFees(Number(cleanFee).toLocaleString('en-IN'));
+          const formattedFee = Number(cleanFee).toLocaleString('en-IN');
+          setTotalFees(formattedFee);
+          setPendingFees(formattedFee);
           toastMsg += `Fees: ₹${result.fee}`;
         }
         
@@ -1313,11 +1315,11 @@ const SettlementTracker = () => {
     setEditDate(dateStr)
     setEditAmount(settlement.loanAmount)
     setEditAccount(settlement.accountNumber)
-    setEditSettlementAmount(settlement.settlementAmount ? Number(settlement.settlementAmount).toLocaleString('en-IN') : '')
-    setEditLetterAmount(settlement.letterAmount ? Number(settlement.letterAmount).toLocaleString('en-IN') : '')
-    setEditTotalFees(settlement.totalFees ? Number(settlement.totalFees).toLocaleString('en-IN') : '')
-    setEditPendingFees(settlement.pendingFees ? Number(settlement.pendingFees).toLocaleString('en-IN') : '')
-    setEditReceivedFees(settlement.receivedFees ? Number(settlement.receivedFees).toLocaleString('en-IN') : '')
+    setEditSettlementAmount(settlement.settlementAmount ? Number(settlement.settlementAmount).toLocaleString('en-IN') : '0')
+    setEditLetterAmount(settlement.letterAmount ? Number(settlement.letterAmount).toLocaleString('en-IN') : '0')
+    setEditTotalFees(settlement.totalFees ? Number(settlement.totalFees).toLocaleString('en-IN') : '0')
+    setEditPendingFees(settlement.pendingFees ? Number(settlement.pendingFees).toLocaleString('en-IN') : '0')
+    setEditReceivedFees(settlement.receivedFees ? Number(settlement.receivedFees).toLocaleString('en-IN') : '0')
     setEditSource(settlement.source || '')
     setIsEditModalOpen(true)
   }
@@ -1698,7 +1700,7 @@ const SettlementTracker = () => {
                                             <span className={`text-[8px] font-bold w-14 shrink-0 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>Settlement</span>
                                             <SettlementAmountInput 
                                               settlementId={settlement.id}
-                                              initialValue={settlement.settlementAmount || ''}
+                                              initialValue={settlement.settlementAmount || '0'}
                                               isDarkMode={isDarkMode}
                                               onSave={handleSettlementAmountSave}
                                               buttonColor="bg-blue-600 hover:bg-blue-500"
@@ -1708,7 +1710,7 @@ const SettlementTracker = () => {
                                             <span className={`text-[8px] font-bold w-14 shrink-0 ${isDarkMode ? 'text-cyan-300' : 'text-cyan-600'}`}>Letter</span>
                                             <SettlementAmountInput 
                                               settlementId={settlement.id}
-                                              initialValue={settlement.letterAmount || ''}
+                                              initialValue={settlement.letterAmount || '0'}
                                               isDarkMode={isDarkMode}
                                               onSave={handleLetterAmountSave}
                                               buttonColor="bg-cyan-600 hover:bg-cyan-500"
@@ -1725,7 +1727,7 @@ const SettlementTracker = () => {
                                             <span className={`text-[8px] font-bold uppercase w-12 shrink-0 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>Total</span>
                                             <SettlementAmountInput 
                                               settlementId={settlement.id}
-                                              initialValue={settlement.totalFees || ''}
+                                              initialValue={settlement.totalFees || '0'}
                                               isDarkMode={isDarkMode}
                                               onSave={handleTotalFeesSave}
                                               buttonColor="bg-indigo-600 hover:bg-indigo-500"
@@ -1735,7 +1737,7 @@ const SettlementTracker = () => {
                                             <span className={`text-[8px] font-bold uppercase w-12 shrink-0 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>Pending</span>
                                             <SettlementAmountInput 
                                               settlementId={settlement.id}
-                                              initialValue={settlement.pendingFees || ''}
+                                              initialValue={settlement.pendingFees || '0'}
                                               isDarkMode={isDarkMode}
                                               onSave={handlePendingFeesSave}
                                               buttonColor="bg-orange-600 hover:bg-orange-500"
@@ -1745,7 +1747,7 @@ const SettlementTracker = () => {
                                             <span className={`text-[8px] font-bold uppercase w-12 shrink-0 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>Recieved</span>
                                             <SettlementAmountInput 
                                               settlementId={settlement.id}
-                                              initialValue={settlement.receivedFees || ''}
+                                              initialValue={settlement.receivedFees || '0'}
                                               isDarkMode={isDarkMode}
                                               onSave={handleReceivedFeesSave}
                                               buttonColor="bg-emerald-600 hover:bg-emerald-500"

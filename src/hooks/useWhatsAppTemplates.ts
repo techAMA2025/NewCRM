@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
 import { db } from '@/firebase/firebase'
 
+export type WhatsAppRole = 'advocate' | 'sales' | 'overlord'
+
 interface WhatsAppTemplate {
   id: string
   name: string
   templateName: string
   description: string
-  type: 'advocate' | 'sales'
+  type: WhatsAppRole | WhatsAppRole[]
   isActive: boolean
   createdAt: any
   updatedAt: any
@@ -20,7 +22,7 @@ interface UseWhatsAppTemplatesReturn {
   refetch: () => Promise<void>
 }
 
-export const useWhatsAppTemplates = (type?: 'advocate' | 'sales'): UseWhatsAppTemplatesReturn => {
+export const useWhatsAppTemplates = (type?: WhatsAppRole): UseWhatsAppTemplatesReturn => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -32,22 +34,12 @@ export const useWhatsAppTemplates = (type?: 'advocate' | 'sales'): UseWhatsAppTe
       
       const templatesRef = collection(db, 'whatsappTemplates')
       
-      // Build query with optional type filter and active templates only
-      let q = query(
+      // We fetch all active templates and filter client-side to handle both string and array 'type' fields
+      const q = query(
         templatesRef, 
         where('isActive', '==', true),
         orderBy('name', 'asc')
       )
-      
-      // If type is specified, add type filter
-      if (type) {
-        q = query(
-          templatesRef,
-          where('type', '==', type),
-          where('isActive', '==', true),
-          orderBy('name', 'asc')
-        )
-      }
       
       const snapshot = await getDocs(q)
       
@@ -56,7 +48,15 @@ export const useWhatsAppTemplates = (type?: 'advocate' | 'sales'): UseWhatsAppTe
         ...doc.data()
       })) as WhatsAppTemplate[]
       
-      setTemplates(templatesData)
+      // Filter by type if provided, handling both string and array formats
+      const filtered = type 
+        ? templatesData.filter(t => {
+            const templateTypes = Array.isArray(t.type) ? t.type : [t.type]
+            return templateTypes.includes(type)
+          })
+        : templatesData
+      
+      setTemplates(filtered)
     } catch (err) {
       console.error('Error fetching templates:', err)
       setError('Failed to fetch templates')
@@ -79,14 +79,14 @@ export const useWhatsAppTemplates = (type?: 'advocate' | 'sales'): UseWhatsAppTe
 }
 
 // Fallback default templates
-const getDefaultTemplates = (type?: 'advocate' | 'sales'): WhatsAppTemplate[] => {
-  const salesTemplates = [
+const getDefaultTemplates = (type?: WhatsAppRole): WhatsAppTemplate[] => {
+  const salesTemplates: WhatsAppTemplate[] = [
     {
       id: 'default-1',
       name: "CIBIL",
       templateName: "ama_dashboard_credit_report",
       description: "Send CIBIL credit report information",
-      type: 'sales' as const,
+      type: ['sales'],
       isActive: true,
       createdAt: null,
       updatedAt: null
@@ -96,7 +96,7 @@ const getDefaultTemplates = (type?: 'advocate' | 'sales'): WhatsAppTemplate[] =>
       name: "Answered Call",
       templateName: "ama_dashboard_after_call",
       description: "Follow-up after answered call",
-      type: 'sales' as const,
+      type: ['sales'],
       isActive: true,
       createdAt: null,
       updatedAt: null
@@ -106,7 +106,7 @@ const getDefaultTemplates = (type?: 'advocate' | 'sales'): WhatsAppTemplate[] =>
       name: "Loan Settlement?",
       templateName: "ama_dashboard_loan_settlement1",
       description: "Ask about loan settlement",
-      type: 'sales' as const,
+      type: ['sales'],
       isActive: true,
       createdAt: null,
       updatedAt: null
@@ -116,7 +116,7 @@ const getDefaultTemplates = (type?: 'advocate' | 'sales'): WhatsAppTemplate[] =>
       name: "No Answer",
       templateName: "ama_dashboard_no_answer",
       description: "Follow-up for unanswered calls",
-      type: 'sales' as const,
+      type: ['sales'],
       isActive: true,
       createdAt: null,
       updatedAt: null
@@ -126,27 +126,31 @@ const getDefaultTemplates = (type?: 'advocate' | 'sales'): WhatsAppTemplate[] =>
       name: "What we do?",
       templateName: "ama_dashboard_struggling1",
       description: "Explain what AMA Legal Solutions does",
-      type: 'sales' as const,
+      type: ['sales'],
       isActive: true,
       createdAt: null,
       updatedAt: null
     }
   ]
 
-  const advocateTemplates = [
+  const advocateTemplates: WhatsAppTemplate[] = [
     {
       id: 'default-advocate-1',
       name: "Send Feedback Message",
       templateName: "advocate_feedback_20250801",
       description: "Send feedback request message to client",
-      type: 'advocate' as const,
+      type: ['advocate'],
       isActive: true,
       createdAt: null,
       updatedAt: null
     }
   ]
 
+  const overlordTemplates: WhatsAppTemplate[] = []
+
   if (type === 'sales') return salesTemplates
   if (type === 'advocate') return advocateTemplates
-  return [...salesTemplates, ...advocateTemplates]
-} 
+  if (type === 'overlord') return overlordTemplates
+  return [...salesTemplates, ...advocateTemplates, ...overlordTemplates]
+}
+ 

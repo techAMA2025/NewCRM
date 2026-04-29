@@ -5,15 +5,17 @@ import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp
 import { db } from '@/firebase/firebase'
 import { toast } from 'react-hot-toast'
 import OverlordSidebar from '@/components/navigation/OverlordSidebar'
-import { FaPlus, FaEdit, FaTrash, FaWhatsapp, FaSave, FaTimes, FaFilter, FaSearch } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaWhatsapp, FaSave, FaTimes, FaFilter, FaSearch, FaCheckSquare, FaSquare } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
+
+type RoleType = 'advocate' | 'sales' | 'overlord'
 
 interface WhatsAppTemplate {
   id: string
   name: string
   templateName: string
   description: string
-  type: 'advocate' | 'sales'
+  type: RoleType | RoleType[]
   isActive: boolean
   createdAt: any
   updatedAt: any
@@ -25,13 +27,13 @@ const ManageTemplatesPage = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null)
-  const [filterType, setFilterType] = useState<'all' | 'advocate' | 'sales'>('all')
+  const [filterType, setFilterType] = useState<'all' | RoleType>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     templateName: '',
     description: '',
-    type: 'sales' as 'advocate' | 'sales',
+    type: [] as RoleType[],
     isActive: true
   })
 
@@ -75,6 +77,11 @@ const ManageTemplatesPage = () => {
       return
     }
 
+    if (formData.type.length === 0) {
+      toast.error('Please select at least one template type')
+      return
+    }
+
     try {
       const templatesRef = collection(db, 'whatsappTemplates')
       
@@ -107,11 +114,17 @@ const ManageTemplatesPage = () => {
 
   const handleEdit = (template: WhatsAppTemplate) => {
     setEditingTemplate(template)
+    
+    // Normalize type to array for the form
+    const types = Array.isArray(template.type) 
+      ? template.type 
+      : [template.type as RoleType]
+
     setFormData({
       name: template.name,
       templateName: template.templateName,
       description: template.description,
-      type: template.type,
+      type: types,
       isActive: template.isActive
     })
     setShowModal(true)
@@ -135,7 +148,7 @@ const ManageTemplatesPage = () => {
       name: '',
       templateName: '',
       description: '',
-      type: 'sales',
+      type: [],
       isActive: true
     })
     setEditingTemplate(null)
@@ -146,8 +159,20 @@ const ManageTemplatesPage = () => {
     resetForm()
   }
 
+  const toggleRole = (role: RoleType) => {
+    setFormData(prev => {
+      const isSelected = prev.type.includes(role)
+      if (isSelected) {
+        return { ...prev, type: prev.type.filter(r => r !== role) }
+      } else {
+        return { ...prev, type: [...prev.type, role] }
+      }
+    })
+  }
+
   const filteredTemplates = templates.filter(template => {
-    const matchesFilter = filterType === 'all' || template.type === filterType
+    const templateTypes = Array.isArray(template.type) ? template.type : [template.type as RoleType]
+    const matchesFilter = filterType === 'all' || templateTypes.includes(filterType)
     const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          template.templateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          template.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -177,7 +202,7 @@ const ManageTemplatesPage = () => {
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">WhatsApp Template Manager</h1>
-                  <p className="text-gray-600 mt-1">Manage WhatsApp message templates for advocates and sales</p>
+                  <p className="text-gray-600 mt-1">Manage WhatsApp message templates for advocates, sales, and overlords</p>
                 </div>
               </div>
               <button
@@ -200,19 +225,20 @@ const ManageTemplatesPage = () => {
                   placeholder="Search templates..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="text-white flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="text-black flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div className="flex items-center space-x-2">
                 <FaFilter className="text-gray-400 w-5 h-5" />
                 <select
                   value={filterType}
-                  onChange={(e) => setFilterType(e.target.value as 'all' | 'advocate' | 'sales')}
-                  className="text-white px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => setFilterType(e.target.value as 'all' | RoleType)}
+                  className="text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="all">All Types</option>
                   <option value="sales">Sales Templates</option>
                   <option value="advocate">Advocate Templates</option>
+                  <option value="overlord">Overlord Templates</option>
                 </select>
               </div>
             </div>
@@ -220,65 +246,63 @@ const ManageTemplatesPage = () => {
 
           {/* Templates Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTemplates.map((template) => (
-              <div
-                key={template.id}
-                className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-              >
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${
-                        template.type === 'advocate' 
-                          ? 'bg-purple-100 text-purple-600' 
-                          : 'bg-blue-100 text-blue-600'
-                      }`}>
-                        <FaWhatsapp className="w-5 h-5" />
+            {filteredTemplates.map((template) => {
+              const types = Array.isArray(template.type) ? template.type : [template.type as RoleType]
+              return (
+                <div
+                  key={template.id}
+                  className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex flex-wrap gap-2">
+                        {types.map(type => (
+                          <span key={type} className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            type === 'advocate'
+                              ? 'bg-purple-100 text-purple-800'
+                              : type === 'sales'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-green-100 text-green-800'
+                          }`}>
+                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                          </span>
+                        ))}
                       </div>
-                      <div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          template.type === 'advocate'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {template.type.charAt(0).toUpperCase() + template.type.slice(1)}
-                        </span>
-                      </div>
+                      <div className={`w-3 h-3 rounded-full ${
+                        template.isActive ? 'bg-green-500' : 'bg-gray-400'
+                      }`} title={template.isActive ? 'Active' : 'Inactive'} />
                     </div>
-                    <div className={`w-3 h-3 rounded-full ${
-                      template.isActive ? 'bg-green-500' : 'bg-gray-400'
-                    }`} title={template.isActive ? 'Active' : 'Inactive'} />
-                  </div>
 
-                  <h3 className="text-lg font-semibold text-black mb-2 line-clamp-1">
-                    {template.name}
-                  </h3>
-                  <p className="text-sm text-black mb-3 line-clamp-2">
-                    {template.description}
-                  </p>
-                  <div className="text-xs text-black mb-4 bg-gray-50 rounded-lg p-2">
-                    <span className="font-medium">Template ID:</span> {template.templateName}
-                  </div>
+                    <h3 className="text-lg font-semibold text-black mb-2 line-clamp-1">
+                      {template.name}
+                    </h3>
+                    <p className="text-sm text-black mb-3 line-clamp-2">
+                      {template.description}
+                    </p>
+                    <div className="text-xs text-black mb-4 bg-gray-50 rounded-lg p-2">
+                      <span className="font-medium">Template ID:</span> {template.templateName}
+                    </div>
 
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(template)}
-                      className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors duration-200"
-                    >
-                      <FaEdit className="w-4 h-4" />
-                      <span className="text-sm font-medium">Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors duration-200"
-                    >
-                      <FaTrash className="w-4 h-4" />
-                      <span className="text-sm font-medium">Delete</span>
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(template)}
+                        className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+                      >
+                        <FaEdit className="w-4 h-4" />
+                        <span className="text-sm font-medium">Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(template.id)}
+                        className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                        <span className="text-sm font-medium">Delete</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {filteredTemplates.length === 0 && (
@@ -307,8 +331,8 @@ const ManageTemplatesPage = () => {
 
         {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 my-8">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-gray-900">
@@ -332,7 +356,7 @@ const ManageTemplatesPage = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="text-white w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="text-black w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., CIBIL Report"
                     required
                   />
@@ -346,7 +370,7 @@ const ManageTemplatesPage = () => {
                     type="text"
                     value={formData.templateName}
                     onChange={(e) => setFormData({ ...formData, templateName: e.target.value })}
-                    className="text-white w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="text-black w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., ama_dashboard_credit_report"
                     required
                   />
@@ -359,7 +383,7 @@ const ManageTemplatesPage = () => {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="text-white w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="text-black w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Describe what this template is used for..."
                     rows={3}
                     required
@@ -368,16 +392,29 @@ const ManageTemplatesPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Template Type
+                    Template Type (Select all that apply)
                   </label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'advocate' | 'sales' })}
-                    className="text-white w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="sales">Sales Template</option>
-                    <option value="advocate">Advocate Template</option>
-                  </select>
+                  <div className="grid grid-cols-1 gap-2 p-3 border border-gray-300 rounded-lg">
+                    {(['sales', 'advocate', 'overlord'] as RoleType[]).map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => toggleRole(role)}
+                        className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                          formData.type.includes(role)
+                            ? 'bg-blue-50 text-blue-700 border-blue-200 border'
+                            : 'hover:bg-gray-50 text-gray-600 border-transparent border'
+                        }`}
+                      >
+                        {formData.type.includes(role) ? (
+                          <FaCheckSquare className="w-5 h-5" />
+                        ) : (
+                          <FaSquare className="w-5 h-5 text-gray-300" />
+                        )}
+                        <span className="font-medium capitalize">{role}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex items-center">
@@ -419,3 +456,4 @@ const ManageTemplatesPage = () => {
 }
 
 export default ManageTemplatesPage
+
