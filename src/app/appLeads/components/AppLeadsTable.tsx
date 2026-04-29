@@ -11,6 +11,7 @@ interface AppLeadsTableProps {
   statusOptions: string[];
   onUpdateLead: (id: string, updates: Partial<AppLead>) => Promise<void>;
   onViewHistory: (leadId: string, leadName: string) => void;
+  onViewQuery: (query: string, leadName: string) => void;
 }
 
 const getStatusColor = (status: string) => {
@@ -31,7 +32,7 @@ const getStatusColor = (status: string) => {
   return 'bg-gray-700 text-gray-200 border border-gray-600';
 };
 
-export default function AppLeadsTable({ leads, hasMore, loading, loadMore, statusOptions, onUpdateLead, onViewHistory }: AppLeadsTableProps) {
+export default function AppLeadsTable({ leads, hasMore, loading, loadMore, statusOptions, onUpdateLead, onViewHistory, onViewQuery }: AppLeadsTableProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
   const [editingRemarks, setEditingRemarks] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState<{ [key: string]: boolean }>({});
@@ -107,7 +108,11 @@ export default function AppLeadsTable({ leads, hasMore, loading, loadMore, statu
               </tr>
             ) : (
               leads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                <tr 
+                  key={lead.id} 
+                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => onViewQuery(lead.query || '', lead.name)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div>
                       {lead.created_at
@@ -131,6 +136,7 @@ export default function AppLeadsTable({ leads, hasMore, loading, loadMore, statu
                       </span>
                       <select 
                         value={lead.status || 'No Status'}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleStatusChange(lead.id, e.target.value)}
                         className="text-xs border border-gray-300 rounded p-1 bg-white text-gray-900"
                       >
@@ -148,13 +154,17 @@ export default function AppLeadsTable({ leads, hasMore, loading, loadMore, statu
                         className="text-xs border border-gray-300 rounded p-1 w-full min-w-[150px] bg-white text-gray-900"
                         rows={2}
                         value={editingRemarks[lead.id] !== undefined ? editingRemarks[lead.id] : lead.remarks || ''}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleRemarksChange(lead.id, e.target.value)}
                         placeholder="Add remarks..."
                       />
                       <div className="flex justify-end gap-2 mt-1">
                         {editingRemarks[lead.id] !== undefined && (
                           <button
-                            onClick={() => handleSaveRemarks(lead.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSaveRemarks(lead.id);
+                            }}
                             disabled={isSaving[lead.id]}
                             className="text-[10px] bg-[#D2A02A] text-white rounded px-2 py-1 hover:bg-[#B8911E] disabled:opacity-50"
                           >
@@ -163,7 +173,10 @@ export default function AppLeadsTable({ leads, hasMore, loading, loadMore, statu
                         )}
                         
                         <button
-                          onClick={() => onViewHistory(lead.id, lead.name)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewHistory(lead.id, lead.name);
+                          }}
                           className="text-[10px] bg-gray-500 text-white rounded px-2 py-1 hover:bg-gray-600"
                         >
                           History
@@ -177,7 +190,20 @@ export default function AppLeadsTable({ leads, hasMore, loading, loadMore, statu
                     <div className="text-xs text-gray-400">{lead.source}</div>
                   </td>
 
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={lead.query}>{lead.query}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                    <div className="truncate" title={lead.query}>{lead.query}</div>
+                    {lead.query && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewQuery(lead.query, lead.name);
+                        }}
+                        className="text-[10px] text-[#D2A02A] hover:underline mt-1 font-medium"
+                      >
+                        View Full Remark
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))
             )}

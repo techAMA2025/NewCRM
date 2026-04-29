@@ -9,6 +9,7 @@ import OverlordSidebar from "@/components/navigation/OverlordSidebar";
 import AdminSidebar from "@/components/navigation/AdminSidebar";
 import SalesSidebar from "@/components/navigation/SalesSidebar";
 import AppLeadsHistoryModal from './components/AppLeadsHistoryModal';
+import AppLeadsQueryModal from './components/AppLeadsQueryModal';
 import { FiSearch, FiDownload } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { authFetch } from '@/lib/authFetch';
@@ -48,6 +49,11 @@ export default function AppLeadsPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyLeadId, setHistoryLeadId] = useState<string | null>(null);
   const [historyLeadName, setHistoryLeadName] = useState<string | null>(null);
+
+  // Query Modal State
+  const [showQueryModal, setShowQueryModal] = useState(false);
+  const [queryContent, setQueryContent] = useState<string>('');
+  const [queryLeadName, setQueryLeadName] = useState<string | null>(null);
 
   // Export to CSV function
   const exportToCSV = async () => {
@@ -262,6 +268,12 @@ export default function AppLeadsPage() {
     setShowHistoryModal(true);
   };
 
+  const handleViewQuery = (query: string, leadName: string) => {
+    setQueryContent(query);
+    setQueryLeadName(leadName);
+    setShowQueryModal(true);
+  };
+
   if (authLoading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -351,6 +363,7 @@ export default function AppLeadsPage() {
                 statusOptions={statusOptions}
                 onUpdateLead={handleUpdateLead}
                 onViewHistory={handleViewHistory}
+                onViewQuery={handleViewQuery}
              />
           </div>
         </main>
@@ -360,6 +373,13 @@ export default function AppLeadsPage() {
           onClose={() => setShowHistoryModal(false)}
           leadId={historyLeadId || ""}
           leadName={historyLeadName || ""}
+        />
+
+        <AppLeadsQueryModal 
+          isOpen={showQueryModal}
+          onClose={() => setShowQueryModal(false)}
+          query={queryContent}
+          leadName={queryLeadName || ""}
         />
       </div>
   );
