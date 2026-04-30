@@ -114,8 +114,10 @@ const MobileLeadCard = ({
   const [isSaving, setSaving] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false)
+  const [menuPlacement, setMenuPlacement] = useState<'top' | 'bottom'>('top')
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   // Use the custom hook to fetch sales templates
   const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates("sales")
@@ -384,7 +386,16 @@ const MobileLeadCard = ({
             <button onClick={() => fetchNotesHistory(lead.id)} className="px-3 py-1.5 bg-[#5A4C33] hover:bg-[#4A3F2A] text-white rounded-lg text-xs font-medium">History</button>
             <div className="relative" ref={menuRef}>
               <button 
-                onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)} 
+                ref={buttonRef}
+                onClick={() => {
+                  if (!showWhatsAppMenu && buttonRef.current) {
+                    const rect = buttonRef.current.getBoundingClientRect();
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const menuHeight = 300; // Approximated menu height
+                    setMenuPlacement(spaceBelow < menuHeight ? 'top' : 'bottom');
+                  }
+                  setShowWhatsAppMenu(!showWhatsAppMenu)
+                }} 
                 disabled={!canEdit || isSendingWhatsApp || templatesLoading}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   !canEdit || isSendingWhatsApp || templatesLoading
@@ -406,7 +417,7 @@ const MobileLeadCard = ({
 
               {/* WhatsApp Menu Dropdown */}
               {showWhatsAppMenu && !templatesLoading && (
-                <div className="absolute right-0 bottom-full mb-2 w-64 bg-white border border-[#5A4C33]/20 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className={`absolute right-0 ${menuPlacement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} w-64 bg-white border border-[#5A4C33]/20 rounded-xl shadow-2xl z-50 overflow-hidden`}>
                   <div className="px-4 py-3 bg-[#F8F5EC] border-b border-[#5A4C33]/10 flex items-center gap-2">
                     <FaWhatsapp className="text-green-500 text-sm" />
                     <span className="text-[10px] font-bold text-[#5A4C33] uppercase tracking-wider">Templates</span>

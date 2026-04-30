@@ -34,11 +34,11 @@ export const useWhatsAppTemplates = (type?: WhatsAppRole): UseWhatsAppTemplatesR
       
       const templatesRef = collection(db, 'whatsappTemplates')
       
-      // We fetch all active templates and filter client-side to handle both string and array 'type' fields
+      // Simplify query to avoid composite index requirements
+      // We fetch all active templates and filter/sort client-side
       const q = query(
         templatesRef, 
-        where('isActive', '==', true),
-        orderBy('name', 'asc')
+        where('isActive', '==', true)
       )
       
       const snapshot = await getDocs(q)
@@ -49,12 +49,22 @@ export const useWhatsAppTemplates = (type?: WhatsAppRole): UseWhatsAppTemplatesR
       })) as WhatsAppTemplate[]
       
       // Filter by type if provided, handling both string and array formats
-      const filtered = type 
+      // Also ensure type matches are case-insensitive just in case
+      let filtered = type 
         ? templatesData.filter(t => {
-            const templateTypes = Array.isArray(t.type) ? t.type : [t.type]
-            return templateTypes.includes(type)
+            if (!t.type) return false
+            const templateTypes = Array.isArray(t.type) 
+              ? t.type 
+              : [t.type]
+            
+            return templateTypes.some(role => 
+              role && role.toString().toLowerCase() === type.toLowerCase()
+            )
           })
         : templatesData
+      
+      // Sort client-side by name
+      filtered = filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
       
       setTemplates(filtered)
     } catch (err) {
@@ -153,4 +163,5 @@ const getDefaultTemplates = (type?: WhatsAppRole): WhatsAppTemplate[] => {
   if (type === 'overlord') return overlordTemplates
   return [...salesTemplates, ...advocateTemplates, ...overlordTemplates]
 }
+
  

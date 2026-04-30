@@ -118,8 +118,10 @@ const BillcutMobileLeadCard = ({
   const [isSaving, setSaving] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false)
+  const [menuPlacement, setMenuPlacement] = useState<'top' | 'bottom'>('top')
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   // Use the custom hook to fetch sales templates
   const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates("sales")
@@ -447,7 +449,16 @@ const BillcutMobileLeadCard = ({
             </button>
             <div className="relative col-span-2" ref={menuRef}>
               <button 
-                onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)} 
+                ref={buttonRef}
+                onClick={() => {
+                  if (!showWhatsAppMenu && buttonRef.current) {
+                    const rect = buttonRef.current.getBoundingClientRect();
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const menuHeight = 300; // Approximated menu height
+                    setMenuPlacement(spaceBelow < menuHeight ? 'top' : 'bottom');
+                  }
+                  setShowWhatsAppMenu(!showWhatsAppMenu)
+                }} 
                 disabled={!canEdit || isSendingWhatsApp || templatesLoading}
                 className={`w-full py-2.5 rounded-xl text-[11px] font-bold transition-all duration-200 shadow-md flex items-center justify-center gap-2 ${
                   !canEdit || isSendingWhatsApp || templatesLoading
@@ -469,7 +480,7 @@ const BillcutMobileLeadCard = ({
 
               {/* WhatsApp Menu Dropdown */}
               {showWhatsAppMenu && !templatesLoading && (
-                <div className="absolute right-0 bottom-full mb-2 w-full bg-white border border-[#5A4C33]/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className={`absolute right-0 ${menuPlacement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} w-full bg-white border border-[#5A4C33]/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300`}>
                   <div className="px-4 py-3 bg-[#F8F5EC] border-b border-[#5A4C33]/5 flex items-center gap-2">
                     <FaWhatsapp className="text-green-600 text-sm" />
                     <span className="text-[10px] font-bold text-[#5A4C33]/50 uppercase tracking-widest">Select Template</span>

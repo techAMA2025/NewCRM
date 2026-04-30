@@ -27,8 +27,10 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
   const [showHistory, setShowHistory] = useState(false);
   const [isLoadingLatestNote, setIsLoadingLatestNote] = useState(true);
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState<'top' | 'bottom'>('bottom');
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Use the custom hook to fetch sales templates
   const { templates: whatsappTemplates, loading: templatesLoading } = useWhatsAppTemplates('sales');
@@ -191,9 +193,18 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
           />
           
           {/* WhatsApp Menu Button */}
-          <div className="relative overflow-visible">
+          <div className="relative">
             <button
-              onClick={() => setShowWhatsAppMenu(!showWhatsAppMenu)}
+              ref={buttonRef}
+              onClick={() => {
+                if (!showWhatsAppMenu && buttonRef.current) {
+                  const rect = buttonRef.current.getBoundingClientRect();
+                  const spaceBelow = window.innerHeight - rect.bottom;
+                  const menuHeight = 250; // Approximated menu height
+                  setMenuPlacement(spaceBelow < menuHeight ? 'top' : 'bottom');
+                }
+                setShowWhatsAppMenu(!showWhatsAppMenu);
+              }}
               disabled={disabled || isSendingWhatsApp || templatesLoading}
               className={`px-2 py-0.5 rounded text-xs transition-colors duration-200 ${
                 disabled || isSendingWhatsApp || templatesLoading
@@ -213,7 +224,7 @@ const BillcutLeadNotesCell = ({ lead, fetchNotesHistory, updateLead, disabled }:
 
             {/* WhatsApp Menu Dropdown */}
             {showWhatsAppMenu && !templatesLoading && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-[#ffffff] border border-[#5A4C33]/20 rounded-lg shadow-lg z-50" ref={menuRef}>
+              <div className={`absolute right-0 ${menuPlacement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'} w-48 bg-[#ffffff] border border-[#5A4C33]/20 rounded-lg shadow-lg z-50`} ref={menuRef}>
                 <div className="p-2">
                   <p className="text-xs text-[#5A4C33] font-medium mb-2">Send WhatsApp Message</p>
                   <div className="max-h-[300px] overflow-y-auto space-y-1">
