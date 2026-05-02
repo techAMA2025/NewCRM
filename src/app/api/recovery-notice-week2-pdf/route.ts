@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
       })
     } else {
-      const chromium = (await import('@sparticuz/chromium-min')).default
+      const chromium = (await import('@sparticuz/chromium-min')).default as any
       browser = await puppeteer.launch({
         args: [
           ...chromium.args,

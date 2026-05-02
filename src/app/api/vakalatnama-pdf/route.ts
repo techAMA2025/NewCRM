@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
             });
         } else {
             console.log('[vakalatnama-pdf] Using @sparticuz/chromium-min (serverless)');
-            const chromium = (await import('@sparticuz/chromium-min')).default;
+            const chromium = (await import('@sparticuz/chromium-min')).default as any;
             browser = await puppeteer.launch({
                 args: [
                     ...chromium.args,
