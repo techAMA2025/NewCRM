@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt, FaEnvelopeOpenText, FaUniversity, FaCompass, FaCompressAlt, FaHandshake, FaBars } from 'react-icons/fa'
+import { FaChartPie, FaUserFriends, FaCalendarAlt, FaFileAlt, FaFolder, FaComments, FaSignOutAlt, FaBalanceScale, FaMoneyCheckAlt, FaEnvelopeOpenText, FaUniversity, FaCompass, FaCompressAlt, FaHandshake, FaBars, FaMoneyBillWave } from 'react-icons/fa'
 import { getAuth, signOut } from 'firebase/auth'
 import { toast } from 'react-hot-toast'
 import { app } from '@/firebase/firebase'
@@ -96,7 +96,7 @@ const AdvocateSidebar = () => {
             </li> 
             <li>
               <Link href="/recovery" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/recovery')}`}>
-                <FaMoneyCheckAlt className="mr-3 text-indigo-400" />
+                <FaMoneyBillWave className="mr-3 text-indigo-400" />
                 <span>Recovery</span>
               </Link>
             </li>
@@ -119,13 +119,13 @@ const AdvocateSidebar = () => {
               </Link>
             </li>
             <li>
-              <Link href="/arbtracker" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/arbitration-tracker')}`}>
+              <Link href="/arbtracker" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/arbtracker')}`}>
                 <FaBalanceScale className="mr-3 text-indigo-400" />
                 <span>Arbitration</span>
               </Link>
             </li>
             <li>
-              <Link href="/reminders" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/advocate/clientpaymentrequest')}`}>
+              <Link href="/reminders" className={`flex items-center px-6 py-3 rounded-r-full hover:bg-gray-800/50 transition-all duration-200 ${isActive('/reminders')}`}>
                 <FaCalendarAlt className="mr-3 text-indigo-400" />
                 <span>Reminders</span>
               </Link>
