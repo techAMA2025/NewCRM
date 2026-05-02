@@ -56,6 +56,8 @@ export const useBillcutLeadActions = (
       const token = await currentUser?.getIdToken()
       if (!token) return
 
+      console.log(`[WATI_DEBUG] Initiating Billcut assignment notification for leads:`, leadIds, `to salesperson:`, salespersonId)
+      
       fetch("/api/leads/send-assignment-notification", {
         method: "POST",
         headers: {
@@ -64,7 +66,11 @@ export const useBillcutLeadActions = (
         },
         body: JSON.stringify({ leadIds, salespersonId, collectionName: "billcutLeads" }),
       })
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json()
+        console.log(`[WATI_DEBUG] Billcut API Response:`, res.status, data)
+        return data
+      })
       .then((data) => {
         if (data.success && data.attempted > 0) {
           console.log(`[WATI] Assignment notification sent to ${data.attempted} lead(s)`)
@@ -96,6 +102,12 @@ export const useBillcutLeadActions = (
       if (result.error) throw new Error(result.error)
 
       toast.success("Lead updated successfully")
+
+      // Fire WATI notification if assignment changed (non-blocking)
+      if (data.assignedTo && data.assignedTo !== "-" && data.assignedToId) {
+          sendAssignmentNotification([id], data.assignedToId)
+      }
+
       return true
     } catch (error) {
       setLeads(originalLeads);
@@ -123,6 +135,12 @@ export const useBillcutLeadActions = (
       if (result.error) throw new Error(result.error)
 
       toast.success(`Successfully assigned ${leadIds.length} leads`)
+      
+      // Fire WATI notifications for all assigned leads (non-blocking)
+      if (salesPersonId) {
+          sendAssignmentNotification(leadIds, salesPersonId)
+      }
+
       return true
     } catch (error) {
       console.error("Error bulk assigning leads:", error)

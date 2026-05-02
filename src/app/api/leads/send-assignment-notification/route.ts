@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 /**
  * POST /api/leads/send-assignment-notification
  *
- * Sends the "pre_call_message_utlity" WATI template message to one or more leads
+ * Sends the "pre_call_notification" WATI template message to one or more leads
  * immediately after they have been assigned to a salesperson.
  *
  * Body:
@@ -14,10 +14,10 @@ export const dynamic = "force-dynamic"
  *   salespersonId    string     - The Firestore document ID (or UID) of the salesperson in the users collection
  *   collectionName   string     - The Firestore collection (optional, defaults to "ama_leads")
  *
- * Template: pre_call_message_utlity
- *   {{1}}      → lead's name    (client name)
- *   {{phone}}  → salesperson's phoneNumber (from users collection)
- *   {{name}}   → salesperson's firstName   (from users collection)
+ * Template: pre_call_notification
+ *   {{name}}       → lead's name    (client name)
+ *   {{phone}}      → salesperson's phoneNumber (from users collection)
+ *   {{agent_name}} → salesperson's firstName   (from users collection)
  *
  * All WATI messages are sent in a single batch API call via the
  * sendTemplateMessages endpoint — exactly matching the existing
@@ -60,8 +60,11 @@ export async function POST(request: NextRequest) {
 
         const validCollections = ["ama_leads", "billcutLeads", "ipr_karo_leads"];
         if (!validCollections.includes(collectionName)) {
+            console.error(`[ASSIGNMENT_NOTIFICATION] Invalid collection: ${collectionName}`)
             return NextResponse.json({ error: `Invalid collection: ${collectionName}` }, { status: 400 })
         }
+
+        console.log(`[ASSIGNMENT_NOTIFICATION] Starting notification for ${leadIds.length} leads in ${collectionName}. Salesperson: ${salespersonId}`)
 
         const db = adminDb
 
@@ -84,6 +87,8 @@ export async function POST(request: NextRequest) {
             console.warn(`[ASSIGNMENT_NOTIFICATION] Salesperson ${salespersonId} not found in users collection`)
             return NextResponse.json({ error: "Salesperson not found in users collection" }, { status: 404 })
         }
+
+        console.log(`[ASSIGNMENT_NOTIFICATION] Found salesperson: ${salespersonData.firstName || "Unknown"} with phone: ${salespersonData.phoneNumber}`)
 
         let salespersonPhone = (salespersonData.phoneNumber || "").toString().replace(/\D/g, "")
         // Strip 91 country code prefix so the template shows the raw 10-digit number
@@ -135,14 +140,19 @@ export async function POST(request: NextRequest) {
             receivers.push({
                 whatsappNumber: rawLeadPhone,
                 customParams: [
-                    // {{1}} = client name
-                    { name: "1", value: clientName },
-                    // {{phone}} = salesperson phone number (displayed in message)
+                    // {{name}} = client name
+                    { name: "name", value: clientName },
+                    // {{phone}} = salesperson phone number
                     { name: "phone", value: salespersonPhone },
-                    // {{name}} = salesperson first name
-                    { name: "name", value: salespersonFirstName },
+                    // {{agent_name}} = salesperson first name
+                    { name: "agent_name", value: salespersonFirstName },
                 ],
             })
+        }
+
+        console.log(`[ASSIGNMENT_NOTIFICATION] Prepared ${receivers.length} receivers for WATI.`)
+        if (receivers.length > 0) {
+            console.log(`[ASSIGNMENT_NOTIFICATION] First receiver sample:`, JSON.stringify(receivers[0], null, 2))
         }
 
         if (receivers.length === 0) {
@@ -166,7 +176,9 @@ export async function POST(request: NextRequest) {
             })
         }
 
-        const TEMPLATE_NAME = "pre_call_message_utlity"
+        console.log(`[ASSIGNMENT_NOTIFICATION] Using WATI Base URL: ${watiBaseUrl}, Tenant: ${tenantId}`)
+
+        const TEMPLATE_NAME = "pre_call_notification"
 
         // --- 4. Send via the WATI batch endpoint (all in one request, processed in parallel by WATI) ---
         const requestBody = {
@@ -204,7 +216,8 @@ export async function POST(request: NextRequest) {
         const watiResult = await watiResponse.json()
 
         console.log(
-            `[ASSIGNMENT_NOTIFICATION] WATI batch response received for ${receivers.length} leads.`
+            `[ASSIGNMENT_NOTIFICATION] WATI batch response received for ${receivers.length} leads. Status: ${watiResponse.status}`,
+            JSON.stringify(watiResult, null, 2)
         )
 
         return NextResponse.json({

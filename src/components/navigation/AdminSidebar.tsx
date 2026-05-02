@@ -131,6 +131,12 @@ const AdminSidebar = () => {
             </Link>
           </li>
           <li>
+            <Link href="/recovery" className={`flex items-center px-6 py-3 ${isActive('/recovery')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
+              <FaMoneyBillWave className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
+              <span>Recovery</span>
+            </Link>
+          </li>
+          <li>
             <Link href="/escalations" className={`flex items-center px-6 py-3 ${isActive('/escalations')} transition-all duration-200 hover:bg-gray-800/70 hover:text-indigo-400 group`}>
               <FaComments className="mr-3 text-gray-500 group-hover:text-indigo-400 transition-colors duration-200" />
               <span>Escalations</span>

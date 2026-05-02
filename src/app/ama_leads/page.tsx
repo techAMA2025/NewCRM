@@ -547,12 +547,14 @@ const AmaLeadsPage = () => {
     }
   }
 
-  // Sends the pre_call_message_utlity WATI template after assignment (fire-and-forget)
+  // Sends the pre_call_notification WATI template after assignment (fire-and-forget)
   const sendAssignmentNotification = async (leadIds: string[], salespersonId: string) => {
     try {
       const token = await currentUser?.getIdToken()
       if (!token) return
 
+      console.log(`[WATI_DEBUG] Initiating assignment notification for leads:`, leadIds, `to salesperson:`, salespersonId)
+      
       fetch("/api/leads/send-assignment-notification", {
         method: "POST",
         headers: {
@@ -561,7 +563,11 @@ const AmaLeadsPage = () => {
         },
         body: JSON.stringify({ leadIds, salespersonId }),
       })
-        .then((res) => res.json())
+        .then(async (res) => {
+          const data = await res.json()
+          console.log(`[WATI_DEBUG] Response from API:`, res.status, data)
+          return data
+        })
         .then((data) => {
           if (data.success && data.attempted > 0) {
             console.log(`[WATI] Assignment notification sent to ${data.attempted} lead(s)`)
@@ -589,7 +595,7 @@ const AmaLeadsPage = () => {
           lead.id === leadId ? { ...lead, assignedTo: salesPersonName, assignedToId: salesPersonId } : lead
         )
       )
-      // Fire WATI pre_call_message_utlity notification (non-blocking)
+      // Fire WATI pre_call_notification notification (non-blocking)
       sendAssignmentNotification([leadId], salesPersonId)
     }
   }
@@ -647,7 +653,7 @@ const AmaLeadsPage = () => {
         setSelectedLeads([])
         // Refetch to get updated data
         refreshCurrentView()
-        // Fire WATI pre_call_message_utlity notifications in parallel (non-blocking)
+        // Fire WATI pre_call_notification notifications in parallel (non-blocking)
         sendAssignmentNotification(leadsBeingAssigned, targetId)
     }
   }

@@ -215,6 +215,10 @@ const OverlordSidebar: React.FC<OverlordSidebarProps> = ({ children }) => {
     },
     {
       type: 'single',
+      item: { href: '/recovery', icon: <FaMoneyCheckAlt />, label: 'Recovery', isActive: false }
+    },
+    {
+      type: 'single',
       item: { href: '/escalations', icon: <FaCommentDots />, label: 'Escalations', isActive: false }
     },
     {
