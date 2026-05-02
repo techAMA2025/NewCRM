@@ -70,22 +70,6 @@ export default function RecoveryPage() {
   const [historyFieldLabel, setHistoryFieldLabel] = useState("")
   const [docPreview, setDocPreview] = useState<{ url: string; label: string } | null>(null)
 
-  // ⚠️ TEMP: Test Notice Generator
-  const [isTestNoticeOpen, setIsTestNoticeOpen] = useState(false)
-  const [testNoticeLoading, setTestNoticeLoading] = useState(false)
-  const [testNoticeForm, setTestNoticeForm] = useState({
-    clientName: "",
-    clientPhone: "",
-    clientAddress: "",
-    startDate: new Date().toISOString().split("T")[0],
-    totalFees: "",
-    amountPending: "",
-    noticeDate: new Date().toISOString().split("T")[0],
-    priorNoticeDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    representativeName: "Advocate Anuj Anand Malik",
-    policeStationName: "",
-    policeStationAddress: "",
-  })
 
   // Auth protection
   useEffect(() => {
@@ -403,14 +387,6 @@ export default function RecoveryPage() {
             >
               Add New Record
             </Button>
-            {/* ⚠️ TEMP TEST BUTTON – Remove after draft approval */}
-            <Button
-              onClick={() => setIsTestNoticeOpen(true)}
-              variant="outline"
-              className="flex-none h-10 px-4 border-amber-500 text-amber-600 hover:bg-amber-50 text-xs font-bold rounded-xl"
-            >
-              🧪 Test Notices
-            </Button>
           </div>
         </div>
 
@@ -472,14 +448,14 @@ export default function RecoveryPage() {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                       <thead className={isDarkMode ? 'bg-gray-900/40' : 'bg-gray-50'}>
                         <tr>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Date</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Client Details</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Fee Type</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 w-[160px]">Amounts</th>
-                          <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-500 w-[400px]">Progress</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">Status</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 w-64">Remarks</th>
-                          <th className="px-3 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-500">Actions</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Date</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Client Details</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Fee Type</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black w-[160px]">Amounts</th>
+                          <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-black w-[400px]">Progress</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Status</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black w-64">Remarks</th>
+                          <th className="px-3 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-black">Actions</th>
                         </tr>
                       </thead>
                       <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/50' : 'divide-gray-100'}`}>
@@ -493,12 +469,12 @@ export default function RecoveryPage() {
                                 <div className="font-semibold text-sm flex items-center gap-1.5">
                                   {record.clientName}
                                 </div>
-                                <div className={`text-[10px] flex items-center gap-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <div className={`text-[10px] flex items-center gap-2 ${isDarkMode ? 'text-gray-400' : 'text-black'}`}>
                                   <span>{record.clientPhone}</span>
                                   {record.clientAltPhone && <span className="opacity-50 text-[8px]">/ {record.clientAltPhone}</span>}
                                 </div>
                                 {record.clientEmail && (
-                                  <div className={`text-[9px] truncate w-40 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{record.clientEmail}</div>
+                                  <div className={`text-[9px] truncate w-40 ${isDarkMode ? 'text-gray-500' : 'text-black'}`}>{record.clientEmail}</div>
                                 )}
                                 <div className="text-[8px] opacity-40 mt-0.5">By {record.createdBy || 'System'}</div>
                               </div>
@@ -748,241 +724,6 @@ export default function RecoveryPage() {
         isDarkMode={isDarkMode}
       />
 
-      {/* ⚠️ TEMP: Test Week 1 Notice Generator Modal */}
-      <Dialog open={isTestNoticeOpen} onOpenChange={(open) => !open && setIsTestNoticeOpen(false)}>
-        <DialogContent className={`sm:max-w-[480px] ${isDarkMode ? 'bg-gray-900 text-white border-gray-800' : 'bg-white'}`}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span>🧪</span>
-              <span>Test: PDF Notice Generator</span>
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-            Temporary test button — remove after draft is approved.
-          </p>
-          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-2">
-            {[
-              { key: 'clientName', label: 'Client Name', type: 'text', placeholder: 'e.g. Rahul Sharma' },
-              { key: 'clientPhone', label: 'Client Phone', type: 'text', placeholder: 'e.g. +91 98765 43210' },
-              { key: 'clientAddress', label: 'Client Address', type: 'text', placeholder: 'e.g. 12, MG Road, Pune' },
-              { key: 'startDate', label: 'Engagement Date', type: 'date', placeholder: '' },
-              { key: 'totalFees', label: 'Total Fees (INR)', type: 'text', placeholder: 'e.g. 50,000' },
-              { key: 'amountPending', label: 'Amount Pending (INR)', type: 'text', placeholder: 'e.g. 30,000' },
-              { key: 'noticeDate', label: 'Current Notice Date', type: 'date', placeholder: '' },
-              { key: 'priorNoticeDate', label: 'Prior Notice Date (for Week 2)', type: 'date', placeholder: '' },
-              { key: 'representativeName', label: 'Your Name (for Complaint)', type: 'text', placeholder: 'e.g. Advocate Anuj Malik' },
-              { key: 'policeStationName', label: 'Police Station Name', type: 'text', placeholder: 'e.g. Sector 57 Police Station' },
-              { key: 'policeStationAddress', label: 'Police Station Address', type: 'text', placeholder: 'e.g. Gurugram, Haryana' },
-            ].map(({ key, label, type, placeholder }) => (
-              <div key={key} className="space-y-1">
-                <Label className="text-xs font-semibold">{label}</Label>
-                <Input
-                  type={type}
-                  value={(testNoticeForm as any)[key]}
-                  onChange={(e) => setTestNoticeForm(prev => ({ ...prev, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className={`h-9 text-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Button variant="outline" className="flex-1 min-w-[80px]" onClick={() => setIsTestNoticeOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 min-w-[100px] bg-amber-500 hover:bg-amber-600 text-white"
-              disabled={testNoticeLoading}
-              onClick={async () => {
-                if (!testNoticeForm.clientName || !testNoticeForm.clientPhone || !testNoticeForm.amountPending) {
-                  toast.error('Please fill Client Name, Phone, and Amount Pending')
-                  return
-                }
-                setTestNoticeLoading(true)
-                try {
-                  const res = await authFetch('/api/recovery-notice-week1-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(testNoticeForm),
-                  })
-                  if (!res.ok) {
-                    const err = await res.json()
-                    throw new Error(err.error || 'Failed to generate PDF')
-                  }
-                  const blob = await res.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `${testNoticeForm.clientName.replace(/\s+/g, '_')}_week1_notice.pdf`
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                  window.URL.revokeObjectURL(url)
-                  toast.success('Week 1 Notice generated successfully')
-                } catch (err: any) {
-                  toast.error(err.message)
-                } finally {
-                  setTestNoticeLoading(false)
-                }
-              }}
-            >
-              {testNoticeLoading ? '...' : 'Week 1'}
-            </Button>
-            <Button
-              className="flex-1 min-w-[100px] bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={testNoticeLoading}
-              onClick={async () => {
-                if (!testNoticeForm.clientName || !testNoticeForm.clientPhone || !testNoticeForm.amountPending || !testNoticeForm.priorNoticeDate) {
-                  toast.error('Please fill Client Details, Amount, and Prior Notice Date')
-                  return
-                }
-                setTestNoticeLoading(true)
-                try {
-                  const res = await authFetch('/api/recovery-notice-week2-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(testNoticeForm),
-                  })
-                  if (!res.ok) {
-                    const err = await res.json()
-                    throw new Error(err.error || 'Failed to generate PDF')
-                  }
-                  const blob = await res.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `${testNoticeForm.clientName.replace(/\s+/g, '_')}_week2_notice.pdf`
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                  window.URL.revokeObjectURL(url)
-                  toast.success('Week 2 Notice generated successfully')
-                } catch (err: any) {
-                  toast.error(err.message)
-                } finally {
-                  setTestNoticeLoading(false)
-                }
-              }}
-            >
-              {testNoticeLoading ? '...' : 'Week 2'}
-            </Button>
-            <Button
-              className="flex-1 min-w-[100px] bg-red-600 hover:bg-red-700 text-white"
-              disabled={testNoticeLoading}
-              onClick={async () => {
-                if (!testNoticeForm.clientName || !testNoticeForm.clientPhone || !testNoticeForm.amountPending) {
-                  toast.error('Please fill Client Name, Phone, and Amount Pending')
-                  return
-                }
-                setTestNoticeLoading(true)
-                try {
-                  const res = await authFetch('/api/recovery-notice-week3-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(testNoticeForm),
-                  })
-                  if (!res.ok) {
-                    const err = await res.json()
-                    throw new Error(err.error || 'Failed to generate PDF')
-                  }
-                  const blob = await res.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `${testNoticeForm.clientName.replace(/\s+/g, '_')}_week3_notice.pdf`
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                  window.URL.revokeObjectURL(url)
-                  toast.success('Week 3 Notice generated successfully')
-                } catch (err: any) {
-                  toast.error(err.message)
-                } finally {
-                  setTestNoticeLoading(false)
-                }
-              }}
-            >
-              {testNoticeLoading ? '...' : 'Week 3'}
-            </Button>
-            <Button
-              className="flex-1 min-w-[100px] bg-gray-700 hover:bg-gray-800 text-white"
-              disabled={testNoticeLoading}
-              onClick={async () => {
-                if (!testNoticeForm.clientName || !testNoticeForm.representativeName || !testNoticeForm.policeStationName) {
-                  toast.error('Please fill Client Name, Your Name, and Police Station Name')
-                  return
-                }
-                setTestNoticeLoading(true)
-                try {
-                  const res = await authFetch('/api/police-complaint-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(testNoticeForm),
-                  })
-                  if (!res.ok) {
-                    const err = await res.json()
-                    throw new Error(err.error || 'Failed to generate PDF')
-                  }
-                  const blob = await res.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `${testNoticeForm.clientName.replace(/\s+/g, '_')}_police_complaint.pdf`
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                  window.URL.revokeObjectURL(url)
-                  toast.success('Police Complaint generated successfully')
-                } catch (err: any) {
-                  toast.error(err.message)
-                } finally {
-                  setTestNoticeLoading(false)
-                }
-              }}
-            >
-              {testNoticeLoading ? '...' : 'Police Complaint'}
-            </Button>
-            <Button
-              className="flex-1 min-w-[100px] bg-emerald-600 hover:bg-emerald-700 text-white"
-              disabled={testNoticeLoading}
-              onClick={async () => {
-                if (!testNoticeForm.clientName || !testNoticeForm.clientPhone) {
-                  toast.error('Please fill Client Name and Phone')
-                  return
-                }
-                setTestNoticeLoading(true)
-                try {
-                  const res = await authFetch('/api/mediation-notice-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(testNoticeForm),
-                  })
-                  if (!res.ok) {
-                    const err = await res.json()
-                    throw new Error(err.error || 'Failed to generate PDF')
-                  }
-                  const blob = await res.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `${testNoticeForm.clientName.replace(/\s+/g, '_')}_mediation_notice.pdf`
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                  window.URL.revokeObjectURL(url)
-                  toast.success('Mediation Notice generated successfully')
-                } catch (err: any) {
-                  toast.error(err.message)
-                } finally {
-                  setTestNoticeLoading(false)
-                }
-              }}
-            >
-              {testNoticeLoading ? '...' : 'Mediation Notice'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Document Preview Modal */}
       <Dialog open={!!docPreview} onOpenChange={() => setDocPreview(null)}>

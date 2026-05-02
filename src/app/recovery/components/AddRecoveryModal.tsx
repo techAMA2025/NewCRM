@@ -98,17 +98,17 @@ export default function AddRecoveryModal({
     label: `${c.name} ${c.phone ? `(${c.phone})` : ""}`,
   }))
 
-  const baseInputClass = `w-full rounded-md border text-sm ${
+  const baseInputClass = `w-full rounded-md border text-sm text-black ${
     isDarkMode
-      ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
-      : "bg-white border-gray-300 text-gray-900"
+      ? "bg-gray-800 border-gray-700 placeholder-gray-500"
+      : "bg-white border-gray-300"
   }`
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className={`sm:max-w-[500px] ${
-          isDarkMode ? "bg-gray-900 text-white border-gray-800" : "bg-white"
+        className={`sm:max-w-[500px] text-black ${
+          isDarkMode ? "bg-gray-900 border-gray-800" : "bg-white"
         }`}
       >
         <DialogHeader>
@@ -116,7 +116,7 @@ export default function AddRecoveryModal({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Client</Label>
+            <Label className="text-black">Client</Label>
             <div className={isDarkMode ? "dark" : ""}>
               <SearchableDropdown
                 options={clientOptions}
@@ -126,7 +126,7 @@ export default function AddRecoveryModal({
               />
             </div>
             {selectedClientId && (
-              <div className={`text-xs p-2 rounded ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-600'}`}>
+              <div className={`text-xs p-2 rounded text-black ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
                 {(() => {
                   const c = clients.find((x) => x.id === selectedClientId)
                   return c ? (
@@ -143,7 +143,7 @@ export default function AddRecoveryModal({
           </div>
 
           <div className="space-y-2">
-            <Label>Fee Type</Label>
+            <Label className="text-black">Fee Type</Label>
             <Select value={feeType} onValueChange={setFeeType}>
               <SelectTrigger className={baseInputClass}>
                 <SelectValue placeholder="Select type" />
@@ -158,7 +158,7 @@ export default function AddRecoveryModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Amount Pending</Label>
+              <Label className="text-black">Amount Pending</Label>
               <Input
                 type="text"
                 value={amountPending}
@@ -173,7 +173,7 @@ export default function AddRecoveryModal({
               />
             </div>
             <div className="space-y-2">
-              <Label>Amount Received</Label>
+              <Label className="text-black">Amount Received</Label>
               <Input
                 type="text"
                 value={amountReceived}
