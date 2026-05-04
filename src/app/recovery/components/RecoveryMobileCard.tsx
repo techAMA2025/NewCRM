@@ -210,11 +210,12 @@ export default function RecoveryMobileCard(props: any) {
               const isError = record.automationStatus?.toLowerCase().includes('error') && isCurrent;
               const sentDate = record[`step${stepIdx}SentAt`];
               
+              const stepOffsets = [0, 0, 4, 7, 14, 21];
               let displayDate = safeFormatDate(sentDate);
               if (displayDate === '---' && record.createdAt) {
                 const baseDate = new Date(record.createdAt?.seconds ? record.createdAt.seconds * 1000 : record.createdAt);
                 if (!isNaN(baseDate.getTime())) {
-                  baseDate.setDate(baseDate.getDate() + (stepIdx - 1) * 7);
+                  baseDate.setDate(baseDate.getDate() + (stepOffsets[stepIdx] || 0));
                   displayDate = baseDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
                 }
               }

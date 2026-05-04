@@ -586,12 +586,13 @@ export default function RecoveryPage() {
                                     const isError = record.automationStatus?.toLowerCase().includes('error') && isCurrent;
                                     const sentDate = record[`step${stepIdx}SentAt`];
                                     
-                                    // Projection logic: 7 days after previous step or creation
+                                    // Projection logic based on new timeline: 0, 4, 7, 14, 21 days
                                     let displayDate = safeFormatDate(sentDate);
                                     if (displayDate === '---' && record.createdAt) {
                                       const baseDate = new Date(record.createdAt?.seconds ? record.createdAt.seconds * 1000 : record.createdAt);
                                       if (!isNaN(baseDate.getTime())) {
-                                        baseDate.setDate(baseDate.getDate() + (stepIdx - 1) * 7);
+                                        const stepOffsets = [0, 0, 4, 7, 14, 21];
+                                        baseDate.setDate(baseDate.getDate() + (stepOffsets[stepIdx] || 0));
                                         displayDate = baseDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
                                       }
                                     }
