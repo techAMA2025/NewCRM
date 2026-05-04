@@ -19,6 +19,7 @@ export async function GET() {
         altPhone: data.altPhone || "",
         email: data.email || "",
         address: data.address || "",
+        city: data.city || "",
       }
     })
 

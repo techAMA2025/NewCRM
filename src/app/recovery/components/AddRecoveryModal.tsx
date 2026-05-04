@@ -27,6 +27,7 @@ export interface ClientData {
   altPhone?: string
   email?: string
   address?: string
+  city?: string
 }
 
 interface AddRecoveryModalProps {
@@ -63,7 +64,8 @@ export default function AddRecoveryModal({
     setSelectedClientId(val)
     const client = clients.find(c => c.id === val)
     if (client) {
-      setClientAddress(client.address || "")
+      const fullAddress = [client.address, client.city].filter(Boolean).join(", ")
+      setClientAddress(fullAddress)
     }
   }
 
