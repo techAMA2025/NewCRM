@@ -375,7 +375,7 @@ export default function RecoveryPage() {
   }
 
   const renderMainContent = () => (
-    <div className={`p-4 transition-colors duration-200 min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`p-4 transition-colors duration-200 min-h-screen ${isDarkMode ? 'dark bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <div className="max-w-full mx-auto">
         
         {/* Header */}
@@ -461,14 +461,14 @@ export default function RecoveryPage() {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                       <thead className={isDarkMode ? 'bg-gray-900/40' : 'bg-gray-50'}>
                         <tr>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Date</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Client Details</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Fee Type</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black w-[160px]">Amounts</th>
-                          <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-black w-[400px]">Progress</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black">Status</th>
-                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-black w-64">Remarks</th>
-                          <th className="px-3 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-black">Actions</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Client Details</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Fee Type</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[160px]">Amounts</th>
+                          <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-[400px]">Progress</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                          <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-64">Remarks</th>
+                          <th className="px-3 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
                         </tr>
                       </thead>
                       <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700/50' : 'divide-gray-100'}`}>
@@ -482,12 +482,12 @@ export default function RecoveryPage() {
                                 <div className="font-semibold text-sm flex items-center gap-1.5">
                                   {record.clientName}
                                 </div>
-                                <div className={`text-[10px] flex items-center gap-2 ${isDarkMode ? 'text-gray-400' : 'text-black'}`}>
+                                <div className={`text-[10px] flex items-center gap-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                   <span>{record.clientPhone}</span>
                                   {record.clientAltPhone && <span className="opacity-50 text-[8px]">/ {record.clientAltPhone}</span>}
                                 </div>
                                 {record.clientEmail && (
-                                  <div className={`text-[9px] truncate w-40 ${isDarkMode ? 'text-gray-500' : 'text-black'}`}>{record.clientEmail}</div>
+                                  <div className={`text-[9px] truncate w-40 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>{record.clientEmail}</div>
                                 )}
                                 <div className="text-[8px] opacity-40 mt-0.5">By {record.createdBy || 'System'}</div>
                               </div>

@@ -47,15 +47,15 @@ export default function RecoveryMobileCard(props: any) {
       <div className={`px-4 py-3 border-b flex justify-between items-center ${isDarkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50'}`}>
         <div>
           <h3 className="font-bold text-sm truncate w-[200px]">{record.clientName}</h3>
-          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-black'}`}>
+          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             {record.clientPhone || 'N/A'}
           </p>
           {record.clientEmail && (
-            <p className={`text-[10px] truncate w-[200px] ${isDarkMode ? 'text-gray-500' : 'text-black'}`}>
+            <p className={`text-[10px] truncate w-[200px] ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
               {record.clientEmail}
             </p>
           )}
-          <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-black'}`}>
+          <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {safeFormatDate(record.createdAt)}
           </p>
         </div>
@@ -107,12 +107,12 @@ export default function RecoveryMobileCard(props: any) {
         {/* Client & Fee details */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className={`text-[10px] uppercase tracking-wider font-bold mb-1 ${isDarkMode ? 'text-gray-500' : 'text-black'}`}>Phone</p>
+            <p className={`text-[10px] uppercase tracking-wider font-bold mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Phone</p>
             <p className="text-xs font-medium">{record.clientPhone || 'N/A'}</p>
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
-              <p className={`text-[10px] uppercase tracking-wider font-bold ${isDarkMode ? 'text-gray-500' : 'text-black'}`}>Fee Type</p>
+              <p className={`text-[10px] uppercase tracking-wider font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Fee Type</p>
               <button 
                 onClick={() => onViewHistory(record.id, 'feeType')}
                 className="text-[8px] px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded hover:bg-purple-200 transition-colors"
@@ -267,7 +267,7 @@ export default function RecoveryMobileCard(props: any) {
 
         {/* Remarks */}
         <div>
-          <p className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-500' : 'text-black'}`}>Remarks</p>
+          <p className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Remarks</p>
           <RecoveryRemarkInput 
             recordId={record.id}
             initialValue={record.latestRemark?.remark || ""}

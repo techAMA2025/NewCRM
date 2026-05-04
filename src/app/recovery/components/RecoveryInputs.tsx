@@ -31,7 +31,7 @@ export const RecoveryRemarkInput = ({
         className={`w-full px-2 py-1 border rounded-lg text-[10px] min-h-[60px] resize-y transition-all focus:ring-1 focus:ring-purple-500 outline-none ${
           isDarkMode
             ? "bg-gray-700/50 border-gray-600 text-white placeholder-gray-500"
-            : "bg-gray-100/50 border-gray-200 text-black"
+            : "bg-gray-100/50 border-gray-200 text-gray-900"
         }`}
         rows={2}
       />
@@ -108,7 +108,7 @@ export const RecoveryAmountInput = ({
         className={`w-full px-1.5 py-1 border rounded-lg text-[9px] h-7 focus:ring-1 focus:ring-purple-500 outline-none transition-all ${
           isDarkMode
             ? "bg-gray-700/50 border-gray-600 text-white placeholder-gray-500"
-            : "bg-white border-gray-200 text-black"
+            : "bg-white border-gray-200 text-gray-900"
         }`}
       />
       <button
