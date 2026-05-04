@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
       clientAddress: clientAddress || 'Address on file',
       clientEmail,
       startDate: startDate ? formatDate(startDate) : formatDate(new Date().toISOString()),
-      totalFees: formatCurrencyIndian(totalFees || amountPending),
       amountPending: formatCurrencyIndian(amountPending),
       noticeDate: noticeDate ? formatDate(noticeDate) : formatDate(new Date().toISOString()),
       headerLogoBase64,

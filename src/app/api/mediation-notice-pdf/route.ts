@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
       startDate: startDate ? formatDate(startDate) : formatDate(new Date().toISOString()),
       amountPending: formatCurrencyIndian(outstanding),
       noticeDate: noticeDate ? formatDate(noticeDate) : formatDate(new Date().toISOString()),
-      advocateLogoBase64,
     })
 
     const localChrome = findLocalChrome()
