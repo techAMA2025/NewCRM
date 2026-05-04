@@ -38,6 +38,7 @@ interface Client {
   altPhone: string;
   status: string;
   city: string;
+  address?: string;
   lastModified: any; // Timestamp from Firebase
   creditCardDues: string;
   personalLoanDues: string;
@@ -238,6 +239,18 @@ export default function ClientDetailsModal({ client, isOpen, onClose, formatDate
                             <div className="ml-4">
                               <p className="text-xs text-gray-500 dark:text-gray-400">City</p>
                               <p className="font-medium dark:text-gray-200">{client.city}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <div className="flex items-center justify-center h-10 w-10 rounded-md bg-[#d39f10]/10 dark:bg-[#d39f10]/20 text-[#30261d] dark:text-[#f5f5f5]">
+                                <FaMapMarkerAlt />
+                              </div>
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Address</p>
+                              <p className="font-medium dark:text-gray-200">{client.address || 'No address'}</p>
                             </div>
                           </div>
                           

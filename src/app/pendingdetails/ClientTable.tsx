@@ -50,6 +50,9 @@ const ClientTable = ({ leads, clientRecordExists, onViewLead, onEditLead }: Clie
                 <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[12%]" scope="col">
                   <span className="text-blue-400">Financial Details</span>
                 </th>
+                <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[15%]" scope="col">
+                  <span className="text-blue-400">Address</span>
+                </th>
                 <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider w-[8%]" scope="col">
                   <span className="text-blue-400">Action</span>
                 </th>

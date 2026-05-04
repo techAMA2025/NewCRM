@@ -25,6 +25,7 @@ interface Client {
   assignedTo: string;
   email: string;
   city: string;
+  address?: string;
   alloc_adv: string;
   status: string;
   personalLoanDues: string;
@@ -331,6 +332,17 @@ export default function ClientViewModal({
                     </svg>
                     {client.city}
                   </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
+                    </svg>
+                    {client.address || "No address"}
+                  </div>
                 </div>
               </div>
 
@@ -414,6 +426,10 @@ export default function ClientViewModal({
                   <div className="flex border-b border-gray-700 pb-2">
                     <span className="text-gray-400 w-1/3">City</span>
                     <span className="text-white w-2/3">{client.city}</span>
+                  </div>
+                  <div className="flex border-b border-gray-700 pb-2">
+                    <span className="text-gray-400 w-1/3">Address</span>
+                    <span className="text-white w-2/3">{client.address || "Not specified"}</span>
                   </div>
                   <div className="flex border-b border-gray-700 pb-2">
                     <span className="text-gray-400 w-1/3">Date of Birth</span>

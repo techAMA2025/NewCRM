@@ -97,6 +97,10 @@ export default function ViewDetailsModal({
                 <div className="text-white">{client.city ? client.city.toUpperCase() : 'N/A'}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
+                <div className="text-gray-400">Address</div>
+                <div className="text-white">{client.address || 'N/A'}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div className="text-gray-400">Date of Birth</div>
                 <div className="text-white">{client.dob ? formatDate(client.dob, 'dd/MM/yyyy') : 'Sales Person did not provide this information'}</div>
               </div>

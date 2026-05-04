@@ -121,6 +121,14 @@ const ClientMobileCard = ({ lead, hasClientRecord, onView, onEdit, onSaveComplet
             {formatPhoneNumber(lead.phone) || 'No phone'}
           </a>
         </div>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
+            <FaBuilding className="text-blue-400 text-xs" />
+          </div>
+          <div className="text-sm text-gray-300">
+            {lead.address || lead.city || 'No address'}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 p-3 bg-gray-800/50 rounded-lg mb-4">

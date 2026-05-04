@@ -6,6 +6,7 @@ export interface Client {
   email: string
   status: string
   city: string
+  address?: string
   occupation: string
   aadharNumber: string
   panNumber?: string

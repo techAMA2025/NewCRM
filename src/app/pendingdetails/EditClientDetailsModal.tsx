@@ -196,6 +196,11 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
     const phoneValue = String(clientData.phone || '');
     const altPhoneValue = String(clientData.altPhone || '');
 
+    if (!clientData.name || !clientData.phone || !clientData.altPhone || !clientData.address) {
+      setSaveError('Please fill in all required fields (marked with *).');
+      return;
+    }
+
     if (!phoneRegex.test(phoneValue) || !phoneRegex.test(altPhoneValue)) {
       setSaveError('Phone numbers must contain exactly 10 digits.');
       return;
@@ -518,6 +523,17 @@ const EditClientDetailsModal = ({ clientData: initialClientData, onClose, onSave
                       type="text"
                       value={clientData.panNumber || ''}
                       onChange={(e) => handleFieldChange('panNumber', e.target.value)}
+                      className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label htmlFor="address" className="block text-sm font-medium text-gray-400">Address*</label>
+                    <input
+                      id="address"
+                      type="text"
+                      value={clientData.address || ''}
+                      onChange={(e) => handleFieldChange('address', e.target.value)}
+                      required
                       className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>

@@ -188,6 +188,13 @@ const ClientTableRow = ({ lead, hasClientRecord, onView, onEdit, onSaveComplete 
         </div>
       </td>
 
+      {/* Address */}
+      <td className="px-4 py-3 text-xs text-gray-300">
+        <div className="max-w-[200px] break-words">
+          {lead.address || lead.city || 'N/A'}
+        </div>
+      </td>
+
       {/* Action Button */}
       <td className="px-4 py-3 text-sm">
         <div className="flex space-x-2">

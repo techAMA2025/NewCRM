@@ -303,7 +303,7 @@ const EditClientModal = ({
     if (saving) return;
     
     // Validate required fields
-    if (!lead.panNumber || !lead.phone || !lead.altPhone || !lead.email || !lead.city) {
+    if (!lead.panNumber || !lead.phone || !lead.altPhone || !lead.email || !lead.city || !lead.address) {
       setLocalSaveError('Please fill in all required fields (marked with *)');
       return;
     }
@@ -611,6 +611,15 @@ const EditClientModal = ({
                     onChange={(value) => handleFieldChange('panNumber', value)}
                     required
                   />
+                  <div className="md:col-span-2">
+                    <InputField
+                      id="address"
+                      label="Address*"
+                      value={lead.address || ''}
+                      onChange={(value) => handleFieldChange('address', value)}
+                      required
+                    />
+                  </div>
                   <div>
                     <label htmlFor="city" className="block text-sm font-medium text-gray-400 mb-1">
                       City*
