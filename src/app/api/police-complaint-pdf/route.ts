@@ -28,7 +28,7 @@ function findLocalChrome(): string | null {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return dateStr
-  return d.toLocaleDateString('en-GB')
+  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
 }
 
 export async function POST(request: NextRequest) {
@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
       policeStationAddress,
     } = body
 
-    if (!clientName || !representativeName || !policeStationName) {
-      return NextResponse.json({ error: 'clientName, representativeName, and policeStationName are required.' }, { status: 400 })
+    if (!clientName || !representativeName) {
+      return NextResponse.json({ error: 'clientName and representativeName are required.' }, { status: 400 })
     }
 
     let headerLogoBase64 = ''
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       clientAddress: clientAddress || 'Address on file',
       noticeDate: noticeDate ? formatDate(noticeDate) : formatDate(new Date().toISOString()),
       representativeName,
-      policeStationName,
+      policeStationName: policeStationName || '',
       policeStationAddress: policeStationAddress || 'Address on file',
       headerLogoBase64,
       stampLogoBase64,

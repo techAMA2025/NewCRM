@@ -12,14 +12,7 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const { field, value, changedBy } = body
-
-    if (!field || value === undefined) {
-      return NextResponse.json(
-        { success: false, error: 'Missing field or value' },
-        { status: 400 }
-      )
-    }
+    const { field, value, updates, changedBy } = body
 
     if (!adminDb) {
       return NextResponse.json({ success: false, error: 'adminDb not initialized' }, { status: 500 })
@@ -33,34 +26,64 @@ export async function PATCH(
     }
 
     const currentData = docSnap.data() || {}
-    const oldValue = currentData[field]
-
-    // Prepare update payload
     const updatePayload: Record<string, any> = {
-      [field]: value,
       lastModified: FieldValue.serverTimestamp(),
     }
 
+    const historyLogs: any[] = []
+
+    if (updates && typeof updates === 'object') {
+      // Handle multiple fields
+      Object.entries(updates).forEach(([f, v]) => {
+        if (currentData[f] !== v) {
+          updatePayload[f] = v
+          historyLogs.push({
+            field: f,
+            oldValue: currentData[f] ?? null,
+            newValue: v,
+            changedBy: changedBy || 'Unknown',
+            timestamp: FieldValue.serverTimestamp(),
+          })
+        }
+      })
+    } else if (field && value !== undefined) {
+      // Handle single field
+      updatePayload[field] = value
+      historyLogs.push({
+        field,
+        oldValue: currentData[field] ?? null,
+        newValue: value,
+        changedBy: changedBy || 'Unknown',
+        timestamp: FieldValue.serverTimestamp(),
+      })
+    } else {
+      return NextResponse.json(
+        { success: false, error: 'Missing field/value or updates object' },
+        { status: 400 }
+      )
+    }
+
     // Auto-calculate total as the BALANCE (Pending - Received)
-    if (field === 'amountPending' || field === 'amountReceived') {
-      const pending =
-        field === 'amountPending'
-          ? parseFloat(value) || 0
-          : parseFloat(currentData.amountPending || '0') || 0
-      const received =
-        field === 'amountReceived'
-          ? parseFloat(value) || 0
-          : parseFloat(currentData.amountReceived || '0') || 0
+    // Check if any of amountPending or amountReceived is being updated
+    const isAmountUpdate = updatePayload.amountPending !== undefined || updatePayload.amountReceived !== undefined || updates?.amountPending !== undefined || updates?.amountReceived !== undefined
+    
+    if (isAmountUpdate) {
+      const getCleanVal = (val: any) => {
+        if (!val) return '0'
+        return val.toString().replace(/,/g, '')
+      }
+      const p = parseFloat(getCleanVal(updatePayload.amountPending ?? updates?.amountPending ?? currentData.amountPending)) || 0
+      const r = parseFloat(getCleanVal(updatePayload.amountReceived ?? updates?.amountReceived ?? currentData.amountReceived)) || 0
       
-      const balance = pending - received
+      const balance = p - r
       updatePayload.total = balance.toString()
 
       // Auto-status logic: 
       // 1. If balance is 0 or less, mark as Paid and Complete
-      if (balance <= 0 && currentData.status !== 'Paid') {
+      if (balance <= 0 && currentData.status !== 'Paid' && updatePayload.status === undefined) {
         updatePayload.status = 'Paid'
         updatePayload.automationStatus = 'Completed'
-        await docRef.collection('history').add({
+        historyLogs.push({
           field: 'status',
           oldValue: currentData.status || 'Pending',
           newValue: 'Paid',
@@ -69,10 +92,10 @@ export async function PATCH(
         })
       } 
       // 2. UNDO: If balance was 0 (Paid) but is now > 0, revert to 'Not Paid'
-      else if (balance > 0 && currentData.status === 'Paid') {
+      else if (balance > 0 && currentData.status === 'Paid' && updatePayload.status === undefined) {
         updatePayload.status = 'Not Paid'
-        updatePayload.automationStatus = 'In Progress' // Allow automation to resume
-        await docRef.collection('history').add({
+        updatePayload.automationStatus = 'In Progress' 
+        historyLogs.push({
           field: 'status',
           oldValue: 'Paid',
           newValue: 'Not Paid',
@@ -84,16 +107,9 @@ export async function PATCH(
 
     await docRef.update(updatePayload)
 
-    // Log the change to history subcollection
-    const historyPayload: Record<string, any> = {
-      field,
-      oldValue: oldValue ?? null,
-      newValue: value,
-      changedBy: changedBy || 'Unknown',
-      timestamp: FieldValue.serverTimestamp(),
-    }
-
-    await docRef.collection('history').add(historyPayload)
+    // Log the changes to history subcollection
+    const historyPromises = historyLogs.map(log => docRef.collection('history').add(log))
+    await Promise.all(historyPromises)
 
     return NextResponse.json({ 
       success: true, 

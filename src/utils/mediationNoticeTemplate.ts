@@ -2,6 +2,8 @@ export interface MediationNoticeData {
   clientName: string
   clientPhone: string
   clientAddress: string
+  startDate: string
+  amountPending: string   // outstanding e.g. "30,000"
   noticeDate: string      // e.g. "30/04/2026"
   advocateLogoBase64?: string
 }
@@ -11,12 +13,31 @@ export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
     clientName,
     clientPhone,
     clientAddress,
+    startDate,
+    amountPending,
     noticeDate,
     advocateLogoBase64,
   } = data
 
-  // No amount conversion needed for this specific complaint text
-  
+  // Convert amount to words helper
+  function amountToWords(amount: string): string {
+    const num = parseFloat(amount.replace(/,/g, ''))
+    if (isNaN(num)) return amount
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+      'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+    function convert(n: number): string {
+      if (n < 20) return ones[n]
+      if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '')
+      if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convert(n % 100) : '')
+      if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '')
+      if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '')
+      return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '')
+    }
+    return convert(Math.round(num))
+  }
+
+  const pendingWords = amountToWords(amountPending)  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,17 +78,23 @@ export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
 
   /* Header Layout */
   .header-wrapper {
+    display: flex;
+    align-items: center;
     padding-bottom: 5px;
-    text-align: center;
+    margin-bottom: 5px;
   }
   .header-logo-img {
-    width: 65px;
+    width: 120px;
     height: auto;
     display: block;
-    margin: 0 auto 5px auto;
+    margin-right: 20px;
+  }
+  .header-text {
+    flex: 1;
+    text-align: left;
   }
   .header-name {
-    font-size: 13.5pt;
+    font-size: 15pt;
     font-weight: bold;
     margin-bottom: 2px;
   }
@@ -78,11 +105,12 @@ export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
   .header-address {
     font-size: 11pt;
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
   }
   .header-divider {
     border-bottom: 2px solid #000;
     margin-bottom: 15px;
+    width: 100%;
   }
 
   /* Footer Layout - Simple divider for mediation notice */
@@ -172,12 +200,16 @@ export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
     <thead>
       <tr>
         <td>
-          <div class="header-wrapper">
-            ${advocateLogoBase64 ? `<img class="header-logo-img" src="data:image/png;base64,${advocateLogoBase64}" alt="Advocate Logo" />` : ''}
-            <div class="header-name">Advocate Shrey Arora</div>
-            <div class="header-date">Date: ${noticeDate}</div>
-            <div class="header-address">
-              Block-G, Sector-57,Gurugram,Haryana India-122001
+          <div class="header-container">
+            <div class="header-wrapper">
+              ${advocateLogoBase64 ? `<img class="header-logo-img" src="data:image/png;base64,${advocateLogoBase64}" alt="Advocate Logo" />` : ''}
+              <div class="header-text">
+                <div class="header-name">Advocate Shrey Arora</div>
+                <div class="header-date">Date: ${noticeDate}</div>
+                <div class="header-address">
+                  Block-G, Sector-57, Gurugram, Haryana India-122001
+                </div>
+              </div>
             </div>
             <div class="header-divider"></div>
           </div>
@@ -228,7 +260,7 @@ export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
     <p>This notice is issued on behalf of <strong>Ama Legal Solutions</strong> ("Our Client"), in relation to the contractual obligations arising out of the service agreement executed between you and Our Client.</p>
 
     <p><strong>1. Breach of Contract</strong></p>
-    <p>As per the terms of the Agreement, you were obligated to pay the agreed professional fees, including the signup amount, within the stipulated timeline. However, despite repeated reminders and follow-ups, you have failed to clear the outstanding dues. Your actions constitute a clear breach of contractual obligations.</p>
+    <p>As per the terms of the Engagement dated <strong>${startDate}</strong>, you were obligated to pay the professional fees for the legal services rendered. However, despite repeated reminders and follow-ups, you have failed to clear the outstanding dues. As on date, a sum of <strong>INR ${amountPending}/- (Rupees ${pendingWords} Only)</strong> remains outstanding and overdue. Your actions constitute a clear breach of contractual obligations.</p>
 
     <p><strong>2. Wilful Default</strong></p>
     <p>Your continued failure to make payment is not attributable to any unforeseen circumstances but reflects a deliberate and wilful default. Multiple opportunities have been extended to you to regularise the payment; however, you have failed to comply with your obligations.</p>

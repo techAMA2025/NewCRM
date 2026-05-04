@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -18,118 +18,93 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import SearchableDropdown from "@/components/SearchableDropdown"
 
-export interface ClientData {
-  id: string
-  name: string
-  phone?: string
-  altPhone?: string
-  email?: string
-  address?: string
-}
-
-interface AddRecoveryModalProps {
+interface EditRecoveryModalProps {
   isOpen: boolean
   onClose: () => void
-  clients: ClientData[]
-  onAdd: (data: any) => Promise<void>
+  record: any
+  onUpdate: (id: string, field: string, value: any) => Promise<void>
   isDarkMode: boolean
 }
 
-export default function AddRecoveryModal({
+export default function EditRecoveryModal({
   isOpen,
   onClose,
-  clients,
-  onAdd,
+  record,
+  onUpdate,
   isDarkMode,
-}: AddRecoveryModalProps) {
-  const [selectedClientId, setSelectedClientId] = useState("")
+}: EditRecoveryModalProps) {
   const [feeType, setFeeType] = useState("")
   const [amountPending, setAmountPending] = useState("")
   const [amountReceived, setAmountReceived] = useState("")
-  const [status, setStatus] = useState("Not Paid")
-  
-  // New Fields
+  const [status, setStatus] = useState("")
   const [clientAddress, setClientAddress] = useState("")
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
-  const [representativeName, setRepresentativeName] = useState("Shrey Arora")
+  const [startDate, setStartDate] = useState("")
+  const [representativeName, setRepresentativeName] = useState("")
   const [policeStationName, setPoliceStationName] = useState("")
   const [policeStationAddress, setPoliceStationAddress] = useState("")
-  
   const [submitting, setSubmitting] = useState(false)
 
-  const handleClientChange = (val: string) => {
-    setSelectedClientId(val)
-    const client = clients.find(c => c.id === val)
-    if (client) {
-      setClientAddress(client.address || "")
+  useEffect(() => {
+    if (record) {
+      setFeeType(record.feeType || "")
+      setAmountPending(record.amountPending ? Number(record.amountPending).toLocaleString("en-IN") : "")
+      setAmountReceived(record.amountReceived ? Number(record.amountReceived).toLocaleString("en-IN") : "")
+      setStatus(record.status || "Not Paid")
+      setClientAddress(record.clientAddress || "")
+      setStartDate(record.startDate || "")
+      setRepresentativeName(record.representativeName || "Shrey Arora")
+      setPoliceStationName(record.policeStationName || "")
+      setPoliceStationAddress(record.policeStationAddress || "Sector 57, Gurugram")
     }
-  }
+  }, [record])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedClientId) {
-      alert("Please select a client")
-      return
-    }
-    if (!feeType) {
-      alert("Please select a fee type")
-      return
-    }
-
-    const client = clients.find((c) => c.id === selectedClientId)
-    if (!client) return
+    if (!record) return
 
     setSubmitting(true)
     try {
-      await onAdd({
-        clientId: client.id,
-        clientName: client.name,
-        clientPhone: client.phone || "",
-        clientAltPhone: client.altPhone || "",
-        clientEmail: client.email || "",
-        clientAddress,
-        startDate,
-        representativeName,
-        policeStationName,
-        policeStationAddress,
-        feeType,
-        amountPending: amountPending.replace(/,/g, ""),
-        amountReceived: amountReceived.replace(/,/g, ""),
-        status,
+      const updates: Record<string, any> = {}
+      
+      const fields = [
+        { key: 'feeType', val: feeType },
+        { key: 'amountPending', val: amountPending.replace(/,/g, "") },
+        { key: 'amountReceived', val: amountReceived.replace(/,/g, "") },
+        { key: 'status', val: status },
+        { key: 'clientAddress', val: clientAddress },
+        { key: 'startDate', val: startDate },
+        { key: 'representativeName', val: representativeName },
+        { key: 'policeStationName', val: policeStationName },
+        { key: 'policeStationAddress', val: policeStationAddress },
+      ]
+
+      fields.forEach(f => {
+        if (record[f.key] !== f.val) {
+          updates[f.key] = f.val
+        }
       })
-      // Reset form
-      setSelectedClientId("")
-      setFeeType("")
-      setAmountPending("")
-      setAmountReceived("")
-      setStatus("Not Paid")
-      setClientAddress("")
-      setStartDate(new Date().toISOString().split('T')[0])
-      setRepresentativeName("Shrey Arora")
-      setPoliceStationName("")
-      setPoliceStationAddress("Sector 57, Gurugram")
+
+      if (Object.keys(updates).length > 0) {
+        await onUpdate(record.id, "bulk", updates)
+      }
+
       onClose()
     } catch (err) {
       console.error(err)
-      alert("Error adding record")
+      alert("Error updating record")
     } finally {
       setSubmitting(false)
     }
   }
-
-  // Format clients for SearchableDropdown
-  const clientOptions = clients.map((c) => ({
-    value: c.id,
-    label: `${c.name} ${c.phone ? `(${c.phone})` : ""}`,
-  }))
 
   const baseInputClass = `w-full rounded-md border text-sm text-black ${
     isDarkMode
       ? "bg-gray-800 border-gray-700 placeholder-gray-500"
       : "bg-white border-gray-300"
   }`
+
+  if (!record) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -139,38 +114,12 @@ export default function AddRecoveryModal({
         }`}
       >
         <DialogHeader>
-          <DialogTitle>Add New Recovery Record</DialogTitle>
+          <DialogTitle>Edit Recovery Record — {record.clientName}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
-              <Label className="text-black">Client</Label>
-              <div className={isDarkMode ? "dark" : ""}>
-                <SearchableDropdown
-                  options={clientOptions}
-                  value={selectedClientId}
-                  onChange={handleClientChange}
-                  placeholder="Search and select client..."
-                />
-              </div>
-              {selectedClientId && (
-                <div className={`text-xs p-2 rounded text-black ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                  {(() => {
-                    const c = clients.find((x) => x.id === selectedClientId)
-                    return c ? (
-                      <>
-                        <p>Name: {c.name}</p>
-                        <p>Email: {c.email || "N/A"}</p>
-                        <p>Phone: {c.phone || "N/A"}</p>
-                      </>
-                    ) : null
-                  })()}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label className="text-black">Client Address (for notices)</Label>
+              <Label className="text-black font-bold">Client Address (for notices)</Label>
               <textarea
                 value={clientAddress}
                 onChange={(e) => setClientAddress(e.target.value)}
@@ -214,7 +163,6 @@ export default function AddRecoveryModal({
                   if (!raw) { setAmountPending(""); return }
                   setAmountPending(Number(raw).toLocaleString("en-IN"))
                 }}
-                placeholder="0"
                 className={baseInputClass}
               />
             </div>
@@ -229,7 +177,6 @@ export default function AddRecoveryModal({
                   if (!raw) { setAmountReceived(""); return }
                   setAmountReceived(Number(raw).toLocaleString("en-IN"))
                 }}
-                placeholder="0"
                 className={baseInputClass}
               />
             </div>
@@ -294,7 +241,7 @@ export default function AddRecoveryModal({
               disabled={submitting}
               className="bg-purple-600 hover:bg-purple-700 text-white"
             >
-              {submitting ? "Adding..." : "Add Record"}
+              {submitting ? "Updating..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>

@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     const pendingNum = parseFloat(amountPending || '0') || 0
     const receivedNum = parseFloat(amountReceived || '0') || 0
-    const total = pendingNum + receivedNum
+    const total = pendingNum - receivedNum
 
     const newRecord = {
       clientId: clientId || '',
@@ -140,6 +140,12 @@ export async function POST(request: NextRequest) {
       clientEmail: body.clientEmail || '',
       clientPhone: clientPhone || '',
       clientAltPhone: clientAltPhone || '',
+      clientAddress: body.clientAddress || '',
+      startDate: body.startDate || '',
+      totalFees: (body.totalFees || total.toString()).replace(/,/g, ""),
+      representativeName: body.representativeName || 'Shrey Arora',
+      policeStationName: body.policeStationName || '',
+      policeStationAddress: body.policeStationAddress || 'Sector 57, Gurugram',
       feeType,
       amountPending: pendingNum.toString(),
       amountReceived: receivedNum.toString(),

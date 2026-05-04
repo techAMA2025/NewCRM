@@ -26,7 +26,17 @@ function findLocalChrome(): string | null {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return dateStr
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
+}
+
+function formatCurrencyIndian(amount: any): string {
+  const val = typeof amount === 'string' ? parseFloat(amount.replace(/,/g, '')) : amount;
+  if (isNaN(val) || val === null || val === undefined) return '0';
+  const x = Math.round(val).toString();
+  let lastThree = x.substring(x.length - 3);
+  const otherNumbers = x.substring(0, x.length - 3);
+  if (otherNumbers !== '') lastThree = ',' + lastThree;
+  return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
 }
 
 export async function POST(request: NextRequest) {
@@ -76,8 +86,8 @@ export async function POST(request: NextRequest) {
       clientAddress: clientAddress || 'Address on file',
       clientEmail,
       startDate: startDate ? formatDate(startDate) : formatDate(new Date().toISOString()),
-      totalFees: totalFees || amountPending,
-      amountPending,
+      totalFees: formatCurrencyIndian(totalFees || amountPending),
+      amountPending: formatCurrencyIndian(amountPending),
       noticeDate: noticeDate ? formatDate(noticeDate) : formatDate(new Date().toISOString()),
       headerLogoBase64,
       stampLogoBase64,

@@ -4,7 +4,6 @@ export interface RecoveryNoticeWeek1Data {
   clientAddress: string
   clientEmail?: string
   startDate: string       // engagement date e.g. "01/01/2026"
-  totalFees: string       // e.g. "50,000"
   amountPending: string   // outstanding e.g. "30,000"
   noticeDate: string      // date of notice e.g. "30/04/2026"
   headerLogoBase64?: string
@@ -18,7 +17,6 @@ export function fillWeek1NoticeTemplate(data: RecoveryNoticeWeek1Data): string {
     clientPhone,
     clientAddress,
     startDate,
-    totalFees,
     amountPending,
     noticeDate,
     headerLogoBase64,
@@ -46,7 +44,6 @@ export function fillWeek1NoticeTemplate(data: RecoveryNoticeWeek1Data): string {
   }
 
   const pendingWords = amountToWords(amountPending)
-  const totalWords = amountToWords(totalFees)
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -315,23 +312,21 @@ export function fillWeek1NoticeTemplate(data: RecoveryNoticeWeek1Data): string {
 
     <p><span class="para-label">1.</span>&nbsp;&nbsp;That you had engaged our firm for providing professional legal services pursuant to an engagement dated <strong>${startDate}</strong>, which was duly accepted by you either expressly and/or by conduct, including continued availing of such services.</p>
 
-    <p><span class="para-label">2.</span>&nbsp;&nbsp;That as per the agreed terms and conditions, you were liable to pay professional fees amounting to <strong>INR ${totalFees}/- (Rupees ${totalWords} Only)</strong> within the stipulated time.</p>
+    <p><span class="para-label">2.</span>&nbsp;&nbsp;That pursuant to the said engagement, our firm duly rendered professional services including but not limited to legal advisory, drafting, consultations, compliance assistance, and/or representation, to your satisfaction.</p>
 
-    <p><span class="para-label">3.</span>&nbsp;&nbsp;That pursuant to the said engagement, our firm duly rendered professional services including but not limited to legal advisory, drafting, consultations, compliance assistance, and/or representation, to your satisfaction.</p>
+    <p><span class="para-label">3.</span>&nbsp;&nbsp;That despite rendering the agreed services, you have failed and neglected to clear the legitimate dues payable to our firm.</p>
 
-    <p><span class="para-label">4.</span>&nbsp;&nbsp;That despite rendering the agreed services, you have failed and neglected to clear the legitimate dues payable to our firm.</p>
+    <p><span class="para-label">4.</span>&nbsp;&nbsp;That as on date, a sum of <strong>INR ${amountPending}/- (Rupees ${pendingWords} Only)</strong> remains outstanding and payable by you towards professional fees.</p>
 
-    <p><span class="para-label">5.</span>&nbsp;&nbsp;That as on date, a sum of <strong>INR ${amountPending}/- (Rupees ${pendingWords} Only)</strong> remains outstanding and payable by you towards professional fees.</p>
+    <p><span class="para-label">5.</span>&nbsp;&nbsp;That repeated requests and reminders have been made to you for clearing the said dues; however, you have failed to make the payment till date.</p>
 
-    <p><span class="para-label">6.</span>&nbsp;&nbsp;That repeated requests and reminders have been made to you for clearing the said dues; however, you have failed to make the payment till date.</p>
+    <p><span class="para-label">6.</span>&nbsp;&nbsp;That your aforesaid acts amount to breach of contractual obligations and have caused financial loss and inconvenience to our firm.</p>
 
-    <p><span class="para-label">7.</span>&nbsp;&nbsp;That your aforesaid acts amount to breach of contractual obligations and have caused financial loss and inconvenience to our firm.</p>
+    <p><span class="para-label">7.</span>&nbsp;&nbsp;That you are hereby called upon, through this Legal Notice, to make payment of the outstanding amount of <strong>INR ${amountPending}/- (Rupees ${pendingWords} Only)</strong> within <strong>7 (Seven) days</strong> from the receipt of this notice.</p>
 
-    <p><span class="para-label">8.</span>&nbsp;&nbsp;That you are hereby called upon, through this Legal Notice, to make payment of the outstanding amount of <strong>INR ${amountPending}/- (Rupees ${pendingWords} Only)</strong> within <strong>7 (Seven) days</strong> from the receipt of this notice.</p>
+    <p><span class="para-label">8.</span>&nbsp;&nbsp;That in the event of your failure to comply with the above demand within the stipulated period, we shall be constrained to initiate appropriate legal proceedings against you for recovery of the said amount along with interest, costs, and other applicable charges, at your risk, cost, and consequences.</p>
 
-    <p><span class="para-label">9.</span>&nbsp;&nbsp;That in the event of your failure to comply with the above demand within the stipulated period, we shall be constrained to initiate appropriate legal proceedings against you for recovery of the said amount along with interest, costs, and other applicable charges, at your sole risk, cost, and consequences.</p>
-
-    <p><span class="para-label">10.</span>&nbsp;&nbsp;That this notice is being issued to you without prejudice to all other rights and remedies available to us under applicable laws.</p>
+    <p><span class="para-label">9.</span>&nbsp;&nbsp;That this notice is being issued to you without prejudice to all other rights and remedies available to us under applicable laws.</p>
 
     <p><strong>You are advised to treat this notice with utmost seriousness.</strong></p>
 

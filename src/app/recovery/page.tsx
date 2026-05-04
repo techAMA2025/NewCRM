@@ -38,6 +38,7 @@ import {
 } from "firebase/firestore"
 
 import AddRecoveryModal, { ClientData } from "./components/AddRecoveryModal"
+import EditRecoveryModal from "./components/EditRecoveryModal"
 import HistoryModal from "./components/HistoryModal"
 import RecoveryMobileCard from "./components/RecoveryMobileCard"
 import { RecoveryAmountInput, RecoveryRemarkInput } from "./components/RecoveryInputs"
@@ -65,6 +66,8 @@ export default function RecoveryPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingRecord, setEditingRecord] = useState<any>(null)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [historyData, setHistoryData] = useState<any[]>([])
   const [historyFieldLabel, setHistoryFieldLabel] = useState("")
@@ -224,21 +227,31 @@ export default function RecoveryPage() {
     try {
       const localUserName = localStorage.getItem("userName") || "Unknown"
       
-      // For checkboxes, we want to log the "Notice Sent" history
-      let actualField = field
-      let actualValue = value
+      const payload: any = { changedBy: localUserName }
+      if (field === "bulk") {
+        payload.updates = value
+      } else {
+        payload.field = field
+        payload.value = value
+      }
 
       const res = await fetch(`/api/recovery/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ field: actualField, value: actualValue, changedBy: localUserName }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       
       if (data.success) {
         setRecords(prev => prev.map(r => {
           if (r.id === id) {
-            const updated = { ...r, [actualField]: actualValue }
+            let updated = { ...r }
+            if (field === "bulk") {
+              updated = { ...updated, ...value }
+            } else {
+              updated[field] = value
+            }
+            
             if (data.updatedTotal !== undefined) {
               updated.total = data.updatedTotal
             }
@@ -666,14 +679,29 @@ export default function RecoveryPage() {
                               />
                             </td>
                             <td className="px-3 py-3 text-right">
-                              <button
-                                onClick={() => handleDelete(record.id)}
-                                className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2.5M3 7h18"/>
-                                </svg>
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingRecord(record)
+                                    setIsEditModalOpen(true)
+                                  }}
+                                  className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm"
+                                  title="Edit Record"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(record.id)}
+                                  className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm"
+                                  title="Delete Record"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m4-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2.5M3 7h18"/>
+                                  </svg>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -692,6 +720,11 @@ export default function RecoveryPage() {
                         onSaveRemark={handleSaveRemark}
                         onViewHistory={handleViewHistory}
                         onDocPreview={setDocPreview}
+                        onEdit={(r: any) => {
+                          setEditingRecord(r)
+                          setIsEditModalOpen(true)
+                        }}
+                        onDelete={handleDelete}
                       />
                     ))}
                   </div>
@@ -713,6 +746,17 @@ export default function RecoveryPage() {
         onClose={() => setIsAddModalOpen(false)} 
         clients={clients} 
         onAdd={handleAddRecord}
+        isDarkMode={isDarkMode}
+      />
+
+      <EditRecoveryModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setEditingRecord(null)
+        }}
+        record={editingRecord}
+        onUpdate={handleUpdateField}
         isDarkMode={isDarkMode}
       />
 

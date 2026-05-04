@@ -17,6 +17,7 @@ interface SearchableDropdownProps {
   className?: string;
   isLoading?: boolean;
   loadingText?: string;
+  isDarkMode?: boolean;
 }
 
 export default function SearchableDropdown({
@@ -27,7 +28,8 @@ export default function SearchableDropdown({
   disabled = false,
   className = "",
   isLoading = false,
-  loadingText = "Loading..."
+  loadingText = "Loading...",
+  isDarkMode = false
 }: SearchableDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,10 +38,12 @@ export default function SearchableDropdown({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Filter options based on search term
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.value.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOptions = options.filter(option => {
+    const label = option.label?.toString().toLowerCase() || "";
+    const val = option.value?.toString().toLowerCase() || "";
+    const search = searchTerm.toLowerCase();
+    return label.includes(search) || val.includes(search);
+  });
 
   // Find selected option for display
   const selectedOption = options.find(option => option.value === value);
@@ -104,23 +108,29 @@ export default function SearchableDropdown({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    const newVal = e.target.value;
+    setSearchTerm(newVal);
     setHighlightedIndex(-1);
     if (!isOpen) {
       setIsOpen(true);
     }
   };
 
-  const handleInputClick = () => {
-    if (!disabled && !isLoading) {
-      setIsOpen(!isOpen);
-      if (!isOpen) {
-        setTimeout(() => inputRef.current?.focus(), 0);
-      }
+  const handleInputClick = (e: React.MouseEvent) => {
+    if (disabled || isLoading) return;
+    
+    // If it's already open, don't close it when clicking the input
+    if (!isOpen) {
+      setIsOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
 
-  const defaultClassName = "w-full px-3 py-1.5 bg-white border border-gray-300 rounded-md text-black focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm";
+  const baseBg = isDarkMode ? "bg-gray-800" : "bg-white";
+  const baseBorder = isDarkMode ? "border-gray-700" : "border-gray-300";
+  const baseText = isDarkMode ? "text-white" : "text-black";
+
+  const defaultClassName = `w-full px-3 py-1.5 ${baseBg} border ${baseBorder} rounded-md ${baseText} focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm`;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -137,7 +147,7 @@ export default function SearchableDropdown({
           onChange={handleInputChange}
           placeholder={isLoading ? loadingText : placeholder}
           disabled={disabled || isLoading}
-          className="bg-transparent border-none outline-none flex-1 text-black placeholder-gray-500"
+          className={`bg-transparent border-none outline-none flex-1 ${baseText} placeholder-gray-500`}
           autoComplete="off"
         />
         <svg
@@ -151,9 +161,9 @@ export default function SearchableDropdown({
       </div>
 
       {isOpen && !disabled && !isLoading && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <div className={`absolute z-50 w-full mt-1 ${baseBg} border ${baseBorder} rounded-md shadow-lg max-h-60 overflow-y-auto`}>
           {filteredOptions.length === 0 ? (
-            <div className="px-3 py-2 text-gray-400 text-sm">
+            <div className={`px-3 py-2 ${isDarkMode ? "text-gray-500" : "text-gray-400"} text-sm`}>
               No options found
             </div>
           ) : (
@@ -162,12 +172,12 @@ export default function SearchableDropdown({
                 key={option.value || `opt-${index}`}
                 className={`px-3 py-2 text-sm ${
                   option.value === "separator" 
-                    ? "cursor-default text-gray-500 text-xs font-semibold border-t border-gray-300"
+                    ? `cursor-default ${isDarkMode ? "text-gray-500 border-gray-700" : "text-gray-500 border-gray-300"} text-xs font-semibold border-t`
                     : `cursor-pointer ${
                         index === highlightedIndex
-                          ? "bg-green-100 text-green-800"
-                          : "text-gray-700 hover:bg-gray-100"
-                      } ${option.value === value ? "bg-green-200 text-green-900" : ""}`
+                          ? isDarkMode ? "bg-green-900 text-green-100" : "bg-green-100 text-green-800"
+                          : isDarkMode ? "text-gray-300 hover:bg-gray-700" : "text-gray-700 hover:bg-gray-100"
+                      } ${option.value === value ? (isDarkMode ? "bg-green-800 text-green-50" : "bg-green-200 text-green-900") : ""}`
                 } ${option.className || ""}`}
                 onClick={() => option.value !== "separator" && handleSelect(option.value)}
                 onMouseEnter={() => option.value !== "separator" && setHighlightedIndex(index)}
