@@ -280,8 +280,7 @@ export function fillPoliceComplaintTemplate(data: PoliceComplaintData): string {
   <!-- Addressee -->
   <div class="addressee">
     <p><span class="addressee-label">To,</span></p>
-    <p>The Station House Officer (SHO)</p>
-    <p>${policeStationName}</p>
+    <p>${policeStationName || 'The Station House Officer (SHO)'}</p>
     <p>${policeStationAddress}</p>
   </div>
 

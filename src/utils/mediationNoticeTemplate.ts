@@ -5,7 +5,6 @@ export interface MediationNoticeData {
   startDate: string
   amountPending: string   // outstanding e.g. "30,000"
   noticeDate: string      // e.g. "30/04/2026"
-  advocateLogoBase64?: string
 }
 
 export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
@@ -16,7 +15,6 @@ export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
     startDate,
     amountPending,
     noticeDate,
-    advocateLogoBase64,
   } = data
 
   // Convert amount to words helper
@@ -202,7 +200,6 @@ export function fillMediationNoticeTemplate(data: MediationNoticeData): string {
         <td>
           <div class="header-container">
             <div class="header-wrapper">
-              ${advocateLogoBase64 ? `<img class="header-logo-img" src="data:image/png;base64,${advocateLogoBase64}" alt="Advocate Logo" />` : ''}
               <div class="header-text">
                 <div class="header-name">Advocate Shrey Arora</div>
                 <div class="header-date">Date: ${noticeDate}</div>

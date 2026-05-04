@@ -98,7 +98,7 @@ export default function EditRecoveryModal({
     }
   }
 
-  const baseInputClass = `w-full rounded-md border text-sm text-black ${
+  const baseInputClass = `w-full rounded-md border text-sm  ${
     isDarkMode
       ? "bg-gray-800 border-gray-700 placeholder-gray-500"
       : "bg-white border-gray-300"
@@ -109,7 +109,7 @@ export default function EditRecoveryModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className={`sm:max-w-[600px] max-h-[90vh] overflow-y-auto text-black ${
+        className={`sm:max-w-[600px] max-h-[90vh] overflow-y-auto  ${
           isDarkMode ? "bg-gray-900 border-gray-800" : "bg-white"
         }`}
       >
@@ -119,7 +119,7 @@ export default function EditRecoveryModal({
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
-              <Label className="text-black font-bold">Client Address (for notices)</Label>
+              <Label className=" font-bold">Client Address (for notices)</Label>
               <textarea
                 value={clientAddress}
                 onChange={(e) => setClientAddress(e.target.value)}
@@ -129,7 +129,7 @@ export default function EditRecoveryModal({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-black">Engagement Date (Start Date)</Label>
+              <Label className="">Engagement Date (Start Date)</Label>
               <Input
                 type="date"
                 value={startDate}
@@ -139,7 +139,7 @@ export default function EditRecoveryModal({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-black">Fee Type</Label>
+              <Label className="">Fee Type</Label>
               <Select value={feeType} onValueChange={setFeeType}>
                 <SelectTrigger className={baseInputClass}>
                   <SelectValue placeholder="Select type" />
@@ -154,7 +154,7 @@ export default function EditRecoveryModal({
 
 
             <div className="space-y-2">
-              <Label className="text-black">Amount Claimed / Pending</Label>
+              <Label className="">Amount Claimed / Pending</Label>
               <Input
                 type="text"
                 value={amountPending}
@@ -168,7 +168,7 @@ export default function EditRecoveryModal({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-black">Amount Received (if any)</Label>
+              <Label className="">Amount Received (if any)</Label>
               <Input
                 type="text"
                 value={amountReceived}
@@ -182,7 +182,7 @@ export default function EditRecoveryModal({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-black">Status</Label>
+              <Label className="">Status</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className={baseInputClass}>
                   <SelectValue placeholder="Status" />
@@ -199,7 +199,7 @@ export default function EditRecoveryModal({
               <h3 className="text-sm font-bold mb-3">Police Complaint Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-black text-xs">Representative Name</Label>
+                  <Label className=" text-xs">Representative Name</Label>
                   <Input
                     value={representativeName}
                     onChange={(e) => setRepresentativeName(e.target.value)}
@@ -207,7 +207,7 @@ export default function EditRecoveryModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-black text-xs">Police Station Name</Label>
+                  <Label className=" text-xs">Police Station Name</Label>
                   <Input
                     value={policeStationName}
                     onChange={(e) => setPoliceStationName(e.target.value)}
@@ -215,7 +215,7 @@ export default function EditRecoveryModal({
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label className="text-black text-xs">Police Station Address</Label>
+                  <Label className=" text-xs">Police Station Address</Label>
                   <Input
                     value={policeStationAddress}
                     onChange={(e) => setPoliceStationAddress(e.target.value)}

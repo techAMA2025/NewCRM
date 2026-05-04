@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useTheme } from "next-themes"
 import { useAuth } from "@/context/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { FaMoon, FaSun } from "react-icons/fa"
 
 import AdminSidebar from "@/components/navigation/AdminSidebar"
 import AdvocateSidebar from "@/components/navigation/AdvocateSidebar"
@@ -46,7 +48,8 @@ import { RecoveryAmountInput, RecoveryRemarkInput } from "./components/RecoveryI
 export default function RecoveryPage() {
   const { user, userRole, userName, loading: authLoading, logout } = useAuth()
   const router = useRouter()
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const isDarkMode = theme === 'dark'
 
   const [records, setRecords] = useState<any[]>([])
   const [clients, setClients] = useState<ClientData[]>([])
@@ -387,13 +390,12 @@ export default function RecoveryPage() {
             </p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <Button 
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              variant="outline"
-              className={`flex-1 md:flex-none h-10 w-10 p-0 rounded-xl transition-all ${isDarkMode ? 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </Button>
+            <button 
+            onClick={() => setTheme(isDarkMode ? 'light' : 'dark')}
+            className={`p-2 rounded-full transition-all ${isDarkMode ? 'bg-gray-800 text-yellow-400' : 'bg-white text-gray-600 shadow-md'}`}
+          >
+            {isDarkMode ? <FaSun /> : <FaMoon />}
+          </button>
             <Button 
               onClick={() => setIsAddModalOpen(true)}
               className="flex-[4] md:flex-none h-10 px-6 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg transition-all"
