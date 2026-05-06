@@ -292,11 +292,7 @@ const EscalationsPage = () => {
 
       // Fetch Escalations
       const escalationsRef = collection(db, 'escalations')
-      let q = query(escalationsRef, orderBy('createdAt', 'desc'))
-      
-      if (filterStatus !== 'All') {
-        q = query(q, where('status', '==', filterStatus))
-      }
+      const q = query(escalationsRef, orderBy('createdAt', 'desc'))
 
       const snapshot = await getDocs(q)
       const escalationsData: Escalation[] = []
@@ -315,7 +311,7 @@ const EscalationsPage = () => {
 
   useEffect(() => {
     fetchData()
-  }, [filterStatus])
+  }, [])
 
   const handleColumnResize = (id: string, newWidth: number) => {
     setColumnWidths(prev => ({ ...prev, [id]: newWidth }));
@@ -533,11 +529,16 @@ const EscalationsPage = () => {
     }
   }
 
-  const filteredEscalations = escalations.filter(esc => 
-    esc.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    esc.phone.includes(searchTerm) ||
-    esc.concern.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredEscalations = escalations.filter(esc => {
+    // Status filter
+    if (filterStatus !== 'All' && esc.status !== filterStatus) return false
+    // Search filter
+    return (
+      esc.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      esc.phone.includes(searchTerm) ||
+      esc.concern.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })
 
   const renderSidebar = () => {
     if (userRole === 'admin') return <AdminSidebar />
